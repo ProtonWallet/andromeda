@@ -5,7 +5,7 @@ impl Hello {
         Self
     }
 
-    pub fn helloworld(&self, prefix: String) -> String {
-        hello::helloworld()
+    pub fn helloworld(&self) -> String {
+        helloworld()
     }
 }
