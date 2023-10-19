@@ -22,9 +22,7 @@ For every function added to the library, we need to:
 
 ### Preparation
 
-1. Install rust: brew install rust
-2. 
-
+1. Install rust through rustup: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`.
 
 ### Running the tests
 

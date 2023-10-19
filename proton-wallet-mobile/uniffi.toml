@@ -1,0 +1,7 @@
+[bindings.kotlin]
+package_name = "proton.wallet.common.android"
+cdylib_name = "proton_wallet_common"
+
+[bindings.swift]
+module_name = "RustFramework"
+cdylib_name = "proton_wallet_common"
