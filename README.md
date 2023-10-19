@@ -1,92 +1,149 @@
-# proton-wallet-common
+# Proton Pass Common
+
+This repository contains the source code for the common library that's used across all clients (for now, Android, iOS and web).
+
+## Structure
+
+This repository is structured into 3 main modules:
+
+- `proton-wallet-common`: Pure rust, contains the core code for all the functions, with tests and everything.
+- `proton-wallet-mobile`: Contains the necessary glue code for exporting the library to mobile clients (android and iOS) using UniFFI.
+- `proton-wallet-web`: Contains the necessary glue code for exporting the library to web clients (using `wasm-pack`).
+
+### Adding a new function
+
+For every function added to the library, we need to:
+
+1. Add it to `proton-wallet-common`, marking it as public.
+2. Write tests for it in `proton-wallet-common/tests`.
+3. Add it to the `proton-wallet-mobile/src/common.udl` file.
+4. Add it to the `proton-wallet-mobile/src/lib.rs` file, calling the `proton-wallet-common` function.
+5. Add it to the `proton-wallet-web/src/lib.rs` file, marking it as `#[wasm_bindgen]` and calling the `proton-wallet-common` function.
+
+### Preparation
+
+1. Install rust: brew install rust
+2. 
 
 
+### Running the tests
 
-## Getting started
+Only the `proton-wallet-common` crate contains tests, as the other ones only contain the glue code for calling the functions from other languages.
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+In order to run the tests you can either call `make test` or `cargo test -p proton-wallet-common`.
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+## Project management
 
-## Add your files
+### Generate a release
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+In order to generate a new release, please follow these steps:
+
+1. Make sure the `CHANGELOG.md` document has been updated.
+2. Make sure you have `cargo-release` installed (`cargo install cargo-release`).
+3. Run `cargo release [major|minor|patch]`. It will do a dry-run, it won't actually change anything.
+4. If the steps look alright to you, run again `cargo release [major|minor|patch] --execute`.
+5. Create a tag using `git tag <VERSION_NUMBER>`.
+6. Push the changes and the tag.
+
+### Formatting
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.protontech.ch/proton/clients/wallet/proton-wallet-common.git
-git branch -M master
-git push -uf origin master
+$ cargo fmt --all
+# or
+$ make fmt
 ```
 
-## Integrate with your tools
+### Linting
 
-- [ ] [Set up project integrations](https://gitlab.protontech.ch/proton/clients/wallet/proton-wallet-common/-/settings/integrations)
+```
+$ cargo clippy --all --all-features
+# or
+$ make lint
+```
 
-## Collaborate with your team
+### Clean build artifacts
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+```
+$ make clean 
+```
 
-## Test and Deploy
+This command runs `cargo clean` and also removes all the artifacts generating when building the bindings / modules.
 
-Use the built-in continuous integration in GitLab.
+## Setup
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing(SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+Here you have the initial steps to follow for being able to build the repo for each platform.
 
-***
+### Android
 
-# Editing this README
+In order to build the Android modules, you'll need to add the following targets in `rustup`:
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thank you to [makeareadme.com](https://www.makeareadme.com/) for this template.
+```
+$ rustup target add aarch64-linux-android
+$ rustup target add x86_64-linux-android
+$ rustup target add armv7-linux-androideabi
+```
 
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+Then, make sure to download the NDK from Android Studio. Any recent version should work (for reference, `25.1.8937393` works).
 
-## Name
-Choose a self-explaining name for your project.
+Finally, edit your `$CARGO_HOME/config.toml` or create a `.cargo/config.toml` in this project and add the following contents:
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+```toml
+[target.armv7-linux-androideabi]
+ar = "PATH_TO_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/ar"
+linker = "PATH_TO_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi30-clang"
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+[target.aarch64-linux-android]
+ar = "PATH_TO_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/ar"
+linker = "PATH_TO_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android30-clang"
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+[target.x86_64-linux-android]
+ar = "PATH_TO_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/ar"
+linker = "PATH_TO_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android30-clang"
+```
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+In order to perform the build, run `make android` and hopefully everything will work.
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+For generating the bindings, run `make kotlin-bindings`.
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+Link to the UniFFI guide: https://mozilla.github.io/uniffi-rs/
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+### iOS
+In order to build the iOS modules, you'll need to add the following targets in rustup:
+```bash
+rustup target add aarch64-apple-ios
+rustup target add aarch64-apple-ios-sim
+rustup target add aarch64-apple-darwin
+```
+To use rust in iOS we are leveraging the power of `Swift Packages`.
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+The **iOS** folder in **proton-pass-mobile** contains the scaffold of our package.
+The current package is called `PassRustCore` and it is the one that is used in the Pass iOS project.
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+For now the update of this package must be done by hand.
+There is two ways to update the package either you call:
+`make ios-package` and wait for the process to finish to have an updated package
+or you can do it by hand
+- Calling `make clean`, cleans the project
+- Calling `make swift-bindings`, generates the bindings
+- Calling `make ios-xcframework`, create the xcframework and update the Package
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+You should then have an up-to-date package that you can drag and drop in the `LocalPackages` directory in the Pass project.
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+Link to the UniFFI guide: https://mozilla.github.io/uniffi-rs/
+
+### Web
+
+Before being able to build the web artifacts you'll need to follow these steps for setting up the required tools:
+
+1. Install `wasm-pack`: https://rustwasm.github.io/wasm-pack/installer/
+2. Add the wasm32-unknown-unknown target: `rustup target add wasm32-unknown-unknown` 
+
+Then run `make web` and if everything worked, you're good to go!
+
+Link for the RustWasm book: https://rustwasm.github.io/docs/book/introduction.html
 
 ## License
-For open source projects, say how it is licensed.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+The code and data files in this distribution are licensed under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. See <https://www.gnu.org/licenses/> for a copy of this license.
+
+See [LICENSE](LICENSE) file

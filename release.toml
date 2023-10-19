@@ -1,0 +1,5 @@
+push = false
+consolidate-commits = true
+pre-release-commit-message = "(cargo-release) Bump version"
+tag = false
+publish = false
