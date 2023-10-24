@@ -3,6 +3,7 @@ resolver = "1"
 members = [
     "proton-wallet-common",
     "proton-wallet-mobile",
+    "proton-wallet-web",
 ]
 
 [profile.release]
