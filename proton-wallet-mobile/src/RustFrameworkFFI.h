@@ -61,9 +61,17 @@ typedef struct RustCallStatus {
 
 // Callbacks for UniFFI Futures
 typedef void (*UniFfiFutureCallbackUnsafeMutableRawPointer)(const void * _Nonnull, void*_Nonnull, RustCallStatus);
+typedef void (*UniFfiFutureCallbackUnsafeMutableRawPointer)(const void * _Nonnull, void*_Nonnull, RustCallStatus);
 typedef void (*UniFfiFutureCallbackRustBuffer)(const void * _Nonnull, RustBuffer, RustCallStatus);
 
 // Scaffolding functions
+void uniffi_proton_wallet_common_fn_free_keys(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+void*_Nonnull uniffi_proton_wallet_common_fn_constructor_keys_new(RustCallStatus *_Nonnull out_status
+    
+);
+RustBuffer uniffi_proton_wallet_common_fn_method_keys_gen_gnemonic(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
 void uniffi_proton_wallet_common_fn_free_hello(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
 void*_Nonnull uniffi_proton_wallet_common_fn_constructor_hello_new(RustCallStatus *_Nonnull out_status
@@ -85,7 +93,13 @@ RustBuffer ffi_proton_wallet_common_rustbuffer_reserve(RustBuffer buf, int32_t a
 uint16_t uniffi_proton_wallet_common_checksum_func_library_version(void
     
 );
+uint16_t uniffi__checksum_method_keys_gen_gnemonic(void
+    
+);
 uint16_t uniffi_proton_wallet_common_checksum_method_hello_helloworld(void
+    
+);
+uint16_t uniffi__checksum_constructor_keys_new(void
     
 );
 uint16_t uniffi_proton_wallet_common_checksum_constructor_hello_new(void

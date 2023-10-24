@@ -13,6 +13,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ProtonPassCommonRust"
+rootProject.name = "WalletRustCore"
 include(":lib")
  

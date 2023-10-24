@@ -1,4 +1,4 @@
-# Proton Pass Common
+# Proton Wallet Common
 
 This repository contains the source code for the common library that's used across all clients (for now, Android, iOS and web).
 
@@ -114,8 +114,8 @@ rustup target add aarch64-apple-darwin
 ```
 To use rust in iOS we are leveraging the power of `Swift Packages`.
 
-The **iOS** folder in **proton-pass-mobile** contains the scaffold of our package.
-The current package is called `PassRustCore` and it is the one that is used in the Pass iOS project.
+The **iOS** folder in **proton-wallet-mobile** contains the scaffold of our package.
+The current package is called `WalletRustCore` and it is the one that is used in the Wall iOS project.
 
 For now the update of this package must be done by hand.
 There is two ways to update the package either you call:
@@ -125,7 +125,7 @@ or you can do it by hand
 - Calling `make swift-bindings`, generates the bindings
 - Calling `make ios-xcframework`, create the xcframework and update the Package
 
-You should then have an up-to-date package that you can drag and drop in the `LocalPackages` directory in the Pass project.
+You should then have an up-to-date package that you can drag and drop in the `LocalPackages` directory in the Wallet project.
 
 Link to the UniFFI guide: https://mozilla.github.io/uniffi-rs/
 

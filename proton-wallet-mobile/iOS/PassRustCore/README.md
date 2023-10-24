@@ -1,6 +1,6 @@
-# Pass Rust Core
+# Wallet Rust Core
 
-This package expose the common rust validation functions used by all Pass clients.
+This package expose the common rust validation functions used by all Wallet clients.
 It enable a clear validation process between client and no surprises in the long run. 
 
 To update the package please execute the following command at the root of the repository.
@@ -9,4 +9,4 @@ To update the package please execute the following command at the root of the re
 make ios-package
 ```
 
-You can then copy the updated package into the Pass application
+You can then copy the updated package into the Wallet application

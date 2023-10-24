@@ -1,6 +1,12 @@
 // This file is auto-generated and contains the concatenated contents of all the UDL files in src directory
 // Do not edit this manually but instead editing/adding UDL files in the src directory
 
+
+interface Keys {
+    constructor();
+    string gen_gnemonic();
+};
+
 namespace proton_wallet_common {
     string library_version();
 };

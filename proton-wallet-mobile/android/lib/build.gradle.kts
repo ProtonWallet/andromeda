@@ -27,7 +27,7 @@ val mavenSigningKeyPassword = "MAVEN_SIGNING_KEY_PASSWORD".fromVariable()
 
 
 android {
-    namespace = "proton.android.pass.commonrust"
+    namespace = "proton.android.wallet.rustcore"
     compileSdk = 33
 
     defaultConfig {
@@ -60,7 +60,7 @@ android {
 }
 
 mavenPublishing {
-    group = "me.proton.pass.common"
+    group = "me.proton.wallet.common"
     version = "0.3.0"
     pom {
         scm {

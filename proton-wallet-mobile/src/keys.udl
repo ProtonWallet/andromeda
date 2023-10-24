@@ -1,0 +1,5 @@
+
+interface Keys {
+    constructor();
+    string gen_gnemonic();
+};

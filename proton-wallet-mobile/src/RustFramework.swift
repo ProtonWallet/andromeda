@@ -412,6 +412,87 @@ public func FfiConverterTypeHello_lower(_ value: Hello) -> UnsafeMutableRawPoint
     return FfiConverterTypeHello.lower(value)
 }
 
+
+public protocol KeysProtocol {
+    func `genGnemonic`()   -> String
+    
+}
+
+public class Keys: KeysProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+    public convenience init()  {
+        self.init(unsafeFromRawPointer: try! rustCall() {
+    uniffi_proton_wallet_common_fn_constructor_keys_new($0)
+})
+    }
+
+    deinit {
+        try! rustCall { uniffi_proton_wallet_common_fn_free_keys(pointer, $0) }
+    }
+
+    
+
+    
+    
+
+    public func `genGnemonic`()  -> String {
+        return try!  FfiConverterString.lift(
+            try! 
+    rustCall() {
+    
+    uniffi_proton_wallet_common_fn_method_keys_gen_gnemonic(self.pointer, $0
+    )
+}
+        )
+    }
+}
+
+public struct FfiConverterTypeKeys: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = Keys
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Keys {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: Keys, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> Keys {
+        return Keys(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: Keys) -> UnsafeMutableRawPointer {
+        return value.pointer
+    }
+}
+
+
+public func FfiConverterTypeKeys_lift(_ pointer: UnsafeMutableRawPointer) throws -> Keys {
+    return try FfiConverterTypeKeys.lift(pointer)
+}
+
+public func FfiConverterTypeKeys_lower(_ value: Keys) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeKeys.lower(value)
+}
+
 public func `libraryVersion`()  -> String {
     return try!  FfiConverterString.lift(
         try! rustCall() {
@@ -438,7 +519,13 @@ private var initializationResult: InitializationResult {
     if (uniffi_proton_wallet_common_checksum_func_library_version() != 40939) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi__checksum_method_keys_gen_gnemonic() != 31966) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_proton_wallet_common_checksum_method_hello_helloworld() != 9295) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi__checksum_constructor_keys_new() != 25019) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_proton_wallet_common_checksum_constructor_hello_new() != 40687) {

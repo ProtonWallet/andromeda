@@ -1,6 +1,7 @@
 #![allow(clippy::new_without_default)]
 
 mod hello;
+mod keys;
 
 uniffi::include_scaffolding!("common");
 
@@ -9,3 +10,4 @@ pub fn library_version() -> String {
 }
 
 pub use hello::*;
+pub use keys::*;
