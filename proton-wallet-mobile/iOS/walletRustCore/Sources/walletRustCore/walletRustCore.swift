@@ -223,6 +223,7 @@ fileprivate enum UniffiInternalError: LocalizedError {
 fileprivate let CALL_SUCCESS: Int8 = 0
 fileprivate let CALL_ERROR: Int8 = 1
 fileprivate let CALL_PANIC: Int8 = 2
+fileprivate let CALL_CANCELLED: Int8 = 3
 
 fileprivate extension RustCallStatus {
     init() {
@@ -285,6 +286,9 @@ private func uniffiCheckCallStatus(
                 throw UniffiInternalError.rustPanic("Rust panic")
             }
 
+        case CALL_CANCELLED:
+                throw CancellationError()
+
         default:
             throw UniffiInternalError.unexpectedRustCallStatusCode
     }
@@ -333,7 +337,7 @@ fileprivate struct FfiConverterString: FfiConverter {
 
 
 public protocol HelloProtocol {
-    func `helloworld`()   -> String
+    func helloworld()   -> String
     
 }
 
@@ -361,7 +365,7 @@ public class Hello: HelloProtocol {
     
     
 
-    public func `helloworld`()  -> String {
+    public func helloworld()  -> String {
         return try!  FfiConverterString.lift(
             try! 
     rustCall() {
@@ -414,7 +418,7 @@ public func FfiConverterTypeHello_lower(_ value: Hello) -> UnsafeMutableRawPoint
 
 
 public protocol KeysProtocol {
-    func `genGnemonic`()   -> String
+    func genGnemonic()   -> String
     
 }
 
@@ -442,7 +446,7 @@ public class Keys: KeysProtocol {
     
     
 
-    public func `genGnemonic`()  -> String {
+    public func genGnemonic()  -> String {
         return try!  FfiConverterString.lift(
             try! 
     rustCall() {
@@ -493,7 +497,7 @@ public func FfiConverterTypeKeys_lower(_ value: Keys) -> UnsafeMutableRawPointer
     return FfiConverterTypeKeys.lower(value)
 }
 
-public func `libraryVersion`()  -> String {
+public func libraryVersion()  -> String {
     return try!  FfiConverterString.lift(
         try! rustCall() {
     uniffi_proton_wallet_common_fn_func_library_version($0)
@@ -510,25 +514,25 @@ private enum InitializationResult {
 // the code inside is only computed once.
 private var initializationResult: InitializationResult {
     // Get the bindings contract version from our ComponentInterface
-    let bindings_contract_version = 22
+    let bindings_contract_version = 24
     // Get the scaffolding contract version by calling the into the dylib
     let scaffolding_contract_version = ffi_proton_wallet_common_uniffi_contract_version()
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
-    if (uniffi_proton_wallet_common_checksum_func_library_version() != 40939) {
+    if (uniffi_proton_wallet_common_checksum_func_library_version() != 8379) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi__checksum_method_keys_gen_gnemonic() != 31966) {
+    if (uniffi_proton_wallet_common_checksum_method_hello_helloworld() != 48743) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_proton_wallet_common_checksum_method_hello_helloworld() != 9295) {
+    if (uniffi_proton_wallet_common_checksum_method_keys_gen_gnemonic() != 23935) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi__checksum_constructor_keys_new() != 25019) {
+    if (uniffi_proton_wallet_common_checksum_constructor_hello_new() != 35385) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_proton_wallet_common_checksum_constructor_hello_new() != 40687) {
+    if (uniffi_proton_wallet_common_checksum_constructor_keys_new() != 32803) {
         return InitializationResult.apiChecksumMismatch
     }
 

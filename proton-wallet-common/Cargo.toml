@@ -7,13 +7,101 @@ edition = "2021"
 doctest = false
 
 [dependencies]
-tiny-bip39 = "1.0.0"
-ripemd160 = "0.8.0"
-sha2 = "0.9"
-base58 = "0.1"
-rand = "0.8"
-secp256k1 = "0.28.0"
-hex = "0.4"
-hmac = "0.12.1"
-sha3 = "0.10.8"
-pbkdf2 = "0.12.2"
+bdk = { version = "0.27.1", default-features = false, features = ["all-keys", "async-interface", "keys-bip39"] }
+bdk-macros = "0.6"
+clap = { version = "4.4.7", features = ["derive"] }
+serde_json = "1.0"
+log = "0.4.20"
+zeroize = "1.6.0"
+dirs-next = "2.0"
+env_logger = "0.10.0"
+base64 = "0.21.5"
+
+#unrelated bdk dependencies
+#tiny-bip39 = "^1.0.0"
+#ripemd160 = "0.8.0"
+#sha2 = "0.9"
+#base58 = "0.1"
+#rand = "0.8"
+#secp256k1 = "0.28.0"
+#hex = "0.4"
+#hmac = "0.12.1"
+#sha3 = "0.10.8"
+#pbkdf2 = "0.12.2"
+
+
+# Optional dependencies
+#rustyline = { version = "12.0.0", optional = true }
+#fd-lock = { version = "4.0.0", optional = true }
+#regex = { version = "1", optional = true }
+#bdk-reserves = { version = "0.27.1", optional = true }
+#electrsd = { version= "0.22", features = ["bitcoind_22_0"], optional = true}
+
+# Platform-specific dependencies
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+#wasm-bindgen = { version = "0.2.79", features = ["serde-serialize"] }
+#wasm-bindgen-futures = { version = "0.4" }
+#js-sys = "0.3.56"
+wasm-logger = "0.2.0"
+secp256k1 = { version = "0.22.0", default-features = false }
+rand = { version = "^0.6", features = ["wasm-bindgen"] }
+serde = { version = "^1.0", features = ["derive"] }
+regex = { version = "1" }
+getrandom = { version = "0.2.10", features = ["js"] }
+# zip is used by electrsd and versions after 0.6.3 don't work with our MSRV 1.57.0
+zip = { version = "0.6.6", optional = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+#tokio = { version = "1", features = ["rt", "macros", "rt-multi-thread"] }
+
+[features]
+#default = ["repl", "sqlite-db"]
+
+# To use the app in a REPL mode
+#repl = ["regex", "rustyline", "fd-lock"]
+
+# Available database options
+#key-value-db = ["bdk/key-value-db"]
+#sqlite-db = ["bdk/sqlite"]
+
+# Available blockchain client options
+#rpc = ["bdk/rpc"]
+#electrum = ["bdk/electrum"]
+#esplora = []
+#esplora-ureq = ["esplora", "bdk/use-esplora-ureq"]
+#async-interface = ["bdk/async-interface"]
+#esplora-reqwest = ["esplora", "bdk/use-esplora-reqwest", "bdk/reqwest-default-tls", "async-interface"]
+
+# Compact Filters are temporarily diabled to avoid rockdb vulnerability.
+# Ref: https://github.com/bitcoindevkit/bdk-cli/issues/112
+#compact_filters = ["bdk/compact_filters"]
+
+# Use this to consensus verify transactions at sync time
+#verify = ["bdk/verify"]
+
+# Use hardware wallets to sign transactions
+#hardware-signer = ["bdk/hardware-signer"]
+
+# Extra utility tools
+# Compile policies
+#compiler = ["bdk/compiler"]
+# Create/Verify proof of reserves as per BIP322
+#reserves = ["bdk-reserves"]
+
+# Following features auto deploys a regtest node in the background.
+# Connects the bdk wallet with that node.
+# And allows a new `bdk-cli node <command>` to operate the background node.
+#
+# This is most useful for integrations testing as well as quick demo testing
+# by devs using bdk and various types of background nodes.
+#regtest-node = ["electrsd", "zip"]
+#regtest-bitcoin = ["regtest-node" , "rpc"]
+#regtest-electrum = ["regtest-node", "electrum", "electrsd/electrs_0_8_10"]
+#TODO: Check why esplora in electrsd isn't working.
+#regtest-esplora-ureq = ["regtest-node", "esplora-ureq", "electrsd/esplora_a33e97e1"]
+#regtest-esplora-reqwest = ["regtest-node", "esplora-reqwest", "electrsd/esplora_a33e97e1"]
+
+# This feature is used to run `cargo check` in our CI targeting wasm. It's not recommended
+# for libraries to explicitly include the "getrandom/js" feature, so we only do it when
+# necessary for running our CI. See: https://docs.rs/getrandom/0.2.8/getrandom/#webassembly-support
+# dev-getrandom-wasm = ["getrandom/js"]

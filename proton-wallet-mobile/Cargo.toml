@@ -18,10 +18,10 @@ name = "proton_wallet_common"
 
 [dependencies]
 proton-wallet-common = { path = "../proton-wallet-common" }
-uniffi = { version = "0.24.1" }
+uniffi = { version = "0.25.0" }
 
 [build-dependencies]
-uniffi = { version = "0.24.1", features = [ "build" ] }
+uniffi = { version = "0.25.0", features = [ "build" ] }
 
 [[bin]]
 name = "uniffi-bindgen"
