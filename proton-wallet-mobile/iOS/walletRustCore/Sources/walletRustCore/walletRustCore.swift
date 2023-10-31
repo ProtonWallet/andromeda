@@ -336,6 +336,87 @@ fileprivate struct FfiConverterString: FfiConverter {
 }
 
 
+public protocol AddressProtocol {
+    func testAddress()   -> String
+    
+}
+
+public class Address: AddressProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+    public convenience init()  {
+        self.init(unsafeFromRawPointer: try! rustCall() {
+    uniffi_proton_wallet_common_fn_constructor_address_new($0)
+})
+    }
+
+    deinit {
+        try! rustCall { uniffi_proton_wallet_common_fn_free_address(pointer, $0) }
+    }
+
+    
+
+    
+    
+
+    public func testAddress()  -> String {
+        return try!  FfiConverterString.lift(
+            try! 
+    rustCall() {
+    
+    uniffi_proton_wallet_common_fn_method_address_test_address(self.pointer, $0
+    )
+}
+        )
+    }
+}
+
+public struct FfiConverterTypeAddress: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = Address
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Address {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: Address, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> Address {
+        return Address(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: Address) -> UnsafeMutableRawPointer {
+        return value.pointer
+    }
+}
+
+
+public func FfiConverterTypeAddress_lift(_ pointer: UnsafeMutableRawPointer) throws -> Address {
+    return try FfiConverterTypeAddress.lift(pointer)
+}
+
+public func FfiConverterTypeAddress_lower(_ value: Address) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeAddress.lower(value)
+}
+
+
 public protocol HelloProtocol {
     func helloworld()   -> String
     
@@ -523,10 +604,16 @@ private var initializationResult: InitializationResult {
     if (uniffi_proton_wallet_common_checksum_func_library_version() != 8379) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_proton_wallet_common_checksum_method_address_test_address() != 42032) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_proton_wallet_common_checksum_method_hello_helloworld() != 48743) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_proton_wallet_common_checksum_method_keys_gen_gnemonic() != 23935) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_proton_wallet_common_checksum_constructor_address_new() != 21945) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_proton_wallet_common_checksum_constructor_hello_new() != 35385) {

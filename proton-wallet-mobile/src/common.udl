@@ -2,6 +2,12 @@
 // Do not edit this manually but instead editing/adding UDL files in the src directory
 
 
+interface Address {
+    constructor();
+    string test_address();
+};
+
+
 interface Keys {
     constructor();
     string gen_gnemonic();

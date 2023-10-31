@@ -3,6 +3,7 @@
 // mod login;
 // mod password;
 mod utils;
+mod address;
 
 // use proton_pass_common::password::{get_generator, PassphraseConfig, RandomPasswordConfig};
 use wasm_bindgen::prelude::*;

@@ -2,6 +2,7 @@
 
 mod hello;
 mod keys;
+mod address;
 
 uniffi::include_scaffolding!("common");
 
@@ -11,3 +12,4 @@ pub fn library_version() -> String {
 
 pub use hello::*;
 pub use keys::*;
+pub use address::*;

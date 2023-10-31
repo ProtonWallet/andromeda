@@ -63,6 +63,13 @@ typedef struct RustCallStatus {
 typedef void (*UniFfiRustFutureContinuation)(void * _Nonnull, int8_t);
 
 // Scaffolding functions
+void uniffi_proton_wallet_common_fn_free_address(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+void*_Nonnull uniffi_proton_wallet_common_fn_constructor_address_new(RustCallStatus *_Nonnull out_status
+    
+);
+RustBuffer uniffi_proton_wallet_common_fn_method_address_test_address(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
 void uniffi_proton_wallet_common_fn_free_hello(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
 void*_Nonnull uniffi_proton_wallet_common_fn_constructor_hello_new(RustCallStatus *_Nonnull out_status
@@ -197,10 +204,16 @@ void ffi_proton_wallet_common_rust_future_complete_void(void* _Nonnull handle, R
 uint16_t uniffi_proton_wallet_common_checksum_func_library_version(void
     
 );
+uint16_t uniffi_proton_wallet_common_checksum_method_address_test_address(void
+    
+);
 uint16_t uniffi_proton_wallet_common_checksum_method_hello_helloworld(void
     
 );
 uint16_t uniffi_proton_wallet_common_checksum_method_keys_gen_gnemonic(void
+    
+);
+uint16_t uniffi_proton_wallet_common_checksum_constructor_address_new(void
     
 );
 uint16_t uniffi_proton_wallet_common_checksum_constructor_hello_new(void

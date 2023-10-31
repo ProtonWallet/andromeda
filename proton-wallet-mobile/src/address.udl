@@ -1,0 +1,5 @@
+
+interface Address {
+    constructor();
+    string test_address();
+};
