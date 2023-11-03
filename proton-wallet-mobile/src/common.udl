@@ -7,10 +7,17 @@ interface Address {
     string test_address();
 };
 
+enum WordCount {
+  "Words12",
+  "Words15",
+  "Words18",
+  "Words21",
+  "Words24",
+};
 
 interface Keys {
     constructor();
-    string gen_gnemonic();
+    string gen_gnemonic(WordCount count);
 };
 
 namespace proton_wallet_common {

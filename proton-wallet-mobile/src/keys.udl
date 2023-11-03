@@ -1,5 +1,12 @@
+enum WordCount {
+  "Words12",
+  "Words15",
+  "Words18",
+  "Words21",
+  "Words24",
+};
 
 interface Keys {
     constructor();
-    string gen_gnemonic();
+    string gen_gnemonic(WordCount count);
 };

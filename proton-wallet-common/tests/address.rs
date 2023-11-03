@@ -1,4 +1,3 @@
-
 use proton_wallet_common::address::test_address;
 
 #[test]

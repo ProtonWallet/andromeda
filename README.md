@@ -111,6 +111,7 @@ In order to build the iOS modules, you'll need to add the following targets in r
 rustup target add aarch64-apple-ios
 rustup target add aarch64-apple-ios-sim
 rustup target add aarch64-apple-darwin
+rustup target add x86_64-apple-ios
 ```
 To use rust in iOS we are leveraging the power of `Swift Packages`.
 

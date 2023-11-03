@@ -1,4 +1,3 @@
-
 use proton_wallet_common::hello::helloworld;
 
 #[test]

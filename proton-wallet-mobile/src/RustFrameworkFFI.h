@@ -82,7 +82,7 @@ void uniffi_proton_wallet_common_fn_free_keys(void*_Nonnull ptr, RustCallStatus 
 void*_Nonnull uniffi_proton_wallet_common_fn_constructor_keys_new(RustCallStatus *_Nonnull out_status
     
 );
-RustBuffer uniffi_proton_wallet_common_fn_method_keys_gen_gnemonic(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+RustBuffer uniffi_proton_wallet_common_fn_method_keys_gen_gnemonic(void*_Nonnull ptr, RustBuffer count, RustCallStatus *_Nonnull out_status
 );
 RustBuffer uniffi_proton_wallet_common_fn_func_library_version(RustCallStatus *_Nonnull out_status
     

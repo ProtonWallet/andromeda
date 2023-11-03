@@ -499,7 +499,7 @@ public func FfiConverterTypeHello_lower(_ value: Hello) -> UnsafeMutableRawPoint
 
 
 public protocol KeysProtocol {
-    func genGnemonic()   -> String
+    func genGnemonic(count: WordCount)   -> String
     
 }
 
@@ -527,12 +527,13 @@ public class Keys: KeysProtocol {
     
     
 
-    public func genGnemonic()  -> String {
+    public func genGnemonic(count: WordCount)  -> String {
         return try!  FfiConverterString.lift(
             try! 
     rustCall() {
     
-    uniffi_proton_wallet_common_fn_method_keys_gen_gnemonic(self.pointer, $0
+    uniffi_proton_wallet_common_fn_method_keys_gen_gnemonic(self.pointer, 
+        FfiConverterTypeWordCount.lower(count),$0
     )
 }
         )
@@ -578,6 +579,79 @@ public func FfiConverterTypeKeys_lower(_ value: Keys) -> UnsafeMutableRawPointer
     return FfiConverterTypeKeys.lower(value)
 }
 
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+public enum WordCount {
+    
+    case words12
+    case words15
+    case words18
+    case words21
+    case words24
+}
+
+public struct FfiConverterTypeWordCount: FfiConverterRustBuffer {
+    typealias SwiftType = WordCount
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> WordCount {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .words12
+        
+        case 2: return .words15
+        
+        case 3: return .words18
+        
+        case 4: return .words21
+        
+        case 5: return .words24
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: WordCount, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .words12:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .words15:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .words18:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .words21:
+            writeInt(&buf, Int32(4))
+        
+        
+        case .words24:
+            writeInt(&buf, Int32(5))
+        
+        }
+    }
+}
+
+
+public func FfiConverterTypeWordCount_lift(_ buf: RustBuffer) throws -> WordCount {
+    return try FfiConverterTypeWordCount.lift(buf)
+}
+
+public func FfiConverterTypeWordCount_lower(_ value: WordCount) -> RustBuffer {
+    return FfiConverterTypeWordCount.lower(value)
+}
+
+
+extension WordCount: Equatable, Hashable {}
+
+
+
 public func libraryVersion()  -> String {
     return try!  FfiConverterString.lift(
         try! rustCall() {
@@ -610,7 +684,7 @@ private var initializationResult: InitializationResult {
     if (uniffi_proton_wallet_common_checksum_method_hello_helloworld() != 48743) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_proton_wallet_common_checksum_method_keys_gen_gnemonic() != 23935) {
+    if (uniffi_proton_wallet_common_checksum_method_keys_gen_gnemonic() != 51225) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_proton_wallet_common_checksum_constructor_address_new() != 21945) {
