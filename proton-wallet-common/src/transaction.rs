@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use bdk::bitcoin::{ScriptBuf};
-
+use bdk::bitcoin::ScriptBuf;
 
 /// A Bitcoin script.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -66,7 +65,6 @@ impl TxBuilder {
 }
 
 fn sign_transaction() {
-
 
     // TxBuilder {
     //     recipients: Vec::new(),

@@ -2,74 +2,18 @@ use crate::Network;
 
 use bdk::bitcoin::bip32::DerivationPath as BdkDerivationPath;
 use bdk::bitcoin::key::Secp256k1;
-use bdk::bitcoin::secp256k1::rand;
-use bdk::bitcoin::secp256k1::rand::Rng;
-use bdk::keys::bip39::WordCount;
-use bdk::keys::bip39::{Language, Mnemonic as BdkMnemonic};
 use bdk::keys::{
-    DerivableKey, DescriptorPublicKey as BdkDescriptorPublicKey, DescriptorSecretKey as BdkDescriptorSecretKey,
-    ExtendedKey, GeneratableKey, GeneratedKey,
+    DescriptorPublicKey as BdkDescriptorPublicKey, DescriptorSecretKey as BdkDescriptorSecretKey, ExtendedKey,
 };
 use bdk::miniscript::descriptor::{DescriptorXKey, Wildcard};
-use bdk::miniscript::BareCtx;
 use bdk::Error as BdkError;
 
 use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
-#[cfg(feature = "wasm")]
-use serde::{Deserialize, Serialize};
-use wasm_bindgen::prelude::*;
-
-
-/// Mnemonic phrases are a human-readable version of the private keys.
-/// Supported number of words are 12, 15, 18, 21 and 24.
-#[cfg_attr(feature = "wasm", derive(Serialize, Deserialize))]
-pub struct Mnemonic {
-    inner: BdkMnemonic,
-}
-
-impl Mnemonic {
-    /// Generates Mnemonic with a random entropy
-    pub fn new(word_count: WordCount) -> Self {
-        // TODO 4: I DON'T KNOW IF THIS IS A DECENT WAY TO GENERATE ENTROPY PLEASE CONFIRM
-        let mut rng = rand::thread_rng();
-        let mut entropy = [0u8; 32];
-        rng.fill(&mut entropy);
-
-        let generated_key: GeneratedKey<_, BareCtx> =
-            BdkMnemonic::generate_with_entropy((word_count, Language::English), entropy).unwrap();
-        let mnemonic = BdkMnemonic::parse_in(Language::English, generated_key.to_string()).unwrap();
-        Mnemonic { inner: mnemonic }
-    }
-
-    /// Parse a Mnemonic with given string
-    pub fn from_string(mnemonic: String) -> Result<Self, BdkError> {
-        BdkMnemonic::from_str(&mnemonic)
-            .map(|m| Mnemonic { inner: m })
-            .map_err(|e| BdkError::Generic(e.to_string()))
-    }
-
-    /// Create a new Mnemonic in the specified language from the given entropy.
-    /// Entropy must be a multiple of 32 bits (4 bytes) and 128-256 bits in length.
-    pub fn from_entropy(entropy: Vec<u8>) -> Result<Self, BdkError> {
-        BdkMnemonic::from_entropy(entropy.as_slice())
-            .map(|m| Mnemonic { inner: m })
-            .map_err(|e| BdkError::Generic(e.to_string()))
-    }
-
-    /// Returns Mnemonic as string
-    pub fn as_string(&self) -> String {
-        self.inner.to_string()
-    }
-
-    #[cfg(feature = "wasm")]
-    pub fn from_js_value(js_value: JsValue) -> Result<Self, serde_wasm_bindgen::Error> {
-        serde_wasm_bindgen::from_value(js_value)
-    }
-    
-}
+use crate::mnemonic::Mnemonic;
+use bdk::keys::DerivableKey;
 
 pub struct DerivationPath {
     inner_mutex: Mutex<BdkDerivationPath>,
@@ -105,7 +49,7 @@ pub struct DescriptorSecretKey {
 
 impl DescriptorSecretKey {
     pub fn new(network: Network, mnemonic: Arc<Mnemonic>, password: Option<String>) -> Self {
-        let mnemonic = mnemonic.inner.clone();
+        let mnemonic = mnemonic.inner();
         let xkey: ExtendedKey = (mnemonic, password).into_extended_key().unwrap();
         let descriptor_secret_key = BdkDescriptorSecretKey::XPrv(DescriptorXKey {
             origin: None,

@@ -1,5 +1,5 @@
-use crate::{defined::WasmNetwork, mnemonic::WasmMnemonic, derivation_path::WasmDerivationPath, public_key::{WasmDescriptorPublicKey, self}};
-use proton_wallet_common::{DescriptorSecretKey, Mnemonic};
+use crate::public_key::WasmDescriptorPublicKey;
+use proton_wallet_common::DescriptorSecretKey;
 use std::sync::Arc;
 use wasm_bindgen::prelude::*;
 
@@ -10,25 +10,27 @@ pub struct WasmDescriptorSecretKey {
 
 #[wasm_bindgen]
 impl WasmDescriptorSecretKey {
-    #[wasm_bindgen(constructor)]
-    pub fn new(
-        network: WasmNetwork,
-        mnemonic: WasmMnemonic,
-        password: Option<String>,
-    ) -> Result<WasmDescriptorSecretKey, JsValue> {
-        let mnemonic =
-            Mnemonic::from_js_value(mnemonic.get_inner()).map_err(|e| JsValue::from_str(&e.to_string()))?;
-        let mnemonic_arc = Arc::new(mnemonic); // Wrap the mnemonic in an Arc for shared ownership.
-        let secret_key = DescriptorSecretKey::new(network.into(), mnemonic_arc, password);
-        Ok(WasmDescriptorSecretKey {
-            inner: Arc::new(secret_key),
-        })
-    }
+    // #[wasm_bindgen(constructor)]
+    // pub fn new(
+    //     network: WasmNetwork,
+    //     mnemonic: WasmMnemonic,
+    //     password: Option<String>,
+    // ) -> Result<WasmDescriptorSecretKey, JsValue> {
+    //     let mnemonic = mnemonic.get_inner();
+    //     let mnemonic = Mnemonic::from_js_value(mnemonic.get_inner()).map_err(|e| JsValue::from_str(&e.to_string()))?;
+    //     let mnemonic_arc = Arc::new(mnemonic); // Wrap the mnemonic in an Arc for shared ownership.
+    //     let secret_key = DescriptorSecretKey::new(network.into(), mnemonic_arc, password);
+    //     Ok(WasmDescriptorSecretKey {
+    //         inner: Arc::new(secret_key),
+    //     })
+    // }
 
     #[wasm_bindgen(js_name = fromString)]
     pub fn from_string(secret_key_str: &str) -> Result<WasmDescriptorSecretKey, JsValue> {
         DescriptorSecretKey::from_string(secret_key_str.to_string())
-            .map(|secret_key| WasmDescriptorSecretKey { inner: Arc::new(secret_key) })
+            .map(|secret_key| WasmDescriptorSecretKey {
+                inner: Arc::new(secret_key),
+            })
             .map_err(|e| JsValue::from_str(&e.to_string()))
     }
 
@@ -50,8 +52,7 @@ impl WasmDescriptorSecretKey {
     pub fn as_public(&self) -> Result<WasmDescriptorPublicKey, JsValue> {
         let public_key = Arc::clone(&self.inner).as_public(); // Clone the Arc to get the public key
         let public_key_str = public_key.as_string(); // Convert the public key to a string
-        WasmDescriptorPublicKey::from_string(&public_key_str)
-            .map_err(|e| e)
+        WasmDescriptorPublicKey::from_string(&public_key_str).map_err(|e| e)
     }
 
     pub fn secret_bytes(&self) -> Vec<u8> {

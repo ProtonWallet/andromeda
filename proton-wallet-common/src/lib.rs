@@ -1,12 +1,12 @@
 // pub mod
 pub mod address;
 pub mod hello;
-// pub mod keys;
+pub mod keys;
+pub mod mnemonic;
 // pub mod transaction;
 mod bitcoin;
 mod descriptor;
 // mod esplora;
-mod keys;
 mod wallet;
 pub fn library_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
@@ -25,7 +25,6 @@ pub use crate::descriptor::Descriptor;
 pub use self::keys::DescriptorPublicKey;
 pub use crate::keys::DerivationPath;
 pub use crate::keys::DescriptorSecretKey;
-pub use crate::keys::Mnemonic;
 pub use crate::wallet::TxBuilder;
 pub use crate::wallet::Update;
 pub use crate::wallet::Wallet;
