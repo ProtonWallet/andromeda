@@ -1,22 +1,3 @@
-// This file is auto-generated and contains the concatenated contents of all the UDL files in src directory
-// Do not edit this manually but instead editing/adding UDL files in the src directory
-
-
-
-
-
-
-
-namespace proton_wallet_common {
-    string library_version();
-};
-
-
-interface Hello {
-    constructor();
-    string helloworld();
-};
-
 enum KeychainKind {
   "External",
   "Internal",
@@ -276,4 +257,3 @@ interface PartiallySignedTransaction {
 
   Transaction extract_tx();
 };
-

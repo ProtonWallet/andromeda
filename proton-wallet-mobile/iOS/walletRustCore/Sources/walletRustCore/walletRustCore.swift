@@ -6,10 +6,10 @@ import Foundation
 // might be in a separate module, or it might be compiled inline into
 // this module. This is a bit of light hackery to work with both.
 #if canImport(RustFrameworkFFI)
-import RustFrameworkFFI
+    import RustFrameworkFFI
 #endif
 
-fileprivate extension RustBuffer {
+private extension RustBuffer {
     // Allocate a new buffer, copying the contents of a `UInt8` array.
     init(bytes: [UInt8]) {
         let rbuf = bytes.withUnsafeBufferPointer { ptr in
@@ -29,7 +29,7 @@ fileprivate extension RustBuffer {
     }
 }
 
-fileprivate extension ForeignBytes {
+private extension ForeignBytes {
     init(bufferPointer: UnsafeBufferPointer<UInt8>) {
         self.init(len: Int32(bufferPointer.count), data: bufferPointer.baseAddress)
     }
@@ -42,7 +42,7 @@ fileprivate extension ForeignBytes {
 // Helper classes/extensions that don't change.
 // Someday, this will be in a library of its own.
 
-fileprivate extension Data {
+private extension Data {
     init(rustBuffer: RustBuffer) {
         // TODO: This copies the buffer. Can we read directly from a
         // Rust buffer?
@@ -64,15 +64,15 @@ fileprivate extension Data {
 //
 // Instead, the read() method and these helper functions input a tuple of data
 
-fileprivate func createReader(data: Data) -> (data: Data, offset: Data.Index) {
+private func createReader(data: Data) -> (data: Data, offset: Data.Index) {
     (data: data, offset: 0)
 }
 
 // Reads an integer at the current offset, in big-endian order, and advances
 // the offset on success. Throws if reading the integer would move the
 // offset past the end of the buffer.
-fileprivate func readInt<T: FixedWidthInteger>(_ reader: inout (data: Data, offset: Data.Index)) throws -> T {
-    let range = reader.offset..<reader.offset + MemoryLayout<T>.size
+private func readInt<T: FixedWidthInteger>(_ reader: inout (data: Data, offset: Data.Index)) throws -> T {
+    let range = reader.offset ..< reader.offset + MemoryLayout<T>.size
     guard reader.data.count >= range.upperBound else {
         throw UniffiInternalError.bufferOverflow
     }
@@ -82,38 +82,38 @@ fileprivate func readInt<T: FixedWidthInteger>(_ reader: inout (data: Data, offs
         return value as! T
     }
     var value: T = 0
-    let _ = withUnsafeMutableBytes(of: &value, { reader.data.copyBytes(to: $0, from: range)})
+    let _ = withUnsafeMutableBytes(of: &value) { reader.data.copyBytes(to: $0, from: range) }
     reader.offset = range.upperBound
     return value.bigEndian
 }
 
 // Reads an arbitrary number of bytes, to be used to read
 // raw bytes, this is useful when lifting strings
-fileprivate func readBytes(_ reader: inout (data: Data, offset: Data.Index), count: Int) throws -> Array<UInt8> {
-    let range = reader.offset..<(reader.offset+count)
+private func readBytes(_ reader: inout (data: Data, offset: Data.Index), count: Int) throws -> [UInt8] {
+    let range = reader.offset ..< (reader.offset + count)
     guard reader.data.count >= range.upperBound else {
         throw UniffiInternalError.bufferOverflow
     }
     var value = [UInt8](repeating: 0, count: count)
-    value.withUnsafeMutableBufferPointer({ buffer in
+    value.withUnsafeMutableBufferPointer { buffer in
         reader.data.copyBytes(to: buffer, from: range)
-    })
+    }
     reader.offset = range.upperBound
     return value
 }
 
 // Reads a float at the current offset.
-fileprivate func readFloat(_ reader: inout (data: Data, offset: Data.Index)) throws -> Float {
-    return Float(bitPattern: try readInt(&reader))
+private func readFloat(_ reader: inout (data: Data, offset: Data.Index)) throws -> Float {
+    return try Float(bitPattern: readInt(&reader))
 }
 
 // Reads a float at the current offset.
-fileprivate func readDouble(_ reader: inout (data: Data, offset: Data.Index)) throws -> Double {
-    return Double(bitPattern: try readInt(&reader))
+private func readDouble(_ reader: inout (data: Data, offset: Data.Index)) throws -> Double {
+    return try Double(bitPattern: readInt(&reader))
 }
 
 // Indicates if the offset has reached the end of the buffer.
-fileprivate func hasRemaining(_ reader: (data: Data, offset: Data.Index)) -> Bool {
+private func hasRemaining(_ reader: (data: Data, offset: Data.Index)) -> Bool {
     return reader.offset < reader.data.count
 }
 
@@ -121,11 +121,11 @@ fileprivate func hasRemaining(_ reader: (data: Data, offset: Data.Index)) -> Boo
 // struct, but we use standalone functions instead in order to make external
 // types work.  See the above discussion on Readers for details.
 
-fileprivate func createWriter() -> [UInt8] {
+private func createWriter() -> [UInt8] {
     return []
 }
 
-fileprivate func writeBytes<S>(_ writer: inout [UInt8], _ byteArr: S) where S: Sequence, S.Element == UInt8 {
+private func writeBytes<S>(_ writer: inout [UInt8], _ byteArr: S) where S: Sequence, S.Element == UInt8 {
     writer.append(contentsOf: byteArr)
 }
 
@@ -133,22 +133,22 @@ fileprivate func writeBytes<S>(_ writer: inout [UInt8], _ byteArr: S) where S: S
 //
 // Warning: make sure what you are trying to write
 // is in the correct type!
-fileprivate func writeInt<T: FixedWidthInteger>(_ writer: inout [UInt8], _ value: T) {
+private func writeInt<T: FixedWidthInteger>(_ writer: inout [UInt8], _ value: T) {
     var value = value.bigEndian
     withUnsafeBytes(of: &value) { writer.append(contentsOf: $0) }
 }
 
-fileprivate func writeFloat(_ writer: inout [UInt8], _ value: Float) {
+private func writeFloat(_ writer: inout [UInt8], _ value: Float) {
     writeInt(&writer, value.bitPattern)
 }
 
-fileprivate func writeDouble(_ writer: inout [UInt8], _ value: Double) {
+private func writeDouble(_ writer: inout [UInt8], _ value: Double) {
     writeInt(&writer, value.bitPattern)
 }
 
 // Protocol for types that transfer other types across the FFI. This is
 // analogous go the Rust trait of the same name.
-fileprivate protocol FfiConverter {
+private protocol FfiConverter {
     associatedtype FfiType
     associatedtype SwiftType
 
@@ -159,7 +159,7 @@ fileprivate protocol FfiConverter {
 }
 
 // Types conforming to `Primitive` pass themselves directly over the FFI.
-fileprivate protocol FfiConverterPrimitive: FfiConverter where FfiType == SwiftType { }
+private protocol FfiConverterPrimitive: FfiConverter where FfiType == SwiftType {}
 
 extension FfiConverterPrimitive {
     public static func lift(_ value: FfiType) throws -> SwiftType {
@@ -173,7 +173,7 @@ extension FfiConverterPrimitive {
 
 // Types conforming to `FfiConverterRustBuffer` lift and lower into a `RustBuffer`.
 // Used for complex types where it's hard to write a custom lift/lower.
-fileprivate protocol FfiConverterRustBuffer: FfiConverter where FfiType == RustBuffer {}
+private protocol FfiConverterRustBuffer: FfiConverter where FfiType == RustBuffer {}
 
 extension FfiConverterRustBuffer {
     public static func lift(_ buf: RustBuffer) throws -> SwiftType {
@@ -187,14 +187,15 @@ extension FfiConverterRustBuffer {
     }
 
     public static func lower(_ value: SwiftType) -> RustBuffer {
-          var writer = createWriter()
-          write(value, into: &writer)
-          return RustBuffer(bytes: writer)
+        var writer = createWriter()
+        write(value, into: &writer)
+        return RustBuffer(bytes: writer)
     }
 }
+
 // An error type for FFI errors. These errors occur at the UniFFI level, not
 // the library level.
-fileprivate enum UniffiInternalError: LocalizedError {
+private enum UniffiInternalError: LocalizedError {
     case bufferOverflow
     case incompleteData
     case unexpectedOptionalTag
@@ -220,16 +221,16 @@ fileprivate enum UniffiInternalError: LocalizedError {
     }
 }
 
-fileprivate let CALL_SUCCESS: Int8 = 0
-fileprivate let CALL_ERROR: Int8 = 1
-fileprivate let CALL_PANIC: Int8 = 2
-fileprivate let CALL_CANCELLED: Int8 = 3
+private let CALL_SUCCESS: Int8 = 0
+private let CALL_ERROR: Int8 = 1
+private let CALL_PANIC: Int8 = 2
+private let CALL_CANCELLED: Int8 = 3
 
-fileprivate extension RustCallStatus {
+private extension RustCallStatus {
     init() {
         self.init(
             code: CALL_SUCCESS,
-            errorBuf: RustBuffer.init(
+            errorBuf: RustBuffer(
                 capacity: 0,
                 len: 0,
                 data: nil
@@ -244,7 +245,8 @@ private func rustCall<T>(_ callback: (UnsafeMutablePointer<RustCallStatus>) -> T
 
 private func rustCallWithError<T>(
     _ errorHandler: @escaping (RustBuffer) throws -> Error,
-    _ callback: (UnsafeMutablePointer<RustCallStatus>) -> T) throws -> T {
+    _ callback: (UnsafeMutablePointer<RustCallStatus>) -> T
+) throws -> T {
     try makeRustCall(callback, errorHandler: errorHandler)
 }
 
@@ -253,7 +255,7 @@ private func makeRustCall<T>(
     errorHandler: ((RustBuffer) throws -> Error)?
 ) throws -> T {
     uniffiEnsureInitialized()
-    var callStatus = RustCallStatus.init()
+    var callStatus = RustCallStatus()
     let returnedVal = callback(&callStatus)
     try uniffiCheckCallStatus(callStatus: callStatus, errorHandler: errorHandler)
     return returnedVal
@@ -264,40 +266,125 @@ private func uniffiCheckCallStatus(
     errorHandler: ((RustBuffer) throws -> Error)?
 ) throws {
     switch callStatus.code {
-        case CALL_SUCCESS:
-            return
+    case CALL_SUCCESS:
+        return
 
-        case CALL_ERROR:
-            if let errorHandler = errorHandler {
-                throw try errorHandler(callStatus.errorBuf)
-            } else {
-                callStatus.errorBuf.deallocate()
-                throw UniffiInternalError.unexpectedRustCallError
-            }
+    case CALL_ERROR:
+        if let errorHandler = errorHandler {
+            throw try errorHandler(callStatus.errorBuf)
+        } else {
+            callStatus.errorBuf.deallocate()
+            throw UniffiInternalError.unexpectedRustCallError
+        }
 
-        case CALL_PANIC:
-            // When the rust code sees a panic, it tries to construct a RustBuffer
-            // with the message.  But if that code panics, then it just sends back
-            // an empty buffer.
-            if callStatus.errorBuf.len > 0 {
-                throw UniffiInternalError.rustPanic(try FfiConverterString.lift(callStatus.errorBuf))
-            } else {
-                callStatus.errorBuf.deallocate()
-                throw UniffiInternalError.rustPanic("Rust panic")
-            }
+    case CALL_PANIC:
+        // When the rust code sees a panic, it tries to construct a RustBuffer
+        // with the message.  But if that code panics, then it just sends back
+        // an empty buffer.
+        if callStatus.errorBuf.len > 0 {
+            throw try UniffiInternalError.rustPanic(FfiConverterString.lift(callStatus.errorBuf))
+        } else {
+            callStatus.errorBuf.deallocate()
+            throw UniffiInternalError.rustPanic("Rust panic")
+        }
 
-        case CALL_CANCELLED:
-                throw CancellationError()
+    case CALL_CANCELLED:
+        throw CancellationError()
 
-        default:
-            throw UniffiInternalError.unexpectedRustCallStatusCode
+    default:
+        throw UniffiInternalError.unexpectedRustCallStatusCode
     }
 }
 
 // Public interface members begin here.
 
+private struct FfiConverterUInt8: FfiConverterPrimitive {
+    typealias FfiType = UInt8
+    typealias SwiftType = UInt8
 
-fileprivate struct FfiConverterString: FfiConverter {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt8 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: UInt8, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+private struct FfiConverterUInt32: FfiConverterPrimitive {
+    typealias FfiType = UInt32
+    typealias SwiftType = UInt32
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt32 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+private struct FfiConverterInt32: FfiConverterPrimitive {
+    typealias FfiType = Int32
+    typealias SwiftType = Int32
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Int32 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: Int32, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+private struct FfiConverterUInt64: FfiConverterPrimitive {
+    typealias FfiType = UInt64
+    typealias SwiftType = UInt64
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt64 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+private struct FfiConverterFloat: FfiConverterPrimitive {
+    typealias FfiType = Float
+    typealias SwiftType = Float
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Float {
+        return try lift(readFloat(&buf))
+    }
+
+    public static func write(_ value: Float, into buf: inout [UInt8]) {
+        writeFloat(&buf, lower(value))
+    }
+}
+
+private struct FfiConverterBool: FfiConverter {
+    typealias FfiType = Int8
+    typealias SwiftType = Bool
+
+    public static func lift(_ value: Int8) throws -> Bool {
+        return value != 0
+    }
+
+    public static func lower(_ value: Bool) -> Int8 {
+        return value ? 1 : 0
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Bool {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: Bool, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+private struct FfiConverterString: FfiConverter {
     typealias SwiftType = String
     typealias FfiType = RustBuffer
 
@@ -325,7 +412,7 @@ fileprivate struct FfiConverterString: FfiConverter {
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> String {
         let len: Int32 = try readInt(&buf)
-        return String(bytes: try readBytes(&buf, count: Int(len)), encoding: String.Encoding.utf8)!
+        return try String(bytes: readBytes(&buf, count: Int(len)), encoding: String.Encoding.utf8)!
     }
 
     public static func write(_ value: String, into buf: inout [UInt8]) {
@@ -335,10 +422,11 @@ fileprivate struct FfiConverterString: FfiConverter {
     }
 }
 
-
 public protocol AddressProtocol {
-    func testAddress()   -> String
-    
+    func asString() -> String
+    func network() -> Network
+    func scriptPubkey() -> Script
+    func toQrUri() -> String
 }
 
 public class Address: AddressProtocol {
@@ -350,29 +438,53 @@ public class Address: AddressProtocol {
     required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
         self.pointer = pointer
     }
-    public convenience init()  {
-        self.init(unsafeFromRawPointer: try! rustCall() {
-    uniffi_proton_wallet_common_fn_constructor_address_new($0)
-})
+
+    public convenience init(address: String, network: Network) throws {
+        try self.init(unsafeFromRawPointer: rustCallWithError(FfiConverterTypeBdkError.lift) {
+            uniffi_proton_wallet_common_fn_constructor_address_new(
+                FfiConverterString.lower(address),
+                FfiConverterTypeNetwork.lower(network), $0
+            )
+        })
     }
 
     deinit {
         try! rustCall { uniffi_proton_wallet_common_fn_free_address(pointer, $0) }
     }
 
-    
+    public func asString() -> String {
+        return try! FfiConverterString.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_address_as_string(self.pointer, $0)
+                }
+        )
+    }
 
-    
-    
+    public func network() -> Network {
+        return try! FfiConverterTypeNetwork.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_address_network(self.pointer, $0)
+                }
+        )
+    }
 
-    public func testAddress()  -> String {
-        return try!  FfiConverterString.lift(
-            try! 
-    rustCall() {
-    
-    uniffi_proton_wallet_common_fn_method_address_test_address(self.pointer, $0
-    )
-}
+    public func scriptPubkey() -> Script {
+        return try! FfiConverterTypeScript.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_address_script_pubkey(self.pointer, $0)
+                }
+        )
+    }
+
+    public func toQrUri() -> String {
+        return try! FfiConverterString.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_address_to_qr_uri(self.pointer, $0)
+                }
         )
     }
 }
@@ -386,7 +498,7 @@ public struct FfiConverterTypeAddress: FfiConverter {
         // The Rust code won't compile if a pointer won't fit in a UInt64.
         // We have to go via `UInt` because that's the thing that's the size of a pointer.
         let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
+        if ptr == nil {
             throw UniffiInternalError.unexpectedNullPointer
         }
         return try lift(ptr!)
@@ -407,7 +519,6 @@ public struct FfiConverterTypeAddress: FfiConverter {
     }
 }
 
-
 public func FfiConverterTypeAddress_lift(_ pointer: UnsafeMutableRawPointer) throws -> Address {
     return try FfiConverterTypeAddress.lift(pointer)
 }
@@ -416,10 +527,574 @@ public func FfiConverterTypeAddress_lower(_ value: Address) -> UnsafeMutableRawP
     return FfiConverterTypeAddress.lower(value)
 }
 
+public protocol BalanceProtocol {
+    func confirmed() -> UInt64
+    func immature() -> UInt64
+    func total() -> UInt64
+    func trustedPending() -> UInt64
+    func trustedSpendable() -> UInt64
+    func untrustedPending() -> UInt64
+}
+
+public class Balance: BalanceProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    deinit {
+        try! rustCall { uniffi_proton_wallet_common_fn_free_balance(pointer, $0) }
+    }
+
+    public func confirmed() -> UInt64 {
+        return try! FfiConverterUInt64.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_balance_confirmed(self.pointer, $0)
+                }
+        )
+    }
+
+    public func immature() -> UInt64 {
+        return try! FfiConverterUInt64.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_balance_immature(self.pointer, $0)
+                }
+        )
+    }
+
+    public func total() -> UInt64 {
+        return try! FfiConverterUInt64.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_balance_total(self.pointer, $0)
+                }
+        )
+    }
+
+    public func trustedPending() -> UInt64 {
+        return try! FfiConverterUInt64.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_balance_trusted_pending(self.pointer, $0)
+                }
+        )
+    }
+
+    public func trustedSpendable() -> UInt64 {
+        return try! FfiConverterUInt64.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_balance_trusted_spendable(self.pointer, $0)
+                }
+        )
+    }
+
+    public func untrustedPending() -> UInt64 {
+        return try! FfiConverterUInt64.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_balance_untrusted_pending(self.pointer, $0)
+                }
+        )
+    }
+}
+
+public struct FfiConverterTypeBalance: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = Balance
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Balance {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: Balance, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> Balance {
+        return Balance(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: Balance) -> UnsafeMutableRawPointer {
+        return value.pointer
+    }
+}
+
+public func FfiConverterTypeBalance_lift(_ pointer: UnsafeMutableRawPointer) throws -> Balance {
+    return try FfiConverterTypeBalance.lift(pointer)
+}
+
+public func FfiConverterTypeBalance_lower(_ value: Balance) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeBalance.lower(value)
+}
+
+public protocol DerivationPathProtocol {}
+
+public class DerivationPath: DerivationPathProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    public convenience init(path: String) throws {
+        try self.init(unsafeFromRawPointer: rustCallWithError(FfiConverterTypeBdkError.lift) {
+            uniffi_proton_wallet_common_fn_constructor_derivationpath_new(
+                FfiConverterString.lower(path), $0
+            )
+        })
+    }
+
+    deinit {
+        try! rustCall { uniffi_proton_wallet_common_fn_free_derivationpath(pointer, $0) }
+    }
+}
+
+public struct FfiConverterTypeDerivationPath: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = DerivationPath
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DerivationPath {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: DerivationPath, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> DerivationPath {
+        return DerivationPath(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: DerivationPath) -> UnsafeMutableRawPointer {
+        return value.pointer
+    }
+}
+
+public func FfiConverterTypeDerivationPath_lift(_ pointer: UnsafeMutableRawPointer) throws -> DerivationPath {
+    return try FfiConverterTypeDerivationPath.lift(pointer)
+}
+
+public func FfiConverterTypeDerivationPath_lower(_ value: DerivationPath) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeDerivationPath.lower(value)
+}
+
+public protocol DescriptorProtocol {
+    func asString() -> String
+    func asStringPrivate() -> String
+}
+
+public class Descriptor: DescriptorProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    public convenience init(descriptor: String, network: Network) throws {
+        try self.init(unsafeFromRawPointer: rustCallWithError(FfiConverterTypeBdkError.lift) {
+            uniffi_proton_wallet_common_fn_constructor_descriptor_new(
+                FfiConverterString.lower(descriptor),
+                FfiConverterTypeNetwork.lower(network), $0
+            )
+        })
+    }
+
+    deinit {
+        try! rustCall { uniffi_proton_wallet_common_fn_free_descriptor(pointer, $0) }
+    }
+
+    public static func newBip44(secretKey: DescriptorSecretKey, keychain: KeychainKind, network: Network) -> Descriptor {
+        return Descriptor(unsafeFromRawPointer: try! rustCall {
+            uniffi_proton_wallet_common_fn_constructor_descriptor_new_bip44(
+                FfiConverterTypeDescriptorSecretKey.lower(secretKey),
+                FfiConverterTypeKeychainKind.lower(keychain),
+                FfiConverterTypeNetwork.lower(network), $0
+            )
+        })
+    }
+
+    public static func newBip44Public(publicKey: DescriptorPublicKey, fingerprint: String, keychain: KeychainKind, network: Network) -> Descriptor {
+        return Descriptor(unsafeFromRawPointer: try! rustCall {
+            uniffi_proton_wallet_common_fn_constructor_descriptor_new_bip44_public(
+                FfiConverterTypeDescriptorPublicKey.lower(publicKey),
+                FfiConverterString.lower(fingerprint),
+                FfiConverterTypeKeychainKind.lower(keychain),
+                FfiConverterTypeNetwork.lower(network), $0
+            )
+        })
+    }
+
+    public static func newBip49(secretKey: DescriptorSecretKey, keychain: KeychainKind, network: Network) -> Descriptor {
+        return Descriptor(unsafeFromRawPointer: try! rustCall {
+            uniffi_proton_wallet_common_fn_constructor_descriptor_new_bip49(
+                FfiConverterTypeDescriptorSecretKey.lower(secretKey),
+                FfiConverterTypeKeychainKind.lower(keychain),
+                FfiConverterTypeNetwork.lower(network), $0
+            )
+        })
+    }
+
+    public static func newBip49Public(publicKey: DescriptorPublicKey, fingerprint: String, keychain: KeychainKind, network: Network) -> Descriptor {
+        return Descriptor(unsafeFromRawPointer: try! rustCall {
+            uniffi_proton_wallet_common_fn_constructor_descriptor_new_bip49_public(
+                FfiConverterTypeDescriptorPublicKey.lower(publicKey),
+                FfiConverterString.lower(fingerprint),
+                FfiConverterTypeKeychainKind.lower(keychain),
+                FfiConverterTypeNetwork.lower(network), $0
+            )
+        })
+    }
+
+    public static func newBip84(secretKey: DescriptorSecretKey, keychain: KeychainKind, network: Network) -> Descriptor {
+        return Descriptor(unsafeFromRawPointer: try! rustCall {
+            uniffi_proton_wallet_common_fn_constructor_descriptor_new_bip84(
+                FfiConverterTypeDescriptorSecretKey.lower(secretKey),
+                FfiConverterTypeKeychainKind.lower(keychain),
+                FfiConverterTypeNetwork.lower(network), $0
+            )
+        })
+    }
+
+    public static func newBip84Public(publicKey: DescriptorPublicKey, fingerprint: String, keychain: KeychainKind, network: Network) -> Descriptor {
+        return Descriptor(unsafeFromRawPointer: try! rustCall {
+            uniffi_proton_wallet_common_fn_constructor_descriptor_new_bip84_public(
+                FfiConverterTypeDescriptorPublicKey.lower(publicKey),
+                FfiConverterString.lower(fingerprint),
+                FfiConverterTypeKeychainKind.lower(keychain),
+                FfiConverterTypeNetwork.lower(network), $0
+            )
+        })
+    }
+
+    public static func newBip86(secretKey: DescriptorSecretKey, keychain: KeychainKind, network: Network) -> Descriptor {
+        return Descriptor(unsafeFromRawPointer: try! rustCall {
+            uniffi_proton_wallet_common_fn_constructor_descriptor_new_bip86(
+                FfiConverterTypeDescriptorSecretKey.lower(secretKey),
+                FfiConverterTypeKeychainKind.lower(keychain),
+                FfiConverterTypeNetwork.lower(network), $0
+            )
+        })
+    }
+
+    public static func newBip86Public(publicKey: DescriptorPublicKey, fingerprint: String, keychain: KeychainKind, network: Network) -> Descriptor {
+        return Descriptor(unsafeFromRawPointer: try! rustCall {
+            uniffi_proton_wallet_common_fn_constructor_descriptor_new_bip86_public(
+                FfiConverterTypeDescriptorPublicKey.lower(publicKey),
+                FfiConverterString.lower(fingerprint),
+                FfiConverterTypeKeychainKind.lower(keychain),
+                FfiConverterTypeNetwork.lower(network), $0
+            )
+        })
+    }
+
+    public func asString() -> String {
+        return try! FfiConverterString.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_descriptor_as_string(self.pointer, $0)
+                }
+        )
+    }
+
+    public func asStringPrivate() -> String {
+        return try! FfiConverterString.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_descriptor_as_string_private(self.pointer, $0)
+                }
+        )
+    }
+}
+
+public struct FfiConverterTypeDescriptor: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = Descriptor
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Descriptor {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: Descriptor, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> Descriptor {
+        return Descriptor(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: Descriptor) -> UnsafeMutableRawPointer {
+        return value.pointer
+    }
+}
+
+public func FfiConverterTypeDescriptor_lift(_ pointer: UnsafeMutableRawPointer) throws -> Descriptor {
+    return try FfiConverterTypeDescriptor.lift(pointer)
+}
+
+public func FfiConverterTypeDescriptor_lower(_ value: Descriptor) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeDescriptor.lower(value)
+}
+
+public protocol DescriptorPublicKeyProtocol {
+    func asString() -> String
+    func derive(path: DerivationPath) throws -> DescriptorPublicKey
+    func extend(path: DerivationPath) throws -> DescriptorPublicKey
+}
+
+public class DescriptorPublicKey: DescriptorPublicKeyProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    deinit {
+        try! rustCall { uniffi_proton_wallet_common_fn_free_descriptorpublickey(pointer, $0) }
+    }
+
+    public static func fromString(publicKey: String) throws -> DescriptorPublicKey {
+        return try DescriptorPublicKey(unsafeFromRawPointer: rustCallWithError(FfiConverterTypeBdkError.lift) {
+            uniffi_proton_wallet_common_fn_constructor_descriptorpublickey_from_string(
+                FfiConverterString.lower(publicKey), $0
+            )
+        })
+    }
+
+    public func asString() -> String {
+        return try! FfiConverterString.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_descriptorpublickey_as_string(self.pointer, $0)
+                }
+        )
+    }
+
+    public func derive(path: DerivationPath) throws -> DescriptorPublicKey {
+        return try FfiConverterTypeDescriptorPublicKey.lift(
+            rustCallWithError(FfiConverterTypeBdkError.lift) {
+                uniffi_proton_wallet_common_fn_method_descriptorpublickey_derive(self.pointer,
+                                                                                 FfiConverterTypeDerivationPath.lower(path), $0)
+            }
+        )
+    }
+
+    public func extend(path: DerivationPath) throws -> DescriptorPublicKey {
+        return try FfiConverterTypeDescriptorPublicKey.lift(
+            rustCallWithError(FfiConverterTypeBdkError.lift) {
+                uniffi_proton_wallet_common_fn_method_descriptorpublickey_extend(self.pointer,
+                                                                                 FfiConverterTypeDerivationPath.lower(path), $0)
+            }
+        )
+    }
+}
+
+public struct FfiConverterTypeDescriptorPublicKey: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = DescriptorPublicKey
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DescriptorPublicKey {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: DescriptorPublicKey, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> DescriptorPublicKey {
+        return DescriptorPublicKey(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: DescriptorPublicKey) -> UnsafeMutableRawPointer {
+        return value.pointer
+    }
+}
+
+public func FfiConverterTypeDescriptorPublicKey_lift(_ pointer: UnsafeMutableRawPointer) throws -> DescriptorPublicKey {
+    return try FfiConverterTypeDescriptorPublicKey.lift(pointer)
+}
+
+public func FfiConverterTypeDescriptorPublicKey_lower(_ value: DescriptorPublicKey) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeDescriptorPublicKey.lower(value)
+}
+
+public protocol DescriptorSecretKeyProtocol {
+    func asPublic() -> DescriptorPublicKey
+    func asString() -> String
+    func derive(path: DerivationPath) throws -> DescriptorSecretKey
+    func extend(path: DerivationPath) throws -> DescriptorSecretKey
+    func secretBytes() -> [UInt8]
+}
+
+public class DescriptorSecretKey: DescriptorSecretKeyProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    public convenience init(network: Network, mnemonic: Mnemonic, password: String?) {
+        self.init(unsafeFromRawPointer: try! rustCall {
+            uniffi_proton_wallet_common_fn_constructor_descriptorsecretkey_new(
+                FfiConverterTypeNetwork.lower(network),
+                FfiConverterTypeMnemonic.lower(mnemonic),
+                FfiConverterOptionString.lower(password), $0
+            )
+        })
+    }
+
+    deinit {
+        try! rustCall { uniffi_proton_wallet_common_fn_free_descriptorsecretkey(pointer, $0) }
+    }
+
+    public static func fromString(secretKey: String) throws -> DescriptorSecretKey {
+        return try DescriptorSecretKey(unsafeFromRawPointer: rustCallWithError(FfiConverterTypeBdkError.lift) {
+            uniffi_proton_wallet_common_fn_constructor_descriptorsecretkey_from_string(
+                FfiConverterString.lower(secretKey), $0
+            )
+        })
+    }
+
+    public func asPublic() -> DescriptorPublicKey {
+        return try! FfiConverterTypeDescriptorPublicKey.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_descriptorsecretkey_as_public(self.pointer, $0)
+                }
+        )
+    }
+
+    public func asString() -> String {
+        return try! FfiConverterString.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_descriptorsecretkey_as_string(self.pointer, $0)
+                }
+        )
+    }
+
+    public func derive(path: DerivationPath) throws -> DescriptorSecretKey {
+        return try FfiConverterTypeDescriptorSecretKey.lift(
+            rustCallWithError(FfiConverterTypeBdkError.lift) {
+                uniffi_proton_wallet_common_fn_method_descriptorsecretkey_derive(self.pointer,
+                                                                                 FfiConverterTypeDerivationPath.lower(path), $0)
+            }
+        )
+    }
+
+    public func extend(path: DerivationPath) throws -> DescriptorSecretKey {
+        return try FfiConverterTypeDescriptorSecretKey.lift(
+            rustCallWithError(FfiConverterTypeBdkError.lift) {
+                uniffi_proton_wallet_common_fn_method_descriptorsecretkey_extend(self.pointer,
+                                                                                 FfiConverterTypeDerivationPath.lower(path), $0)
+            }
+        )
+    }
+
+    public func secretBytes() -> [UInt8] {
+        return try! FfiConverterSequenceUInt8.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_descriptorsecretkey_secret_bytes(self.pointer, $0)
+                }
+        )
+    }
+}
+
+public struct FfiConverterTypeDescriptorSecretKey: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = DescriptorSecretKey
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DescriptorSecretKey {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: DescriptorSecretKey, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> DescriptorSecretKey {
+        return DescriptorSecretKey(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: DescriptorSecretKey) -> UnsafeMutableRawPointer {
+        return value.pointer
+    }
+}
+
+public func FfiConverterTypeDescriptorSecretKey_lift(_ pointer: UnsafeMutableRawPointer) throws -> DescriptorSecretKey {
+    return try FfiConverterTypeDescriptorSecretKey.lift(pointer)
+}
+
+public func FfiConverterTypeDescriptorSecretKey_lower(_ value: DescriptorSecretKey) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeDescriptorSecretKey.lower(value)
+}
 
 public protocol HelloProtocol {
-    func helloworld()   -> String
-    
+    func helloworld() -> String
 }
 
 public class Hello: HelloProtocol {
@@ -431,29 +1106,23 @@ public class Hello: HelloProtocol {
     required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
         self.pointer = pointer
     }
-    public convenience init()  {
-        self.init(unsafeFromRawPointer: try! rustCall() {
-    uniffi_proton_wallet_common_fn_constructor_hello_new($0)
-})
+
+    public convenience init() {
+        self.init(unsafeFromRawPointer: try! rustCall {
+            uniffi_proton_wallet_common_fn_constructor_hello_new($0)
+        })
     }
 
     deinit {
         try! rustCall { uniffi_proton_wallet_common_fn_free_hello(pointer, $0) }
     }
 
-    
-
-    
-    
-
-    public func helloworld()  -> String {
-        return try!  FfiConverterString.lift(
-            try! 
-    rustCall() {
-    
-    uniffi_proton_wallet_common_fn_method_hello_helloworld(self.pointer, $0
-    )
-}
+    public func helloworld() -> String {
+        return try! FfiConverterString.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_hello_helloworld(self.pointer, $0)
+                }
         )
     }
 }
@@ -467,7 +1136,7 @@ public struct FfiConverterTypeHello: FfiConverter {
         // The Rust code won't compile if a pointer won't fit in a UInt64.
         // We have to go via `UInt` because that's the thing that's the size of a pointer.
         let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
+        if ptr == nil {
             throw UniffiInternalError.unexpectedNullPointer
         }
         return try lift(ptr!)
@@ -488,7 +1157,6 @@ public struct FfiConverterTypeHello: FfiConverter {
     }
 }
 
-
 public func FfiConverterTypeHello_lift(_ pointer: UnsafeMutableRawPointer) throws -> Hello {
     return try FfiConverterTypeHello.lift(pointer)
 }
@@ -497,13 +1165,11 @@ public func FfiConverterTypeHello_lower(_ value: Hello) -> UnsafeMutableRawPoint
     return FfiConverterTypeHello.lower(value)
 }
 
-
-public protocol KeysProtocol {
-    func genGnemonic(count: WordCount)   -> String
-    
+public protocol MnemonicProtocol {
+    func asString() -> String
 }
 
-public class Keys: KeysProtocol {
+public class Mnemonic: MnemonicProtocol {
     fileprivate let pointer: UnsafeMutableRawPointer
 
     // TODO: We'd like this to be `private` but for Swifty reasons,
@@ -512,77 +1178,1101 @@ public class Keys: KeysProtocol {
     required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
         self.pointer = pointer
     }
-    public convenience init()  {
-        self.init(unsafeFromRawPointer: try! rustCall() {
-    uniffi_proton_wallet_common_fn_constructor_keys_new($0)
-})
+
+    public convenience init(wordCount: WordCount) {
+        self.init(unsafeFromRawPointer: try! rustCall {
+            uniffi_proton_wallet_common_fn_constructor_mnemonic_new(
+                FfiConverterTypeWordCount.lower(wordCount), $0
+            )
+        })
     }
 
     deinit {
-        try! rustCall { uniffi_proton_wallet_common_fn_free_keys(pointer, $0) }
+        try! rustCall { uniffi_proton_wallet_common_fn_free_mnemonic(pointer, $0) }
     }
 
-    
+    public static func fromEntropy(entropy: [UInt8]) throws -> Mnemonic {
+        return try Mnemonic(unsafeFromRawPointer: rustCallWithError(FfiConverterTypeBdkError.lift) {
+            uniffi_proton_wallet_common_fn_constructor_mnemonic_from_entropy(
+                FfiConverterSequenceUInt8.lower(entropy), $0
+            )
+        })
+    }
 
-    
-    
+    public static func fromString(mnemonic: String) throws -> Mnemonic {
+        return try Mnemonic(unsafeFromRawPointer: rustCallWithError(FfiConverterTypeBdkError.lift) {
+            uniffi_proton_wallet_common_fn_constructor_mnemonic_from_string(
+                FfiConverterString.lower(mnemonic), $0
+            )
+        })
+    }
 
-    public func genGnemonic(count: WordCount)  -> String {
-        return try!  FfiConverterString.lift(
-            try! 
-    rustCall() {
-    
-    uniffi_proton_wallet_common_fn_method_keys_gen_gnemonic(self.pointer, 
-        FfiConverterTypeWordCount.lower(count),$0
-    )
-}
+    public func asString() -> String {
+        return try! FfiConverterString.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_mnemonic_as_string(self.pointer, $0)
+                }
         )
     }
 }
 
-public struct FfiConverterTypeKeys: FfiConverter {
+public struct FfiConverterTypeMnemonic: FfiConverter {
     typealias FfiType = UnsafeMutableRawPointer
-    typealias SwiftType = Keys
+    typealias SwiftType = Mnemonic
 
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Keys {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Mnemonic {
         let v: UInt64 = try readInt(&buf)
         // The Rust code won't compile if a pointer won't fit in a UInt64.
         // We have to go via `UInt` because that's the thing that's the size of a pointer.
         let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
+        if ptr == nil {
             throw UniffiInternalError.unexpectedNullPointer
         }
         return try lift(ptr!)
     }
 
-    public static func write(_ value: Keys, into buf: inout [UInt8]) {
+    public static func write(_ value: Mnemonic, into buf: inout [UInt8]) {
         // This fiddling is because `Int` is the thing that's the same size as a pointer.
         // The Rust code won't compile if a pointer won't fit in a `UInt64`.
         writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
     }
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> Keys {
-        return Keys(unsafeFromRawPointer: pointer)
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> Mnemonic {
+        return Mnemonic(unsafeFromRawPointer: pointer)
     }
 
-    public static func lower(_ value: Keys) -> UnsafeMutableRawPointer {
+    public static func lower(_ value: Mnemonic) -> UnsafeMutableRawPointer {
         return value.pointer
     }
 }
 
-
-public func FfiConverterTypeKeys_lift(_ pointer: UnsafeMutableRawPointer) throws -> Keys {
-    return try FfiConverterTypeKeys.lift(pointer)
+public func FfiConverterTypeMnemonic_lift(_ pointer: UnsafeMutableRawPointer) throws -> Mnemonic {
+    return try FfiConverterTypeMnemonic.lift(pointer)
 }
 
-public func FfiConverterTypeKeys_lower(_ value: Keys) -> UnsafeMutableRawPointer {
-    return FfiConverterTypeKeys.lower(value)
+public func FfiConverterTypeMnemonic_lower(_ value: Mnemonic) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeMnemonic.lower(value)
+}
+
+public protocol PartiallySignedTransactionProtocol {
+    func extractTx() -> Transaction
+    func serialize() -> String
+}
+
+public class PartiallySignedTransaction: PartiallySignedTransactionProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    public convenience init(psbtBase64: String) throws {
+        try self.init(unsafeFromRawPointer: rustCallWithError(FfiConverterTypeBdkError.lift) {
+            uniffi_proton_wallet_common_fn_constructor_partiallysignedtransaction_new(
+                FfiConverterString.lower(psbtBase64), $0
+            )
+        })
+    }
+
+    deinit {
+        try! rustCall { uniffi_proton_wallet_common_fn_free_partiallysignedtransaction(pointer, $0) }
+    }
+
+    public func extractTx() -> Transaction {
+        return try! FfiConverterTypeTransaction.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_partiallysignedtransaction_extract_tx(self.pointer, $0)
+                }
+        )
+    }
+
+    public func serialize() -> String {
+        return try! FfiConverterString.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_partiallysignedtransaction_serialize(self.pointer, $0)
+                }
+        )
+    }
+}
+
+public struct FfiConverterTypePartiallySignedTransaction: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = PartiallySignedTransaction
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PartiallySignedTransaction {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: PartiallySignedTransaction, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> PartiallySignedTransaction {
+        return PartiallySignedTransaction(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: PartiallySignedTransaction) -> UnsafeMutableRawPointer {
+        return value.pointer
+    }
+}
+
+public func FfiConverterTypePartiallySignedTransaction_lift(_ pointer: UnsafeMutableRawPointer) throws -> PartiallySignedTransaction {
+    return try FfiConverterTypePartiallySignedTransaction.lift(pointer)
+}
+
+public func FfiConverterTypePartiallySignedTransaction_lower(_ value: PartiallySignedTransaction) -> UnsafeMutableRawPointer {
+    return FfiConverterTypePartiallySignedTransaction.lower(value)
+}
+
+public protocol ScriptProtocol {
+    func toBytes() -> [UInt8]
+}
+
+public class Script: ScriptProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    public convenience init(rawOutputScript: [UInt8]) {
+        self.init(unsafeFromRawPointer: try! rustCall {
+            uniffi_proton_wallet_common_fn_constructor_script_new(
+                FfiConverterSequenceUInt8.lower(rawOutputScript), $0
+            )
+        })
+    }
+
+    deinit {
+        try! rustCall { uniffi_proton_wallet_common_fn_free_script(pointer, $0) }
+    }
+
+    public func toBytes() -> [UInt8] {
+        return try! FfiConverterSequenceUInt8.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_script_to_bytes(self.pointer, $0)
+                }
+        )
+    }
+}
+
+public struct FfiConverterTypeScript: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = Script
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Script {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: Script, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> Script {
+        return Script(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: Script) -> UnsafeMutableRawPointer {
+        return value.pointer
+    }
+}
+
+public func FfiConverterTypeScript_lift(_ pointer: UnsafeMutableRawPointer) throws -> Script {
+    return try FfiConverterTypeScript.lift(pointer)
+}
+
+public func FfiConverterTypeScript_lower(_ value: Script) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeScript.lower(value)
+}
+
+public protocol TransactionProtocol {
+    func isCoinBase() -> Bool
+    func isExplicitlyRbf() -> Bool
+    func isLockTimeEnabled() -> Bool
+    func size() -> UInt64
+    func txid() -> String
+    func version() -> Int32
+    func vsize() -> UInt64
+}
+
+public class Transaction: TransactionProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    public convenience init(transactionBytes: [UInt8]) throws {
+        try self.init(unsafeFromRawPointer: rustCallWithError(FfiConverterTypeBdkError.lift) {
+            uniffi_proton_wallet_common_fn_constructor_transaction_new(
+                FfiConverterSequenceUInt8.lower(transactionBytes), $0
+            )
+        })
+    }
+
+    deinit {
+        try! rustCall { uniffi_proton_wallet_common_fn_free_transaction(pointer, $0) }
+    }
+
+    public func isCoinBase() -> Bool {
+        return try! FfiConverterBool.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_transaction_is_coin_base(self.pointer, $0)
+                }
+        )
+    }
+
+    public func isExplicitlyRbf() -> Bool {
+        return try! FfiConverterBool.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_transaction_is_explicitly_rbf(self.pointer, $0)
+                }
+        )
+    }
+
+    public func isLockTimeEnabled() -> Bool {
+        return try! FfiConverterBool.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_transaction_is_lock_time_enabled(self.pointer, $0)
+                }
+        )
+    }
+
+    public func size() -> UInt64 {
+        return try! FfiConverterUInt64.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_transaction_size(self.pointer, $0)
+                }
+        )
+    }
+
+    public func txid() -> String {
+        return try! FfiConverterString.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_transaction_txid(self.pointer, $0)
+                }
+        )
+    }
+
+    public func version() -> Int32 {
+        return try! FfiConverterInt32.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_transaction_version(self.pointer, $0)
+                }
+        )
+    }
+
+    public func vsize() -> UInt64 {
+        return try! FfiConverterUInt64.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_transaction_vsize(self.pointer, $0)
+                }
+        )
+    }
+}
+
+public struct FfiConverterTypeTransaction: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = Transaction
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Transaction {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: Transaction, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> Transaction {
+        return Transaction(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: Transaction) -> UnsafeMutableRawPointer {
+        return value.pointer
+    }
+}
+
+public func FfiConverterTypeTransaction_lift(_ pointer: UnsafeMutableRawPointer) throws -> Transaction {
+    return try FfiConverterTypeTransaction.lift(pointer)
+}
+
+public func FfiConverterTypeTransaction_lower(_ value: Transaction) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeTransaction.lower(value)
+}
+
+public protocol TxBuilderProtocol {
+    func addRecipient(script: Script, amount: UInt64) -> TxBuilder
+    func feeRate(satPerVbyte: Float) -> TxBuilder
+    func finish(wallet: Wallet) throws -> PartiallySignedTransaction
+}
+
+public class TxBuilder: TxBuilderProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    public convenience init() {
+        self.init(unsafeFromRawPointer: try! rustCall {
+            uniffi_proton_wallet_common_fn_constructor_txbuilder_new($0)
+        })
+    }
+
+    deinit {
+        try! rustCall { uniffi_proton_wallet_common_fn_free_txbuilder(pointer, $0) }
+    }
+
+    public func addRecipient(script: Script, amount: UInt64) -> TxBuilder {
+        return try! FfiConverterTypeTxBuilder.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_txbuilder_add_recipient(self.pointer,
+                                                                                  FfiConverterTypeScript.lower(script),
+                                                                                  FfiConverterUInt64.lower(amount), $0)
+                }
+        )
+    }
+
+    public func feeRate(satPerVbyte: Float) -> TxBuilder {
+        return try! FfiConverterTypeTxBuilder.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_txbuilder_fee_rate(self.pointer,
+                                                                             FfiConverterFloat.lower(satPerVbyte), $0)
+                }
+        )
+    }
+
+    public func finish(wallet: Wallet) throws -> PartiallySignedTransaction {
+        return try FfiConverterTypePartiallySignedTransaction.lift(
+            rustCallWithError(FfiConverterTypeBdkError.lift) {
+                uniffi_proton_wallet_common_fn_method_txbuilder_finish(self.pointer,
+                                                                       FfiConverterTypeWallet.lower(wallet), $0)
+            }
+        )
+    }
+}
+
+public struct FfiConverterTypeTxBuilder: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = TxBuilder
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TxBuilder {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: TxBuilder, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> TxBuilder {
+        return TxBuilder(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: TxBuilder) -> UnsafeMutableRawPointer {
+        return value.pointer
+    }
+}
+
+public func FfiConverterTypeTxBuilder_lift(_ pointer: UnsafeMutableRawPointer) throws -> TxBuilder {
+    return try FfiConverterTypeTxBuilder.lift(pointer)
+}
+
+public func FfiConverterTypeTxBuilder_lower(_ value: TxBuilder) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeTxBuilder.lower(value)
+}
+
+public protocol UpdateProtocol {}
+
+public class Update: UpdateProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    deinit {
+        try! rustCall { uniffi_proton_wallet_common_fn_free_update(pointer, $0) }
+    }
+}
+
+public struct FfiConverterTypeUpdate: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = Update
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Update {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: Update, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> Update {
+        return Update(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: Update) -> UnsafeMutableRawPointer {
+        return value.pointer
+    }
+}
+
+public func FfiConverterTypeUpdate_lift(_ pointer: UnsafeMutableRawPointer) throws -> Update {
+    return try FfiConverterTypeUpdate.lift(pointer)
+}
+
+public func FfiConverterTypeUpdate_lower(_ value: Update) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeUpdate.lower(value)
+}
+
+public protocol WalletProtocol {
+    func applyUpdate(update: Update) throws
+    func getAddress(addressIndex: AddressIndex) -> AddressInfo
+    func getBalance() -> Balance
+    func getInternalAddress(addressIndex: AddressIndex) -> AddressInfo
+    func isMine(script: Script) -> Bool
+    func network() -> Network
+}
+
+public class Wallet: WalletProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    deinit {
+        try! rustCall { uniffi_proton_wallet_common_fn_free_wallet(pointer, $0) }
+    }
+
+    public static func newNoPersist(descriptor: Descriptor, changeDescriptor: Descriptor?, network: Network) throws -> Wallet {
+        return try Wallet(unsafeFromRawPointer: rustCallWithError(FfiConverterTypeBdkError.lift) {
+            uniffi_proton_wallet_common_fn_constructor_wallet_new_no_persist(
+                FfiConverterTypeDescriptor.lower(descriptor),
+                FfiConverterOptionTypeDescriptor.lower(changeDescriptor),
+                FfiConverterTypeNetwork.lower(network), $0
+            )
+        })
+    }
+
+    public func applyUpdate(update: Update) throws {
+        try
+            rustCallWithError(FfiConverterTypeBdkError.lift) {
+                uniffi_proton_wallet_common_fn_method_wallet_apply_update(self.pointer,
+                                                                          FfiConverterTypeUpdate.lower(update), $0)
+            }
+    }
+
+    public func getAddress(addressIndex: AddressIndex) -> AddressInfo {
+        return try! FfiConverterTypeAddressInfo.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_wallet_get_address(self.pointer,
+                                                                             FfiConverterTypeAddressIndex.lower(addressIndex), $0)
+                }
+        )
+    }
+
+    public func getBalance() -> Balance {
+        return try! FfiConverterTypeBalance.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_wallet_get_balance(self.pointer, $0)
+                }
+        )
+    }
+
+    public func getInternalAddress(addressIndex: AddressIndex) -> AddressInfo {
+        return try! FfiConverterTypeAddressInfo.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_wallet_get_internal_address(self.pointer,
+                                                                                      FfiConverterTypeAddressIndex.lower(addressIndex), $0)
+                }
+        )
+    }
+
+    public func isMine(script: Script) -> Bool {
+        return try! FfiConverterBool.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_wallet_is_mine(self.pointer,
+                                                                         FfiConverterTypeScript.lower(script), $0)
+                }
+        )
+    }
+
+    public func network() -> Network {
+        return try! FfiConverterTypeNetwork.lift(
+            try!
+                rustCall {
+                    uniffi_proton_wallet_common_fn_method_wallet_network(self.pointer, $0)
+                }
+        )
+    }
+}
+
+public struct FfiConverterTypeWallet: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = Wallet
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Wallet {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: Wallet, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> Wallet {
+        return Wallet(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: Wallet) -> UnsafeMutableRawPointer {
+        return value.pointer
+    }
+}
+
+public func FfiConverterTypeWallet_lift(_ pointer: UnsafeMutableRawPointer) throws -> Wallet {
+    return try FfiConverterTypeWallet.lift(pointer)
+}
+
+public func FfiConverterTypeWallet_lower(_ value: Wallet) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeWallet.lower(value)
+}
+
+public struct AddressInfo {
+    public var index: UInt32
+    public var address: Address
+    public var keychain: KeychainKind
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(index: UInt32, address: Address, keychain: KeychainKind) {
+        self.index = index
+        self.address = address
+        self.keychain = keychain
+    }
+}
+
+public struct FfiConverterTypeAddressInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AddressInfo {
+        return try AddressInfo(
+            index: FfiConverterUInt32.read(from: &buf),
+            address: FfiConverterTypeAddress.read(from: &buf),
+            keychain: FfiConverterTypeKeychainKind.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AddressInfo, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.index, into: &buf)
+        FfiConverterTypeAddress.write(value.address, into: &buf)
+        FfiConverterTypeKeychainKind.write(value.keychain, into: &buf)
+    }
+}
+
+public func FfiConverterTypeAddressInfo_lift(_ buf: RustBuffer) throws -> AddressInfo {
+    return try FfiConverterTypeAddressInfo.lift(buf)
+}
+
+public func FfiConverterTypeAddressInfo_lower(_ value: AddressInfo) -> RustBuffer {
+    return FfiConverterTypeAddressInfo.lower(value)
 }
 
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+public enum AddressIndex {
+    case new
+    case lastUnused
+    case peek(index: UInt32)
+}
+
+public struct FfiConverterTypeAddressIndex: FfiConverterRustBuffer {
+    typealias SwiftType = AddressIndex
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AddressIndex {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .new
+
+        case 2: return .lastUnused
+
+        case 3: return try .peek(
+                index: FfiConverterUInt32.read(from: &buf)
+            )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: AddressIndex, into buf: inout [UInt8]) {
+        switch value {
+        case .new:
+            writeInt(&buf, Int32(1))
+
+        case .lastUnused:
+            writeInt(&buf, Int32(2))
+
+        case let .peek(index):
+            writeInt(&buf, Int32(3))
+            FfiConverterUInt32.write(index, into: &buf)
+        }
+    }
+}
+
+public func FfiConverterTypeAddressIndex_lift(_ buf: RustBuffer) throws -> AddressIndex {
+    return try FfiConverterTypeAddressIndex.lift(buf)
+}
+
+public func FfiConverterTypeAddressIndex_lower(_ value: AddressIndex) -> RustBuffer {
+    return FfiConverterTypeAddressIndex.lower(value)
+}
+
+extension AddressIndex: Equatable, Hashable {}
+
+public enum BdkError {
+    // Simple error enums only carry a message
+    case Generic(message: String)
+
+    // Simple error enums only carry a message
+    case NoRecipients(message: String)
+
+    // Simple error enums only carry a message
+    case NoUtxosSelected(message: String)
+
+    // Simple error enums only carry a message
+    case OutputBelowDustLimit(message: String)
+
+    // Simple error enums only carry a message
+    case InsufficientFunds(message: String)
+
+    // Simple error enums only carry a message
+    case BnBTotalTriesExceeded(message: String)
+
+    // Simple error enums only carry a message
+    case BnBNoExactMatch(message: String)
+
+    // Simple error enums only carry a message
+    case UnknownUtxo(message: String)
+
+    // Simple error enums only carry a message
+    case TransactionNotFound(message: String)
+
+    // Simple error enums only carry a message
+    case TransactionConfirmed(message: String)
+
+    // Simple error enums only carry a message
+    case IrreplaceableTransaction(message: String)
+
+    // Simple error enums only carry a message
+    case FeeRateTooLow(message: String)
+
+    // Simple error enums only carry a message
+    case FeeTooLow(message: String)
+
+    // Simple error enums only carry a message
+    case FeeRateUnavailable(message: String)
+
+    // Simple error enums only carry a message
+    case MissingKeyOrigin(message: String)
+
+    // Simple error enums only carry a message
+    case Key(message: String)
+
+    // Simple error enums only carry a message
+    case ChecksumMismatch(message: String)
+
+    // Simple error enums only carry a message
+    case SpendingPolicyRequired(message: String)
+
+    // Simple error enums only carry a message
+    case InvalidPolicyPathError(message: String)
+
+    // Simple error enums only carry a message
+    case Signer(message: String)
+
+    // Simple error enums only carry a message
+    case InvalidOutpoint(message: String)
+
+    // Simple error enums only carry a message
+    case Descriptor(message: String)
+
+    // Simple error enums only carry a message
+    case Miniscript(message: String)
+
+    // Simple error enums only carry a message
+    case MiniscriptPsbt(message: String)
+
+    // Simple error enums only carry a message
+    case Bip32(message: String)
+
+    // Simple error enums only carry a message
+    case Psbt(message: String)
+
+    fileprivate static func uniffiErrorHandler(_ error: RustBuffer) throws -> Error {
+        return try FfiConverterTypeBdkError.lift(error)
+    }
+}
+
+public struct FfiConverterTypeBdkError: FfiConverterRustBuffer {
+    typealias SwiftType = BdkError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BdkError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return try .Generic(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 2: return try .NoRecipients(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 3: return try .NoUtxosSelected(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 4: return try .OutputBelowDustLimit(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 5: return try .InsufficientFunds(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 6: return try .BnBTotalTriesExceeded(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 7: return try .BnBNoExactMatch(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 8: return try .UnknownUtxo(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 9: return try .TransactionNotFound(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 10: return try .TransactionConfirmed(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 11: return try .IrreplaceableTransaction(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 12: return try .FeeRateTooLow(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 13: return try .FeeTooLow(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 14: return try .FeeRateUnavailable(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 15: return try .MissingKeyOrigin(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 16: return try .Key(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 17: return try .ChecksumMismatch(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 18: return try .SpendingPolicyRequired(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 19: return try .InvalidPolicyPathError(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 20: return try .Signer(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 21: return try .InvalidOutpoint(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 22: return try .Descriptor(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 23: return try .Miniscript(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 24: return try .MiniscriptPsbt(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 25: return try .Bip32(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 26: return try .Psbt(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: BdkError, into buf: inout [UInt8]) {
+        switch value {
+        case .Generic(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(1))
+        case .NoRecipients(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(2))
+        case .NoUtxosSelected(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(3))
+        case .OutputBelowDustLimit(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(4))
+        case .InsufficientFunds(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(5))
+        case .BnBTotalTriesExceeded(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(6))
+        case .BnBNoExactMatch(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(7))
+        case .UnknownUtxo(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(8))
+        case .TransactionNotFound(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(9))
+        case .TransactionConfirmed(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(10))
+        case .IrreplaceableTransaction(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(11))
+        case .FeeRateTooLow(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(12))
+        case .FeeTooLow(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(13))
+        case .FeeRateUnavailable(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(14))
+        case .MissingKeyOrigin(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(15))
+        case .Key(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(16))
+        case .ChecksumMismatch(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(17))
+        case .SpendingPolicyRequired(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(18))
+        case .InvalidPolicyPathError(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(19))
+        case .Signer(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(20))
+        case .InvalidOutpoint(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(21))
+        case .Descriptor(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(22))
+        case .Miniscript(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(23))
+        case .MiniscriptPsbt(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(24))
+        case .Bip32(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(25))
+        case .Psbt(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(26))
+        }
+    }
+}
+
+extension BdkError: Equatable, Hashable {}
+
+extension BdkError: Error {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+public enum KeychainKind {
+    case external
+    case `internal`
+}
+
+public struct FfiConverterTypeKeychainKind: FfiConverterRustBuffer {
+    typealias SwiftType = KeychainKind
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> KeychainKind {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .external
+
+        case 2: return .internal
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: KeychainKind, into buf: inout [UInt8]) {
+        switch value {
+        case .external:
+            writeInt(&buf, Int32(1))
+
+        case .internal:
+            writeInt(&buf, Int32(2))
+        }
+    }
+}
+
+public func FfiConverterTypeKeychainKind_lift(_ buf: RustBuffer) throws -> KeychainKind {
+    return try FfiConverterTypeKeychainKind.lift(buf)
+}
+
+public func FfiConverterTypeKeychainKind_lower(_ value: KeychainKind) -> RustBuffer {
+    return FfiConverterTypeKeychainKind.lower(value)
+}
+
+extension KeychainKind: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+public enum Network {
+    case bitcoin
+    case testnet
+    case signet
+    case regtest
+}
+
+public struct FfiConverterTypeNetwork: FfiConverterRustBuffer {
+    typealias SwiftType = Network
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Network {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .bitcoin
+
+        case 2: return .testnet
+
+        case 3: return .signet
+
+        case 4: return .regtest
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: Network, into buf: inout [UInt8]) {
+        switch value {
+        case .bitcoin:
+            writeInt(&buf, Int32(1))
+
+        case .testnet:
+            writeInt(&buf, Int32(2))
+
+        case .signet:
+            writeInt(&buf, Int32(3))
+
+        case .regtest:
+            writeInt(&buf, Int32(4))
+        }
+    }
+}
+
+public func FfiConverterTypeNetwork_lift(_ buf: RustBuffer) throws -> Network {
+    return try FfiConverterTypeNetwork.lift(buf)
+}
+
+public func FfiConverterTypeNetwork_lower(_ value: Network) -> RustBuffer {
+    return FfiConverterTypeNetwork.lower(value)
+}
+
+extension Network: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 public enum WordCount {
-    
     case words12
     case words15
     case words18
@@ -596,48 +2286,39 @@ public struct FfiConverterTypeWordCount: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> WordCount {
         let variant: Int32 = try readInt(&buf)
         switch variant {
-        
         case 1: return .words12
-        
+
         case 2: return .words15
-        
+
         case 3: return .words18
-        
+
         case 4: return .words21
-        
+
         case 5: return .words24
-        
+
         default: throw UniffiInternalError.unexpectedEnumCase
         }
     }
 
     public static func write(_ value: WordCount, into buf: inout [UInt8]) {
         switch value {
-        
-        
         case .words12:
             writeInt(&buf, Int32(1))
-        
-        
+
         case .words15:
             writeInt(&buf, Int32(2))
-        
-        
+
         case .words18:
             writeInt(&buf, Int32(3))
-        
-        
+
         case .words21:
             writeInt(&buf, Int32(4))
-        
-        
+
         case .words24:
             writeInt(&buf, Int32(5))
-        
         }
     }
 }
-
 
 public func FfiConverterTypeWordCount_lift(_ buf: RustBuffer) throws -> WordCount {
     return try FfiConverterTypeWordCount.lift(buf)
@@ -647,16 +2328,77 @@ public func FfiConverterTypeWordCount_lower(_ value: WordCount) -> RustBuffer {
     return FfiConverterTypeWordCount.lower(value)
 }
 
-
 extension WordCount: Equatable, Hashable {}
 
+private struct FfiConverterOptionString: FfiConverterRustBuffer {
+    typealias SwiftType = String?
 
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterString.write(value, into: &buf)
+    }
 
-public func libraryVersion()  -> String {
-    return try!  FfiConverterString.lift(
-        try! rustCall() {
-    uniffi_proton_wallet_common_fn_func_library_version($0)
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterString.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
 }
+
+private struct FfiConverterOptionTypeDescriptor: FfiConverterRustBuffer {
+    typealias SwiftType = Descriptor?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeDescriptor.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeDescriptor.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+private struct FfiConverterSequenceUInt8: FfiConverterRustBuffer {
+    typealias SwiftType = [UInt8]
+
+    public static func write(_ value: [UInt8], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterUInt8.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UInt8] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UInt8]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterUInt8.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+public func libraryVersion() -> String {
+    return try! FfiConverterString.lift(
+        try! rustCall {
+            uniffi_proton_wallet_common_fn_func_library_version($0)
+        }
     )
 }
 
@@ -665,6 +2407,7 @@ private enum InitializationResult {
     case contractVersionMismatch
     case apiChecksumMismatch
 }
+
 // Use a global variables to perform the versioning checks. Swift ensures that
 // the code inside is only computed once.
 private var initializationResult: InitializationResult {
@@ -675,25 +2418,199 @@ private var initializationResult: InitializationResult {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
-    if (uniffi_proton_wallet_common_checksum_func_library_version() != 8379) {
+    if uniffi_proton_wallet_common_checksum_func_library_version() != 8379 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_proton_wallet_common_checksum_method_address_test_address() != 42032) {
+    if uniffi_proton_wallet_common_checksum_method_address_as_string() != 29051 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_proton_wallet_common_checksum_method_hello_helloworld() != 48743) {
+    if uniffi_proton_wallet_common_checksum_method_address_network() != 24872 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_proton_wallet_common_checksum_method_keys_gen_gnemonic() != 51225) {
+    if uniffi_proton_wallet_common_checksum_method_address_script_pubkey() != 50447 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_proton_wallet_common_checksum_constructor_address_new() != 21945) {
+    if uniffi_proton_wallet_common_checksum_method_address_to_qr_uri() != 25624 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_proton_wallet_common_checksum_constructor_hello_new() != 35385) {
+    if uniffi_proton_wallet_common_checksum_method_balance_confirmed() != 30120 {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_proton_wallet_common_checksum_constructor_keys_new() != 32803) {
+    if uniffi_proton_wallet_common_checksum_method_balance_immature() != 2479 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_balance_total() != 41722 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_balance_trusted_pending() != 4723 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_balance_trusted_spendable() != 40298 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_balance_untrusted_pending() != 58645 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_descriptor_as_string() != 28353 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_descriptor_as_string_private() != 61734 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_descriptorpublickey_as_string() != 22374 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_descriptorpublickey_derive() != 38647 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_descriptorpublickey_extend() != 37703 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_descriptorsecretkey_as_public() != 29056 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_descriptorsecretkey_as_string() != 65031 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_descriptorsecretkey_derive() != 62268 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_descriptorsecretkey_extend() != 41714 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_descriptorsecretkey_secret_bytes() != 43318 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_hello_helloworld() != 48743 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_mnemonic_as_string() != 32395 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_partiallysignedtransaction_extract_tx() != 55628 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_partiallysignedtransaction_serialize() != 54082 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_script_to_bytes() != 18412 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_transaction_is_coin_base() != 30093 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_transaction_is_explicitly_rbf() != 33946 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_transaction_is_lock_time_enabled() != 48840 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_transaction_size() != 59956 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_transaction_txid() != 13805 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_transaction_version() != 33385 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_transaction_vsize() != 26082 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_txbuilder_add_recipient() != 48580 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_txbuilder_fee_rate() != 45607 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_txbuilder_finish() != 23961 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_wallet_apply_update() != 40830 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_wallet_get_address() != 53391 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_wallet_get_balance() != 44875 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_wallet_get_internal_address() != 34330 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_wallet_is_mine() != 25279 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_method_wallet_network() != 54571 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_constructor_address_new() != 35521 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_constructor_derivationpath_new() != 39103 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_constructor_descriptor_new() != 46306 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_constructor_descriptor_new_bip44() != 44226 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_constructor_descriptor_new_bip44_public() != 30878 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_constructor_descriptor_new_bip49() != 14260 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_constructor_descriptor_new_bip49_public() != 8799 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_constructor_descriptor_new_bip84() != 62726 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_constructor_descriptor_new_bip84_public() != 51937 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_constructor_descriptor_new_bip86() != 21859 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_constructor_descriptor_new_bip86_public() != 35488 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_constructor_descriptorpublickey_from_string() != 27964 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_constructor_descriptorsecretkey_from_string() != 12945 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_constructor_descriptorsecretkey_new() != 34537 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_constructor_hello_new() != 35385 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_constructor_mnemonic_from_entropy() != 61605 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_constructor_mnemonic_from_string() != 43889 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_constructor_mnemonic_new() != 40163 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_constructor_partiallysignedtransaction_new() != 60264 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_constructor_script_new() != 18581 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_constructor_transaction_new() != 24614 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_constructor_txbuilder_new() != 14461 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_proton_wallet_common_checksum_constructor_wallet_new_no_persist() != 32473 {
         return InitializationResult.apiChecksumMismatch
     }
 

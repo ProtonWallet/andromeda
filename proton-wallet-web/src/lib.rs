@@ -1,7 +1,12 @@
-mod utils;
 mod address;
+mod defined;
+mod derivation_path;
 mod keys;
-
+mod mnemonic;
+mod public_key;
+mod secret_key;
+mod utils;
+mod descriptor;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
