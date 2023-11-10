@@ -3,7 +3,7 @@ use crate::defined::WasmWordCount;
 use proton_wallet_common::mnemonic::{BdkLanguage, BdkMnemonic, Mnemonic};
 
 #[wasm_bindgen]
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone)]
 pub enum WasmLanguage {
     English,
     SimplifiedChinese,
@@ -24,11 +24,11 @@ impl From<WasmLanguage> for BdkLanguage {
     }
 }
 
-#[wasm_bindgen]
 #[derive(Clone)]
+#[wasm_bindgen(getter_with_clone)]
 pub struct WasmBdkMnemonic {
-    lang: WasmLanguage,
-    words: String,
+    pub lang: WasmLanguage,
+    pub words: String,
 }
 
 impl From<WasmBdkMnemonic> for BdkMnemonic {
@@ -46,9 +46,9 @@ impl Into<WasmBdkMnemonic> for Mnemonic {
     }
 }
 
-#[wasm_bindgen]
+#[wasm_bindgen(getter_with_clone)]
 pub struct WasmMnemonic {
-    inner: WasmBdkMnemonic, // This is the original Mnemonic struct from your Rust code.
+    pub inner: WasmBdkMnemonic, // This is the original Mnemonic struct from your Rust code.
 }
 
 #[wasm_bindgen]
@@ -85,11 +85,6 @@ impl WasmMnemonic {
     /// Returns the Mnemonic as a string.
     #[wasm_bindgen(js_name = asString)]
     pub fn as_string(&self) -> String {
-        BdkMnemonic::from(self.inner()).to_string()
-    }
-
-    #[wasm_bindgen]
-    pub fn inner(&self) -> WasmBdkMnemonic {
-        self.inner.clone()
+        BdkMnemonic::from(self.inner.clone()).to_string()
     }
 }
