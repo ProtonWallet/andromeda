@@ -1,10 +1,57 @@
+use std::sync::Arc;
+
+use proton_wallet_common::{
+    descriptor::{SupportedBIPs, SupportedBIPsPublic},
+    Descriptor, DescriptorPublicKey, DescriptorSecretKey,
+};
 use wasm_bindgen::prelude::*;
-use proton_wallet_common::Descriptor;
-use crate::defined::WasmNetwork;
-// use std::sync::Arc;
-// use bdk::keys::{DescriptorSecretKey as BdkDescriptorSecretKey, DescriptorPublicKey as BdkDescriptorPublicKey};
-// use bdk::wallet::KeychainKind;
-// // ... other necessary imports ...
+
+use crate::{
+    defined::{WasmKeychainKind, WasmNetwork},
+    error::WasmError,
+    keys::{WasmDescriptorPublicKey, WasmDescriptorSecretKey},
+};
+
+#[wasm_bindgen]
+#[derive(Clone)]
+pub enum WasmSupportedBIPs {
+    Bip44,
+    Bip49,
+    Bip84,
+    Bip86,
+}
+
+impl Into<SupportedBIPs> for WasmSupportedBIPs {
+    fn into(self) -> SupportedBIPs {
+        match self {
+            WasmSupportedBIPs::Bip44 => SupportedBIPs::Bip44,
+            WasmSupportedBIPs::Bip49 => SupportedBIPs::Bip49,
+            WasmSupportedBIPs::Bip84 => SupportedBIPs::Bip84,
+            WasmSupportedBIPs::Bip86 => SupportedBIPs::Bip86,
+        }
+    }
+}
+
+#[wasm_bindgen]
+#[derive(Clone)]
+pub enum WasmSupportedBIPsPublic {
+    Bip44,
+    Bip49,
+    Bip84,
+    Bip86,
+}
+
+// TODO: maybe useless, only need to use SupportedBIPs
+impl Into<SupportedBIPsPublic> for WasmSupportedBIPsPublic {
+    fn into(self) -> SupportedBIPsPublic {
+        match self {
+            WasmSupportedBIPsPublic::Bip44 => SupportedBIPsPublic::Bip44,
+            WasmSupportedBIPsPublic::Bip49 => SupportedBIPsPublic::Bip49,
+            WasmSupportedBIPsPublic::Bip84 => SupportedBIPsPublic::Bip84,
+            WasmSupportedBIPsPublic::Bip86 => SupportedBIPsPublic::Bip86,
+        }
+    }
+}
 
 #[wasm_bindgen]
 pub struct WasmDescriptor {
@@ -12,24 +59,77 @@ pub struct WasmDescriptor {
 }
 
 #[wasm_bindgen]
+#[derive(Clone)]
+pub enum WasmChildNumberType {
+    Normal,
+    Hardened,
+}
+
+#[wasm_bindgen(getter_with_clone)]
+#[derive(Clone)]
+pub struct WasmChildNumber {
+    pub kind: WasmChildNumberType,
+    pub index: u32,
+}
+
+#[wasm_bindgen(getter_with_clone)]
+pub struct WasmDescriptorConfig {
+    pub bip: WasmSupportedBIPs,
+    pub keychain_kind: WasmKeychainKind,
+    pub network: WasmNetwork,
+    pub account: WasmChildNumber,
+}
+
+#[wasm_bindgen(getter_with_clone)]
+pub struct WasmDescriptorConfigPublic {
+    pub bip: WasmSupportedBIPsPublic,
+    pub keychain_kind: WasmKeychainKind,
+    pub network: WasmNetwork,
+    pub account: WasmChildNumber,
+}
+
+#[wasm_bindgen]
 impl WasmDescriptor {
     #[wasm_bindgen(constructor)]
-    pub fn new(descriptor: &str, network: WasmNetwork) -> Result<WasmDescriptor, JsValue> {
+    pub fn new(descriptor: &str, network: WasmNetwork) -> Result<WasmDescriptor, WasmError> {
         Descriptor::new(descriptor.to_string(), network.into())
             .map(|descriptor| WasmDescriptor { inner: descriptor })
-            .map_err(|e| JsValue::from_str(&e.to_string()))
+            .map_err(|_| WasmError::InvalidDescriptor)
     }
 
-    // BIP44 constructor for secret keys
-    // #[wasm_bindgen(js_name = newBip44)]
-    // pub fn new_bip44(secret_key: WasmDescriptorSecretKey, keychain_kind: WasmKeychainKind, network: WasmNetwork) -> Result<WasmDescriptor, JsValue> {
-    //     let secret_key = Arc::new(secret_key.get_inner()?); // This method needs to be implemented
-    //     Ok(WasmDescriptor {
-    //         inner: Descriptor::new_bip44(secret_key, keychain_kind.into(), network.into()),
-    //     })
-    // }
+    pub fn from_secret_key(
+        key: WasmDescriptorSecretKey,
+        config: WasmDescriptorConfig,
+    ) -> Result<WasmDescriptor, WasmError> {
+        let secret_key = DescriptorSecretKey::from(key);
 
-    // Add other constructors for public keys, BIP49, BIP84, and BIP86 accordingly...
+        let descriptor = Descriptor::new_bip(
+            Arc::new(secret_key),
+            config.bip.into(),
+            config.keychain_kind.into(),
+            config.network.into(),
+        );
+
+        Ok(WasmDescriptor { inner: descriptor })
+    }
+
+    pub fn from_public_key(
+        key: WasmDescriptorPublicKey,
+        fingerprint: String,
+        config: WasmDescriptorConfigPublic,
+    ) -> Result<WasmDescriptor, WasmError> {
+        let secret_key = DescriptorPublicKey::from(key);
+
+        let descriptor = Descriptor::new_bip_public(
+            Arc::new(secret_key),
+            fingerprint,
+            config.bip.into(),
+            config.keychain_kind.into(),
+            config.network.into(),
+        );
+
+        Ok(WasmDescriptor { inner: descriptor })
+    }
 
     // Method to get the descriptor as a string
     pub fn as_string(&self) -> String {

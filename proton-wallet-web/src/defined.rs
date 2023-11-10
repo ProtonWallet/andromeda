@@ -1,10 +1,10 @@
-use proton_wallet_common::BdkNetwork;
 use proton_wallet_common::KeychainKind;
-use proton_wallet_common::Network;
+use proton_wallet_common::BdkNetwork;
 use proton_wallet_common::WordCount;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
+#[derive(Clone)]
 pub enum WasmNetwork {
     /// Mainnet Bitcoin.
     Bitcoin,
@@ -14,17 +14,6 @@ pub enum WasmNetwork {
     Signet,
     /// Bitcoin's regtest network.
     Regtest,
-}
-
-impl From<WasmNetwork> for Network {
-    fn from(network: WasmNetwork) -> Self {
-        match network {
-            WasmNetwork::Bitcoin => Network::Bitcoin,
-            WasmNetwork::Testnet => Network::Testnet,
-            WasmNetwork::Signet => Network::Signet,
-            WasmNetwork::Regtest => Network::Regtest,
-        }
-    }
 }
 
 impl From<WasmNetwork> for BdkNetwork {
@@ -38,24 +27,27 @@ impl From<WasmNetwork> for BdkNetwork {
     }
 }
 
-impl From<Network> for WasmNetwork {
-    fn from(network: Network) -> Self {
+impl From<BdkNetwork> for WasmNetwork {
+    fn from(network: BdkNetwork) -> Self {
         match network {
-            Network::Bitcoin => WasmNetwork::Bitcoin,
-            Network::Testnet => WasmNetwork::Testnet,
-            Network::Regtest => WasmNetwork::Regtest,
-            Network::Signet => WasmNetwork::Signet,
+            BdkNetwork::Bitcoin => WasmNetwork::Bitcoin,
+            BdkNetwork::Testnet => WasmNetwork::Testnet,
+            BdkNetwork::Regtest => WasmNetwork::Regtest,
+            BdkNetwork::Signet => WasmNetwork::Signet,
+            _ => panic!("Network {} not supported", network),
         }
     }
 }
 
 #[wasm_bindgen]
+#[derive(Clone)]
 pub enum WasmKeychainKind {
     /// External keychain, used for deriving recipient addresses.
     External,
     /// Internal keychain, used for deriving change addresses.
     Internal,
 }
+
 impl From<WasmKeychainKind> for KeychainKind {
     fn from(value: WasmKeychainKind) -> Self {
         match value {

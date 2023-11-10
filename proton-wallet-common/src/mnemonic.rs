@@ -1,4 +1,3 @@
-use bdk::bitcoin::bip32::DerivationPath as BdkDerivationPath;
 use bdk::bitcoin::secp256k1::rand;
 use bdk::bitcoin::secp256k1::rand::Rng;
 use bdk::keys::bip39::Language;
@@ -8,16 +7,11 @@ use bdk::miniscript::BareCtx;
 use bdk::Error as BdkError;
 
 use std::str::FromStr;
-use std::sync::Mutex;
 
 #[cfg(feature = "wasm")]
 use serde::{Deserialize, Serialize};
 
 pub use bdk::keys::bip39::{Language as BdkLanguage, Mnemonic as BdkMnemonic};
-
-pub struct DerivationPath {
-    inner_mutex: Mutex<BdkDerivationPath>,
-}
 
 /// Mnemonic phrases are a human-readable version of the private keys.
 /// Supported number of words are 12, 15, 18, 21 and 24.

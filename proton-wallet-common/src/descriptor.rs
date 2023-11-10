@@ -1,12 +1,15 @@
 use crate::keys::DescriptorPublicKey;
 use crate::keys::DescriptorSecretKey;
-use crate::Network;
 
+pub use bdk::bitcoin::bip32::ChildNumber;
 use bdk::bitcoin::bip32::Fingerprint;
 use bdk::bitcoin::key::Secp256k1;
-use bdk::descriptor::{ExtendedDescriptor, IntoWalletDescriptor};
-use bdk::keys::DescriptorPublicKey as BdkDescriptorPublicKey;
-use bdk::keys::{DescriptorSecretKey as BdkDescriptorSecretKey, KeyMap};
+use bdk::bitcoin::Network;
+
+pub use bdk::descriptor::ExtendedDescriptor as BDKExtendedDescriptor;
+use bdk::descriptor::IntoWalletDescriptor;
+pub use bdk::keys::KeyMap as BDKKeyMap;
+use bdk::keys::{DescriptorPublicKey as BdkDescriptorPublicKey, DescriptorSecretKey as BdkDescriptorSecretKey};
 use bdk::template::{
     Bip44, Bip44Public, Bip49, Bip49Public, Bip84, Bip84Public, Bip86, Bip86Public, DescriptorTemplate,
 };
@@ -18,8 +21,24 @@ use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct Descriptor {
-    pub extended_descriptor: ExtendedDescriptor,
-    pub key_map: KeyMap,
+    pub extended_descriptor: BDKExtendedDescriptor,
+    pub key_map: BDKKeyMap,
+}
+
+#[derive(Clone)]
+pub enum SupportedBIPs {
+    Bip44,
+    Bip49,
+    Bip84,
+    Bip86,
+}
+
+#[derive(Clone)]
+pub enum SupportedBIPsPublic {
+    Bip44,
+    Bip49,
+    Bip84,
+    Bip86,
 }
 
 impl Descriptor {
@@ -32,31 +51,39 @@ impl Descriptor {
         })
     }
 
-    pub fn new_bip44(secret_key: Arc<DescriptorSecretKey>, keychain_kind: KeychainKind, network: Network) -> Self {
+    pub fn new_bip(
+        secret_key: Arc<DescriptorSecretKey>,
+        bip: SupportedBIPs,
+        keychain_kind: KeychainKind,
+        network: Network,
+    ) -> Self {
         let derivable_key = &secret_key.inner;
 
         match derivable_key {
-            BdkDescriptorSecretKey::Single(_) => {
-                unreachable!()
-            }
             BdkDescriptorSecretKey::XPrv(descriptor_x_key) => {
                 let derivable_key = descriptor_x_key.xkey;
-                let (extended_descriptor, key_map, _) =
-                    Bip44(derivable_key, keychain_kind).build(network.into()).unwrap();
+                let (extended_descriptor, key_map, _) = match bip {
+                    SupportedBIPs::Bip44 => Bip44(derivable_key, keychain_kind).build(network.into()).unwrap(),
+                    SupportedBIPs::Bip49 => Bip49(derivable_key, keychain_kind).build(network.into()).unwrap(),
+                    SupportedBIPs::Bip84 => Bip84(derivable_key, keychain_kind).build(network.into()).unwrap(),
+                    SupportedBIPs::Bip86 => Bip86(derivable_key, keychain_kind).build(network.into()).unwrap(),
+                };
+
                 Self {
                     extended_descriptor,
                     key_map,
                 }
             }
-            BdkDescriptorSecretKey::MultiXPrv(_) => {
+            _ => {
                 unreachable!()
             }
         }
     }
 
-    pub fn new_bip44_public(
+    pub fn new_bip_public(
         public_key: Arc<DescriptorPublicKey>,
         fingerprint: String,
+        bip: SupportedBIPsPublic,
         keychain_kind: KeychainKind,
         network: Network,
     ) -> Self {
@@ -64,177 +91,29 @@ impl Descriptor {
         let derivable_key = &public_key.inner;
 
         match derivable_key {
-            BdkDescriptorPublicKey::Single(_) => {
-                unreachable!()
-            }
             BdkDescriptorPublicKey::XPub(descriptor_x_key) => {
                 let derivable_key = descriptor_x_key.xkey;
-                let (extended_descriptor, key_map, _) = Bip44Public(derivable_key, fingerprint, keychain_kind)
-                    .build(network.into())
-                    .unwrap();
+                let (extended_descriptor, key_map, _) = match bip {
+                    SupportedBIPsPublic::Bip44 => Bip44Public(derivable_key, fingerprint, keychain_kind)
+                        .build(network.into())
+                        .unwrap(),
+                    SupportedBIPsPublic::Bip49 => Bip49Public(derivable_key, fingerprint, keychain_kind)
+                        .build(network.into())
+                        .unwrap(),
+                    SupportedBIPsPublic::Bip84 => Bip84Public(derivable_key, fingerprint, keychain_kind)
+                        .build(network.into())
+                        .unwrap(),
+                    SupportedBIPsPublic::Bip86 => Bip86Public(derivable_key, fingerprint, keychain_kind)
+                        .build(network.into())
+                        .unwrap(),
+                };
 
                 Self {
                     extended_descriptor,
                     key_map,
                 }
             }
-            BdkDescriptorPublicKey::MultiXPub(_) => {
-                unreachable!()
-            }
-        }
-    }
-
-    pub fn new_bip49(secret_key: Arc<DescriptorSecretKey>, keychain_kind: KeychainKind, network: Network) -> Self {
-        let derivable_key = &secret_key.inner;
-
-        match derivable_key {
-            BdkDescriptorSecretKey::Single(_) => {
-                unreachable!()
-            }
-            BdkDescriptorSecretKey::XPrv(descriptor_x_key) => {
-                let derivable_key = descriptor_x_key.xkey;
-                let (extended_descriptor, key_map, _) =
-                    Bip49(derivable_key, keychain_kind).build(network.into()).unwrap();
-                Self {
-                    extended_descriptor,
-                    key_map,
-                }
-            }
-            BdkDescriptorSecretKey::MultiXPrv(_) => {
-                unreachable!()
-            }
-        }
-    }
-
-    pub fn new_bip49_public(
-        public_key: Arc<DescriptorPublicKey>,
-        fingerprint: String,
-        keychain_kind: KeychainKind,
-        network: Network,
-    ) -> Self {
-        let fingerprint = Fingerprint::from_str(fingerprint.as_str()).unwrap();
-        let derivable_key = &public_key.inner;
-
-        match derivable_key {
-            BdkDescriptorPublicKey::Single(_) => {
-                unreachable!()
-            }
-            BdkDescriptorPublicKey::XPub(descriptor_x_key) => {
-                let derivable_key = descriptor_x_key.xkey;
-                let (extended_descriptor, key_map, _) = Bip49Public(derivable_key, fingerprint, keychain_kind)
-                    .build(network.into())
-                    .unwrap();
-
-                Self {
-                    extended_descriptor,
-                    key_map,
-                }
-            }
-            BdkDescriptorPublicKey::MultiXPub(_) => {
-                unreachable!()
-            }
-        }
-    }
-
-    pub fn new_bip84(secret_key: Arc<DescriptorSecretKey>, keychain_kind: KeychainKind, network: Network) -> Self {
-        let derivable_key = &secret_key.inner;
-
-        match derivable_key {
-            BdkDescriptorSecretKey::Single(_) => {
-                unreachable!()
-            }
-            BdkDescriptorSecretKey::XPrv(descriptor_x_key) => {
-                let derivable_key = descriptor_x_key.xkey;
-                let (extended_descriptor, key_map, _) =
-                    Bip84(derivable_key, keychain_kind).build(network.into()).unwrap();
-                Self {
-                    extended_descriptor,
-                    key_map,
-                }
-            }
-            BdkDescriptorSecretKey::MultiXPrv(_) => {
-                unreachable!()
-            }
-        }
-    }
-
-    pub fn new_bip84_public(
-        public_key: Arc<DescriptorPublicKey>,
-        fingerprint: String,
-        keychain_kind: KeychainKind,
-        network: Network,
-    ) -> Self {
-        let fingerprint = Fingerprint::from_str(fingerprint.as_str()).unwrap();
-        let derivable_key = &public_key.inner;
-
-        match derivable_key {
-            BdkDescriptorPublicKey::Single(_) => {
-                unreachable!()
-            }
-            BdkDescriptorPublicKey::XPub(descriptor_x_key) => {
-                let derivable_key = descriptor_x_key.xkey;
-                let (extended_descriptor, key_map, _) = Bip84Public(derivable_key, fingerprint, keychain_kind)
-                    .build(network.into())
-                    .unwrap();
-
-                Self {
-                    extended_descriptor,
-                    key_map,
-                }
-            }
-            BdkDescriptorPublicKey::MultiXPub(_) => {
-                unreachable!()
-            }
-        }
-    }
-
-    pub fn new_bip86(secret_key: Arc<DescriptorSecretKey>, keychain_kind: KeychainKind, network: Network) -> Self {
-        let derivable_key = &secret_key.inner;
-
-        match derivable_key {
-            BdkDescriptorSecretKey::Single(_) => {
-                unreachable!()
-            }
-            BdkDescriptorSecretKey::XPrv(descriptor_x_key) => {
-                let derivable_key = descriptor_x_key.xkey;
-                let (extended_descriptor, key_map, _) =
-                    Bip86(derivable_key, keychain_kind).build(network.into()).unwrap();
-                Self {
-                    extended_descriptor,
-                    key_map,
-                }
-            }
-            BdkDescriptorSecretKey::MultiXPrv(_) => {
-                unreachable!()
-            }
-        }
-    }
-
-    pub fn new_bip86_public(
-        public_key: Arc<DescriptorPublicKey>,
-        fingerprint: String,
-        keychain_kind: KeychainKind,
-        network: Network,
-    ) -> Self {
-        let fingerprint = Fingerprint::from_str(fingerprint.as_str()).unwrap();
-        let derivable_key = &public_key.inner;
-
-        match derivable_key {
-            BdkDescriptorPublicKey::Single(_) => {
-                unreachable!()
-            }
-            BdkDescriptorPublicKey::XPub(descriptor_x_key) => {
-                let derivable_key = descriptor_x_key.xkey;
-                let (extended_descriptor, key_map, _) = Bip86Public(derivable_key, fingerprint, keychain_kind)
-                    .build(network.into())
-                    .unwrap();
-
-                Self {
-                    extended_descriptor,
-                    key_map,
-                }
-            }
-            BdkDescriptorPublicKey::MultiXPub(_) => {
+            _ => {
                 unreachable!()
             }
         }

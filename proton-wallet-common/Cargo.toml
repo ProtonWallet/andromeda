@@ -8,7 +8,7 @@ doctest = false
 
 [dependencies] 
 bdk = { version = "1.0.0-alpha.2", default-features = false, features = ["all-keys", "keys-bip39", "std"] }
-#bdk_esplora = { version = "0.4.0", default-features = false, features = ["std", "blocking"] }
+bdk_esplora = { version = "0.4.0", default-features = false, features = ["async-https"] }
 
 serde-wasm-bindgen = { version = "0.6.1", optional = true }
 serde = { version = "1.0.144", features = ["derive"] }

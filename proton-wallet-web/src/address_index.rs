@@ -1,7 +1,6 @@
 use proton_wallet_common::AddressIndex;
 use wasm_bindgen::prelude::*;
 
-
 #[wasm_bindgen]
 pub struct WasmAddressIndex {
     inner: AddressIndex,
@@ -28,7 +27,6 @@ impl WasmAddressIndex {
     pub fn peek(index: u32) -> WasmAddressIndex {
         WasmAddressIndex {
             inner: AddressIndex::Peek { index },
-
         }
     }
 }
