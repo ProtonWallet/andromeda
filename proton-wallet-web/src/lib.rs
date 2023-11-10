@@ -7,6 +7,16 @@ mod public_key;
 mod secret_key;
 mod utils;
 mod descriptor;
+mod transaction;
+mod locktime;
+mod partially_signed_transaction;
+mod common;
+mod script;
+mod address_index;
+mod address_info;
+mod tx_builder;
+mod wallet;
+
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]

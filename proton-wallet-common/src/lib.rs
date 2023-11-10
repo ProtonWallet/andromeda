@@ -17,6 +17,7 @@ pub fn library_version() -> String {
 
 pub use crate::bitcoin::Address;
 pub use crate::bitcoin::Network;
+pub use bdk::bitcoin::network::constants::Network as BdkNetwork;
 pub use crate::bitcoin::PartiallySignedTransaction;
 pub use crate::bitcoin::Script;
 pub use crate::bitcoin::Transaction;
@@ -35,8 +36,11 @@ pub use bdk::wallet::AddressInfo as BdkAddressInfo;
 pub use bdk::wallet::Balance as BdkBalance;
 pub use bdk::Error as BdkError;
 pub use bdk::KeychainKind;
-
+pub use bdk::bitcoin::blockdata::locktime::absolute::Height;
+pub use bdk::bitcoin::blockdata::locktime::absolute::Time;
+pub use bdk::bitcoin::blockdata::locktime::absolute::LockTime;
 use std::sync::Arc;
+pub use bdk::Wallet as BdkWallet;
 
 /// A output script and an amount of satoshis.
 // pub struct ScriptAmount {

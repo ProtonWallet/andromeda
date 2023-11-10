@@ -1,4 +1,4 @@
-use proton_wallet_common::{ DescriptorPublicKey };
+use proton_wallet_common::DescriptorPublicKey;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]

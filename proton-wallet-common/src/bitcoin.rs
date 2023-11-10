@@ -195,6 +195,9 @@ impl Transaction {
     // fn output(&self) -> Vec<TxOut> {
     //     self.inner.output.iter().map(|x| x.into()).collect()
     // }
+    pub fn get_inner(&self) -> BdkTransaction {
+        self.inner.clone()
+    }
 }
 
 impl From<BdkTransaction> for Transaction {

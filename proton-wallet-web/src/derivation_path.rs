@@ -1,7 +1,6 @@
-use std::sync::Mutex;
-
-use proton_wallet_common::DerivationPath;
 use wasm_bindgen::prelude::*;
+use std::sync::Mutex;
+use proton_wallet_common::DerivationPath;
 
 #[wasm_bindgen]
 pub struct WasmDerivationPath {

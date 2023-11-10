@@ -1,6 +1,6 @@
+use wasm_bindgen::prelude::*;
 use crate::defined::WasmWordCount;
 use proton_wallet_common::mnemonic::{BdkLanguage, BdkMnemonic, Mnemonic};
-use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]

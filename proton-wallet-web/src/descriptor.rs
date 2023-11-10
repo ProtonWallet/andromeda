@@ -1,11 +1,6 @@
-use std::sync::Arc;
-
 use wasm_bindgen::prelude::*;
-// use bdk::bitcoin::Network;
 use proton_wallet_common::Descriptor;
-
-use crate::{defined::{WasmNetwork, WasmKeychainKind}, secret_key::WasmDescriptorSecretKey};
-// use bdk::Error as BdkError;
+use crate::defined::WasmNetwork;
 // use std::sync::Arc;
 // use bdk::keys::{DescriptorSecretKey as BdkDescriptorSecretKey, DescriptorPublicKey as BdkDescriptorPublicKey};
 // use bdk::wallet::KeychainKind;
