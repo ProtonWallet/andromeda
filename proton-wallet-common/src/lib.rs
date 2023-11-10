@@ -1,6 +1,4 @@
 // pub mod
-pub mod address;
-pub mod hello;
 pub mod keys;
 pub mod mnemonic;
 // pub mod transaction;
@@ -17,11 +15,11 @@ pub fn library_version() -> String {
 
 pub use crate::bitcoin::Address;
 pub use crate::bitcoin::Network;
-pub use bdk::bitcoin::network::constants::Network as BdkNetwork;
 pub use crate::bitcoin::PartiallySignedTransaction;
 pub use crate::bitcoin::Script;
 pub use crate::bitcoin::Transaction;
 pub use crate::descriptor::Descriptor;
+pub use bdk::bitcoin::network::constants::Network as BdkNetwork;
 // pub use crate::esplora::EsploraClient;
 pub use self::keys::DescriptorPublicKey;
 pub use crate::keys::DerivationPath;
@@ -30,17 +28,17 @@ pub use crate::wallet::TxBuilder;
 pub use crate::wallet::Update;
 pub use crate::wallet::Wallet;
 
+pub use bdk::bitcoin::blockdata::locktime::absolute::Height;
+pub use bdk::bitcoin::blockdata::locktime::absolute::LockTime;
+pub use bdk::bitcoin::blockdata::locktime::absolute::Time;
 pub use bdk::keys::bip39::WordCount;
 pub use bdk::wallet::AddressIndex as BdkAddressIndex;
 pub use bdk::wallet::AddressInfo as BdkAddressInfo;
 pub use bdk::wallet::Balance as BdkBalance;
 pub use bdk::Error as BdkError;
 pub use bdk::KeychainKind;
-pub use bdk::bitcoin::blockdata::locktime::absolute::Height;
-pub use bdk::bitcoin::blockdata::locktime::absolute::Time;
-pub use bdk::bitcoin::blockdata::locktime::absolute::LockTime;
-use std::sync::Arc;
 pub use bdk::Wallet as BdkWallet;
+use std::sync::Arc;
 
 /// A output script and an amount of satoshis.
 // pub struct ScriptAmount {

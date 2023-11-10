@@ -1,8 +1,6 @@
 #![allow(clippy::new_without_default)]
 
-mod address;
 mod defines;
-mod hello;
 mod keys;
 
 //
@@ -35,5 +33,3 @@ uniffi::include_scaffolding!("common");
 pub fn library_version() -> String {
     proton_wallet_common::library_version()
 }
-
-use hello::*;

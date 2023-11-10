@@ -5,16 +5,8 @@
 
 
 
-
-
 namespace proton_wallet_common {
     string library_version();
-};
-
-
-interface Hello {
-    constructor();
-    string helloworld();
 };
 
 enum KeychainKind {

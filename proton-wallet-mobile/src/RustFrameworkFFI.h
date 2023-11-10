@@ -143,13 +143,6 @@ void*_Nonnull uniffi_proton_wallet_common_fn_method_descriptorsecretkey_extend(v
 );
 RustBuffer uniffi_proton_wallet_common_fn_method_descriptorsecretkey_secret_bytes(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
-void uniffi_proton_wallet_common_fn_free_hello(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_constructor_hello_new(RustCallStatus *_Nonnull out_status
-    
-);
-RustBuffer uniffi_proton_wallet_common_fn_method_hello_helloworld(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
 void uniffi_proton_wallet_common_fn_free_mnemonic(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
 void*_Nonnull uniffi_proton_wallet_common_fn_constructor_mnemonic_from_entropy(RustBuffer entropy, RustCallStatus *_Nonnull out_status
@@ -401,9 +394,6 @@ uint16_t uniffi_proton_wallet_common_checksum_method_descriptorsecretkey_extend(
 uint16_t uniffi_proton_wallet_common_checksum_method_descriptorsecretkey_secret_bytes(void
     
 );
-uint16_t uniffi_proton_wallet_common_checksum_method_hello_helloworld(void
-    
-);
 uint16_t uniffi_proton_wallet_common_checksum_method_mnemonic_as_string(void
     
 );
@@ -504,9 +494,6 @@ uint16_t uniffi_proton_wallet_common_checksum_constructor_descriptorsecretkey_fr
     
 );
 uint16_t uniffi_proton_wallet_common_checksum_constructor_descriptorsecretkey_new(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_constructor_hello_new(void
     
 );
 uint16_t uniffi_proton_wallet_common_checksum_constructor_mnemonic_from_entropy(void
