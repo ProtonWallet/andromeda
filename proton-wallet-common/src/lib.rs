@@ -2,10 +2,12 @@
 pub mod keys;
 pub mod mnemonic;
 // pub mod transaction;
-mod bitcoin;
-mod descriptor;
-// mod esplora;
-mod wallet;
+pub mod bitcoin;
+pub mod descriptor;
+pub mod account;
+pub mod error;
+pub mod wallet;
+
 pub fn library_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
@@ -14,15 +16,11 @@ pub fn library_version() -> String {
 // pub use bdk::KeychainKind;
 
 pub use crate::bitcoin::Address;
-pub use crate::bitcoin::Network;
 pub use crate::bitcoin::PartiallySignedTransaction;
 pub use crate::bitcoin::Script;
 pub use crate::bitcoin::Transaction;
 pub use crate::descriptor::Descriptor;
-pub use bdk::bitcoin::network::constants::Network as BdkNetwork;
-// pub use crate::esplora::EsploraClient;
 pub use self::keys::DescriptorPublicKey;
-pub use crate::keys::DerivationPath;
 pub use crate::keys::DescriptorSecretKey;
 pub use crate::wallet::TxBuilder;
 pub use crate::wallet::Update;
@@ -34,6 +32,7 @@ pub use bdk::bitcoin::blockdata::locktime::absolute::Time;
 pub use bdk::keys::bip39::WordCount;
 pub use bdk::wallet::AddressIndex as BdkAddressIndex;
 pub use bdk::wallet::AddressInfo as BdkAddressInfo;
+pub use bdk::bitcoin::Network as BdkNetwork;
 pub use bdk::wallet::Balance as BdkBalance;
 pub use bdk::Error as BdkError;
 pub use bdk::KeychainKind;

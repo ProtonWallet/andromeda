@@ -1,7 +1,7 @@
 use crate::bitcoin::PartiallySignedTransaction;
 use crate::descriptor::Descriptor;
-use crate::{AddressIndex, AddressInfo, Network};
-use crate::{Balance, Script};
+use crate::{AddressIndex, AddressInfo};
+use crate::{Balance, BdkNetwork, Script};
 
 use bdk::bitcoin::blockdata::script::ScriptBuf as BdkScriptBuf;
 use bdk::wallet::Update as BdkUpdate;
@@ -9,6 +9,14 @@ use bdk::Wallet as BdkWallet;
 use bdk::{Error as BdkError, FeeRate};
 
 use std::sync::{Arc, Mutex, MutexGuard};
+
+use std::io::Write;
+
+use bdk_esplora::{esplora_client, EsploraAsyncExt};
+
+const STOP_GAP: usize = 50;
+const BATCH_SIZE: usize = 5;
+const PARALLEL_REQUESTS: usize = 5;
 
 #[derive(Debug)]
 pub struct Wallet {
@@ -20,7 +28,7 @@ impl Wallet {
     pub fn new_no_persist(
         descriptor: Arc<Descriptor>,
         change_descriptor: Option<Arc<Descriptor>>,
-        network: Network,
+        network: BdkNetwork,
     ) -> Result<Self, BdkError> {
         let descriptor = descriptor.as_string_private();
         let change_descriptor = change_descriptor.map(|d| d.as_string_private());
@@ -41,7 +49,7 @@ impl Wallet {
         self.get_wallet().get_address(address_index.into()).into()
     }
 
-    pub fn network(&self) -> Network {
+    pub fn network(&self) -> BdkNetwork {
         self.get_wallet().network().into()
     }
 
@@ -71,6 +79,58 @@ impl Wallet {
 
 pub struct Update(pub(crate) BdkUpdate);
 
+pub async fn sync(mut wallet: BdkWallet) -> Result<BdkWallet, BdkError> {
+    print!("Syncing...");
+    // Scanning the blockchain
+    let esplora_url = "https://mempool.space/testnet/api";
+    let client = esplora_client::Builder::new(esplora_url)
+        .build_async()
+        .map_err(|_| BdkError::Generic("Could not create client".to_string()))?;
+
+    let checkpoint = wallet.latest_checkpoint();
+    let keychain_spks = wallet
+        .spks_of_all_keychains()
+        .into_iter()
+        .map(|(k, k_spks)| {
+            let mut once = Some(());
+            let mut stdout = std::io::stdout();
+            let k_spks = k_spks
+                .inspect(move |(spk_i, _)| match once.take() {
+                    Some(_) => print!("\nScanning keychain [{:?}]", k),
+                    None => print!(" {:<3}", spk_i),
+                })
+                .inspect(move |_| stdout.flush().expect("must flush"));
+            (k, k_spks)
+        })
+        .collect();
+
+    let (update_graph, last_active_indices) = client
+        .scan_txs_with_keychains(keychain_spks, None, None, STOP_GAP, PARALLEL_REQUESTS)
+        .await
+        .map_err(|_| BdkError::Generic("Could not scan".to_string()))?;
+
+    let missing_heights = update_graph.missing_heights(wallet.local_chain());
+    let chain_update = client
+        .update_local_chain(checkpoint, missing_heights)
+        .await
+        .map_err(|_| BdkError::Generic("Could not update chain locally".to_string()))?;
+
+    let update = BdkUpdate {
+        last_active_indices,
+        graph: update_graph,
+        chain: Some(chain_update),
+    };
+
+    wallet
+        .apply_update(update)
+        .map_err(|_| BdkError::Generic("Couldn't apply wallet sync update".to_string()))?;
+
+    wallet
+        .commit()
+        .map_err(|_| BdkError::Generic("Couldn't commit wallet sync update".to_string()))?;
+
+    Ok(wallet)
+}
 // /// A Bitcoin wallet.
 // /// The Wallet acts as a way of coherently interfacing with output descriptors and related transactions. Its main components are:
 // ///     1. Output descriptors from which it can derive addresses.

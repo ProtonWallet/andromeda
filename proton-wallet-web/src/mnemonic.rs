@@ -24,8 +24,8 @@ impl From<WasmLanguage> for BdkLanguage {
     }
 }
 
-#[derive(Clone)]
 #[wasm_bindgen(getter_with_clone)]
+#[derive(Clone)]
 pub struct WasmBdkMnemonic {
     pub lang: WasmLanguage,
     pub words: String,
