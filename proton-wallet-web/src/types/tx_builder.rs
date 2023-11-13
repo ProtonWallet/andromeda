@@ -1,7 +1,7 @@
+use proton_wallet_common::TxBuilder;
 use wasm_bindgen::prelude::*;
-use proton_wallet_common::{TxBuilder, Wallet};
 
-use crate::script::WasmScript;
+use super::script::WasmScript;
 
 #[wasm_bindgen]
 pub struct WasmTxBuilder {
@@ -10,7 +10,6 @@ pub struct WasmTxBuilder {
 
 #[wasm_bindgen]
 impl WasmTxBuilder {
-
     #[wasm_bindgen(constructor)]
     pub fn new() -> WasmTxBuilder {
         WasmTxBuilder {

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use proton_wallet_common::{DescriptorPublicKey, DescriptorSecretKey};
 use wasm_bindgen::prelude::*;
 
-use crate::{derivation_path::WasmDerivationPath, error::WasmError};
+use crate::{error::WasmError, types::derivation_path::WasmDerivationPath};
 
 #[wasm_bindgen]
 pub struct WasmDescriptorSecretKey {

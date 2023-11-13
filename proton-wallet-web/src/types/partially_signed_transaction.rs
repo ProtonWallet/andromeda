@@ -1,7 +1,7 @@
 
 use wasm_bindgen::prelude::*;
 use proton_wallet_common::PartiallySignedTransaction;
-use crate::transaction::WasmBdkTransaction;
+use super::transaction::WasmBdkTransaction;
 
 #[wasm_bindgen]
 pub struct WasmPartiallySignedTransaction {

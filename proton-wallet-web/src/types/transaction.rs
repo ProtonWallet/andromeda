@@ -1,6 +1,6 @@
 use wasm_bindgen::prelude::*;
 use proton_wallet_common::Transaction;
-use crate::locktime::WasmLockTime;
+use super::locktime::WasmLockTime;
 
 
 #[wasm_bindgen]

@@ -1,5 +1,5 @@
 use wasm_bindgen::prelude::*;
-use crate::defined::WasmNetwork;
+use super::defined::WasmNetwork;
 use proton_wallet_common::Address;
 
 #[wasm_bindgen]

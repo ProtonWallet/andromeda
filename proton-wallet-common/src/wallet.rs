@@ -11,7 +11,6 @@ use bdk::wallet::Update as BdkUpdate;
 use bdk::{descriptor, Wallet as BdkWallet};
 use bdk::{Error as BdkError, FeeRate};
 use miniscript::bitcoin::bip32::{DerivationPath, ExtendedPrivKey};
-use miniscript::bitcoin::secp256k1::Secp256k1;
 
 use std::collections::HashMap;
 use std::sync::Arc;

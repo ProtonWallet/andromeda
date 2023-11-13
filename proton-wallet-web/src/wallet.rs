@@ -1,7 +1,11 @@
 use proton_wallet_common::{wallet::WalletConfig, Wallet};
 use wasm_bindgen::prelude::*;
 
-use crate::{balance::WasmBalance, defined::WasmNetwork, descriptor::WasmSupportedBIPs, error::WasmError};
+use crate::{
+    descriptor::WasmSupportedBIPs,
+    error::WasmError,
+    types::{balance::WasmBalance, defined::WasmNetwork},
+};
 
 #[wasm_bindgen]
 pub struct WasmWallet {

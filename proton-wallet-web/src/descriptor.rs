@@ -7,9 +7,8 @@ use proton_wallet_common::{
 use wasm_bindgen::prelude::*;
 
 use crate::{
-    defined::{WasmKeychainKind, WasmNetwork},
     error::WasmError,
-    keys::{WasmDescriptorPublicKey, WasmDescriptorSecretKey},
+    keys::{WasmDescriptorPublicKey, WasmDescriptorSecretKey}, types::defined::{WasmKeychainKind, WasmNetwork},
 };
 
 #[wasm_bindgen]

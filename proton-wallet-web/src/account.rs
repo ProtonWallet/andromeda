@@ -4,9 +4,8 @@ use proton_wallet_common::{
 };
 
 use wasm_bindgen::prelude::*;
-use web_sys::console::log_2;
 
-use crate::{balance::WasmBalance, defined::WasmNetwork, descriptor::WasmSupportedBIPs, error::WasmError};
+use crate::{descriptor::WasmSupportedBIPs, types::{defined::WasmNetwork, balance::WasmBalance}, error::WasmError};
 
 #[wasm_bindgen]
 pub struct WasmAccount {
