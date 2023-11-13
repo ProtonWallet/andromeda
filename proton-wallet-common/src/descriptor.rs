@@ -25,7 +25,7 @@ pub struct Descriptor {
     pub key_map: BDKKeyMap,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum SupportedBIPs {
     Bip44,
     Bip49,
@@ -33,7 +33,7 @@ pub enum SupportedBIPs {
     Bip86,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum SupportedBIPsPublic {
     Bip44,
     Bip49,

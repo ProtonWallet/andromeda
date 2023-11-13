@@ -1,80 +1,149 @@
+use crate::account::{Account, AccountConfig};
 use crate::bitcoin::PartiallySignedTransaction;
-use crate::descriptor::Descriptor;
-use crate::{AddressIndex, AddressInfo};
-use crate::{Balance, BdkNetwork, Script};
+use crate::descriptor::SupportedBIPs;
+use crate::error::Error;
+use crate::mnemonic::Mnemonic;
+use crate::{BdkNetwork, Script};
 
 use bdk::bitcoin::blockdata::script::ScriptBuf as BdkScriptBuf;
+use bdk::wallet::Balance as BdkBalance;
 use bdk::wallet::Update as BdkUpdate;
-use bdk::Wallet as BdkWallet;
+use bdk::{descriptor, Wallet as BdkWallet};
 use bdk::{Error as BdkError, FeeRate};
+use miniscript::bitcoin::bip32::{DerivationPath, ExtendedPrivKey};
+use miniscript::bitcoin::secp256k1::Secp256k1;
 
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::collections::HashMap;
+use std::sync::Arc;
 
 use std::io::Write;
 
 use bdk_esplora::{esplora_client, EsploraAsyncExt};
 
 const STOP_GAP: usize = 50;
-const BATCH_SIZE: usize = 5;
 const PARALLEL_REQUESTS: usize = 5;
 
 #[derive(Debug)]
 pub struct Wallet {
-    // TODO 8: Do we really need the mutex on the wallet? Could this be an Arc?
-    inner_mutex: Mutex<BdkWallet>,
+    mprv: ExtendedPrivKey,
+    accounts: HashMap<DerivationPath, Account>,
+    config: WalletConfig,
+}
+
+#[derive(Debug)]
+pub struct WalletConfig {
+    pub network: BdkNetwork,
 }
 
 impl Wallet {
-    pub fn new_no_persist(
-        descriptor: Arc<Descriptor>,
-        change_descriptor: Option<Arc<Descriptor>>,
-        network: BdkNetwork,
-    ) -> Result<Self, BdkError> {
-        let descriptor = descriptor.as_string_private();
-        let change_descriptor = change_descriptor.map(|d| d.as_string_private());
+    // pub fn new_no_persist(
+    //     descriptor: Arc<Descriptor>,
+    //     change_descriptor: Option<Arc<Descriptor>>,
+    //     network: BdkNetwork,
+    // ) -> Result<Self, BdkError> {
+    //     let descriptor = descriptor.as_string_private();
+    //     let change_descriptor = change_descriptor.map(|d| d.as_string_private());
 
-        let wallet = BdkWallet::new_no_persist(&descriptor, change_descriptor.as_ref(), network.into())?;
+    //     let wallet = BdkWallet::new_no_persist(&descriptor, change_descriptor.as_ref(), network.into())?;
+
+    //     Ok(Wallet {
+    //         inner_mutex: Mutex::new(wallet),
+    //     })
+    // }
+
+    pub fn new(bip39_mnemonic: String, bip38_passphrase: Option<String>, config: WalletConfig) -> Result<Self, Error> {
+        let mnemonic = Mnemonic::from_string(bip39_mnemonic).unwrap();
+        let mprv = ExtendedPrivKey::new_master(
+            config.network,
+            &mnemonic.inner().to_seed(match bip38_passphrase {
+                Some(bip38_passphrase) => bip38_passphrase,
+                None => "".to_string(),
+            }),
+        )
+        .unwrap();
 
         Ok(Wallet {
-            inner_mutex: Mutex::new(wallet),
+            mprv,
+            accounts: HashMap::new(),
+            config,
         })
     }
 
-    // TODO 10: Do we need this mutex
-    pub fn get_wallet(&self) -> MutexGuard<BdkWallet> {
-        self.inner_mutex.lock().expect("wallet")
+    pub fn add_account(&mut self, bip: SupportedBIPs, account_index: u32) {
+        let account = Account::new(
+            self.mprv,
+            AccountConfig {
+                bip,
+                account_index,
+                network: self.config.network,
+            },
+        )
+        .unwrap();
+
+        self.accounts.insert(account.derivation_path(), account);
     }
 
-    pub fn get_address(&self, address_index: AddressIndex) -> AddressInfo {
-        self.get_wallet().get_address(address_index.into()).into()
+    pub async fn get_balance(&self) -> Result<BdkBalance, Error> {
+        let cloned = self.accounts.clone();
+        let mut iter = cloned.values();
+
+        let mut balance = BdkBalance {
+            untrusted_pending: 0,
+            confirmed: 0,
+            immature: 0,
+            trusted_pending: 0,
+        };
+
+        while let Some(account) = iter.next() {
+            let account_balance = account.clone().get_balance().await?;
+
+            balance.untrusted_pending += account_balance.untrusted_pending;
+            balance.confirmed += account_balance.confirmed;
+            balance.immature += account_balance.immature;
+            balance.trusted_pending += account_balance.trusted_pending;
+        }
+
+        Ok(balance)
     }
 
-    pub fn network(&self) -> BdkNetwork {
-        self.get_wallet().network().into()
+    pub fn get_wallet(&self) -> BdkWallet {
+        let external_descriptor = descriptor!(wpkh((self.mprv, Vec::new().into()))).unwrap();
+
+        BdkWallet::new_no_persist(external_descriptor, None, self.config.network)
+            .map_err(|e| println!("error {}", e))
+            .unwrap()
     }
 
-    pub fn get_internal_address(&self, address_index: AddressIndex) -> AddressInfo {
-        self.get_wallet().get_internal_address(address_index.into()).into()
-    }
+    // pub fn get_address(&self, address_index: AddressIndex) -> AddressInfo {
+    //     self.get_wallet().get_address(address_index.into()).into()
+    // }
 
-    // TODO 16: Why is the Arc required here?
-    pub fn get_balance(&self) -> Arc<Balance> {
-        let bdk_balance = self.get_wallet().get_balance();
-        let balance = Balance { inner: bdk_balance };
-        Arc::new(balance)
-    }
+    // pub fn network(&self) -> BdkNetwork {
+    //     self.get_wallet().network().into()
+    // }
 
-    pub fn apply_update(&self, update: Arc<Update>) -> Result<(), BdkError> {
-        self.get_wallet()
-            .apply_update(update.0.clone())
-            .map_err(|e| BdkError::Generic(e.to_string()))
-    }
+    // pub fn get_internal_address(&self, address_index: AddressIndex) -> AddressInfo {
+    //     self.get_wallet().get_internal_address(address_index.into()).into()
+    // }
 
-    pub fn is_mine(&self, script: Arc<Script>) -> bool {
-        // TODO: Both of the following lines work. Which is better?
-        self.get_wallet().is_mine(&script.0)
-        // self.get_wallet().is_mine(script.0.clone().as_script())
-    }
+    // // TODO 16: Why is the Arc required here?
+    // pub fn get_balance(&self) -> Arc<Balance> {
+    //     let bdk_balance = self.get_wallet().get_balance();
+    //     let balance = Balance { inner: bdk_balance };
+    //     Arc::new(balance)
+    // }
+
+    // pub fn apply_update(&self, update: Arc<Update>) -> Result<(), BdkError> {
+    //     self.get_wallet()
+    //         .apply_update(update.0.clone())
+    //         .map_err(|e| BdkError::Generic(e.to_string()))
+    // }
+
+    // pub fn is_mine(&self, script: Arc<Script>) -> bool {
+    //     // TODO: Both of the following lines work. Which is better?
+    //     self.get_wallet().is_mine(&script.0)
+    //     // self.get_wallet().is_mine(script.0.clone().as_script())
+    // }
 }
 
 pub struct Update(pub(crate) BdkUpdate);

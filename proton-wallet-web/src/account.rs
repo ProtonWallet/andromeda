@@ -4,6 +4,7 @@ use proton_wallet_common::{
 };
 
 use wasm_bindgen::prelude::*;
+use web_sys::console::log_2;
 
 use crate::{balance::WasmBalance, defined::WasmNetwork, descriptor::WasmSupportedBIPs, error::WasmError};
 
@@ -26,6 +27,27 @@ impl Into<AccountConfig> for WasmAccountConfig {
             bip: self.bip.into(),
             account_index: self.account_index,
             network: self.network.into(),
+        }
+    }
+}
+
+#[wasm_bindgen]
+impl WasmAccountConfig {
+    #[wasm_bindgen(constructor)]
+    pub fn new(bip: Option<WasmSupportedBIPs>, network: Option<WasmNetwork>, account_index: Option<u32>) -> Self {
+        Self {
+            bip: match bip {
+                Some(bip) => bip,
+                None => WasmSupportedBIPs::Bip44,
+            },
+            network: match network {
+                Some(network) => network,
+                None => WasmNetwork::Bitcoin,
+            },
+            account_index: match account_index {
+                Some(account_index) => account_index,
+                None => 0,
+            },
         }
     }
 }

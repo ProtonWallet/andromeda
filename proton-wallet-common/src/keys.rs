@@ -217,10 +217,12 @@ impl Deriveable for BdkDescriptorSecretKey {
         match self {
             BdkDescriptorSecretKey::XPrv(descriptor_x_key) => {
                 let derived_xprv = descriptor_x_key.xkey.derive_priv(&secp, &path)?;
+
                 let key_source = match descriptor_x_key.origin.clone() {
                     Some((fingerprint, origin_path)) => (fingerprint, origin_path.extend(path)),
                     None => (descriptor_x_key.xkey.fingerprint(&secp), path),
                 };
+
                 let derived_descriptor_secret_key = BdkDescriptorSecretKey::XPrv(DescriptorXKey {
                     origin: Some(key_source),
                     xkey: derived_xprv,
