@@ -33,15 +33,15 @@ docker:build:
   allow_failure: true # We need to mark it as failable in order not to prevent the pipeline from launching
   tags:
     - buildkit
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web" # Do not execute if the pipeline is a manual one
-      when: never
-    - if: $CI_PIPELINE_SOURCE == "schedule" # Do not execute if the pipeline is a scheduled one
-      when: never
-    - if: "$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH" # Do not run if it's a merge to the default branch, screenshots should already have been generated
-      when: never
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event" # Run manual if it's a MR
-      when: manual
+  # rules:
+  #   - if: $CI_PIPELINE_SOURCE == "web" # Do not execute if the pipeline is a manual one
+  #     when: never
+  #   - if: $CI_PIPELINE_SOURCE == "schedule" # Do not execute if the pipeline is a scheduled one
+  #     when: never
+  #   - if: "$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH" # Do not run if it's a merge to the default branch, screenshots should already have been generated
+  #     when: never
+  #   - if: $CI_PIPELINE_SOURCE == "merge_request_event" # Run manual if it's a MR
+  #     when: manual
   script:
     - export OCI_IMAGE_TAGS="latest"
     - !reference [.oci-image-build, script]
@@ -51,15 +51,15 @@ lint:fmt:
   stage: lint
   tags:
     - shared-small
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web" # Do not execute if the pipeline is a manual one
-      when: never
-    - if: $CI_PIPELINE_SOURCE == "schedule" # Do not execute if the pipeline is a scheduled one
-      when: never
-    - if: "$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH" # Run if it's a merge to the default branch
-      when: on_success
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event" # Run if it's a MR
-      when: on_success
+  # rules:
+  #   - if: $CI_PIPELINE_SOURCE == "web" # Do not execute if the pipeline is a manual one
+  #     when: never
+  #   - if: $CI_PIPELINE_SOURCE == "schedule" # Do not execute if the pipeline is a scheduled one
+  #     when: never
+  #   - if: "$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH" # Run if it's a merge to the default branch
+  #     when: on_success
+  #   - if: $CI_PIPELINE_SOURCE == "merge_request_event" # Run if it's a MR
+  #     when: on_success
   script:
     - cargo fmt --all --check
 
@@ -67,15 +67,15 @@ lint:clippy:
   stage: lint
   tags:
     - shared-small
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "web" # Do not execute if the pipeline is a manual one
-      when: never
-    - if: $CI_PIPELINE_SOURCE == "schedule" # Do not execute if the pipeline is a scheduled one
-      when: never
-    - if: "$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH" # Run if it's a merge to the default branch
-      when: on_success
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event" # Run if it's a MR
-      when: on_success
+  # rules:
+  #   - if: $CI_PIPELINE_SOURCE == "web" # Do not execute if the pipeline is a manual one
+  #     when: never
+  #   - if: $CI_PIPELINE_SOURCE == "schedule" # Do not execute if the pipeline is a scheduled one
+  #     when: never
+  #   - if: "$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH" # Run if it's a merge to the default branch
+  #     when: on_success
+  #   - if: $CI_PIPELINE_SOURCE == "merge_request_event" # Run if it's a MR
+  #     when: on_success
   script:
     - cargo clippy --all --all-targets -- -D warnings
 
