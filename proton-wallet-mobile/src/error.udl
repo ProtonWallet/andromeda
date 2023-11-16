@@ -1,0 +1,37 @@
+[Enum]
+interface Error {
+  InvalidSecretKey();
+  InvalidDescriptor();
+  InvalidDerivationPath();
+  InvalidAccountIndex();
+  DerivationError();
+  SyncError();
+
+  // BDK Errors
+  Generic(string msg);
+  NoRecipients();
+  NoUtxosSelected();
+  OutputBelowDustLimit(u8 output);
+  InsufficientFunds(u64 needed, u64 available);
+  BnBTotalTriesExceeded();
+  BnBNoExactMatch();
+  UnknownUtxo();
+  TransactionNotFound();
+  TransactionConfirmed();
+  IrreplaceableTransaction();
+  FeeRateTooLow(string required);
+  FeeTooLow(u64 required);
+  FeeRateUnavailable();
+  MissingKeyOrigin(string key);
+  Key(string error);
+  ChecksumMismatch();
+  SpendingPolicyRequired(KeychainKind keychain_kind);
+  InvalidPolicyPathError(string error);
+  Signer(string error);
+  InvalidOutpoint(string outpoint);
+  Descriptor(string error);
+  Miniscript(string error);
+  MiniscriptPsbt();
+  Bip32(string error);
+  Psbt(string error);
+};

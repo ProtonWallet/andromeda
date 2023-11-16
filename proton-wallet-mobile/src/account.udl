@@ -1,0 +1,16 @@
+enum SupportedBIPs {
+  "Bip44",
+  "Bip49",
+  "Bip84",
+  "Bip86",
+};
+
+dictionary AccountConfig {
+    SupportedBIPs bip;
+    Network network;
+    u32 account_index;
+};
+
+interface Account {
+
+};

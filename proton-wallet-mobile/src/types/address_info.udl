@@ -1,0 +1,4 @@
+dictionary AddressInfo {
+  u32 index;
+  KeychainKind keychain;
+};

@@ -1,5 +1,5 @@
 use proton_wallet_common::KeychainKind;
-use proton_wallet_common::BdkNetwork;
+use proton_wallet_common::bitcoin::Network;
 use proton_wallet_common::WordCount;
 use wasm_bindgen::prelude::*;
 
@@ -16,25 +16,24 @@ pub enum WasmNetwork {
     Regtest,
 }
 
-impl From<WasmNetwork> for BdkNetwork {
+impl From<WasmNetwork> for Network {
     fn from(network: WasmNetwork) -> Self {
         match network {
-            WasmNetwork::Bitcoin => BdkNetwork::Bitcoin,
-            WasmNetwork::Testnet => BdkNetwork::Testnet,
-            WasmNetwork::Signet => BdkNetwork::Signet,
-            WasmNetwork::Regtest => BdkNetwork::Regtest,
+            WasmNetwork::Bitcoin => Network::Bitcoin,
+            WasmNetwork::Testnet => Network::Testnet,
+            WasmNetwork::Signet => Network::Signet,
+            WasmNetwork::Regtest => Network::Regtest,
         }
     }
 }
 
-impl From<BdkNetwork> for WasmNetwork {
-    fn from(network: BdkNetwork) -> Self {
+impl From<Network> for WasmNetwork {
+    fn from(network: Network) -> Self {
         match network {
-            BdkNetwork::Bitcoin => WasmNetwork::Bitcoin,
-            BdkNetwork::Testnet => WasmNetwork::Testnet,
-            BdkNetwork::Regtest => WasmNetwork::Regtest,
-            BdkNetwork::Signet => WasmNetwork::Signet,
-            _ => panic!("Network {} not supported", network),
+            Network::Bitcoin => WasmNetwork::Bitcoin,
+            Network::Testnet => WasmNetwork::Testnet,
+            Network::Regtest => WasmNetwork::Regtest,
+            Network::Signet => WasmNetwork::Signet,
         }
     }
 }

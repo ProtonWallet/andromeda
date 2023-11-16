@@ -26,7 +26,7 @@ impl WasmAddressIndex {
     #[wasm_bindgen(js_name = createPeek)]
     pub fn peek(index: u32) -> WasmAddressIndex {
         WasmAddressIndex {
-            inner: AddressIndex::Peek { index },
+            inner: AddressIndex::Peek(index),
         }
     }
 }

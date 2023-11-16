@@ -4,7 +4,6 @@ use bdk::keys::bip39::Language;
 use bdk::keys::bip39::WordCount;
 use bdk::keys::{GeneratableKey, GeneratedKey};
 use bdk::miniscript::BareCtx;
-use bdk::Error as BdkError;
 
 use std::str::FromStr;
 
@@ -12,6 +11,8 @@ use std::str::FromStr;
 use serde::{Deserialize, Serialize};
 
 pub use bdk::keys::bip39::{Language as BdkLanguage, Mnemonic as BdkMnemonic};
+
+use crate::error::Error;
 
 /// Mnemonic phrases are a human-readable version of the private keys.
 /// Supported number of words are 12, 15, 18, 21 and 24.
@@ -35,18 +36,18 @@ impl Mnemonic {
     }
 
     /// Parse a Mnemonic with given string
-    pub fn from_string(mnemonic: String) -> Result<Self, BdkError> {
+    pub fn from_string(mnemonic: String) -> Result<Self, Error> {
         BdkMnemonic::from_str(&mnemonic)
             .map(|m| Mnemonic { inner: m })
-            .map_err(|e| BdkError::Generic(e.to_string()))
+            .map_err(|e| Error::Generic { msg: e.to_string() })
     }
 
     /// Create a new Mnemonic in the specified language from the given entropy.
     /// Entropy must be a multiple of 32 bits (4 bytes) and 128-256 bits in length.
-    pub fn from_entropy(entropy: Vec<u8>) -> Result<Self, BdkError> {
+    pub fn from_entropy(entropy: Vec<u8>) -> Result<Self, Error> {
         BdkMnemonic::from_entropy(entropy.as_slice())
             .map(|m| Mnemonic { inner: m })
-            .map_err(|e| BdkError::Generic(e.to_string()))
+            .map_err(|e| Error::Generic { msg: e.to_string() })
     }
 
     /// Returns Mnemonic as string

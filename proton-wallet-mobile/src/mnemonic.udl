@@ -1,0 +1,11 @@
+interface Mnemonic {
+  constructor(WordCount word_count);
+
+  [Name=from_string, Throws=Error]
+  constructor(string mnemonic);
+
+  [Name=from_entropy, Throws=Error]
+  constructor(sequence<u8> entropy);
+
+  string as_string();
+};

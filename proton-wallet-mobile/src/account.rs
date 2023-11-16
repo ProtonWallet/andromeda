@@ -1,38 +1,9 @@
-use bdk::{
-    bitcoin::{
-        bip32::{ChildNumber, ExtendedPrivKey},
-        secp256k1::Secp256k1,
-    },
-    descriptor,
-    miniscript::DescriptorPublicKey as BdkDescriptorPublicKey,
-    wallet::Balance,
-    KeychainKind,
-};
+use proton_wallet_common::account::{Account as CommonAccount, AccountConfig};
 
-use bdk::Wallet;
-use miniscript::{bitcoin::bip32::DerivationPath, Descriptor};
-
-use crate::{bitcoin::Network, error::Error, wallet::sync};
-
-#[derive(Clone, Debug)]
-pub enum SupportedBIPs {
-    Bip44,
-    Bip49,
-    Bip84,
-    Bip86,
-}
-#[derive(Clone, Debug)]
 pub struct Account {
     account_xprv: ExtendedPrivKey,
     derivation_path: DerivationPath,
     config: AccountConfig,
-}
-
-#[derive(Clone, Debug)]
-pub struct AccountConfig {
-    pub bip: SupportedBIPs,
-    pub network: Network,
-    pub account_index: u32,
 }
 
 impl Account {
@@ -111,6 +82,7 @@ impl Account {
         }
     }
 
+    #[uniffi::export]
     pub async fn get_balance(self) -> Result<Balance, Error> {
         let wallet = self.wallet();
 

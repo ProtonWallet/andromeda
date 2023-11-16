@@ -1,10 +1,5 @@
+use proton_wallet_common::{Height, LockTime, Time};
 use wasm_bindgen::prelude::*;
-use proton_wallet_common::{LockTime, Height, Time};
-// #[wasm_bindgen]  //could conver to struct with u32 fields
-// pub enum WasmLocktTime {
-//     Blocks(u32),
-//     Seconds(u32),
-// }
 
 #[wasm_bindgen]
 pub struct WasmLockTime {
@@ -19,11 +14,6 @@ impl Into<WasmLockTime> for LockTime {
 
 #[wasm_bindgen]
 impl WasmLockTime {
-    // #[wasm_bindgen(constructor)]
-    // pub fn new() -> WasmLockTime {
-    //     unimplemented!()
-    // }
-    
     #[wasm_bindgen(js_name = fromHeight)]
     pub fn from_height(height: u32) -> WasmLockTime {
         WasmLockTime {

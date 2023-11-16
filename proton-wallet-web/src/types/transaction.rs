@@ -1,12 +1,11 @@
-use wasm_bindgen::prelude::*;
-use proton_wallet_common::Transaction;
 use super::locktime::WasmLockTime;
-
+use proton_wallet_common::Transaction;
+use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub struct WasmBdkTransaction {
     version: i32,
-    lock_time: WasmLockTime, 
+    lock_time: WasmLockTime,
     // input: Vec<WasmTxIn>,  //TODO
     // output: Vec<WasmTxOut>, //TODO
 }
@@ -14,8 +13,8 @@ pub struct WasmBdkTransaction {
 impl Into<WasmBdkTransaction> for Transaction {
     fn into(self) -> WasmBdkTransaction {
         WasmBdkTransaction {
-            version: self.version(),
-            lock_time: self.get_inner().lock_time.into(),
+            version: self.version,
+            lock_time: self.lock_time.into(),
             // TODO add input output
         }
     }
@@ -28,13 +27,6 @@ pub struct WasmTransaction {
 
 #[wasm_bindgen]
 impl WasmTransaction {
-    #[wasm_bindgen(constructor)]
-    pub fn new(transaction_bytes: Vec<u8>) -> Result<WasmTransaction, JsValue> {
-        let tx = Transaction::new(transaction_bytes)
-            .map_err(|e| JsValue::from_str(&e.to_string()))?;
-        Ok(WasmTransaction { inner: tx })
-    }
-
     pub fn txid(&self) -> String {
         self.inner.txid().to_string()
     }
@@ -60,6 +52,6 @@ impl WasmTransaction {
     }
 
     pub fn version(&self) -> i32 {
-        self.inner.version() as i32
+        self.inner.version as i32
     }
 }

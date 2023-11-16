@@ -63,85 +63,7 @@ typedef struct RustCallStatus {
 typedef void (*UniFfiRustFutureContinuation)(void * _Nonnull, int8_t);
 
 // Scaffolding functions
-void uniffi_proton_wallet_common_fn_free_address(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_constructor_address_new(RustBuffer address, RustBuffer network, RustCallStatus *_Nonnull out_status
-);
-RustBuffer uniffi_proton_wallet_common_fn_method_address_as_string(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-RustBuffer uniffi_proton_wallet_common_fn_method_address_network(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_method_address_script_pubkey(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-RustBuffer uniffi_proton_wallet_common_fn_method_address_to_qr_uri(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-void uniffi_proton_wallet_common_fn_free_balance(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-uint64_t uniffi_proton_wallet_common_fn_method_balance_confirmed(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-uint64_t uniffi_proton_wallet_common_fn_method_balance_immature(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-uint64_t uniffi_proton_wallet_common_fn_method_balance_total(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-uint64_t uniffi_proton_wallet_common_fn_method_balance_trusted_pending(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-uint64_t uniffi_proton_wallet_common_fn_method_balance_trusted_spendable(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-uint64_t uniffi_proton_wallet_common_fn_method_balance_untrusted_pending(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-void uniffi_proton_wallet_common_fn_free_derivationpath(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_constructor_derivationpath_new(RustBuffer path, RustCallStatus *_Nonnull out_status
-);
-void uniffi_proton_wallet_common_fn_free_descriptor(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_constructor_descriptor_new(RustBuffer descriptor, RustBuffer network, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_constructor_descriptor_new_bip44(void*_Nonnull secret_key, RustBuffer keychain, RustBuffer network, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_constructor_descriptor_new_bip44_public(void*_Nonnull public_key, RustBuffer fingerprint, RustBuffer keychain, RustBuffer network, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_constructor_descriptor_new_bip49(void*_Nonnull secret_key, RustBuffer keychain, RustBuffer network, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_constructor_descriptor_new_bip49_public(void*_Nonnull public_key, RustBuffer fingerprint, RustBuffer keychain, RustBuffer network, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_constructor_descriptor_new_bip84(void*_Nonnull secret_key, RustBuffer keychain, RustBuffer network, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_constructor_descriptor_new_bip84_public(void*_Nonnull public_key, RustBuffer fingerprint, RustBuffer keychain, RustBuffer network, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_constructor_descriptor_new_bip86(void*_Nonnull secret_key, RustBuffer keychain, RustBuffer network, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_constructor_descriptor_new_bip86_public(void*_Nonnull public_key, RustBuffer fingerprint, RustBuffer keychain, RustBuffer network, RustCallStatus *_Nonnull out_status
-);
-RustBuffer uniffi_proton_wallet_common_fn_method_descriptor_as_string(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-RustBuffer uniffi_proton_wallet_common_fn_method_descriptor_as_string_private(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-void uniffi_proton_wallet_common_fn_free_descriptorpublickey(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_constructor_descriptorpublickey_from_string(RustBuffer public_key, RustCallStatus *_Nonnull out_status
-);
-RustBuffer uniffi_proton_wallet_common_fn_method_descriptorpublickey_as_string(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_method_descriptorpublickey_derive(void*_Nonnull ptr, void*_Nonnull path, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_method_descriptorpublickey_extend(void*_Nonnull ptr, void*_Nonnull path, RustCallStatus *_Nonnull out_status
-);
-void uniffi_proton_wallet_common_fn_free_descriptorsecretkey(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_constructor_descriptorsecretkey_from_string(RustBuffer secret_key, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_constructor_descriptorsecretkey_new(RustBuffer network, void*_Nonnull mnemonic, RustBuffer password, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_method_descriptorsecretkey_as_public(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-RustBuffer uniffi_proton_wallet_common_fn_method_descriptorsecretkey_as_string(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_method_descriptorsecretkey_derive(void*_Nonnull ptr, void*_Nonnull path, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_method_descriptorsecretkey_extend(void*_Nonnull ptr, void*_Nonnull path, RustCallStatus *_Nonnull out_status
-);
-RustBuffer uniffi_proton_wallet_common_fn_method_descriptorsecretkey_secret_bytes(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+void uniffi_proton_wallet_common_fn_free_account(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
 void uniffi_proton_wallet_common_fn_free_mnemonic(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
@@ -153,66 +75,11 @@ void*_Nonnull uniffi_proton_wallet_common_fn_constructor_mnemonic_new(RustBuffer
 );
 RustBuffer uniffi_proton_wallet_common_fn_method_mnemonic_as_string(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
-void uniffi_proton_wallet_common_fn_free_partiallysignedtransaction(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_constructor_partiallysignedtransaction_new(RustBuffer psbt_base64, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_method_partiallysignedtransaction_extract_tx(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-RustBuffer uniffi_proton_wallet_common_fn_method_partiallysignedtransaction_serialize(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-void uniffi_proton_wallet_common_fn_free_script(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_constructor_script_new(RustBuffer raw_output_script, RustCallStatus *_Nonnull out_status
-);
-RustBuffer uniffi_proton_wallet_common_fn_method_script_to_bytes(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-void uniffi_proton_wallet_common_fn_free_transaction(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_constructor_transaction_new(RustBuffer transaction_bytes, RustCallStatus *_Nonnull out_status
-);
-int8_t uniffi_proton_wallet_common_fn_method_transaction_is_coin_base(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-int8_t uniffi_proton_wallet_common_fn_method_transaction_is_explicitly_rbf(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-int8_t uniffi_proton_wallet_common_fn_method_transaction_is_lock_time_enabled(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-uint64_t uniffi_proton_wallet_common_fn_method_transaction_size(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-RustBuffer uniffi_proton_wallet_common_fn_method_transaction_txid(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-int32_t uniffi_proton_wallet_common_fn_method_transaction_version(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-uint64_t uniffi_proton_wallet_common_fn_method_transaction_vsize(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
 void uniffi_proton_wallet_common_fn_free_txbuilder(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_constructor_txbuilder_new(RustCallStatus *_Nonnull out_status
-    
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_method_txbuilder_add_recipient(void*_Nonnull ptr, void*_Nonnull script, uint64_t amount, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_method_txbuilder_fee_rate(void*_Nonnull ptr, float sat_per_vbyte, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_method_txbuilder_finish(void*_Nonnull ptr, void*_Nonnull wallet, RustCallStatus *_Nonnull out_status
-);
-void uniffi_proton_wallet_common_fn_free_update(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
 void uniffi_proton_wallet_common_fn_free_wallet(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
-void*_Nonnull uniffi_proton_wallet_common_fn_constructor_wallet_new_no_persist(void*_Nonnull descriptor, RustBuffer change_descriptor, RustBuffer network, RustCallStatus *_Nonnull out_status
-);
-void uniffi_proton_wallet_common_fn_method_wallet_apply_update(void*_Nonnull ptr, void*_Nonnull update, RustCallStatus *_Nonnull out_status
-);
-RustBuffer uniffi_proton_wallet_common_fn_method_wallet_get_address(void*_Nonnull ptr, RustBuffer address_index, RustCallStatus *_Nonnull out_status
-);
-void*_Nonnull uniffi_proton_wallet_common_fn_method_wallet_get_balance(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
-);
-RustBuffer uniffi_proton_wallet_common_fn_method_wallet_get_internal_address(void*_Nonnull ptr, RustBuffer address_index, RustCallStatus *_Nonnull out_status
-);
-int8_t uniffi_proton_wallet_common_fn_method_wallet_is_mine(void*_Nonnull ptr, void*_Nonnull script, RustCallStatus *_Nonnull out_status
-);
-RustBuffer uniffi_proton_wallet_common_fn_method_wallet_network(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+void*_Nonnull uniffi_proton_wallet_common_fn_constructor_wallet_new(RustBuffer bip39_mnemonic, RustBuffer bip38_passphrase, RustBuffer config, RustCallStatus *_Nonnull out_status
 );
 RustBuffer uniffi_proton_wallet_common_fn_func_library_version(RustCallStatus *_Nonnull out_status
     
@@ -334,166 +201,7 @@ void ffi_proton_wallet_common_rust_future_complete_void(void* _Nonnull handle, R
 uint16_t uniffi_proton_wallet_common_checksum_func_library_version(void
     
 );
-uint16_t uniffi_proton_wallet_common_checksum_method_address_as_string(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_address_network(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_address_script_pubkey(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_address_to_qr_uri(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_balance_confirmed(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_balance_immature(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_balance_total(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_balance_trusted_pending(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_balance_trusted_spendable(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_balance_untrusted_pending(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_descriptor_as_string(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_descriptor_as_string_private(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_descriptorpublickey_as_string(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_descriptorpublickey_derive(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_descriptorpublickey_extend(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_descriptorsecretkey_as_public(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_descriptorsecretkey_as_string(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_descriptorsecretkey_derive(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_descriptorsecretkey_extend(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_descriptorsecretkey_secret_bytes(void
-    
-);
 uint16_t uniffi_proton_wallet_common_checksum_method_mnemonic_as_string(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_partiallysignedtransaction_extract_tx(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_partiallysignedtransaction_serialize(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_script_to_bytes(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_transaction_is_coin_base(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_transaction_is_explicitly_rbf(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_transaction_is_lock_time_enabled(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_transaction_size(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_transaction_txid(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_transaction_version(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_transaction_vsize(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_txbuilder_add_recipient(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_txbuilder_fee_rate(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_txbuilder_finish(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_wallet_apply_update(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_wallet_get_address(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_wallet_get_balance(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_wallet_get_internal_address(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_wallet_is_mine(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_method_wallet_network(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_constructor_address_new(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_constructor_derivationpath_new(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_constructor_descriptor_new(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_constructor_descriptor_new_bip44(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_constructor_descriptor_new_bip44_public(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_constructor_descriptor_new_bip49(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_constructor_descriptor_new_bip49_public(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_constructor_descriptor_new_bip84(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_constructor_descriptor_new_bip84_public(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_constructor_descriptor_new_bip86(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_constructor_descriptor_new_bip86_public(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_constructor_descriptorpublickey_from_string(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_constructor_descriptorsecretkey_from_string(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_constructor_descriptorsecretkey_new(void
     
 );
 uint16_t uniffi_proton_wallet_common_checksum_constructor_mnemonic_from_entropy(void
@@ -505,19 +213,7 @@ uint16_t uniffi_proton_wallet_common_checksum_constructor_mnemonic_from_string(v
 uint16_t uniffi_proton_wallet_common_checksum_constructor_mnemonic_new(void
     
 );
-uint16_t uniffi_proton_wallet_common_checksum_constructor_partiallysignedtransaction_new(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_constructor_script_new(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_constructor_transaction_new(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_constructor_txbuilder_new(void
-    
-);
-uint16_t uniffi_proton_wallet_common_checksum_constructor_wallet_new_no_persist(void
+uint16_t uniffi_proton_wallet_common_checksum_constructor_wallet_new(void
     
 );
 uint32_t ffi_proton_wallet_common_uniffi_contract_version(void

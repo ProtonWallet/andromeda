@@ -1,11 +1,33 @@
 use proton_wallet_common::{
-    account::{Account, AccountConfig},
-    keys::new_master_private_key,
+    account::{Account, AccountConfig, SupportedBIPs},
+    new_master_private_key,
 };
 
 use wasm_bindgen::prelude::*;
 
-use crate::{descriptor::WasmSupportedBIPs, types::{defined::WasmNetwork, balance::WasmBalance}, error::WasmError};
+use crate::{
+    error::DetailledWasmError,
+    types::{balance::WasmBalance, defined::WasmNetwork},
+};
+
+#[wasm_bindgen]
+#[derive(Clone)]
+pub enum WasmSupportedBIPs {
+    Bip44,
+    Bip49,
+    Bip84,
+    Bip86,
+}
+impl Into<SupportedBIPs> for WasmSupportedBIPs {
+    fn into(self) -> SupportedBIPs {
+        match self {
+            WasmSupportedBIPs::Bip44 => SupportedBIPs::Bip44,
+            WasmSupportedBIPs::Bip49 => SupportedBIPs::Bip49,
+            WasmSupportedBIPs::Bip84 => SupportedBIPs::Bip84,
+            WasmSupportedBIPs::Bip86 => SupportedBIPs::Bip86,
+        }
+    }
+}
 
 #[wasm_bindgen]
 pub struct WasmAccount {
@@ -58,7 +80,7 @@ impl WasmAccount {
         mnemonic_str: &str,
         passphrase: Option<String>,
         config: WasmAccountConfig,
-    ) -> Result<WasmAccount, WasmError> {
+    ) -> Result<WasmAccount, DetailledWasmError> {
         let mprivkey = new_master_private_key(mnemonic_str, passphrase);
 
         let account = Account::new(mprivkey, config.into()).map_err(|e| e.into())?;
@@ -67,7 +89,7 @@ impl WasmAccount {
     }
 
     #[wasm_bindgen]
-    pub async fn get_balance(self) -> Result<WasmBalance, WasmError> {
+    pub async fn get_balance(self) -> Result<WasmBalance, DetailledWasmError> {
         let balance = self.inner.get_balance().await.map_err(|e| e.into())?;
         Ok(balance.into())
     }

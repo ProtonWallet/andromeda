@@ -5,6 +5,7 @@ use std::{fs, io};
 
 type IOError = io::Error;
 pub const OUTPUT_UDL_NAME: &str = "common";
+pub const TYPES_FOLDER: &str = "types";
 
 fn main() {
     println!("cargo:rerun-if-changed=src/*.udl");
@@ -34,8 +35,18 @@ fn merge_udl_files() {
 
 // Get all the UDL files excluding OUTPUT_UDL_NAME in src directory
 fn scan_udl_files() -> Result<Vec<String>, IOError> {
-    let files = fs::read_dir("src")?;
-    let udl_files: Vec<_> = files
+    let mut files = scan_dir_udl_files("src".to_string())?;
+    let types_files = scan_dir_udl_files(format!("src/{}", TYPES_FOLDER))?;
+
+    files.extend(types_files);
+
+    Ok(files)
+}
+
+fn scan_dir_udl_files(dirpath: String) -> Result<Vec<String>, IOError> {
+    let dir = fs::read_dir(&dirpath)?;
+
+    let file_names = dir
         .filter_map(|file| {
             let file = file.ok()?;
             let path = file.path();
@@ -46,7 +57,7 @@ fn scan_udl_files() -> Result<Vec<String>, IOError> {
                             if value == format!("{}.udl", OUTPUT_UDL_NAME) {
                                 None
                             } else {
-                                Some(format!("src/{}", value))
+                                Some(format!("{}/{}", dirpath, value))
                             }
                         }
                         None => None,
@@ -59,7 +70,7 @@ fn scan_udl_files() -> Result<Vec<String>, IOError> {
         })
         .collect();
 
-    Ok(udl_files)
+    Ok(file_names)
 }
 
 fn merge(src_udl_path: String, mut file: &File) {
