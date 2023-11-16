@@ -1,0 +1,6 @@
+[Enum]
+interface AddressIndex {
+  New();
+  LastUnused();
+  Peek(u32 index);
+};

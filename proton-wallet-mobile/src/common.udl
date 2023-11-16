@@ -1,70 +1,92 @@
 // This file is auto-generated and contains the concatenated contents of all the UDL files in src directory
 // Do not edit this manually but instead editing/adding UDL files in the src directory
 
+interface TxBuilder {
 
+};
 
+enum SupportedBIPs {
+  "Bip44",
+  "Bip49",
+  "Bip84",
+  "Bip86",
+};
 
+dictionary AccountConfig {
+    SupportedBIPs bip;
+    Network network;
+    u32 account_index;
+};
+
+interface Account {
+
+};
+
+dictionary WalletConfig {
+  Network network;
+};
+
+interface Wallet {
+  [Throws=Error]
+  constructor(string bip39_mnemonic, string? bip38_passphrase, WalletConfig config);
+};
+
+[Enum]
+interface Error {
+  InvalidSecretKey();
+  InvalidDescriptor();
+  InvalidDerivationPath();
+  InvalidAccountIndex();
+  DerivationError();
+  SyncError();
+
+  // BDK Errors
+  Generic(string msg);
+  NoRecipients();
+  NoUtxosSelected();
+  OutputBelowDustLimit(u8 output);
+  InsufficientFunds(u64 needed, u64 available);
+  BnBTotalTriesExceeded();
+  BnBNoExactMatch();
+  UnknownUtxo();
+  TransactionNotFound();
+  TransactionConfirmed();
+  IrreplaceableTransaction();
+  FeeRateTooLow(string required);
+  FeeTooLow(u64 required);
+  FeeRateUnavailable();
+  MissingKeyOrigin(string key);
+  Key(string error);
+  ChecksumMismatch();
+  SpendingPolicyRequired(KeychainKind keychain_kind);
+  InvalidPolicyPathError(string error);
+  Signer(string error);
+  InvalidOutpoint(string outpoint);
+  Descriptor(string error);
+  Miniscript(string error);
+  MiniscriptPsbt();
+  Bip32(string error);
+  Psbt(string error);
+};
 
 namespace proton_wallet_common {
     string library_version();
 };
 
-enum KeychainKind {
-  "External",
-  "Internal",
-};
+interface Mnemonic {
+  constructor(WordCount word_count);
 
-// ------------------------------------------------------------------------
-// bdk crate - wallet module
-// ------------------------------------------------------------------------
+  [Name=from_string, Throws=Error]
+  constructor(string mnemonic);
 
-[Error]
-enum BdkError {
-  "Generic",
-  "NoRecipients",
-  "NoUtxosSelected",
-  "OutputBelowDustLimit",
-  "InsufficientFunds",
-  "BnBTotalTriesExceeded",
-  "BnBNoExactMatch",
-  "UnknownUtxo",
-  "TransactionNotFound",
-  "TransactionConfirmed",
-  "IrreplaceableTransaction",
-  "FeeRateTooLow",
-  "FeeTooLow",
-  "FeeRateUnavailable",
-  "MissingKeyOrigin",
-  "Key",
-  "ChecksumMismatch",
-  "SpendingPolicyRequired",
-  "InvalidPolicyPathError",
-  "Signer",
-  "InvalidOutpoint",
-  "Descriptor",
-  "Miniscript",
-  "MiniscriptPsbt",
-  "Bip32",
-  "Psbt",
-};
+  [Name=from_entropy, Throws=Error]
+  constructor(sequence<u8> entropy);
 
-interface Balance {
-  u64 immature();
-
-  u64 trusted_pending();
-
-  u64 untrusted_pending();
-
-  u64 confirmed();
-
-  u64 trusted_spendable();
-
-  u64 total();
+  string as_string();
 };
 
 dictionary AddressInfo {
   u32 index;
-  Address address;
   KeychainKind keychain;
 };
 
@@ -75,142 +97,10 @@ interface AddressIndex {
   Peek(u32 index);
 };
 
-interface Wallet {
-  [Name=new_no_persist, Throws=BdkError]
-  constructor(Descriptor descriptor, Descriptor? change_descriptor, Network network);
 
-  AddressInfo get_address(AddressIndex address_index);
-
-  AddressInfo get_internal_address(AddressIndex address_index);
-
-  Network network();
-
-  Balance get_balance();
-
-  boolean is_mine(Script script);
-
-  [Throws=BdkError]
-  void apply_update(Update update);
-};
-
-interface Update {};
-
-interface TxBuilder {
-  constructor();
-
-  TxBuilder add_recipient(Script script, u64 amount);
-
-  TxBuilder fee_rate(float sat_per_vbyte);
-
-  [Throws=BdkError]
-  PartiallySignedTransaction finish([ByRef] Wallet wallet);
-};
-
-// ------------------------------------------------------------------------
-// bdk crate - descriptor module
-// ------------------------------------------------------------------------
-
-interface Mnemonic {
-  constructor(WordCount word_count);
-
-  [Name=from_string, Throws=BdkError]
-  constructor(string mnemonic);
-
-  [Name=from_entropy, Throws=BdkError]
-  constructor(sequence<u8> entropy);
-
-  string as_string();
-};
-
-interface DerivationPath {
-  [Throws=BdkError]
-  constructor(string path);
-};
-
-interface DescriptorSecretKey {
-  constructor(Network network, Mnemonic mnemonic, string? password);
-
-  [Name=from_string, Throws=BdkError]
-  constructor(string secret_key);
-
-  [Throws=BdkError]
-  DescriptorSecretKey derive(DerivationPath path);
-
-  [Throws=BdkError]
-  DescriptorSecretKey extend(DerivationPath path);
-
-  DescriptorPublicKey as_public();
-
-  sequence<u8> secret_bytes();
-
-  string as_string();
-};
-
-interface DescriptorPublicKey {
-  [Name=from_string, Throws=BdkError]
-  constructor(string public_key);
-
-  [Throws=BdkError]
-  DescriptorPublicKey derive(DerivationPath path);
-
-  [Throws=BdkError]
-  DescriptorPublicKey extend(DerivationPath path);
-
-  string as_string();
-};
-
-interface Descriptor {
-  [Throws=BdkError]
-  constructor(string descriptor, Network network);
-
-  [Name=new_bip44]
-  constructor(DescriptorSecretKey secret_key, KeychainKind keychain, Network network);
-
-  [Name=new_bip44_public]
-  constructor(DescriptorPublicKey public_key, string fingerprint, KeychainKind keychain, Network network);
-
-  [Name=new_bip49]
-  constructor(DescriptorSecretKey secret_key, KeychainKind keychain, Network network);
-
-  [Name=new_bip49_public]
-  constructor(DescriptorPublicKey public_key, string fingerprint, KeychainKind keychain, Network network);
-
-  [Name=new_bip84]
-  constructor(DescriptorSecretKey secret_key, KeychainKind keychain, Network network);
-
-  [Name=new_bip84_public]
-  constructor(DescriptorPublicKey public_key, string fingerprint, KeychainKind keychain, Network network);
-
-  [Name=new_bip86]
-  constructor(DescriptorSecretKey secret_key, KeychainKind keychain, Network network);
-
-  [Name=new_bip86_public]
-  constructor(DescriptorPublicKey public_key, string fingerprint, KeychainKind keychain, Network network);
-
-  string as_string();
-
-  string as_string_private();
-};
-
-// ------------------------------------------------------------------------
-// bdk_esplora crate
-// ------------------------------------------------------------------------
-
-// interface EsploraClient {
-//   constructor(string url);
-
-//  [Throws=BdkError]
-//  Update scan(Wallet wallet, u64 stop_gap, u64 parallel_requests);
-// };
-
-// ------------------------------------------------------------------------
-// bdk crate - bitcoin re-exports
-// ------------------------------------------------------------------------
-
-interface Script {
-  constructor(sequence<u8> raw_output_script);
-
-  sequence<u8> to_bytes();
+enum KeychainKind {
+  "External",
+  "Internal",
 };
 
 enum Network {
@@ -228,44 +118,10 @@ enum WordCount {
   "Words24",
 };
 
-interface Address {
-  [Throws=BdkError]
-  constructor(string address, Network network);
-
-  Network network();
-
-  Script script_pubkey();
-
-  string to_qr_uri();
-
-  string as_string();
-};
-
-interface Transaction {
-  [Throws=BdkError]
-  constructor(sequence<u8> transaction_bytes);
-
-  string txid();
-
-  u64 size();
-
-  u64 vsize();
-
-  boolean is_coin_base();
-
-  boolean is_explicitly_rbf();
-
-  boolean is_lock_time_enabled();
-
-  i32 version();
-};
-
-interface PartiallySignedTransaction {
-  [Throws=BdkError]
-  constructor(string psbt_base64);
-
-  string serialize();
-
-  Transaction extract_tx();
+dictionary Balance {
+  u64 immature;
+  u64 trusted_pending;
+  u64 untrusted_pending;
+  u64 confirmed;
 };
 

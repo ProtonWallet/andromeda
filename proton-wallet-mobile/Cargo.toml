@@ -21,14 +21,14 @@ default = ["uniffi/cli"]
 
 [dependencies]
 proton-wallet-common = { path = "../proton-wallet-common" }
-uniffi = { version = "0.25.0" }
+uniffi = { version = "0.25.1" }
 
 [dev-dependencies]
-uniffi = { version = "0.25.0", features = ["bindgen-tests"] }
+uniffi = { version = "0.25.1", features = ["bindgen-tests"] }
 assert_matches = "1.5.0"
 
 [build-dependencies]
-uniffi = { version = "0.25.0", features = [ "build" ] }
+uniffi = { version = "0.25.1", features = [ "build" ] }
 
 [[bin]]
 name = "uniffi-bindgen"

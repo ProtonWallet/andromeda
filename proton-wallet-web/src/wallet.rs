@@ -1,9 +1,9 @@
-use proton_wallet_common::{wallet::WalletConfig, Wallet};
+use proton_wallet_common::wallet::{Wallet, WalletConfig};
 use wasm_bindgen::prelude::*;
 
 use crate::{
-    descriptor::WasmSupportedBIPs,
-    error::WasmError,
+    account::WasmSupportedBIPs,
+    error::DetailledWasmError,
     types::{balance::WasmBalance, defined::WasmNetwork},
 };
 
@@ -57,7 +57,7 @@ impl WasmWallet {
         bip39_mnemonic: String,
         bip38_passphrase: Option<String>,
         config: WasmWalletConfig,
-    ) -> Result<WasmWallet, WasmError> {
+    ) -> Result<WasmWallet, DetailledWasmError> {
         let wallet = Wallet::new(bip39_mnemonic, bip38_passphrase, config.into()).map_err(|e| e.into())?;
 
         Ok(Self { inner: wallet })
@@ -69,7 +69,7 @@ impl WasmWallet {
     }
 
     #[wasm_bindgen]
-    pub async fn get_balance(self) -> Result<WasmBalance, WasmError> {
+    pub async fn get_balance(self) -> Result<WasmBalance, DetailledWasmError> {
         let balance = self.inner.get_balance().await.map_err(|e| e.into())?;
         Ok(balance.into())
     }

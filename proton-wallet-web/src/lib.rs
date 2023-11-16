@@ -1,7 +1,5 @@
 mod account;
-mod descriptor;
 mod error;
-mod keys;
 mod mnemonic;
 mod wallet;
 

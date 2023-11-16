@@ -1,30 +1,19 @@
-#![allow(clippy::new_without_default)]
-
-mod defines;
-mod keys;
-
-//
-use proton_wallet_common::Address;
-use proton_wallet_common::KeychainKind;
-use proton_wallet_common::Script;
-use proton_wallet_common::Transaction;
-use proton_wallet_common::Update;
-use proton_wallet_common::Wallet;
-use proton_wallet_common::WordCount;
-// use proton_wallet_common::EsploraClient;
-use proton_wallet_common::mnemonic::Mnemonic;
-use proton_wallet_common::AddressIndex;
-use proton_wallet_common::AddressInfo;
-use proton_wallet_common::Balance;
-use proton_wallet_common::BdkError;
-use proton_wallet_common::Descriptor;
-use proton_wallet_common::DescriptorPublicKey;
-use proton_wallet_common::DescriptorSecretKey;
-use proton_wallet_common::TxBuilder;
-// use proton_wallet_common::ScriptAmount;
-use proton_wallet_common::PartiallySignedTransaction;
+mod types;
 
 uniffi::include_scaffolding!("common");
+
+pub use types::{address_index::AddressIndex, address_info::AddressInfo};
+
+pub use proton_wallet_common::account::{Account, AccountConfig, SupportedBIPs};
+pub use proton_wallet_common::bitcoin::Network;
+pub use proton_wallet_common::error::Error;
+pub use proton_wallet_common::mnemonic::Mnemonic;
+pub use proton_wallet_common::transaction_builder::TxBuilder;
+pub use proton_wallet_common::wallet::{Wallet, WalletConfig};
+
+pub use proton_wallet_common::{
+    Balance, DerivationPath, Height, KeychainKind, Language, LockTime, Time, Transaction, WordCount,
+};
 
 //
 pub fn library_version() -> String {

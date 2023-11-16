@@ -1,8 +1,9 @@
-use proton_wallet_common::keys::DerivationPath;
 use std::str::FromStr;
+
+use proton_wallet_common::DerivationPath;
 use wasm_bindgen::prelude::*;
 
-use crate::error::WasmError;
+use crate::error::{DetailledWasmError, WasmError};
 
 #[wasm_bindgen]
 pub struct WasmDerivationPath {
@@ -12,8 +13,8 @@ pub struct WasmDerivationPath {
 #[wasm_bindgen]
 impl WasmDerivationPath {
     #[wasm_bindgen(constructor)]
-    pub fn new(path: &str) -> Result<WasmDerivationPath, WasmError> {
-        let derivation_path = DerivationPath::from_str(path).map_err(|_| WasmError::InvalidDerivationPath)?;
+    pub fn new(path: &str) -> Result<WasmDerivationPath, DetailledWasmError> {
+        let derivation_path = DerivationPath::from_str(path).map_err(|_| WasmError::InvalidDerivationPath.into())?;
 
         Ok(WasmDerivationPath { inner: derivation_path })
     }

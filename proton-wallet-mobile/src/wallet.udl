@@ -1,0 +1,8 @@
+dictionary WalletConfig {
+  Network network;
+};
+
+interface Wallet {
+  [Throws=Error]
+  constructor(string bip39_mnemonic, string? bip38_passphrase, WalletConfig config);
+};

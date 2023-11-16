@@ -1,9 +1,0 @@
-[package]
-name = "test"
-version = "0.1.0"
-edition = "2021"
-
-
-[dependencies] 
-proton-wallet-common = { version = "0.1.0", path = "../proton-wallet-common" }
-tokio = { version = "1", features = ["full"] }

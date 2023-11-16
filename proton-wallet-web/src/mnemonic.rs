@@ -1,7 +1,7 @@
-use wasm_bindgen::prelude::*;
 use proton_wallet_common::mnemonic::{BdkLanguage, BdkMnemonic, Mnemonic};
+use wasm_bindgen::prelude::*;
 
-use crate::types::defined::WasmWordCount;
+use crate::{error::DetailledWasmError, types::defined::WasmWordCount};
 
 #[wasm_bindgen]
 #[derive(Clone)]
@@ -69,18 +69,18 @@ impl WasmMnemonic {
 
     /// Parse a Mnemonic with the given string.
     #[wasm_bindgen(js_name = fromString)]
-    pub fn from_string(mnemonic: &str) -> Result<WasmMnemonic, JsValue> {
+    pub fn from_string(mnemonic: &str) -> Result<WasmMnemonic, DetailledWasmError> {
         Mnemonic::from_string(mnemonic.to_string())
             .map(|mnemonic| WasmMnemonic { inner: mnemonic.into() })
-            .map_err(|e| JsValue::from_str(&e.to_string())) // TODO: use Error enum
+            .map_err(|e| e.into())
     }
 
     /// Create a new Mnemonic from the given entropy.
     #[wasm_bindgen(js_name = fromEntropy)]
-    pub fn from_entropy(entropy: &[u8]) -> Result<WasmMnemonic, JsValue> {
+    pub fn from_entropy(entropy: &[u8]) -> Result<WasmMnemonic, DetailledWasmError> {
         Mnemonic::from_entropy(entropy.to_vec())
             .map(|mnemonic| WasmMnemonic { inner: mnemonic.into() })
-            .map_err(|e| JsValue::from_str(&e.to_string())) // TODO: use Error enum
+            .map_err(|e| e.into())
     }
 
     /// Returns the Mnemonic as a string.
