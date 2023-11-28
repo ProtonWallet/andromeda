@@ -6,11 +6,14 @@ use bdk::{
     descriptor,
     miniscript::DescriptorPublicKey as BdkDescriptorPublicKey,
     wallet::Balance,
-    KeychainKind,
+    KeychainKind, SignOptions,
 };
 
 use bdk::Wallet;
-use miniscript::{bitcoin::bip32::DerivationPath, Descriptor};
+use miniscript::{
+    bitcoin::{bip32::DerivationPath, psbt::PartiallySignedTransaction},
+    Descriptor,
+};
 
 use crate::{bitcoin::Network, error::Error, wallet::sync};
 
@@ -50,7 +53,7 @@ impl Account {
         })
     }
 
-    fn wallet(self) -> Wallet {
+    pub fn wallet(&self) -> Wallet {
         let external_derivation = vec![ChildNumber::from_normal_idx(KeychainKind::External as u32).unwrap()];
         let internal_derivation = vec![ChildNumber::from_normal_idx(KeychainKind::Internal as u32).unwrap()];
 
@@ -103,7 +106,7 @@ impl Account {
         Ok(derivation_path)
     }
 
-    pub fn public_descriptor(self) -> BdkDescriptorPublicKey {
+    pub fn public_descriptor(&self) -> BdkDescriptorPublicKey {
         let (descriptor, _, _) = descriptor!(wpkh((self.account_xprv, Vec::new().into()))).unwrap();
         match descriptor {
             Descriptor::Wpkh(pk) => pk.into_inner(),
@@ -111,11 +114,26 @@ impl Account {
         }
     }
 
-    pub async fn get_balance(self) -> Result<Balance, Error> {
+    pub async fn get_balance(&self) -> Result<Balance, Error> {
         let wallet = self.wallet();
 
         let updated_wallet = sync(wallet).await.map_err(|_| Error::SyncError)?;
 
         Ok(updated_wallet.get_balance())
+    }
+
+    pub fn sign(
+        &self,
+        psbt: &mut PartiallySignedTransaction,
+        sign_options: Option<SignOptions>,
+    ) -> Result<bool, Error> {
+        let sign_options = match sign_options {
+            Some(sign_options) => sign_options,
+            _ => SignOptions::default(),
+        };
+
+        self.wallet()
+            .sign(psbt, sign_options)
+            .map_err(|e| Error::Generic { msg: e.to_string() })
     }
 }

@@ -1,10 +1,5 @@
-use bdk::{
-    descriptor::{policy::PolicyError, DescriptorError},
-    keys::KeyError,
-    signer::SignerError,
-    Error as BdkError, FeeRate, KeychainKind,
-};
-use miniscript::bitcoin::{bip32::Error as Bip32Error, psbt::Error as PsbtError, OutPoint};
+use bdk::{Error as BdkError, KeychainKind};
+use miniscript::bitcoin::bip32::Error as Bip32Error;
 use std::error;
 use std::fmt;
 
@@ -16,6 +11,7 @@ pub enum Error {
     InvalidAccountIndex,
     DerivationError,
     SyncError,
+    InvalidData,
 
     // BDK Errors
     Generic { msg: String },

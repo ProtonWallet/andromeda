@@ -1,6 +1,7 @@
 mod account;
 mod error;
 mod mnemonic;
+mod transaction_builder;
 mod wallet;
 
 mod types;

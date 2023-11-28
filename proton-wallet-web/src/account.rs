@@ -34,6 +34,12 @@ pub struct WasmAccount {
     inner: Account,
 }
 
+impl Into<Account> for WasmAccount {
+    fn into(self) -> Account {
+        self.inner.clone()
+    }
+}
+
 #[wasm_bindgen(getter_with_clone)]
 #[derive(Clone)]
 pub struct WasmAccountConfig {

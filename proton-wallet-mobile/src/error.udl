@@ -6,6 +6,7 @@ interface Error {
   InvalidAccountIndex();
   DerivationError();
   SyncError();
+  InvalidData();
 
   // BDK Errors
   Generic(string msg);

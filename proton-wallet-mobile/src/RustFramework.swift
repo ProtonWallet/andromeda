@@ -982,6 +982,7 @@ public enum Error {
     case invalidAccountIndex
     case derivationError
     case syncError
+    case invalidData
     case generic(msg: String)
     case noRecipients
     case noUtxosSelected
@@ -1029,86 +1030,88 @@ public struct FfiConverterTypeError: FfiConverterRustBuffer {
         
         case 6: return .syncError
         
-        case 7: return .generic(
+        case 7: return .invalidData
+        
+        case 8: return .generic(
             msg: try FfiConverterString.read(from: &buf)
         )
         
-        case 8: return .noRecipients
+        case 9: return .noRecipients
         
-        case 9: return .noUtxosSelected
+        case 10: return .noUtxosSelected
         
-        case 10: return .outputBelowDustLimit(
+        case 11: return .outputBelowDustLimit(
             output: try FfiConverterUInt8.read(from: &buf)
         )
         
-        case 11: return .insufficientFunds(
+        case 12: return .insufficientFunds(
             needed: try FfiConverterUInt64.read(from: &buf), 
             available: try FfiConverterUInt64.read(from: &buf)
         )
         
-        case 12: return .bnBTotalTriesExceeded
+        case 13: return .bnBTotalTriesExceeded
         
-        case 13: return .bnBNoExactMatch
+        case 14: return .bnBNoExactMatch
         
-        case 14: return .unknownUtxo
+        case 15: return .unknownUtxo
         
-        case 15: return .transactionNotFound
+        case 16: return .transactionNotFound
         
-        case 16: return .transactionConfirmed
+        case 17: return .transactionConfirmed
         
-        case 17: return .irreplaceableTransaction
+        case 18: return .irreplaceableTransaction
         
-        case 18: return .feeRateTooLow(
+        case 19: return .feeRateTooLow(
             required: try FfiConverterString.read(from: &buf)
         )
         
-        case 19: return .feeTooLow(
+        case 20: return .feeTooLow(
             required: try FfiConverterUInt64.read(from: &buf)
         )
         
-        case 20: return .feeRateUnavailable
+        case 21: return .feeRateUnavailable
         
-        case 21: return .missingKeyOrigin(
+        case 22: return .missingKeyOrigin(
             key: try FfiConverterString.read(from: &buf)
         )
         
-        case 22: return .key(
+        case 23: return .key(
             error: try FfiConverterString.read(from: &buf)
         )
         
-        case 23: return .checksumMismatch
+        case 24: return .checksumMismatch
         
-        case 24: return .spendingPolicyRequired(
+        case 25: return .spendingPolicyRequired(
             keychainKind: try FfiConverterTypeKeychainKind.read(from: &buf)
         )
         
-        case 25: return .invalidPolicyPathError(
+        case 26: return .invalidPolicyPathError(
             error: try FfiConverterString.read(from: &buf)
         )
         
-        case 26: return .signer(
+        case 27: return .signer(
             error: try FfiConverterString.read(from: &buf)
         )
         
-        case 27: return .invalidOutpoint(
+        case 28: return .invalidOutpoint(
             outpoint: try FfiConverterString.read(from: &buf)
         )
         
-        case 28: return .descriptor(
+        case 29: return .descriptor(
             error: try FfiConverterString.read(from: &buf)
         )
         
-        case 29: return .miniscript(
+        case 30: return .miniscript(
             error: try FfiConverterString.read(from: &buf)
         )
         
-        case 30: return .miniscriptPsbt
+        case 31: return .miniscriptPsbt
         
-        case 31: return .bip32(
+        case 32: return .bip32(
             error: try FfiConverterString.read(from: &buf)
         )
         
-        case 32: return .psbt(
+        case 33: return .psbt(
             error: try FfiConverterString.read(from: &buf)
         )
         
@@ -1144,123 +1147,127 @@ public struct FfiConverterTypeError: FfiConverterRustBuffer {
             writeInt(&buf, Int32(6))
         
         
-        case let .generic(msg):
+        case .invalidData:
             writeInt(&buf, Int32(7))
+        
+        
+        case let .generic(msg):
+            writeInt(&buf, Int32(8))
             FfiConverterString.write(msg, into: &buf)
             
         
         case .noRecipients:
-            writeInt(&buf, Int32(8))
-        
-        
-        case .noUtxosSelected:
             writeInt(&buf, Int32(9))
         
         
-        case let .outputBelowDustLimit(output):
+        case .noUtxosSelected:
             writeInt(&buf, Int32(10))
+        
+        
+        case let .outputBelowDustLimit(output):
+            writeInt(&buf, Int32(11))
             FfiConverterUInt8.write(output, into: &buf)
             
         
         case let .insufficientFunds(needed,available):
-            writeInt(&buf, Int32(11))
+            writeInt(&buf, Int32(12))
             FfiConverterUInt64.write(needed, into: &buf)
             FfiConverterUInt64.write(available, into: &buf)
             
         
         case .bnBTotalTriesExceeded:
-            writeInt(&buf, Int32(12))
-        
-        
-        case .bnBNoExactMatch:
             writeInt(&buf, Int32(13))
         
         
-        case .unknownUtxo:
+        case .bnBNoExactMatch:
             writeInt(&buf, Int32(14))
         
         
-        case .transactionNotFound:
+        case .unknownUtxo:
             writeInt(&buf, Int32(15))
         
         
-        case .transactionConfirmed:
+        case .transactionNotFound:
             writeInt(&buf, Int32(16))
         
         
-        case .irreplaceableTransaction:
+        case .transactionConfirmed:
             writeInt(&buf, Int32(17))
         
         
-        case let .feeRateTooLow(required):
+        case .irreplaceableTransaction:
             writeInt(&buf, Int32(18))
+        
+        
+        case let .feeRateTooLow(required):
+            writeInt(&buf, Int32(19))
             FfiConverterString.write(required, into: &buf)
             
         
         case let .feeTooLow(required):
-            writeInt(&buf, Int32(19))
+            writeInt(&buf, Int32(20))
             FfiConverterUInt64.write(required, into: &buf)
             
         
         case .feeRateUnavailable:
-            writeInt(&buf, Int32(20))
+            writeInt(&buf, Int32(21))
         
         
         case let .missingKeyOrigin(key):
-            writeInt(&buf, Int32(21))
+            writeInt(&buf, Int32(22))
             FfiConverterString.write(key, into: &buf)
             
         
         case let .key(error):
-            writeInt(&buf, Int32(22))
+            writeInt(&buf, Int32(23))
             FfiConverterString.write(error, into: &buf)
             
         
         case .checksumMismatch:
-            writeInt(&buf, Int32(23))
+            writeInt(&buf, Int32(24))
         
         
         case let .spendingPolicyRequired(keychainKind):
-            writeInt(&buf, Int32(24))
+            writeInt(&buf, Int32(25))
             FfiConverterTypeKeychainKind.write(keychainKind, into: &buf)
             
         
         case let .invalidPolicyPathError(error):
-            writeInt(&buf, Int32(25))
-            FfiConverterString.write(error, into: &buf)
-            
-        
-        case let .signer(error):
             writeInt(&buf, Int32(26))
             FfiConverterString.write(error, into: &buf)
             
         
-        case let .invalidOutpoint(outpoint):
+        case let .signer(error):
             writeInt(&buf, Int32(27))
+            FfiConverterString.write(error, into: &buf)
+            
+        
+        case let .invalidOutpoint(outpoint):
+            writeInt(&buf, Int32(28))
             FfiConverterString.write(outpoint, into: &buf)
             
         
         case let .descriptor(error):
-            writeInt(&buf, Int32(28))
-            FfiConverterString.write(error, into: &buf)
-            
-        
-        case let .miniscript(error):
             writeInt(&buf, Int32(29))
             FfiConverterString.write(error, into: &buf)
             
         
-        case .miniscriptPsbt:
+        case let .miniscript(error):
             writeInt(&buf, Int32(30))
+            FfiConverterString.write(error, into: &buf)
+            
+        
+        case .miniscriptPsbt:
+            writeInt(&buf, Int32(31))
         
         
         case let .bip32(error):
-            writeInt(&buf, Int32(31))
+            writeInt(&buf, Int32(32))
             FfiConverterString.write(error, into: &buf)
             
         
         case let .psbt(error):
-            writeInt(&buf, Int32(32))
+            writeInt(&buf, Int32(33))
             FfiConverterString.write(error, into: &buf)
             
         }
