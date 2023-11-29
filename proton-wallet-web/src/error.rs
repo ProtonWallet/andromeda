@@ -10,6 +10,8 @@ pub enum WasmError {
     InvalidAccountIndex,
     DerivationError,
     SyncError,
+    OutpointParsingError,
+    InvalidData,
 
     // BDK Errors
     Generic,
@@ -81,6 +83,10 @@ impl Into<DetailledWasmError> for Error {
             },
             Error::SyncError => DetailledWasmError {
                 kind: WasmError::SyncError,
+                details: JsValue::null(),
+            },
+            Error::InvalidData => DetailledWasmError {
+                kind: WasmError::InvalidData,
                 details: JsValue::null(),
             },
             Error::Generic { msg } => DetailledWasmError {
