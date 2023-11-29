@@ -22,7 +22,6 @@ default = ["uniffi/cli"]
 proton-wallet-common = { path = "../proton-wallet-common" }
 uniffi = { version = "0.25.1" }
 
-
 [target.armv7-linux-androideabi.dependencies]
 openssl = { version = "0.10.60", features = ["vendored"] }
 

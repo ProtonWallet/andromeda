@@ -1,5 +1,5 @@
-use proton_wallet_common::KeychainKind;
 use proton_wallet_common::bitcoin::Network;
+use proton_wallet_common::KeychainKind;
 use proton_wallet_common::WordCount;
 use wasm_bindgen::prelude::*;
 
