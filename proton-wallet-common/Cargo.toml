@@ -10,7 +10,6 @@ doctest = false
 bdk = { version = "1.0.0-alpha.2", default-features = false, features = ["all-keys", "keys-bip39", "std"] }
 bdk_esplora = { version = "0.4.0", default-features = false, features = ["async-https"] }
 miniscript = { version = "10.0.0", default-features = false }
-
 serde-wasm-bindgen = { version = "0.6.1", optional = true }
 serde = { version = "1.0.144", features = ["derive"] }
 wasm-bindgen = { version = "0.2.88", features=["serde-serialize"], optional = true  }
@@ -19,6 +18,7 @@ wasm-bindgen = { version = "0.2.88", features=["serde-serialize"], optional = tr
 # Platform-specific dependencies
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2.10", features = ["js"] }
+
 
 [features]
 wasm = ["dep:serde-wasm-bindgen", "dep:wasm-bindgen"]

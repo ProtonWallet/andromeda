@@ -10,7 +10,6 @@ pre-release-replacements = [
     {file="android/lib/build.gradle.kts", search="    version = .*", replace="    version = \"{{version}}\""}
 ]
 
-
 [lib]
 doctest = false
 crate-type = ["cdylib", "staticlib"]
@@ -23,6 +22,10 @@ default = ["uniffi/cli"]
 proton-wallet-common = { path = "../proton-wallet-common" }
 uniffi = { version = "0.25.1" }
 
+
+[target.armv7-linux-androideabi.dependencies]
+openssl = { version = "0.10.60", features = ["vendored"] }
+
 [dev-dependencies]
 uniffi = { version = "0.25.1", features = ["bindgen-tests"] }
 assert_matches = "1.5.0"
@@ -34,7 +37,6 @@ uniffi = { version = "0.25.1", features = [ "build" ] }
 name = "uniffi-bindgen"
 path = "./bindgen.rs"
 required-features = [ "uniffi/cli" ]
-
 
 [profile.release-smaller]
 inherits = "release"
