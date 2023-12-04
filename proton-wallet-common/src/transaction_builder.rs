@@ -209,7 +209,6 @@ impl TxBuilder {
         for (script, amount) in &self.recipients {
             tx_builder.add_recipient(script.clone(), *amount);
         }
-        
         tx_builder.change_policy(self.change_policy);
 
         if !self.utxos_to_spend.is_empty() {
