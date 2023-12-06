@@ -2,6 +2,7 @@ use proton_wallet_common::{Height, LockTime, Time};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
+#[derive(Clone)]
 pub struct WasmLockTime {
     lock_time: LockTime,
 }

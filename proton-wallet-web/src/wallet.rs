@@ -69,7 +69,7 @@ impl WasmWallet {
     }
 
     #[wasm_bindgen]
-    pub async fn get_balance(self) -> Result<WasmBalance, DetailledWasmError> {
+    pub async fn get_balance(&self) -> Result<WasmBalance, DetailledWasmError> {
         let balance = self.inner.get_balance().await.map_err(|e| e.into())?;
         Ok(balance.into())
     }

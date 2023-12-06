@@ -5,5 +5,6 @@ pub mod common;
 pub mod defined;
 pub mod derivation_path;
 pub mod locktime;
+pub mod pagination;
 pub mod transaction;
 pub mod udpate;

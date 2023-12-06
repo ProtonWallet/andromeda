@@ -9,9 +9,11 @@ pub enum Error {
     InvalidDescriptor,
     InvalidDerivationPath,
     InvalidAccountIndex,
+    InvalidTxId,
     DerivationError,
     SyncError,
     InvalidData,
+    CannotComputeTxFees,
 
     // BDK Errors
     Generic { msg: String },

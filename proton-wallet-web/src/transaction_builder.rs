@@ -1,39 +1,13 @@
-use std::str::FromStr;
-
-use proton_wallet_common::{bitcoin::Script, transaction_builder::TxBuilder, OutPoint, PartiallySignedTransaction};
+use proton_wallet_common::{
+    account::Account, bitcoin::Script, transaction_builder::TxBuilder, OutPoint, PartiallySignedTransaction,
+};
 use wasm_bindgen::prelude::*;
 
 use crate::{
     account::WasmAccount,
     error::{DetailledWasmError, WasmError},
+    types::transaction::{WasmOutPoint, WasmScript},
 };
-
-/**
- * Maybe to put in other file
- */
-
-#[wasm_bindgen(getter_with_clone)]
-pub struct WasmScript(pub Vec<u8>);
-
-impl Into<Script> for WasmScript {
-    fn into(self) -> Script {
-        Script::new(self.0)
-    }
-}
-
-#[wasm_bindgen(getter_with_clone)]
-/// Serialised Outpoint under the form <txid>:<index>
-pub struct WasmOutPoint(String);
-
-impl TryInto<OutPoint> for WasmOutPoint {
-    type Error = WasmError;
-
-    fn try_into(self) -> Result<OutPoint, WasmError> {
-        OutPoint::from_str(&self.0).map_err(|_| WasmError::OutpointParsingError)
-    }
-}
-
-// ----
 
 #[wasm_bindgen]
 pub struct WasmTxBuilder {
@@ -61,12 +35,13 @@ impl WasmTxBuilder {
     }
 
     #[wasm_bindgen]
-    pub fn remove_recipient(&mut self, index: usize) -> () {
-        self.inner.remove_recipient(index);
+    pub fn remove_recipient(&self, index: usize) -> WasmTxBuilder {
+        let inner = self.inner.remove_recipient(index);
+        WasmTxBuilder { inner }
     }
 
     #[wasm_bindgen]
-    pub fn update_recipient(&mut self, index: usize, script: Option<WasmScript>, amount: Option<u64>) -> WasmTxBuilder {
+    pub fn update_recipient(&self, index: usize, script: Option<WasmScript>, amount: Option<u64>) -> WasmTxBuilder {
         let script = match script {
             Some(script) => {
                 let script: Script = script.into();
@@ -167,8 +142,13 @@ impl WasmTxBuilder {
      */
 
     #[wasm_bindgen]
-    pub fn create_pbst(&self, account: WasmAccount) -> Result<WasmPartiallySignedTransaction, DetailledWasmError> {
-        let inner = self.inner.create_pbst(&account.into()).map_err(|e| e.into())?;
+    pub fn create_pbst(
+        &self,
+        wasm_account: &mut WasmAccount,
+    ) -> Result<WasmPartiallySignedTransaction, DetailledWasmError> {
+        let account: &mut Account = wasm_account.into_mutable();
+
+        let inner = self.inner.create_pbst(account).map_err(|e| e.into())?;
         Ok(WasmPartiallySignedTransaction { inner })
     }
 }

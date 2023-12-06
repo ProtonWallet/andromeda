@@ -1,8 +1,11 @@
+use std::str::FromStr;
+
 use bdk::{
     bitcoin::{
         bip32::{ChildNumber, ExtendedPrivKey},
         secp256k1::Secp256k1,
     },
+    chain::{ChainPosition, ConfirmationTimeAnchor},
     descriptor,
     miniscript::DescriptorPublicKey as BdkDescriptorPublicKey,
     wallet::Balance,
@@ -11,62 +14,82 @@ use bdk::{
 
 use bdk::Wallet;
 use miniscript::{
-    bitcoin::{bip32::DerivationPath, psbt::PartiallySignedTransaction},
+    bitcoin::{bip32::DerivationPath, psbt::PartiallySignedTransaction, Transaction, Txid},
     Descriptor,
 };
 
-use crate::{bitcoin::Network, error::Error, wallet::sync};
+use crate::{bitcoin::Network, client::Client, error::Error};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum SupportedBIPs {
     Bip44,
     Bip49,
     Bip84,
     Bip86,
 }
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Account {
     account_xprv: ExtendedPrivKey,
     derivation_path: DerivationPath,
     config: AccountConfig,
+    wallet: Wallet,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct AccountConfig {
     pub bip: SupportedBIPs,
     pub network: Network,
     pub account_index: u32,
 }
 
-impl Account {
-    pub fn new(master_secret_key: ExtendedPrivKey, config: AccountConfig) -> Result<Self, Error> {
-        let secp = Secp256k1::new();
-        let cloned_config = config.clone();
+pub struct Pagination {
+    skip: u32,
+    take: u32,
+}
 
-        let derivation_path =
-            Self::gen_account_derivation_path(cloned_config.bip, cloned_config.network, cloned_config.account_index)?;
-
-        Ok(Self {
-            account_xprv: master_secret_key.derive_priv(&secp, &derivation_path).unwrap(),
-            derivation_path: derivation_path.into(),
-            config,
-        })
+impl Pagination {
+    pub fn new(skip: u32, take: u32) -> Self {
+        Pagination { skip, take }
     }
+}
 
-    pub fn wallet(&self) -> Wallet {
+pub struct SimpleTransaction<'a> {
+    pub txid: Txid,
+    pub value: i64,
+    pub fees: Option<u64>,
+    pub confirmation: ChainPosition<&'a ConfirmationTimeAnchor>,
+}
+
+impl Account {
+    fn wallet(account_xprv: ExtendedPrivKey, network: Network) -> Wallet {
         let external_derivation = vec![ChildNumber::from_normal_idx(KeychainKind::External as u32).unwrap()];
         let internal_derivation = vec![ChildNumber::from_normal_idx(KeychainKind::Internal as u32).unwrap()];
 
-        let external_descriptor = descriptor!(wpkh((self.account_xprv, external_derivation.into()))).unwrap();
-        let internal_descriptor = descriptor!(wpkh((self.account_xprv, internal_derivation.into()))).unwrap();
+        let external_descriptor = descriptor!(wpkh((account_xprv, external_derivation.into()))).unwrap();
+        let internal_descriptor = descriptor!(wpkh((account_xprv, internal_derivation.into()))).unwrap();
 
-        Wallet::new_no_persist(
-            external_descriptor,
-            Some(internal_descriptor),
-            self.config.network.into(),
-        )
-        .map_err(|e| println!("error {}", e))
-        .unwrap()
+        Wallet::new_no_persist(external_descriptor, Some(internal_descriptor), network.into())
+            .map_err(|e| println!("error {}", e))
+            .unwrap()
+    }
+
+    pub fn get_mutable_wallet(&mut self) -> &mut Wallet {
+        &mut self.wallet
+    }
+
+    pub fn new(master_secret_key: ExtendedPrivKey, config: AccountConfig) -> Result<Self, Error> {
+        let secp = Secp256k1::new();
+
+        let derivation_path = Self::gen_account_derivation_path(config.bip, config.network, config.account_index)?;
+
+        let account_xprv = master_secret_key.derive_priv(&secp, &derivation_path).unwrap();
+
+        Ok(Self {
+            account_xprv,
+            derivation_path: derivation_path.into(),
+            config,
+            wallet: Self::wallet(account_xprv, config.network.into()),
+        })
     }
 
     pub fn derivation_path(&self) -> DerivationPath {
@@ -114,12 +137,49 @@ impl Account {
         }
     }
 
-    pub async fn get_balance(&self) -> Result<Balance, Error> {
-        let wallet = self.wallet();
+    pub async fn sync(&mut self) -> Result<(), Error> {
+        let client = Client::new(None)?;
+        client.scan(&mut self.wallet).await?;
+        Ok(())
+    }
 
-        let updated_wallet = sync(wallet).await.map_err(|_| Error::SyncError)?;
+    pub fn get_balance(&self) -> Balance {
+        self.wallet.get_balance()
+    }
 
-        Ok(updated_wallet.get_balance())
+    pub fn get_transactions(&self, pagination: Pagination) -> Vec<SimpleTransaction> {
+        // TODO: maybe take only confirmed transactions here?
+        let ten_first_txs = self
+            .wallet
+            .transactions()
+            .skip(pagination.skip as usize)
+            .take(pagination.take as usize)
+            .map(|can_tx| {
+                let (sent, received) = self.wallet.spk_index().sent_and_received(can_tx.tx_node.tx);
+
+                SimpleTransaction {
+                    txid: can_tx.tx_node.txid,
+                    value: received as i64 - sent as i64,
+                    confirmation: can_tx.chain_position,
+                    fees: match self.wallet.calculate_fee(can_tx.tx_node.tx) {
+                        Ok(fees) => Some(fees),
+                        _ => None,
+                    },
+                }
+            })
+            .collect::<Vec<_>>();
+
+        ten_first_txs
+    }
+
+    pub fn get_transaction(&self, txid: String) -> Result<Transaction, Error> {
+        let txid = Txid::from_str(&txid).map_err(|_| Error::InvalidTxId)?;
+        let tx = match self.wallet.get_tx(txid) {
+            Some(tx) => Ok(tx.tx_node.tx.clone()),
+            _ => Err(Error::TransactionNotFound),
+        }?;
+
+        Ok(tx)
     }
 
     pub fn sign(
@@ -132,7 +192,7 @@ impl Account {
             _ => SignOptions::default(),
         };
 
-        self.wallet()
+        self.wallet
             .sign(psbt, sign_options)
             .map_err(|e| Error::Generic { msg: e.to_string() })
     }

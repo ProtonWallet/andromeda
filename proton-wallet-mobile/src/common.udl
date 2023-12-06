@@ -37,6 +37,8 @@ interface Error {
   InvalidDescriptor();
   InvalidDerivationPath();
   InvalidAccountIndex();
+  InvalidTxId();
+  CannotComputeTxFees();
   DerivationError();
   SyncError();
   InvalidData();

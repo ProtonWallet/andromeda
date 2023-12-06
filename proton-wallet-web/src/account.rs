@@ -1,13 +1,18 @@
+use std::sync::Mutex;
+
 use proton_wallet_common::{
     account::{Account, AccountConfig, SupportedBIPs},
-    new_master_private_key,
+    DerivableKey, ExtendedKey, ExtendedPrivKey, Mnemonic, MnemonicWithPassphrase,
 };
 
 use wasm_bindgen::prelude::*;
+use web_sys::console::log_1;
 
 use crate::{
-    error::DetailledWasmError,
-    types::{balance::WasmBalance, defined::WasmNetwork},
+    error::{DetailledWasmError, WasmError},
+    types::{
+        balance::WasmBalance, defined::WasmNetwork, pagination::WasmPagination, transaction::WasmSimpleTransaction,
+    },
 };
 
 #[wasm_bindgen]
@@ -31,12 +36,12 @@ impl Into<SupportedBIPs> for WasmSupportedBIPs {
 
 #[wasm_bindgen]
 pub struct WasmAccount {
-    inner: Account,
+    inner: Mutex<Account>,
 }
 
-impl Into<Account> for WasmAccount {
-    fn into(self) -> Account {
-        self.inner.clone()
+impl WasmAccount {
+    pub fn into_mutable(&mut self) -> &mut Account {
+        self.inner.get_mut().unwrap()
     }
 }
 
@@ -87,16 +92,52 @@ impl WasmAccount {
         passphrase: Option<String>,
         config: WasmAccountConfig,
     ) -> Result<WasmAccount, DetailledWasmError> {
-        let mprivkey = new_master_private_key(mnemonic_str, passphrase);
+        log_1(&"here 1".into());
+        let mnemonic = Mnemonic::parse(mnemonic_str).map_err(|_| WasmError::InvalidMnemonic.into())?;
+        let passphrase = match passphrase {
+            Some(passphrase) => passphrase,
+            _ => "".to_string(),
+        };
+
+        let config: AccountConfig = config.into();
+        let mprivkey = ExtendedPrivKey::new_master(config.network.into(), &mnemonic.to_seed(passphrase))
+            .map_err(|_| WasmError::InvalidSeed.into())?;
+
+        log_1(&"here 2".into());
 
         let account = Account::new(mprivkey, config.into()).map_err(|e| e.into())?;
-
-        Ok(Self { inner: account })
+        log_1(&"here 3".into());
+        Ok(Self {
+            inner: Mutex::new(account),
+        })
     }
 
     #[wasm_bindgen]
-    pub async fn get_balance(self) -> Result<WasmBalance, DetailledWasmError> {
-        let balance = self.inner.get_balance().await.map_err(|e| e.into())?;
-        Ok(balance.into())
+    pub async fn sync(&mut self) -> Result<(), DetailledWasmError> {
+        self.inner.get_mut().unwrap().sync().await.map_err(|e| e.into())?;
+
+        Ok(())
+    }
+
+    #[wasm_bindgen]
+    pub fn get_balance(&self) -> WasmBalance {
+        self.inner.lock().unwrap().get_balance().into()
+    }
+
+    #[wasm_bindgen]
+    pub fn get_transactions(&self, pagination: WasmPagination) -> Vec<WasmSimpleTransaction> {
+        let transaction = self
+            .inner
+            .lock()
+            .unwrap()
+            .get_transactions(pagination.into())
+            .into_iter()
+            .map(|tx| {
+                let wasm_tx: WasmSimpleTransaction = tx.into();
+                wasm_tx
+            })
+            .collect::<Vec<_>>();
+
+        transaction
     }
 }
