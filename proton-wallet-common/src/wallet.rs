@@ -63,8 +63,7 @@ impl Wallet {
     }
 
     pub async fn get_balance(&self) -> Result<BdkBalance, Error> {
-        let cloned = self.accounts.clone();
-        let mut iter = cloned.values();
+        let mut iter = self.accounts.values();
 
         let mut balance = BdkBalance {
             untrusted_pending: 0,
@@ -74,7 +73,7 @@ impl Wallet {
         };
 
         while let Some(account) = iter.next() {
-            let account_balance = account.clone().get_balance().await?;
+            let account_balance = account.get_balance();
 
             balance.untrusted_pending += account_balance.untrusted_pending;
             balance.confirmed += account_balance.confirmed;

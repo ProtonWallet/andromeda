@@ -1,14 +1,9 @@
-use crate::bitcoin::Network;
 use crate::error::Error;
 
 use bdk::bitcoin::bip32::DerivationPath;
-use bdk::bitcoin::bip32::ExtendedPrivKey;
 use bdk::bitcoin::key::Secp256k1;
-use bdk::keys::bip39::{Mnemonic as BdkMnemonic, MnemonicWithPassphrase};
-use bdk::keys::DerivableKey;
-use bdk::keys::{DescriptorSecretKey, ExtendedKey};
+use bdk::keys::DescriptorSecretKey;
 use bdk::miniscript::descriptor::DescriptorXKey;
-use bdk::miniscript::Segwitv0;
 use std::sync::Arc;
 
 pub trait Deriveable {
@@ -72,13 +67,4 @@ impl Extendable for DescriptorSecretKey {
             }),
         }
     }
-}
-
-// Move this to wallet
-pub fn new_master_private_key(mnemonic_str: &str, passphrase: Option<String>) -> ExtendedPrivKey {
-    let mnemonic = BdkMnemonic::parse(mnemonic_str).unwrap();
-    let mnemonic: MnemonicWithPassphrase = (mnemonic, passphrase);
-
-    let masterxkey: ExtendedKey<Segwitv0> = mnemonic.into_extended_key().unwrap();
-    masterxkey.into_xprv(Network::Testnet.into()).unwrap()
 }

@@ -202,13 +202,14 @@ impl TxBuilder {
         }
     }
 
-    pub fn create_pbst(&self, account: &Account) -> Result<PartiallySignedTransaction, Error> {
-        let mut wallet = account.wallet();
+    pub fn create_pbst(&self, account: &mut Account) -> Result<PartiallySignedTransaction, Error> {
+        let wallet = account.get_mutable_wallet();
         let mut tx_builder = wallet.build_tx();
 
         for (script, amount) in &self.recipients {
             tx_builder.add_recipient(script.clone(), *amount);
         }
+
         tx_builder.change_policy(self.change_policy);
 
         if !self.utxos_to_spend.is_empty() {

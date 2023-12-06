@@ -29,7 +29,7 @@ impl Client {
         Ok(Client(client))
     }
 
-    pub async fn scan(&self, mut wallet: BdkWallet) -> Result<BdkWallet, Error> {
+    pub async fn scan(&self, wallet: &mut BdkWallet) -> Result<(), Error> {
         print!("Syncing...");
         // Scanning the blockchain
 
@@ -81,7 +81,7 @@ impl Client {
             msg: "Couldn't commit wallet sync update".to_string(),
         })?;
 
-        Ok(wallet)
+        Ok(())
     }
 
     pub async fn broadcast(&self, transaction: Transaction) -> Result<(), Error> {

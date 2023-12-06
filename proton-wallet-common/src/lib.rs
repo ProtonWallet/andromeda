@@ -11,17 +11,19 @@ pub mod wallet;
 
 pub use bdk::{
     bitcoin::{
-        bip32::DerivationPath,
+        bip32::{DerivationPath, ExtendedPrivKey},
         blockdata::locktime::absolute::{Height, LockTime, Time},
         psbt::PartiallySignedTransaction,
-        OutPoint, Transaction,
+        OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Witness,
     },
-    keys::bip39::{Language, WordCount},
+    chain::ChainPosition,
+    keys::{
+        bip39::{Language, Mnemonic, MnemonicWithPassphrase, WordCount},
+        DerivableKey, ExtendedKey,
+    },
     wallet::{AddressIndex, AddressInfo, Balance},
     KeychainKind,
 };
-
-pub use keys::new_master_private_key;
 
 pub fn library_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()

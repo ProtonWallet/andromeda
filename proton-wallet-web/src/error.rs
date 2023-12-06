@@ -12,6 +12,10 @@ pub enum WasmError {
     SyncError,
     OutpointParsingError,
     InvalidData,
+    InvalidTxId,
+    CannotComputeTxFees,
+    InvalidMnemonic,
+    InvalidSeed,
 
     // BDK Errors
     Generic,
@@ -61,6 +65,14 @@ impl Into<DetailledWasmError> for WasmError {
 impl Into<DetailledWasmError> for Error {
     fn into(self) -> DetailledWasmError {
         match self {
+            Error::InvalidTxId => DetailledWasmError {
+                kind: WasmError::InvalidTxId,
+                details: JsValue::null(),
+            },
+            Error::CannotComputeTxFees => DetailledWasmError {
+                kind: WasmError::CannotComputeTxFees,
+                details: JsValue::null(),
+            },
             Error::InvalidSecretKey => DetailledWasmError {
                 kind: WasmError::InvalidSecretKey,
                 details: JsValue::null(),
