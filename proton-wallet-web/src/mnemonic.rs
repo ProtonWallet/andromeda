@@ -1,4 +1,4 @@
-use proton_wallet_common::mnemonic::{BdkLanguage, BdkMnemonic, Mnemonic};
+use proton_wallet_common::mnemonic::{BdkLanguage, Mnemonic};
 use wasm_bindgen::prelude::*;
 
 use crate::{error::DetailledWasmError, types::defined::WasmWordCount};
@@ -26,30 +26,8 @@ impl From<WasmLanguage> for BdkLanguage {
 }
 
 #[wasm_bindgen(getter_with_clone)]
-#[derive(Clone)]
-pub struct WasmBdkMnemonic {
-    pub lang: WasmLanguage,
-    pub words: String,
-}
-
-impl From<WasmBdkMnemonic> for BdkMnemonic {
-    fn from(value: WasmBdkMnemonic) -> Self {
-        BdkMnemonic::parse_in(value.lang.into(), value.words).unwrap()
-    }
-}
-
-impl Into<WasmBdkMnemonic> for Mnemonic {
-    fn into(self) -> WasmBdkMnemonic {
-        WasmBdkMnemonic {
-            lang: WasmLanguage::English,
-            words: self.inner().word_iter().collect::<Vec<&str>>().join(" "),
-        }
-    }
-}
-
-#[wasm_bindgen(getter_with_clone)]
 pub struct WasmMnemonic {
-    pub inner: WasmBdkMnemonic, // This is the original Mnemonic struct from your Rust code.
+    inner: Mnemonic,
 }
 
 #[wasm_bindgen]
@@ -58,13 +36,7 @@ impl WasmMnemonic {
     #[wasm_bindgen(constructor)]
     pub fn new(word_count: WasmWordCount) -> Result<WasmMnemonic, JsValue> {
         let mnemonic = Mnemonic::new(word_count.into());
-
-        Ok(WasmMnemonic {
-            inner: WasmBdkMnemonic {
-                lang: WasmLanguage::English,
-                words: mnemonic.as_string(),
-            },
-        })
+        Ok(WasmMnemonic { inner: mnemonic })
     }
 
     /// Parse a Mnemonic with the given string.
@@ -86,6 +58,12 @@ impl WasmMnemonic {
     /// Returns the Mnemonic as a string.
     #[wasm_bindgen(js_name = asString)]
     pub fn as_string(&self) -> String {
-        BdkMnemonic::from(self.inner.clone()).to_string()
+        self.inner.as_string()
+    }
+
+    // Returns the mnemonic as words array
+    #[wasm_bindgen(js_name = toWords)]
+    pub fn to_words(&self) -> Vec<String> {
+        self.inner.to_words()
     }
 }

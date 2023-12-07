@@ -14,15 +14,15 @@ pub use bdk::{
         bip32::{DerivationPath, ExtendedPrivKey},
         blockdata::locktime::absolute::{Height, LockTime, Time},
         psbt::PartiallySignedTransaction,
-        OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Witness,
+        Address, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Witness,
     },
-    chain::ChainPosition,
+    chain::{ChainPosition, ConfirmationTime, ConfirmationTimeAnchor},
     keys::{
         bip39::{Language, Mnemonic, MnemonicWithPassphrase, WordCount},
         DerivableKey, ExtendedKey,
     },
-    wallet::{AddressIndex, AddressInfo, Balance},
-    KeychainKind,
+    wallet::{tx_builder::ChangeSpendPolicy, AddressIndex, AddressInfo, Balance},
+    KeychainKind, LocalUtxo, SignOptions,
 };
 
 pub fn library_version() -> String {

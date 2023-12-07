@@ -1,12 +1,15 @@
 use proton_wallet_common::{
-    account::Account, bitcoin::Script, transaction_builder::TxBuilder, OutPoint, PartiallySignedTransaction,
+    transaction_builder::{CoinSelection, TmpRecipient, TxBuilder},
+    ChangeSpendPolicy, OutPoint,
 };
 use wasm_bindgen::prelude::*;
+use web_sys::console::log_2;
 
 use crate::{
     account::WasmAccount,
     error::{DetailledWasmError, WasmError},
-    types::transaction::{WasmOutPoint, WasmScript},
+    psbt::WasmPartiallySignedTransaction,
+    types::{defined::WasmNetwork, locktime::WasmLockTime, transaction::WasmOutPoint},
 };
 
 #[wasm_bindgen]
@@ -15,9 +18,66 @@ pub struct WasmTxBuilder {
 }
 
 #[wasm_bindgen]
-pub struct WasmPartiallySignedTransaction {
-    inner: PartiallySignedTransaction,
+#[derive(Clone, Copy)]
+pub enum WasmCoinSelection {
+    BranchAndBound,
+    LargestFirst,
+    OldestFirst,
+    Manual,
 }
+
+impl Into<CoinSelection> for WasmCoinSelection {
+    fn into(self) -> CoinSelection {
+        match self {
+            WasmCoinSelection::BranchAndBound => CoinSelection::BranchAndBound,
+            WasmCoinSelection::LargestFirst => CoinSelection::LargestFirst,
+            WasmCoinSelection::OldestFirst => CoinSelection::OldestFirst,
+            WasmCoinSelection::Manual => CoinSelection::Manual,
+        }
+    }
+}
+
+impl Into<WasmCoinSelection> for CoinSelection {
+    fn into(self) -> WasmCoinSelection {
+        match self {
+            CoinSelection::BranchAndBound => WasmCoinSelection::BranchAndBound,
+            CoinSelection::LargestFirst => WasmCoinSelection::LargestFirst,
+            CoinSelection::OldestFirst => WasmCoinSelection::OldestFirst,
+            CoinSelection::Manual => WasmCoinSelection::Manual,
+        }
+    }
+}
+
+#[wasm_bindgen]
+#[derive(Clone, Copy)]
+pub enum WasmChangeSpendPolicy {
+    ChangeAllowed,
+    OnlyChange,
+    ChangeForbidden,
+}
+
+impl Into<ChangeSpendPolicy> for WasmChangeSpendPolicy {
+    fn into(self) -> ChangeSpendPolicy {
+        match self {
+            WasmChangeSpendPolicy::ChangeAllowed => ChangeSpendPolicy::ChangeAllowed,
+            WasmChangeSpendPolicy::OnlyChange => ChangeSpendPolicy::OnlyChange,
+            WasmChangeSpendPolicy::ChangeForbidden => ChangeSpendPolicy::ChangeForbidden,
+        }
+    }
+}
+
+impl Into<WasmChangeSpendPolicy> for ChangeSpendPolicy {
+    fn into(self) -> WasmChangeSpendPolicy {
+        match self {
+            ChangeSpendPolicy::ChangeAllowed => WasmChangeSpendPolicy::ChangeAllowed,
+            ChangeSpendPolicy::OnlyChange => WasmChangeSpendPolicy::OnlyChange,
+            ChangeSpendPolicy::ChangeForbidden => WasmChangeSpendPolicy::ChangeForbidden,
+        }
+    }
+}
+
+#[wasm_bindgen(getter_with_clone)]
+pub struct WasmRecipient(pub String, pub String, pub u64);
 
 #[wasm_bindgen]
 impl WasmTxBuilder {
@@ -29,8 +89,19 @@ impl WasmTxBuilder {
     }
 
     #[wasm_bindgen]
-    pub fn add_recipient(&self, script: WasmScript, amount: u64) -> WasmTxBuilder {
-        let inner = self.inner.add_recipient(script.into(), amount);
+    pub fn set_account(&self, account: &WasmAccount) -> Self {
+        let inner = self.inner.set_account(account.get_inner());
+
+        log_2(
+            &"account_set".into(),
+            &account.get_inner().lock().unwrap().derivation_path().to_string().into(),
+        );
+        WasmTxBuilder { inner }
+    }
+
+    #[wasm_bindgen]
+    pub fn add_recipient(&self) -> WasmTxBuilder {
+        let inner = self.inner.add_recipient();
         WasmTxBuilder { inner }
     }
 
@@ -41,38 +112,35 @@ impl WasmTxBuilder {
     }
 
     #[wasm_bindgen]
-    pub fn update_recipient(&self, index: usize, script: Option<WasmScript>, amount: Option<u64>) -> WasmTxBuilder {
-        let script = match script {
-            Some(script) => {
-                let script: Script = script.into();
-                Some(script)
-            }
-            _ => None,
-        };
+    pub fn update_recipient(
+        &self,
+        index: usize,
+        address_str: Option<String>,
+        amount: Option<u64>,
+    ) -> Result<WasmTxBuilder, WasmError> {
+        let inner = self.inner.update_recipient(index, (address_str, amount));
+        Ok(WasmTxBuilder { inner })
+    }
 
-        let inner = self.inner.update_recipient(index, (script, amount));
-        WasmTxBuilder { inner }
+    pub fn get_recipients(&self) -> Vec<WasmRecipient> {
+        let recipients = self
+            .inner
+            .recipients
+            .clone()
+            .into_iter()
+            .map(|recipient| {
+                let TmpRecipient(uuid, address, amount) = recipient;
+                let wasm_recipient: WasmRecipient = WasmRecipient(uuid, address, amount);
+                wasm_recipient
+            })
+            .collect();
+
+        recipients
     }
 
     /**
      * UTXOs
      */
-
-    #[wasm_bindgen]
-    pub fn add_unspendable_utxo(&self, outpoint: WasmOutPoint) -> Result<WasmTxBuilder, WasmError> {
-        let serialised: OutPoint = outpoint.try_into()?;
-        let inner = self.inner.add_unspendable_utxo(&serialised);
-
-        Ok(WasmTxBuilder { inner })
-    }
-
-    #[wasm_bindgen]
-    pub fn remove_unspendable_utxo(&self, outpoint: WasmOutPoint) -> Result<WasmTxBuilder, WasmError> {
-        let serialised: OutPoint = outpoint.try_into()?;
-        let inner = self.inner.remove_unspendable_utxo(&serialised);
-
-        Ok(WasmTxBuilder { inner })
-    }
 
     #[wasm_bindgen]
     pub fn add_utxo_to_spend(&self, outpoint: WasmOutPoint) -> Result<WasmTxBuilder, WasmError> {
@@ -90,14 +158,59 @@ impl WasmTxBuilder {
         Ok(WasmTxBuilder { inner })
     }
 
+    #[wasm_bindgen]
+    pub fn clear_utxos_to_spend(&self) -> WasmTxBuilder {
+        let inner = self.inner.clear_utxos_to_spend();
+        WasmTxBuilder { inner }
+    }
+
+    #[wasm_bindgen]
+    pub fn get_utxos_to_spend(&self) -> Vec<WasmOutPoint> {
+        self.inner
+            .utxos_to_spend
+            .clone()
+            .into_iter()
+            .map(|outpoint| {
+                let utxo: WasmOutPoint = outpoint.into();
+                utxo
+            })
+            .collect()
+    }
+
     /**
      * Coin selection enforcement
      */
 
     #[wasm_bindgen]
-    pub fn manually_selected_only(&self) -> WasmTxBuilder {
-        let inner = self.inner.manually_selected_only();
+    pub fn set_coin_selection(&self, coin_selection: WasmCoinSelection) -> Self {
+        let inner = self.inner.set_coin_selection(coin_selection.into());
         WasmTxBuilder { inner }
+    }
+
+    #[wasm_bindgen]
+    pub fn get_coin_selection(&self) -> WasmCoinSelection {
+        self.inner.coin_selection.clone().into()
+    }
+
+    /**
+     * RBF
+     */
+
+    #[wasm_bindgen]
+    pub fn enable_rbf(&self) -> WasmTxBuilder {
+        let inner = self.inner.enable_rbf();
+        WasmTxBuilder { inner }
+    }
+
+    #[wasm_bindgen]
+    pub fn disable_rbf(&self) -> WasmTxBuilder {
+        let inner = self.inner.disable_rbf();
+        WasmTxBuilder { inner }
+    }
+
+    #[wasm_bindgen]
+    pub fn get_rbf_enabled(&self) -> bool {
+        self.inner.rbf_enabled
     }
 
     /**
@@ -105,20 +218,14 @@ impl WasmTxBuilder {
      */
 
     #[wasm_bindgen]
-    pub fn do_not_spend_change(&self) -> WasmTxBuilder {
-        let inner = self.inner.do_not_spend_change();
+    pub fn set_change_policy(&self, change_policy: WasmChangeSpendPolicy) -> Self {
+        let inner = self.inner.set_change_policy(change_policy.into());
         WasmTxBuilder { inner }
     }
 
     #[wasm_bindgen]
-    pub fn only_spend_change(&self) -> WasmTxBuilder {
-        let inner = self.inner.only_spend_change();
-        WasmTxBuilder { inner }
-    }
-
-    pub fn allow_spend_both(&self) -> WasmTxBuilder {
-        let inner = self.inner.allow_spend_both();
-        WasmTxBuilder { inner }
+    pub fn get_change_policy(&self) -> WasmChangeSpendPolicy {
+        self.inner.change_policy.into()
     }
 
     /**
@@ -126,15 +233,42 @@ impl WasmTxBuilder {
      */
 
     #[wasm_bindgen]
-    pub fn fee_rate(&self, sat_per_vb: f32) -> WasmTxBuilder {
-        let inner = self.inner.fee_rate(sat_per_vb);
+    pub fn set_fee_rate(&self, sat_per_vb: f32) -> WasmTxBuilder {
+        let inner = self.inner.set_fee_rate(sat_per_vb);
         WasmTxBuilder { inner }
     }
 
     #[wasm_bindgen]
-    pub fn fee_absolute(&self, fee_amount: u64) -> WasmTxBuilder {
-        let inner = self.inner.fee_absolute(fee_amount);
+    pub fn get_fee_rate(&self) -> Option<f32> {
+        if let Some(fee_rate) = self.inner.fee_rate {
+            Some(fee_rate.as_sat_per_vb())
+        } else {
+            None
+        }
+    }
+
+    /**
+     * Locktime
+     */
+
+    #[wasm_bindgen]
+    pub fn add_locktime(&self, locktime: WasmLockTime) -> Self {
+        let inner = self.inner.add_locktime(locktime.into());
         WasmTxBuilder { inner }
+    }
+
+    #[wasm_bindgen]
+    pub fn remove_locktime(&self) -> Self {
+        let inner = self.inner.remove_locktime();
+        WasmTxBuilder { inner }
+    }
+
+    #[wasm_bindgen]
+    pub fn get_locktime(&self) -> Option<WasmLockTime> {
+        match self.inner.locktime {
+            Some(locktime) => Some(locktime.into()),
+            _ => None,
+        }
     }
 
     /**
@@ -144,11 +278,14 @@ impl WasmTxBuilder {
     #[wasm_bindgen]
     pub fn create_pbst(
         &self,
-        wasm_account: &mut WasmAccount,
+        wasm_account: &WasmAccount,
+        network: WasmNetwork,
     ) -> Result<WasmPartiallySignedTransaction, DetailledWasmError> {
-        let account: &mut Account = wasm_account.into_mutable();
+        let psbt = self
+            .inner
+            .create_pbst_with_coin_selection(wasm_account.get_inner(), false)
+            .map_err(|e| e.into())?;
 
-        let inner = self.inner.create_pbst(account).map_err(|e| e.into())?;
-        Ok(WasmPartiallySignedTransaction { inner })
+        Ok(WasmPartiallySignedTransaction::from_psbt(&psbt, network.into()))
     }
 }

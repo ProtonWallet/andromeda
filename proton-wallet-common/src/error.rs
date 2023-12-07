@@ -5,6 +5,7 @@ use std::fmt;
 
 #[derive(Debug)]
 pub enum Error {
+    InvalidAddress,
     InvalidSecretKey,
     InvalidDescriptor,
     InvalidDerivationPath,
@@ -14,6 +15,7 @@ pub enum Error {
     SyncError,
     InvalidData,
     CannotComputeTxFees,
+    CannotGetFeeEstimation,
 
     // BDK Errors
     Generic { msg: String },

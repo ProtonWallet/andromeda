@@ -4,7 +4,8 @@ use crate::error::WasmError;
 
 use super::locktime::WasmLockTime;
 use proton_wallet_common::{
-    account::SimpleTransaction, bitcoin::Script, ChainPosition, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut,
+    account::SimpleTransaction, ChainPosition, ConfirmationTime, ConfirmationTimeAnchor, OutPoint, ScriptBuf, Sequence,
+    Transaction, TxIn, TxOut,
 };
 use wasm_bindgen::prelude::*;
 
@@ -12,15 +13,9 @@ use wasm_bindgen::prelude::*;
 #[derive(Clone)]
 pub struct WasmScript(pub Vec<u8>);
 
-impl Into<Script> for WasmScript {
-    fn into(self) -> Script {
-        Script::new(self.0)
-    }
-}
-
-impl Into<WasmScript> for Script {
-    fn into(self) -> WasmScript {
-        WasmScript(self.to_bytes())
+impl Into<ScriptBuf> for WasmScript {
+    fn into(self) -> ScriptBuf {
+        ScriptBuf::from_bytes(self.0)
     }
 }
 
@@ -33,7 +28,7 @@ impl Into<WasmScript> for ScriptBuf {
 #[wasm_bindgen(getter_with_clone)]
 #[derive(Clone)]
 /// Serialised Outpoint under the form <txid>:<index>
-pub struct WasmOutPoint(String);
+pub struct WasmOutPoint(pub String);
 
 impl TryInto<OutPoint> for WasmOutPoint {
     type Error = WasmError;
@@ -121,6 +116,40 @@ pub struct WasmConfirmation {
     pub last_seen: Option<u64>,
 }
 
+impl Into<WasmConfirmation> for ChainPosition<&ConfirmationTimeAnchor> {
+    fn into(self) -> WasmConfirmation {
+        match self {
+            ChainPosition::Confirmed(anchor) => WasmConfirmation {
+                confirmed: true,
+                confirmation_time: Some(anchor.confirmation_time),
+                last_seen: None,
+            },
+            ChainPosition::Unconfirmed(last_seen) => WasmConfirmation {
+                confirmed: false,
+                confirmation_time: None,
+                last_seen: Some(last_seen),
+            },
+        }
+    }
+}
+
+impl Into<WasmConfirmation> for ConfirmationTime {
+    fn into(self) -> WasmConfirmation {
+        match self {
+            ConfirmationTime::Confirmed { time, height: _ } => WasmConfirmation {
+                confirmed: true,
+                confirmation_time: Some(time),
+                last_seen: None,
+            },
+            ConfirmationTime::Unconfirmed { last_seen } => WasmConfirmation {
+                confirmed: false,
+                confirmation_time: None,
+                last_seen: Some(last_seen),
+            },
+        }
+    }
+}
+
 #[wasm_bindgen(getter_with_clone)]
 pub struct WasmSimpleTransaction {
     pub txid: String,
@@ -135,18 +164,7 @@ impl Into<WasmSimpleTransaction> for SimpleTransaction<'_> {
             txid: self.txid.to_string(),
             value: self.value,
             fees: self.fees,
-            confirmation: match self.confirmation {
-                ChainPosition::Confirmed(anchor) => WasmConfirmation {
-                    confirmed: true,
-                    confirmation_time: Some(anchor.confirmation_time),
-                    last_seen: None,
-                },
-                ChainPosition::Unconfirmed(last_seen) => WasmConfirmation {
-                    confirmed: false,
-                    confirmation_time: None,
-                    last_seen: Some(last_seen),
-                },
-            },
+            confirmation: self.confirmation.into(),
         }
     }
 }

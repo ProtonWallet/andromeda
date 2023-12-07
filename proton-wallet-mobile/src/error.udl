@@ -5,6 +5,8 @@ interface Error {
   InvalidDerivationPath();
   InvalidAccountIndex();
   InvalidTxId();
+  InvalidAddress();
+  CannotGetFeeEstimation();
   CannotComputeTxFees();
   DerivationError();
   SyncError();

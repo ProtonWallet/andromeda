@@ -13,6 +13,12 @@ impl Into<WasmLockTime> for LockTime {
     }
 }
 
+impl From<WasmLockTime> for LockTime {
+    fn from(value: WasmLockTime) -> Self {
+        value.lock_time
+    }
+}
+
 #[wasm_bindgen]
 impl WasmLockTime {
     #[wasm_bindgen(js_name = fromHeight)]

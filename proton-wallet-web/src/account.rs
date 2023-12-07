@@ -1,17 +1,17 @@
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use proton_wallet_common::{
     account::{Account, AccountConfig, SupportedBIPs},
-    DerivableKey, ExtendedKey, ExtendedPrivKey, Mnemonic, MnemonicWithPassphrase,
+    Address, ExtendedPrivKey, Mnemonic,
 };
 
 use wasm_bindgen::prelude::*;
-use web_sys::console::log_1;
 
 use crate::{
     error::{DetailledWasmError, WasmError},
     types::{
-        balance::WasmBalance, defined::WasmNetwork, pagination::WasmPagination, transaction::WasmSimpleTransaction,
+        address::WasmAddress, balance::WasmBalance, defined::WasmNetwork, pagination::WasmPagination,
+        transaction::WasmSimpleTransaction, utxo::WasmUtxo,
     },
 };
 
@@ -36,12 +36,12 @@ impl Into<SupportedBIPs> for WasmSupportedBIPs {
 
 #[wasm_bindgen]
 pub struct WasmAccount {
-    inner: Mutex<Account>,
+    inner: Arc<Mutex<Account>>,
 }
 
 impl WasmAccount {
-    pub fn into_mutable(&mut self) -> &mut Account {
-        self.inner.get_mut().unwrap()
+    pub fn get_inner(&self) -> Arc<Mutex<Account>> {
+        self.inner.clone()
     }
 }
 
@@ -92,7 +92,6 @@ impl WasmAccount {
         passphrase: Option<String>,
         config: WasmAccountConfig,
     ) -> Result<WasmAccount, DetailledWasmError> {
-        log_1(&"here 1".into());
         let mnemonic = Mnemonic::parse(mnemonic_str).map_err(|_| WasmError::InvalidMnemonic.into())?;
         let passphrase = match passphrase {
             Some(passphrase) => passphrase,
@@ -103,25 +102,46 @@ impl WasmAccount {
         let mprivkey = ExtendedPrivKey::new_master(config.network.into(), &mnemonic.to_seed(passphrase))
             .map_err(|_| WasmError::InvalidSeed.into())?;
 
-        log_1(&"here 2".into());
-
         let account = Account::new(mprivkey, config.into()).map_err(|e| e.into())?;
-        log_1(&"here 3".into());
         Ok(Self {
-            inner: Mutex::new(account),
+            inner: Arc::new(Mutex::new(account)),
         })
     }
 
     #[wasm_bindgen]
     pub async fn sync(&mut self) -> Result<(), DetailledWasmError> {
-        self.inner.get_mut().unwrap().sync().await.map_err(|e| e.into())?;
+        self.inner.lock().unwrap().sync().await.map_err(|e| e.into())?;
 
         Ok(())
     }
 
     #[wasm_bindgen]
+    pub fn owns(&self, address: &WasmAddress) -> bool {
+        let address: Address = address.into();
+
+        let mut acc = self.inner.lock().unwrap();
+        let wallet = acc.get_mutable_wallet();
+
+        wallet.is_mine(&address.script_pubkey())
+    }
+
+    #[wasm_bindgen]
     pub fn get_balance(&self) -> WasmBalance {
         self.inner.lock().unwrap().get_balance().into()
+    }
+
+    #[wasm_bindgen]
+    pub fn get_utxos(&self) -> Vec<WasmUtxo> {
+        let utxos = self
+            .inner
+            .lock()
+            .unwrap()
+            .get_utxos()
+            .into_iter()
+            .map(|utxo| utxo.into())
+            .collect::<Vec<WasmUtxo>>();
+
+        utxos
     }
 
     #[wasm_bindgen]
@@ -140,4 +160,20 @@ impl WasmAccount {
 
         transaction
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::types::{address::WasmAddress, defined::WasmNetwork};
+
+    use super::{WasmAccount, WasmAccountConfig, WasmSupportedBIPs};
+
+    // #[actix_rt::test]
+    // async fn should_return_true_account_owns_address() {
+    //     let mut account = WasmAccount::new("category law logic swear involve banner pink room diesel fragile sunset remove whale lounge captain code hobby lesson material current moment funny vast fade", None, WasmAccountConfig::new(Some(WasmSupportedBIPs::Bip84), Some(WasmNetwork::Testnet), Some(0))).unwrap();
+    //     let address = WasmAddress::new("tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn".to_string());
+    //     account.sync().await.unwrap();
+
+    //     assert!(account.owns(&address))
+    // }
 }
