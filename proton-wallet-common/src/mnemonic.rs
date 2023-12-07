@@ -55,6 +55,10 @@ impl Mnemonic {
         self.inner.to_string()
     }
 
+    pub fn to_words(&self) -> Vec<String> {
+        self.inner.word_iter().map(|word| String::from(word)).collect()
+    }
+
     pub fn inner(&self) -> BdkMnemonic {
         self.inner.clone()
     }

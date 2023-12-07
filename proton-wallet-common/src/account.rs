@@ -9,7 +9,7 @@ use bdk::{
     descriptor,
     miniscript::DescriptorPublicKey as BdkDescriptorPublicKey,
     wallet::Balance,
-    KeychainKind, SignOptions,
+    KeychainKind, LocalUtxo, SignOptions,
 };
 
 use bdk::Wallet;
@@ -82,8 +82,12 @@ impl Account {
 
         let derivation_path = Self::gen_account_derivation_path(config.bip, config.network, config.account_index)?;
 
+        println!("master_secret_key: {:?}", master_secret_key.fingerprint(&secp));
+
         let account_xprv = master_secret_key.derive_priv(&secp, &derivation_path).unwrap();
 
+        println!("derivation_path: {:?}", derivation_path);
+ 
         Ok(Self {
             account_xprv,
             derivation_path: derivation_path.into(),
@@ -145,6 +149,10 @@ impl Account {
 
     pub fn get_balance(&self) -> Balance {
         self.wallet.get_balance()
+    }
+
+    pub fn get_utxos(&self) -> Vec<LocalUtxo> {
+        self.wallet.list_unspent().collect()
     }
 
     pub fn get_transactions(&self, pagination: Pagination) -> Vec<SimpleTransaction> {

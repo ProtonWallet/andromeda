@@ -5,7 +5,7 @@ use bdk::Wallet as BdkWallet;
 use bdk_esplora::esplora_client::AsyncClient as AsyncEsploraClient;
 use miniscript::bitcoin::Transaction;
 
-use std::io::Write;
+use std::{collections::HashMap, io::Write};
 
 use bdk_esplora::{esplora_client, EsploraAsyncExt};
 
@@ -82,6 +82,16 @@ impl Client {
         })?;
 
         Ok(())
+    }
+
+    pub async fn get_fees_estimation(&self) -> Result<HashMap<String, f64>, Error> {
+        let fees = self
+            .0
+            .get_fee_estimates()
+            .await
+            .map_err(|_| Error::CannotGetFeeEstimation)?;
+
+        Ok(fees)
     }
 
     pub async fn broadcast(&self, transaction: Transaction) -> Result<(), Error> {

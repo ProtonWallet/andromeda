@@ -13,8 +13,9 @@ miniscript = { version = "10.0.0", default-features = false }
 serde-wasm-bindgen = { version = "0.6.1", optional = true }
 serde = { version = "1.0.144", features = ["derive"] }
 wasm-bindgen = { version = "0.2.88", features=["serde-serialize"], optional = true  }
+uuid = {version = "1.6.1", features = ["v4", "fast-rng"] }
 
-#featue "async-interface", 
+#feature "async-interface", 
 # Platform-specific dependencies
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2.10", features = ["js"] }

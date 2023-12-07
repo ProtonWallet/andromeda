@@ -56,6 +56,15 @@ impl From<WasmKeychainKind> for KeychainKind {
     }
 }
 
+impl Into<WasmKeychainKind> for KeychainKind {
+    fn into(self) -> WasmKeychainKind {
+        match self {
+            KeychainKind::External => WasmKeychainKind::External,
+            KeychainKind::Internal => WasmKeychainKind::Internal,
+        }
+    }
+}
+
 #[wasm_bindgen]
 pub enum WasmWordCount {
     Words12,

@@ -2,7 +2,7 @@ use proton_wallet_common::{error::Error, KeychainKind};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum WasmError {
     InvalidSecretKey,
     InvalidDescriptor,
@@ -12,10 +12,13 @@ pub enum WasmError {
     SyncError,
     OutpointParsingError,
     InvalidData,
+    InvalidAddress,
     InvalidTxId,
     CannotComputeTxFees,
     InvalidMnemonic,
     InvalidSeed,
+    CannotGetFeeEstimation,
+    CannotSignPsbt,
 
     // BDK Errors
     Generic,
@@ -47,6 +50,7 @@ pub enum WasmError {
 }
 
 #[wasm_bindgen(getter_with_clone)]
+#[derive(Debug)]
 pub struct DetailledWasmError {
     pub kind: WasmError,
 
@@ -65,6 +69,14 @@ impl Into<DetailledWasmError> for WasmError {
 impl Into<DetailledWasmError> for Error {
     fn into(self) -> DetailledWasmError {
         match self {
+            Error::InvalidAddress => DetailledWasmError {
+                kind: WasmError::InvalidAddress,
+                details: JsValue::null(),
+            },
+            Error::CannotGetFeeEstimation => DetailledWasmError {
+                kind: WasmError::CannotGetFeeEstimation,
+                details: JsValue::null(),
+            },
             Error::InvalidTxId => DetailledWasmError {
                 kind: WasmError::InvalidTxId,
                 details: JsValue::null(),

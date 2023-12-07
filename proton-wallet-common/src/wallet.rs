@@ -4,18 +4,12 @@ use crate::error::Error;
 use crate::mnemonic::Mnemonic;
 
 use bdk::wallet::Balance as BdkBalance;
-use bdk::wallet::Update as BdkUpdate;
+
 use bdk::{descriptor, Wallet as BdkWallet};
 use miniscript::bitcoin::bip32::{DerivationPath, ExtendedPrivKey};
+use miniscript::bitcoin::secp256k1::Secp256k1;
 
 use std::collections::HashMap;
-
-use std::io::Write;
-
-use bdk_esplora::{esplora_client, EsploraAsyncExt};
-
-const STOP_GAP: usize = 50;
-const PARALLEL_REQUESTS: usize = 5;
 
 #[derive(Debug)]
 pub struct Wallet {
@@ -62,7 +56,7 @@ impl Wallet {
         self.accounts.insert(account.derivation_path(), account);
     }
 
-    pub async fn get_balance(&self) -> Result<BdkBalance, Error> {
+    pub fn get_balance(&self) -> Result<BdkBalance, Error> {
         let mut iter = self.accounts.values();
 
         let mut balance = BdkBalance {
@@ -91,63 +85,9 @@ impl Wallet {
             .map_err(|e| println!("error {}", e))
             .unwrap()
     }
-}
 
-pub async fn sync(mut wallet: BdkWallet) -> Result<BdkWallet, Error> {
-    print!("Syncing...");
-    // Scanning the blockchain
-    let esplora_url = "https://mempool.space/testnet/api"; //TODO: make this dynamic
-    let client = esplora_client::Builder::new(esplora_url)
-        .build_async()
-        .map_err(|_| Error::Generic {
-            msg: "Could not create client".to_string(),
-        })?;
-
-    let checkpoint = wallet.latest_checkpoint();
-    let keychain_spks = wallet
-        .spks_of_all_keychains()
-        .into_iter()
-        .map(|(k, k_spks)| {
-            let mut once = Some(());
-            let mut stdout = std::io::stdout();
-            let k_spks = k_spks
-                .inspect(move |(spk_i, _)| match once.take() {
-                    Some(_) => print!("\nScanning keychain [{:?}]", k),
-                    None => print!(" {:<3}", spk_i),
-                })
-                .inspect(move |_| stdout.flush().expect("must flush"));
-            (k, k_spks)
-        })
-        .collect();
-
-    let (update_graph, last_active_indices) = client
-        .scan_txs_with_keychains(keychain_spks, None, None, STOP_GAP, PARALLEL_REQUESTS)
-        .await
-        .map_err(|_| Error::Generic {
-            msg: "Could not scan".to_string(),
-        })?;
-
-    let missing_heights = update_graph.missing_heights(wallet.local_chain());
-    let chain_update = client
-        .update_local_chain(checkpoint, missing_heights)
-        .await
-        .map_err(|_| Error::Generic {
-            msg: "Could not update chain locally".to_string(),
-        })?;
-
-    let update = BdkUpdate {
-        last_active_indices,
-        graph: update_graph,
-        chain: Some(chain_update),
-    };
-
-    wallet.apply_update(update).map_err(|_| Error::Generic {
-        msg: "Couldn't apply wallet sync update".to_string(),
-    })?;
-
-    wallet.commit().map_err(|_| Error::Generic {
-        msg: "Couldn't commit wallet sync update".to_string(),
-    })?;
-
-    Ok(wallet)
+    pub fn get_fingerprint(&self) -> String {
+        let secp = Secp256k1::new();
+        self.mprv.fingerprint(&secp).to_string()
+    }
 }

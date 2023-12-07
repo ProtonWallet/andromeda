@@ -1,3 +1,4 @@
+pub mod address;
 pub mod address_index;
 pub mod address_info;
 pub mod balance;
@@ -8,3 +9,4 @@ pub mod locktime;
 pub mod pagination;
 pub mod transaction;
 pub mod udpate;
+pub mod utxo;

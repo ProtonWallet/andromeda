@@ -70,39 +70,12 @@ impl WasmWallet {
 
     #[wasm_bindgen]
     pub async fn get_balance(&self) -> Result<WasmBalance, DetailledWasmError> {
-        let balance = self.inner.get_balance().await.map_err(|e| e.into())?;
+        let balance = self.inner.get_balance().map_err(|e| e.into())?;
         Ok(balance.into())
     }
 
-    // pub fn get_address(&self, address_index: WasmAddressIndex) -> WasmAddressInfo {
-    //     let addressIdex = address_index.into();
-    //     self.inner.get_address(addressIdex)
-    //     // Assuming get_address returns AddressInfo
-    // }
-
-    // pub fn get_internal_address(&self, address_index: AddressIndex) -> AddressInfo {
-    //     self.inner.get_internal_address(address_index)
-    //     // Assuming get_internal_address returns AddressInfo
-    // }
-
-    // pub fn network(&self) -> Network {
-    //     self.inner.network()
-    //     // Assuming network returns Network
-    // }
-
-    // pub fn get_balance(&self) -> Balance {
-    //     self.inner.get_balance()
-    //     // Assuming get_balance returns Balance
-    // }
-
-    // pub fn is_mine(&self, script: Script) -> bool {
-    //     self.inner.is_mine(script)
-    //     // Assuming is_mine returns a bool
-    // }
-
-    // pub fn apply_update(&self, update: Update) -> Result<(), JsValue> {
-    //     self.inner.apply_update(update)
-    //         .map_err(|e| JsValue::from_str(&e.to_string()))
-    //     // Assuming apply_update can throw a BdkError
-    // }
+    #[wasm_bindgen]
+    pub fn get_fingerprint(&self) -> String {
+        self.inner.get_fingerprint()
+    }
 }
