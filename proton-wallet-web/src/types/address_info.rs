@@ -1,6 +1,5 @@
 use proton_wallet_common::AddressInfo;
 use wasm_bindgen::prelude::*;
-
 #[wasm_bindgen]
 pub struct WasmAddressInfo {
     inner: AddressInfo,
@@ -15,5 +14,11 @@ impl WasmAddressInfo {
 
     pub fn to_string(&self) -> String {
         self.inner.to_string()
+    }
+}
+
+impl Into<WasmAddressInfo> for AddressInfo {
+    fn into(self) -> WasmAddressInfo {
+        WasmAddressInfo { inner: self }
     }
 }

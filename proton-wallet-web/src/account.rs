@@ -10,8 +10,8 @@ use wasm_bindgen::prelude::*;
 use crate::{
     error::{DetailledWasmError, WasmError},
     types::{
-        address::WasmAddress, balance::WasmBalance, defined::WasmNetwork, pagination::WasmPagination,
-        transaction::WasmSimpleTransaction, utxo::WasmUtxo,
+        address::WasmAddress, address_info::WasmAddressInfo, balance::WasmBalance, defined::WasmNetwork,
+        pagination::WasmPagination, transaction::WasmSimpleTransaction, utxo::WasmUtxo,
     },
 };
 
@@ -113,6 +113,20 @@ impl WasmAccount {
         self.inner.lock().unwrap().sync().await.map_err(|e| e.into())?;
 
         Ok(())
+    }
+
+    #[wasm_bindgen]
+    pub fn get_bitcoin_uri(
+        &mut self,
+        index: Option<u32>,
+        amount: Option<u64>,
+        label: Option<String>,
+        message: Option<String>,
+    ) -> String {
+        self.get_inner()
+            .lock()
+            .unwrap()
+            .get_bitcoin_uri(index, amount, label, message)
     }
 
     #[wasm_bindgen]

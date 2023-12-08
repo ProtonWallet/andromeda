@@ -2,9 +2,9 @@ mod account;
 mod client;
 mod error;
 mod mnemonic;
+mod psbt;
 mod transaction_builder;
 mod wallet;
-mod psbt;
 
 mod types;
 mod utils;
