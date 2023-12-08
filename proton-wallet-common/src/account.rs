@@ -8,7 +8,7 @@ use bdk::{
     chain::{ChainPosition, ConfirmationTimeAnchor},
     descriptor,
     miniscript::DescriptorPublicKey as BdkDescriptorPublicKey,
-    wallet::Balance,
+    wallet::{AddressInfo, Balance},
     KeychainKind, LocalUtxo, SignOptions,
 };
 
@@ -17,6 +17,7 @@ use miniscript::{
     bitcoin::{bip32::DerivationPath, psbt::PartiallySignedTransaction, Transaction, Txid},
     Descriptor,
 };
+use urlencoding::encode;
 
 use crate::{bitcoin::Network, client::Client, error::Error};
 
@@ -60,6 +61,10 @@ pub struct SimpleTransaction<'a> {
     pub confirmation: ChainPosition<&'a ConfirmationTimeAnchor>,
 }
 
+pub fn sats_to_btc(sats: u64) -> f64 {
+    sats as f64 / 100_000_000f64
+}
+
 impl Account {
     fn wallet(account_xprv: ExtendedPrivKey, network: Network) -> Wallet {
         let external_derivation = vec![ChildNumber::from_normal_idx(KeychainKind::External as u32).unwrap()];
@@ -81,13 +86,8 @@ impl Account {
         let secp = Secp256k1::new();
 
         let derivation_path = Self::gen_account_derivation_path(config.bip, config.network, config.account_index)?;
-
-        println!("master_secret_key: {:?}", master_secret_key.fingerprint(&secp));
-
         let account_xprv = master_secret_key.derive_priv(&secp, &derivation_path).unwrap();
 
-        println!("derivation_path: {:?}", derivation_path);
- 
         Ok(Self {
             account_xprv,
             derivation_path: derivation_path.into(),
@@ -155,6 +155,44 @@ impl Account {
         self.wallet.list_unspent().collect()
     }
 
+    pub fn get_address(&mut self, index: Option<u32>) -> AddressInfo {
+        match index {
+            Some(index) => self.wallet.get_address(bdk::wallet::AddressIndex::Peek(index)),
+            _ => self.wallet.get_address(bdk::wallet::AddressIndex::LastUnused),
+        }
+    }
+
+    pub fn get_bitcoin_uri(
+        &mut self,
+        index: Option<u32>,
+        amount: Option<u64>,
+        label: Option<String>,
+        message: Option<String>,
+    ) -> String {
+        let address = self.get_address(index);
+        let uri = format!("bitcoin:{}", address.to_string());
+
+        let str_amount = match amount {
+            Some(amount) => Some(sats_to_btc(amount).to_string()),
+            _ => None,
+        };
+
+        let params_str = vec![("amount", str_amount), ("label", label), ("message", message)]
+            .into_iter()
+            .filter_map(move |(key, value)| match value {
+                Some(value) => Some(format!("{}={}", key, encode(&value))),
+                _ => None,
+            })
+            .collect::<Vec<String>>()
+            .join("&");
+
+        if params_str.len() > 0 {
+            return format!("{}?{}", uri, params_str);
+        }
+
+        uri
+    }
+
     pub fn get_transactions(&self, pagination: Pagination) -> Vec<SimpleTransaction> {
         // TODO: maybe take only confirmed transactions here?
         let ten_first_txs = self
@@ -203,5 +241,72 @@ impl Account {
         self.wallet
             .sign(psbt, sign_options)
             .map_err(|e| Error::Generic { msg: e.to_string() })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use bdk::keys::bip39::Mnemonic;
+    use miniscript::bitcoin::bip32::ExtendedPrivKey;
+
+    use super::{Account, AccountConfig};
+
+    fn bitcoin_uri_setup() -> Account {
+        let config = AccountConfig {
+            bip: super::SupportedBIPs::Bip84,
+            network: crate::bitcoin::Network::Testnet,
+            account_index: 0,
+        };
+
+        let mnemonic = Mnemonic::parse("category law logic swear involve banner pink room diesel fragile sunset remove whale lounge captain code hobby lesson material current moment funny vast fade").unwrap();
+        let mpriv =
+            ExtendedPrivKey::new_master(miniscript::bitcoin::Network::Testnet, &mnemonic.to_seed("".to_string()));
+
+        Account::new(mpriv.unwrap(), config).unwrap()
+    }
+
+    #[test]
+    fn should_return_uri_with_only_address() {
+        assert_eq!(
+            bitcoin_uri_setup().get_bitcoin_uri(Some(0), None, None, None),
+            "bitcoin:tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn"
+        );
+    }
+
+    #[test]
+    fn should_return_uri_with_amount() {
+        assert_eq!(
+            bitcoin_uri_setup().get_bitcoin_uri(Some(0), Some(166727), None, None),
+            "bitcoin:tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn?amount=0.00166727"
+        );
+    }
+
+    #[test]
+    fn should_return_uri_with_encoded_label() {
+        assert_eq!(
+            bitcoin_uri_setup().get_bitcoin_uri(Some(0), None, Some("Fermi Pasta".to_string()), None),
+            "bitcoin:tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn?label=Fermi%20Pasta"
+        );
+    }
+
+    #[test]
+    fn should_return_uri_with_encoded_message() {
+        assert_eq!(
+            bitcoin_uri_setup().get_bitcoin_uri(Some(0), None, None, Some("Thank for your donation".to_string())),
+            "bitcoin:tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn?message=Thank%20for%20your%20donation"
+        );
+    }
+
+    #[test]
+    fn should_return_uri_with_all_params() {
+        assert_eq!(
+            bitcoin_uri_setup().get_bitcoin_uri(
+                Some(0),
+                Some(166727),
+                Some("Fermi Pasta".to_string()),
+                Some("Thank for your donation".to_string())
+            ),
+            "bitcoin:tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn?amount=0.00166727&label=Fermi%20Pasta&message=Thank%20for%20your%20donation"
+        );
     }
 }
