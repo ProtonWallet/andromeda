@@ -8,18 +8,19 @@ use bdk::{
     chain::{ChainPosition, ConfirmationTimeAnchor},
     descriptor,
     miniscript::DescriptorPublicKey as BdkDescriptorPublicKey,
-    wallet::{AddressInfo, Balance},
+    wallet::{AddressInfo, Balance, ChangeSet},
     KeychainKind, LocalUtxo, SignOptions,
 };
 
 use bdk::Wallet;
+use bdk_chain::PersistBackend;
 use miniscript::{
     bitcoin::{bip32::DerivationPath, psbt::PartiallySignedTransaction, Transaction, Txid},
     Descriptor,
 };
 use urlencoding::encode;
 
-use crate::{bitcoin::Network, client::Client, error::Error};
+use crate::{bitcoin::Network, error::Error};
 
 #[derive(Clone, Copy, Debug)]
 pub enum SupportedBIPs {
@@ -28,12 +29,13 @@ pub enum SupportedBIPs {
     Bip84,
     Bip86,
 }
+
 #[derive(Debug)]
-pub struct Account {
+pub struct Account<Storage> {
     account_xprv: ExtendedPrivKey,
     derivation_path: DerivationPath,
-    config: AccountConfig,
-    wallet: Wallet,
+    storage: Storage,
+    wallet: Wallet<Storage>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -41,6 +43,16 @@ pub struct AccountConfig {
     pub bip: SupportedBIPs,
     pub network: Network,
     pub account_index: u32,
+}
+
+impl AccountConfig {
+    pub fn new(bip: SupportedBIPs, network: Network, account_index: u32) -> Self {
+        Self {
+            bip,
+            network,
+            account_index,
+        }
+    }
 }
 
 pub struct Pagination {
@@ -65,72 +77,73 @@ pub fn sats_to_btc(sats: u64) -> f64 {
     sats as f64 / 100_000_000f64
 }
 
-impl Account {
-    fn wallet(account_xprv: ExtendedPrivKey, network: Network) -> Wallet {
+pub fn gen_account_derivation_path(
+    bip: SupportedBIPs,
+    network: Network,
+    account_index: u32,
+) -> Result<Vec<ChildNumber>, Error> {
+    let mut derivation_path = Vec::with_capacity(4);
+
+    // purpose' derivation
+    derivation_path.push(
+        ChildNumber::from_hardened_idx(match bip {
+            SupportedBIPs::Bip49 => 49,
+            SupportedBIPs::Bip84 => 84,
+            SupportedBIPs::Bip86 => 86,
+            _ => 44,
+        })
+        .unwrap(),
+    );
+
+    //  coin_type' derivation
+    derivation_path.push(
+        ChildNumber::from_hardened_idx(match network {
+            Network::Bitcoin => 0,
+            _ => 1,
+        })
+        .unwrap(),
+    );
+
+    // account' derivation
+    derivation_path.push(ChildNumber::from_hardened_idx(account_index).map_err(|_| Error::InvalidAccountIndex)?);
+
+    Ok(derivation_path)
+}
+
+impl<Storage> Account<Storage>
+where
+    Storage: PersistBackend<ChangeSet> + Clone,
+{
+    fn build_wallet(account_xprv: ExtendedPrivKey, network: Network, storage: Storage) -> Wallet<Storage> {
         let external_derivation = vec![ChildNumber::from_normal_idx(KeychainKind::External as u32).unwrap()];
         let internal_derivation = vec![ChildNumber::from_normal_idx(KeychainKind::Internal as u32).unwrap()];
 
         let external_descriptor = descriptor!(wpkh((account_xprv, external_derivation.into()))).unwrap();
         let internal_descriptor = descriptor!(wpkh((account_xprv, internal_derivation.into()))).unwrap();
 
-        Wallet::new_no_persist(external_descriptor, Some(internal_descriptor), network.into())
-            .map_err(|e| println!("error {}", e))
-            .unwrap()
+        Wallet::new(external_descriptor, Some(internal_descriptor), storage, network.into()).unwrap()
     }
 
-    pub fn get_mutable_wallet(&mut self) -> &mut Wallet {
+    pub fn get_mutable_wallet(&mut self) -> &mut Wallet<Storage> {
         &mut self.wallet
     }
 
-    pub fn new(master_secret_key: ExtendedPrivKey, config: AccountConfig) -> Result<Self, Error> {
+    pub fn new(master_secret_key: ExtendedPrivKey, config: AccountConfig, storage: Storage) -> Result<Self, Error> {
         let secp = Secp256k1::new();
 
-        let derivation_path = Self::gen_account_derivation_path(config.bip, config.network, config.account_index)?;
+        let derivation_path = gen_account_derivation_path(config.bip, config.network, config.account_index)?;
         let account_xprv = master_secret_key.derive_priv(&secp, &derivation_path).unwrap();
 
         Ok(Self {
             account_xprv,
             derivation_path: derivation_path.into(),
-            config,
-            wallet: Self::wallet(account_xprv, config.network.into()),
+            storage: storage.clone(),
+            wallet: Self::build_wallet(account_xprv, config.network.into(), storage),
         })
     }
 
-    pub fn derivation_path(&self) -> DerivationPath {
+    pub fn get_derivation_path(&self) -> DerivationPath {
         self.derivation_path.clone()
-    }
-
-    fn gen_account_derivation_path(
-        bip: SupportedBIPs,
-        network: Network,
-        account_index: u32,
-    ) -> Result<Vec<ChildNumber>, Error> {
-        let mut derivation_path = Vec::with_capacity(4);
-
-        // purpose' derivation
-        derivation_path.push(
-            ChildNumber::from_hardened_idx(match bip {
-                SupportedBIPs::Bip49 => 49,
-                SupportedBIPs::Bip84 => 84,
-                SupportedBIPs::Bip86 => 86,
-                _ => 44,
-            })
-            .unwrap(),
-        );
-
-        //  coin_type' derivation
-        derivation_path.push(
-            ChildNumber::from_hardened_idx(match network {
-                Network::Bitcoin => 0,
-                _ => 1,
-            })
-            .unwrap(),
-        );
-
-        // account' derivation
-        derivation_path.push(ChildNumber::from_hardened_idx(account_index).map_err(|_| Error::InvalidAccountIndex)?);
-
-        Ok(derivation_path)
     }
 
     pub fn public_descriptor(&self) -> BdkDescriptorPublicKey {
@@ -141,18 +154,16 @@ impl Account {
         }
     }
 
-    pub async fn sync(&mut self) -> Result<(), Error> {
-        let client = Client::new(None)?;
-        client.scan(&mut self.wallet).await?;
-        Ok(())
-    }
-
     pub fn get_balance(&self) -> Balance {
         self.wallet.get_balance()
     }
 
     pub fn get_utxos(&self) -> Vec<LocalUtxo> {
         self.wallet.list_unspent().collect()
+    }
+
+    pub fn get_storage(&self) -> Storage {
+        self.storage.clone()
     }
 
     pub fn get_address(&mut self, index: Option<u32>) -> AddressInfo {
@@ -249,12 +260,14 @@ mod tests {
     use bdk::keys::bip39::Mnemonic;
     use miniscript::bitcoin::bip32::ExtendedPrivKey;
 
+    use crate::bitcoin::Network;
+
     use super::{Account, AccountConfig};
 
-    fn bitcoin_uri_setup() -> Account {
+    fn bitcoin_uri_setup() -> Account<()> {
         let config = AccountConfig {
             bip: super::SupportedBIPs::Bip84,
-            network: crate::bitcoin::Network::Testnet,
+            network: Network::Testnet.into(),
             account_index: 0,
         };
 
@@ -262,7 +275,7 @@ mod tests {
         let mpriv =
             ExtendedPrivKey::new_master(miniscript::bitcoin::Network::Testnet, &mnemonic.to_seed("".to_string()));
 
-        Account::new(mpriv.unwrap(), config).unwrap()
+        Account::new(mpriv.unwrap(), config, ()).unwrap()
     }
 
     #[test]

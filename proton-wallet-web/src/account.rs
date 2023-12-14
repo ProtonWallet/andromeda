@@ -1,28 +1,47 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    fmt::Display,
+    sync::{Arc, Mutex},
+};
 
 use proton_wallet_common::{
     account::{Account, AccountConfig, SupportedBIPs},
-    Address, ExtendedPrivKey, Mnemonic,
+    Address,
 };
 
 use wasm_bindgen::prelude::*;
 
 use crate::{
-    error::{DetailledWasmError, WasmError},
+    storage::OnchainStorage,
     types::{
-        address::WasmAddress, address_info::WasmAddressInfo, balance::WasmBalance, defined::WasmNetwork,
-        pagination::WasmPagination, transaction::WasmSimpleTransaction, utxo::WasmUtxo,
+        address::WasmAddress, balance::WasmBalance, defined::WasmNetwork, pagination::WasmPagination,
+        transaction::WasmSimpleTransaction, utxo::WasmUtxo,
     },
 };
 
 #[wasm_bindgen]
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum WasmSupportedBIPs {
     Bip44,
     Bip49,
     Bip84,
     Bip86,
 }
+
+impl Display for WasmSupportedBIPs {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                WasmSupportedBIPs::Bip44 => "44",
+                WasmSupportedBIPs::Bip49 => "49",
+                WasmSupportedBIPs::Bip84 => "84",
+                WasmSupportedBIPs::Bip86 => "86",
+            }
+        )
+    }
+}
+
 impl Into<SupportedBIPs> for WasmSupportedBIPs {
     fn into(self) -> SupportedBIPs {
         match self {
@@ -36,12 +55,18 @@ impl Into<SupportedBIPs> for WasmSupportedBIPs {
 
 #[wasm_bindgen]
 pub struct WasmAccount {
-    inner: Arc<Mutex<Account>>,
+    inner: Arc<Mutex<Account<OnchainStorage>>>,
 }
 
 impl WasmAccount {
-    pub fn get_inner(&self) -> Arc<Mutex<Account>> {
+    pub fn get_inner(&self) -> Arc<Mutex<Account<OnchainStorage>>> {
         self.inner.clone()
+    }
+}
+
+impl Into<WasmAccount> for &Arc<Mutex<Account<OnchainStorage>>> {
+    fn into(self) -> WasmAccount {
+        WasmAccount { inner: self.clone() }
     }
 }
 
@@ -86,33 +111,12 @@ impl WasmAccountConfig {
 
 #[wasm_bindgen]
 impl WasmAccount {
-    #[wasm_bindgen(constructor)]
-    pub fn new(
-        mnemonic_str: &str,
-        passphrase: Option<String>,
-        config: WasmAccountConfig,
-    ) -> Result<WasmAccount, DetailledWasmError> {
-        let mnemonic = Mnemonic::parse(mnemonic_str).map_err(|_| WasmError::InvalidMnemonic.into())?;
-        let passphrase = match passphrase {
-            Some(passphrase) => passphrase,
-            _ => "".to_string(),
-        };
-
-        let config: AccountConfig = config.into();
-        let mprivkey = ExtendedPrivKey::new_master(config.network.into(), &mnemonic.to_seed(passphrase))
-            .map_err(|_| WasmError::InvalidSeed.into())?;
-
-        let account = Account::new(mprivkey, config.into()).map_err(|e| e.into())?;
-        Ok(Self {
-            inner: Arc::new(Mutex::new(account)),
-        })
-    }
-
     #[wasm_bindgen]
-    pub async fn sync(&mut self) -> Result<(), DetailledWasmError> {
-        self.inner.lock().unwrap().sync().await.map_err(|e| e.into())?;
-
-        Ok(())
+    pub fn has_sync_data(&self) -> bool {
+        match self.get_inner().lock() {
+            Ok(inner) => inner.get_storage().exists(),
+            _ => false,
+        }
     }
 
     #[wasm_bindgen]
@@ -142,6 +146,11 @@ impl WasmAccount {
     #[wasm_bindgen]
     pub fn get_balance(&self) -> WasmBalance {
         self.inner.lock().unwrap().get_balance().into()
+    }
+
+    #[wasm_bindgen]
+    pub fn get_derivation_path(&self) -> String {
+        self.inner.lock().unwrap().get_derivation_path().to_string()
     }
 
     #[wasm_bindgen]
