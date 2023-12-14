@@ -19,6 +19,12 @@ pub enum WasmError {
     InvalidSeed,
     CannotGetFeeEstimation,
     CannotSignPsbt,
+    NoWindowContext,
+    CannotGetLocalStorage,
+    CannotSerializePersistedData,
+    CannotPersistData,
+    CannotFindPersistedData,
+    CannotParsePersistedData,
 
     // BDK Errors
     Generic,

@@ -1,8 +1,9 @@
 mod account;
-mod client;
+mod chain;
 mod error;
 mod mnemonic;
 mod psbt;
+mod storage;
 mod transaction_builder;
 mod wallet;
 

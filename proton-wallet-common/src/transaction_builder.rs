@@ -35,8 +35,8 @@ pub enum CoinSelection {
 pub struct TmpRecipient(pub String, pub String, pub u64);
 
 #[derive(Clone, Debug)]
-pub struct TxBuilder {
-    account: Option<Arc<Mutex<Account>>>,
+pub struct TxBuilder<Storage> {
+    account: Option<Arc<Mutex<Account<Storage>>>>,
     pub recipients: Vec<TmpRecipient>,
     pub utxos_to_spend: HashSet<OutPoint>,
     pub change_policy: ChangeSpendPolicy,
@@ -119,9 +119,12 @@ fn correct_recipients_amounts(recipients: Vec<TmpRecipient>, amount_to_remove: u
     acc_result.recipients
 }
 
-impl TxBuilder {
+impl<Storage> TxBuilder<Storage>
+where
+    Storage: PersistBackend<ChangeSet> + Clone,
+{
     pub fn new() -> Self {
-        TxBuilder {
+        TxBuilder::<Storage> {
             account: None,
             recipients: vec![TmpRecipient(Uuid::new_v4().to_string(), String::new(), 0)],
             utxos_to_spend: HashSet::new(),
@@ -136,10 +139,10 @@ impl TxBuilder {
         }
     }
 
-    pub fn set_account(&self, account: Arc<Mutex<Account>>) -> Self {
+    pub fn set_account(&self, account: Arc<Mutex<Account<Storage>>>) -> Self {
         let balance = &account.lock().unwrap().get_balance();
 
-        let tx_builder = TxBuilder {
+        let tx_builder = TxBuilder::<Storage> {
             account: Some(account),
             recipients: allocate_recipients_balance(self.recipients.clone(), balance),
             ..self.clone()
@@ -153,7 +156,7 @@ impl TxBuilder {
         let mut recipients = self.recipients.clone();
         recipients.append(&mut vec![TmpRecipient(Uuid::new_v4().to_string(), String::new(), 0)]);
 
-        TxBuilder {
+        TxBuilder::<Storage> {
             recipients,
             ..self.clone()
         }
@@ -167,7 +170,7 @@ impl TxBuilder {
             recipients.remove(index);
         }
 
-        TxBuilder {
+        TxBuilder::<Storage> {
             recipients,
             ..self.clone()
         }
@@ -179,13 +182,13 @@ impl TxBuilder {
         } else {
             let account = self.account.clone().expect("");
 
-            let result = self.create_pbst_with_coin_selection(account, true);
+            let result = self.create_pbst_with_coin_selection(true);
 
             match result {
                 Err(Error::InsufficientFunds { needed, available }) => {
                     let amount_to_remove = needed - available;
 
-                    TxBuilder {
+                    TxBuilder::<Storage> {
                         recipients: correct_recipients_amounts(self.recipients.clone(), amount_to_remove),
                         ..self.clone()
                     }
@@ -212,7 +215,7 @@ impl TxBuilder {
             },
         );
 
-        let tx_builder = TxBuilder {
+        let tx_builder = TxBuilder::<Storage> {
             recipients,
             ..self.clone()
         };
@@ -231,7 +234,7 @@ impl TxBuilder {
         let mut utxos_to_spend = self.utxos_to_spend.clone();
         utxos_to_spend.insert(utxo_to_spend.clone());
 
-        TxBuilder {
+        TxBuilder::<Storage> {
             utxos_to_spend,
             ..self.clone()
         }
@@ -241,14 +244,14 @@ impl TxBuilder {
         let mut utxos_to_spend = self.utxos_to_spend.clone();
         utxos_to_spend.remove(utxo_to_spend);
 
-        TxBuilder {
+        TxBuilder::<Storage> {
             utxos_to_spend,
             ..self.clone()
         }
     }
 
     pub fn clear_utxos_to_spend(&self) -> Self {
-        TxBuilder {
+        TxBuilder::<Storage> {
             utxos_to_spend: HashSet::new(),
             ..self.clone()
         }
@@ -259,7 +262,7 @@ impl TxBuilder {
      */
 
     pub fn set_coin_selection(&self, coin_selection: CoinSelection) -> Self {
-        TxBuilder {
+        TxBuilder::<Storage> {
             coin_selection,
             ..self.clone()
         }
@@ -270,14 +273,14 @@ impl TxBuilder {
      */
 
     pub fn enable_rbf(&self) -> Self {
-        TxBuilder {
+        TxBuilder::<Storage> {
             rbf_enabled: true,
             ..self.clone()
         }
     }
 
     pub fn disable_rbf(&self) -> Self {
-        TxBuilder {
+        TxBuilder::<Storage> {
             rbf_enabled: false,
             ..self.clone()
         }
@@ -288,14 +291,14 @@ impl TxBuilder {
      */
 
     pub fn add_locktime(&self, locktime: LockTime) -> Self {
-        TxBuilder {
+        TxBuilder::<Storage> {
             locktime: Some(locktime),
             ..self.clone()
         }
     }
 
     pub fn remove_locktime(&self) -> Self {
-        TxBuilder {
+        TxBuilder::<Storage> {
             locktime: None,
             ..self.clone()
         }
@@ -307,7 +310,7 @@ impl TxBuilder {
 
     /// Do not spend change outputs. This effectively adds all the change outputs to the "unspendable" list. See TxBuilder.unspendable.
     pub fn set_change_policy(&self, change_policy: ChangeSpendPolicy) -> Self {
-        TxBuilder {
+        TxBuilder::<Storage> {
             change_policy,
             ..self.clone()
         }
@@ -319,7 +322,7 @@ impl TxBuilder {
 
     /// Set a custom fee rate.
     pub fn set_fee_rate(&self, sat_per_vb: f32) -> Self {
-        let tx_builder = TxBuilder {
+        let tx_builder = TxBuilder::<Storage> {
             fee_rate: Some(FeeRate::from_sat_per_vb(sat_per_vb)),
             ..self.clone()
         };
@@ -388,11 +391,8 @@ impl TxBuilder {
         Ok(psbt.into())
     }
 
-    pub fn create_pbst_with_coin_selection(
-        &self,
-        account: Arc<Mutex<Account>>,
-        allow_dust: bool,
-    ) -> Result<PartiallySignedTransaction, Error> {
+    pub fn create_pbst_with_coin_selection(&self, allow_dust: bool) -> Result<PartiallySignedTransaction, Error> {
+        let account = self.account.clone().ok_or(Error::NoRecipients)?;
         let mut account = account.lock().unwrap();
         let wallet = account.get_mutable_wallet();
 

@@ -3,7 +3,6 @@ use wasm_bindgen::prelude::*;
 
 use crate::{
     account::WasmAccount,
-    client::WasmClient,
     error::{DetailledWasmError, WasmError},
     types::defined::WasmNetwork,
 };
@@ -51,7 +50,7 @@ impl WasmPartiallySignedTransaction {
         wasm_account: &WasmAccount,
         network: WasmNetwork,
     ) -> Result<WasmPartiallySignedTransaction, DetailledWasmError> {
-        let finalized = wasm_account
+        wasm_account
             .get_inner()
             .lock()
             .unwrap()
@@ -60,15 +59,5 @@ impl WasmPartiallySignedTransaction {
             .map_err(|_| WasmError::CannotSignPsbt.into())?;
 
         Ok(WasmPartiallySignedTransaction::from_psbt(&self.inner, network.into()))
-    }
-
-    #[wasm_bindgen]
-    pub async fn broadcast(&self, client: WasmClient) -> Result<(), WasmError> {
-        let tx = self.inner.clone().extract_tx();
-        let client: Client = client.into();
-
-        client.broadcast(tx).await.map_err(|_| WasmError::ChecksumMismatch)?;
-
-        Ok(())
     }
 }

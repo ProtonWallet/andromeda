@@ -5,6 +5,7 @@ pub mod account;
 pub mod bitcoin;
 pub mod client;
 pub mod error;
+pub mod chain;
 pub mod mnemonic;
 pub mod transaction_builder;
 pub mod wallet;
@@ -21,9 +22,11 @@ pub use bdk::{
         bip39::{Language, Mnemonic, MnemonicWithPassphrase, WordCount},
         DerivableKey, ExtendedKey,
     },
-    wallet::{tx_builder::ChangeSpendPolicy, AddressIndex, AddressInfo, Balance},
+    wallet::{tx_builder::ChangeSpendPolicy, AddressIndex, AddressInfo, Balance, ChangeSet},
     KeychainKind, LocalUtxo, SignOptions,
 };
+
+pub use bdk_chain::{Append, PersistBackend};
 
 pub fn library_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()

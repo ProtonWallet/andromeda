@@ -9,12 +9,13 @@ use crate::{
     account::WasmAccount,
     error::{DetailledWasmError, WasmError},
     psbt::WasmPartiallySignedTransaction,
+    storage::OnchainStorage,
     types::{defined::WasmNetwork, locktime::WasmLockTime, transaction::WasmOutPoint},
 };
 
 #[wasm_bindgen]
 pub struct WasmTxBuilder {
-    inner: TxBuilder,
+    inner: TxBuilder<OnchainStorage>,
 }
 
 #[wasm_bindgen]
@@ -94,7 +95,7 @@ impl WasmTxBuilder {
 
         log_2(
             &"account_set".into(),
-            &account.get_inner().lock().unwrap().derivation_path().to_string().into(),
+            &account.get_inner().lock().unwrap().get_derivation_path().to_string().into(),
         );
         WasmTxBuilder { inner }
     }
@@ -276,14 +277,10 @@ impl WasmTxBuilder {
      */
 
     #[wasm_bindgen]
-    pub fn create_pbst(
-        &self,
-        wasm_account: &WasmAccount,
-        network: WasmNetwork,
-    ) -> Result<WasmPartiallySignedTransaction, DetailledWasmError> {
+    pub fn create_pbst(&self, network: WasmNetwork) -> Result<WasmPartiallySignedTransaction, DetailledWasmError> {
         let psbt = self
             .inner
-            .create_pbst_with_coin_selection(wasm_account.get_inner(), false)
+            .create_pbst_with_coin_selection(false)
             .map_err(|e| e.into())?;
 
         Ok(WasmPartiallySignedTransaction::from_psbt(&psbt, network.into()))

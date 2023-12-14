@@ -4,7 +4,7 @@ use proton_wallet_common::WordCount;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum WasmNetwork {
     /// Mainnet Bitcoin.
     Bitcoin,
