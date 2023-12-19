@@ -18,9 +18,8 @@ use miniscript::{
     bitcoin::{bip32::DerivationPath, psbt::PartiallySignedTransaction, Transaction, Txid},
     Descriptor,
 };
-use urlencoding::encode;
 
-use crate::{bitcoin::Network, error::Error};
+use crate::{bitcoin::Network, error::Error, payment_link::PaymentLink};
 
 #[derive(Clone, Copy, Debug)]
 pub enum SupportedBIPs {
@@ -56,12 +55,12 @@ impl AccountConfig {
 }
 
 pub struct Pagination {
-    skip: u32,
-    take: u32,
+    skip: usize,
+    take: usize,
 }
 
 impl Pagination {
-    pub fn new(skip: u32, take: u32) -> Self {
+    pub fn new(skip: usize, take: usize) -> Self {
         Pagination { skip, take }
     }
 }
@@ -71,10 +70,6 @@ pub struct SimpleTransaction<'a> {
     pub value: i64,
     pub fees: Option<u64>,
     pub confirmation: ChainPosition<&'a ConfirmationTimeAnchor>,
-}
-
-pub fn sats_to_btc(sats: u64) -> f64 {
-    sats as f64 / 100_000_000f64
 }
 
 pub fn gen_account_derivation_path(
@@ -179,38 +174,21 @@ where
         amount: Option<u64>,
         label: Option<String>,
         message: Option<String>,
-    ) -> String {
-        let address = self.get_address(index);
-        let uri = format!("bitcoin:{}", address.to_string());
-
-        let str_amount = match amount {
-            Some(amount) => Some(sats_to_btc(amount).to_string()),
-            _ => None,
-        };
-
-        let params_str = vec![("amount", str_amount), ("label", label), ("message", message)]
-            .into_iter()
-            .filter_map(move |(key, value)| match value {
-                Some(value) => Some(format!("{}={}", key, encode(&value))),
-                _ => None,
-            })
-            .collect::<Vec<String>>()
-            .join("&");
-
-        if params_str.len() > 0 {
-            return format!("{}?{}", uri, params_str);
-        }
-
-        uri
+    ) -> PaymentLink {
+        PaymentLink::new_bitcoin_uri(self, index, amount, label, message)
     }
 
-    pub fn get_transactions(&self, pagination: Pagination) -> Vec<SimpleTransaction> {
-        // TODO: maybe take only confirmed transactions here?
-        let ten_first_txs = self
+    pub fn get_transactions(&self, pagination: Option<Pagination>) -> Vec<SimpleTransaction> {
+        let pagination = pagination.unwrap_or(Pagination {
+            skip: 0,
+            take: usize::MAX,
+        });
+
+        let txs = self
             .wallet
             .transactions()
-            .skip(pagination.skip as usize)
-            .take(pagination.take as usize)
+            .skip(pagination.skip)
+            .take(pagination.take)
             .map(|can_tx| {
                 let (sent, received) = self.wallet.spk_index().sent_and_received(can_tx.tx_node.tx);
 
@@ -226,7 +204,7 @@ where
             })
             .collect::<Vec<_>>();
 
-        ten_first_txs
+        txs
     }
 
     pub fn get_transaction(&self, txid: String) -> Result<Transaction, Error> {
@@ -252,74 +230,5 @@ where
         self.wallet
             .sign(psbt, sign_options)
             .map_err(|e| Error::Generic { msg: e.to_string() })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use bdk::keys::bip39::Mnemonic;
-    use miniscript::bitcoin::bip32::ExtendedPrivKey;
-
-    use crate::bitcoin::Network;
-
-    use super::{Account, AccountConfig};
-
-    fn bitcoin_uri_setup() -> Account<()> {
-        let config = AccountConfig {
-            bip: super::SupportedBIPs::Bip84,
-            network: Network::Testnet.into(),
-            account_index: 0,
-        };
-
-        let mnemonic = Mnemonic::parse("category law logic swear involve banner pink room diesel fragile sunset remove whale lounge captain code hobby lesson material current moment funny vast fade").unwrap();
-        let mpriv =
-            ExtendedPrivKey::new_master(miniscript::bitcoin::Network::Testnet, &mnemonic.to_seed("".to_string()));
-
-        Account::new(mpriv.unwrap(), config, ()).unwrap()
-    }
-
-    #[test]
-    fn should_return_uri_with_only_address() {
-        assert_eq!(
-            bitcoin_uri_setup().get_bitcoin_uri(Some(0), None, None, None),
-            "bitcoin:tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn"
-        );
-    }
-
-    #[test]
-    fn should_return_uri_with_amount() {
-        assert_eq!(
-            bitcoin_uri_setup().get_bitcoin_uri(Some(0), Some(166727), None, None),
-            "bitcoin:tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn?amount=0.00166727"
-        );
-    }
-
-    #[test]
-    fn should_return_uri_with_encoded_label() {
-        assert_eq!(
-            bitcoin_uri_setup().get_bitcoin_uri(Some(0), None, Some("Fermi Pasta".to_string()), None),
-            "bitcoin:tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn?label=Fermi%20Pasta"
-        );
-    }
-
-    #[test]
-    fn should_return_uri_with_encoded_message() {
-        assert_eq!(
-            bitcoin_uri_setup().get_bitcoin_uri(Some(0), None, None, Some("Thank for your donation".to_string())),
-            "bitcoin:tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn?message=Thank%20for%20your%20donation"
-        );
-    }
-
-    #[test]
-    fn should_return_uri_with_all_params() {
-        assert_eq!(
-            bitcoin_uri_setup().get_bitcoin_uri(
-                Some(0),
-                Some(166727),
-                Some("Fermi Pasta".to_string()),
-                Some("Thank for your donation".to_string())
-            ),
-            "bitcoin:tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn?amount=0.00166727&label=Fermi%20Pasta&message=Thank%20for%20your%20donation"
-        );
     }
 }

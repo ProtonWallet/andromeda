@@ -1,6 +1,4 @@
-use proton_wallet_common::bitcoin::Network;
-use proton_wallet_common::KeychainKind;
-use proton_wallet_common::WordCount;
+use proton_wallet_common::{bitcoin::Network, BdkNetwork, KeychainKind, WordCount};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -34,6 +32,28 @@ impl From<Network> for WasmNetwork {
             Network::Testnet => WasmNetwork::Testnet,
             Network::Regtest => WasmNetwork::Regtest,
             Network::Signet => WasmNetwork::Signet,
+        }
+    }
+}
+
+impl From<WasmNetwork> for BdkNetwork {
+    fn from(network: WasmNetwork) -> Self {
+        match network {
+            WasmNetwork::Bitcoin => BdkNetwork::Bitcoin,
+            WasmNetwork::Testnet => BdkNetwork::Testnet,
+            WasmNetwork::Signet => BdkNetwork::Signet,
+            WasmNetwork::Regtest => BdkNetwork::Regtest,
+        }
+    }
+}
+
+impl From<BdkNetwork> for WasmNetwork {
+    fn from(network: BdkNetwork) -> Self {
+        match network {
+            BdkNetwork::Bitcoin => WasmNetwork::Bitcoin,
+            BdkNetwork::Regtest => WasmNetwork::Regtest,
+            BdkNetwork::Signet => WasmNetwork::Signet,
+            _ => WasmNetwork::Testnet, // default to testnet, might need to change that
         }
     }
 }

@@ -3,11 +3,12 @@ use miniscript::bitcoin::bip32::Error as Bip32Error;
 use std::error;
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Error {
     InvalidAddress,
     InvalidSecretKey,
     InvalidDescriptor,
+    InvalidNetwork,
     InvalidDerivationPath,
     InvalidAccountIndex,
     InvalidTxId,

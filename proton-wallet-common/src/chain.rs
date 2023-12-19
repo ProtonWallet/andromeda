@@ -14,7 +14,7 @@ use std::time::Duration;
 
 use bdk_esplora::EsploraAsyncExt;
 
-// TODO: check if stop_gap is enough
+// TODO: Stop gap should be a setting
 const STOP_GAP: usize = 10;
 const PARALLEL_REQUESTS: usize = 5;
 pub struct Chain {

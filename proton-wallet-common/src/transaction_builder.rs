@@ -180,8 +180,6 @@ where
         if self.account.is_none() {
             return self.clone();
         } else {
-            let account = self.account.clone().expect("");
-
             let result = self.create_pbst_with_coin_selection(true);
 
             match result {

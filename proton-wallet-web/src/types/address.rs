@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use proton_wallet_common::{bitcoin::Network, Address, ScriptBuf};
+use proton_wallet_common::{Address, ScriptBuf};
 use wasm_bindgen::prelude::*;
 
 use crate::error::WasmError;
@@ -22,25 +22,22 @@ impl Into<Address> for &WasmAddress {
 #[wasm_bindgen]
 impl WasmAddress {
     #[wasm_bindgen(constructor)]
-    pub fn new(str: String) -> WasmAddress {
+    pub fn new(str: String, network: WasmNetwork) -> Result<WasmAddress, WasmError> {
         let inner = Address::from_str(&str)
-            .unwrap()
-            .require_network(Network::Testnet.into())
-            .unwrap();
+            .map_err(|_| WasmError::InvalidAddress)?
+            .require_network(network.into())
+            .map_err(|_| WasmError::InvalidNetwork)?;
 
-        println!("inner address: {:?}", inner.to_string());
-
-        WasmAddress { inner }
+        Ok(WasmAddress { inner })
     }
 
     #[wasm_bindgen]
     pub fn from_script(value: WasmScript, network: WasmNetwork) -> Result<WasmAddress, WasmError> {
-        let network: Network = network.into();
-
         let script: ScriptBuf = value.into();
-        let address = Address::from_script(&script, network.into()).unwrap();
 
-        Ok(WasmAddress { inner: address })
+        Ok(WasmAddress {
+            inner: Address::from_script(&script, network.into()).map_err(|_| WasmError::InvalidAddress)?,
+        })
     }
 
     #[wasm_bindgen]

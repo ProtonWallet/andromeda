@@ -42,15 +42,7 @@ impl Mnemonic {
             .map_err(|e| Error::Generic { msg: e.to_string() })
     }
 
-    /// Create a new Mnemonic in the specified language from the given entropy.
-    /// Entropy must be a multiple of 32 bits (4 bytes) and 128-256 bits in length.
-    pub fn from_entropy(entropy: Vec<u8>) -> Result<Self, Error> {
-        BdkMnemonic::from_entropy(entropy.as_slice())
-            .map(|m| Mnemonic { inner: m })
-            .map_err(|e| Error::Generic { msg: e.to_string() })
-    }
-
-    /// Returns Mnemonic as string
+     /// Returns Mnemonic as string
     pub fn as_string(&self) -> String {
         self.inner.to_string()
     }

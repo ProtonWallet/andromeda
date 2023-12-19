@@ -1,4 +1,4 @@
-use proton_wallet_common::{bitcoin::Network, client::Client, Address, PartiallySignedTransaction, SignOptions};
+use proton_wallet_common::{bitcoin::Network, Address, PartiallySignedTransaction, SignOptions};
 use wasm_bindgen::prelude::*;
 
 use crate::{
