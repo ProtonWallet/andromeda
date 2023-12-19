@@ -25,6 +25,7 @@ impl From<Network> for BdkNetwork {
         }
     }
 }
+
 impl From<BdkNetwork> for Network {
     fn from(network: BdkNetwork) -> Self {
         match network {
@@ -36,3 +37,4 @@ impl From<BdkNetwork> for Network {
         }
     }
 }
+

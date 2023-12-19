@@ -11,6 +11,7 @@ use proton_wallet_common::{
 use wasm_bindgen::prelude::*;
 
 use crate::{
+    payment_link::WasmPaymentLink,
     storage::OnchainStorage,
     types::{
         address::WasmAddress, balance::WasmBalance, defined::WasmNetwork, pagination::WasmPagination,
@@ -126,11 +127,12 @@ impl WasmAccount {
         amount: Option<u64>,
         label: Option<String>,
         message: Option<String>,
-    ) -> String {
+    ) -> WasmPaymentLink {
         self.get_inner()
             .lock()
             .unwrap()
             .get_bitcoin_uri(index, amount, label, message)
+            .into()
     }
 
     #[wasm_bindgen]
@@ -168,12 +170,15 @@ impl WasmAccount {
     }
 
     #[wasm_bindgen]
-    pub fn get_transactions(&self, pagination: WasmPagination) -> Vec<WasmSimpleTransaction> {
+    pub fn get_transactions(&self, pagination: Option<WasmPagination>) -> Vec<WasmSimpleTransaction> {
         let transaction = self
             .inner
             .lock()
             .unwrap()
-            .get_transactions(pagination.into())
+            .get_transactions(match pagination {
+                Some(pagination) => Some(pagination.into()),
+                _ => None,
+            })
             .into_iter()
             .map(|tx| {
                 let wasm_tx: WasmSimpleTransaction = tx.into();

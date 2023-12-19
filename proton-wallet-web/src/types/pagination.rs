@@ -3,14 +3,14 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub struct WasmPagination {
-    pub skip: u32,
-    pub take: u32,
+    pub skip: usize,
+    pub take: usize,
 }
 
 #[wasm_bindgen]
 impl WasmPagination {
     #[wasm_bindgen(constructor)]
-    pub fn new(skip: u32, take: u32) -> Self {
+    pub fn new(skip: usize, take: usize) -> Self {
         WasmPagination { skip, take }
     }
 }

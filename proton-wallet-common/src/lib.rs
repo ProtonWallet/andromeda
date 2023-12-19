@@ -1,12 +1,14 @@
 mod keys;
+mod utils;
 
 // pub mod
 pub mod account;
 pub mod bitcoin;
+pub mod chain;
 pub mod client;
 pub mod error;
-pub mod chain;
 pub mod mnemonic;
+pub mod payment_link;
 pub mod transaction_builder;
 pub mod wallet;
 
@@ -15,7 +17,7 @@ pub use bdk::{
         bip32::{DerivationPath, ExtendedPrivKey},
         blockdata::locktime::absolute::{Height, LockTime, Time},
         psbt::PartiallySignedTransaction,
-        Address, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Witness,
+        Address, Network as BdkNetwork, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Witness,
     },
     chain::{ChainPosition, ConfirmationTime, ConfirmationTimeAnchor},
     keys::{

@@ -47,14 +47,6 @@ impl WasmMnemonic {
             .map_err(|e| e.into())
     }
 
-    /// Create a new Mnemonic from the given entropy.
-    #[wasm_bindgen(js_name = fromEntropy)]
-    pub fn from_entropy(entropy: &[u8]) -> Result<WasmMnemonic, DetailledWasmError> {
-        Mnemonic::from_entropy(entropy.to_vec())
-            .map(|mnemonic| WasmMnemonic { inner: mnemonic.into() })
-            .map_err(|e| e.into())
-    }
-
     /// Returns the Mnemonic as a string.
     #[wasm_bindgen(js_name = asString)]
     pub fn as_string(&self) -> String {

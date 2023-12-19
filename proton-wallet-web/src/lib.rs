@@ -2,6 +2,7 @@ mod account;
 mod chain;
 mod error;
 mod mnemonic;
+mod payment_link;
 mod psbt;
 mod storage;
 mod transaction_builder;

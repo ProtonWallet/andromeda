@@ -5,6 +5,7 @@ use wasm_bindgen::prelude::*;
 #[derive(Clone, Copy, Debug)]
 pub enum WasmError {
     InvalidSecretKey,
+    InvalidNetwork,
     InvalidDescriptor,
     InvalidDerivationPath,
     InvalidAccountIndex,
@@ -75,6 +76,10 @@ impl Into<DetailledWasmError> for WasmError {
 impl Into<DetailledWasmError> for Error {
     fn into(self) -> DetailledWasmError {
         match self {
+            Error::InvalidNetwork => DetailledWasmError {
+                kind: WasmError::InvalidNetwork,
+                details: JsValue::null(),
+            },
             Error::InvalidAddress => DetailledWasmError {
                 kind: WasmError::InvalidAddress,
                 details: JsValue::null(),
