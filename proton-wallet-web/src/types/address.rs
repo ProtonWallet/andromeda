@@ -8,6 +8,7 @@ use crate::error::WasmError;
 use super::{defined::WasmNetwork, transaction::WasmScript};
 
 #[wasm_bindgen]
+#[derive(Clone)]
 pub struct WasmAddress {
     inner: Address,
 }
@@ -16,6 +17,14 @@ impl Into<Address> for &WasmAddress {
     fn into(self) -> Address {
         let addr = self.inner.clone();
         addr
+    }
+}
+
+impl Into<WasmAddress> for Address {
+    fn into(self) -> WasmAddress {
+        WasmAddress {
+            inner: self.clone()
+        }
     }
 }
 

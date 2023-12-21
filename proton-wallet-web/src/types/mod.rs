@@ -1,5 +1,4 @@
 pub mod address;
-pub mod address_index;
 pub mod address_info;
 pub mod balance;
 pub mod defined;

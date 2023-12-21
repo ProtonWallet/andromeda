@@ -6,6 +6,7 @@ use wasm_bindgen::prelude::*;
 use crate::error::{DetailledWasmError, WasmError};
 
 #[wasm_bindgen]
+#[derive(Clone)]
 pub struct WasmDerivationPath {
     inner: DerivationPath,
 }
@@ -20,8 +21,16 @@ impl WasmDerivationPath {
     }
 }
 
-impl Into<DerivationPath> for WasmDerivationPath {
+impl Into<DerivationPath> for &WasmDerivationPath {
     fn into(self) -> DerivationPath {
-        self.inner
+        self.inner.clone()
+    }
+}
+
+impl Into<WasmDerivationPath> for DerivationPath {
+    fn into(self) -> WasmDerivationPath {
+        WasmDerivationPath {
+            inner: self.clone()
+        }
     }
 }

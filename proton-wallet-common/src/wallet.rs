@@ -2,6 +2,8 @@ use crate::account::{Account, AccountConfig, SupportedBIPs};
 use crate::bitcoin::Network;
 use crate::error::Error;
 use crate::mnemonic::Mnemonic;
+use crate::transactions::{DetailledTransaction, Pagination, SimpleTransaction};
+use crate::utils::sort_and_paginate_txs;
 
 use bdk::wallet::{Balance as BdkBalance, ChangeSet};
 
@@ -66,25 +68,61 @@ where
     }
 
     pub fn get_balance(&self) -> Result<BdkBalance, Error> {
-        let mut iter = self.accounts.values();
+        let iter = self.accounts.values();
 
-        let mut balance = BdkBalance {
+        let init = BdkBalance {
             untrusted_pending: 0,
             confirmed: 0,
             immature: 0,
             trusted_pending: 0,
         };
 
-        while let Some(account) = iter.next() {
+        let balance = iter.fold(init, |acc, account| {
             let account_balance = account.lock().unwrap().get_balance();
 
-            balance.untrusted_pending += account_balance.untrusted_pending;
-            balance.confirmed += account_balance.confirmed;
-            balance.immature += account_balance.immature;
-            balance.trusted_pending += account_balance.trusted_pending;
-        }
+            BdkBalance {
+                untrusted_pending: acc.untrusted_pending + account_balance.untrusted_pending,
+                confirmed: acc.confirmed + account_balance.confirmed,
+                immature: acc.immature + account_balance.immature,
+                trusted_pending: acc.trusted_pending + account_balance.trusted_pending,
+            }
+        });
 
         Ok(balance)
+    }
+
+    pub fn get_transactions(&self, pagination: Option<Pagination>, sorted: bool) -> Vec<SimpleTransaction> {
+        let pagination = pagination.unwrap_or_default();
+
+        let simple_txs = self
+            .accounts
+            .keys()
+            .flat_map(|account_key| {
+                let account = self.accounts.get(&account_key).unwrap();
+                let account_guard = account.lock().unwrap();
+                let wallet = account_guard.get_wallet();
+
+                wallet
+                    .transactions()
+                    .map(|can_tx| SimpleTransaction::from_can_tx(&can_tx, &wallet, Some(account_key.clone())))
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+
+        sort_and_paginate_txs(simple_txs, pagination, sorted)
+    }
+
+    pub fn get_transaction(
+        &self,
+        derivation_path: &DerivationPath,
+        txid: String,
+    ) -> Result<DetailledTransaction, Error> {
+        let account = self.accounts.get(derivation_path);
+
+        match account {
+            Some(account) => account.lock().unwrap().get_transaction(txid),
+            _ => Err(Error::InvalidAccountIndex),
+        }
     }
 
     pub fn get_network(&self) -> Network {

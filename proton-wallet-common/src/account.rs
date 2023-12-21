@@ -5,7 +5,6 @@ use bdk::{
         bip32::{ChildNumber, ExtendedPrivKey},
         secp256k1::Secp256k1,
     },
-    chain::{ChainPosition, ConfirmationTimeAnchor},
     descriptor,
     miniscript::DescriptorPublicKey as BdkDescriptorPublicKey,
     wallet::{AddressInfo, Balance, ChangeSet},
@@ -15,11 +14,17 @@ use bdk::{
 use bdk::Wallet;
 use bdk_chain::PersistBackend;
 use miniscript::{
-    bitcoin::{bip32::DerivationPath, psbt::PartiallySignedTransaction, Transaction, Txid},
+    bitcoin::{bip32::DerivationPath, psbt::PartiallySignedTransaction, Txid},
     Descriptor,
 };
 
-use crate::{bitcoin::Network, error::Error, payment_link::PaymentLink};
+use crate::{
+    bitcoin::Network,
+    error::Error,
+    payment_link::PaymentLink,
+    transactions::{DetailledTransaction, Pagination, SimpleTransaction},
+    utils::sort_and_paginate_txs,
+};
 
 #[derive(Clone, Copy, Debug)]
 pub enum SupportedBIPs {
@@ -52,24 +57,6 @@ impl AccountConfig {
             account_index,
         }
     }
-}
-
-pub struct Pagination {
-    skip: usize,
-    take: usize,
-}
-
-impl Pagination {
-    pub fn new(skip: usize, take: usize) -> Self {
-        Pagination { skip, take }
-    }
-}
-
-pub struct SimpleTransaction<'a> {
-    pub txid: Txid,
-    pub value: i64,
-    pub fees: Option<u64>,
-    pub confirmation: ChainPosition<&'a ConfirmationTimeAnchor>,
 }
 
 pub fn gen_account_derivation_path(
@@ -121,6 +108,10 @@ where
 
     pub fn get_mutable_wallet(&mut self) -> &mut Wallet<Storage> {
         &mut self.wallet
+    }
+
+    pub fn get_wallet(&self) -> &Wallet<Storage> {
+        &self.wallet
     }
 
     pub fn new(master_secret_key: ExtendedPrivKey, config: AccountConfig, storage: Storage) -> Result<Self, Error> {
@@ -178,39 +169,28 @@ where
         PaymentLink::new_bitcoin_uri(self, index, amount, label, message)
     }
 
-    pub fn get_transactions(&self, pagination: Option<Pagination>) -> Vec<SimpleTransaction> {
-        let pagination = pagination.unwrap_or(Pagination {
-            skip: 0,
-            take: usize::MAX,
-        });
+    pub fn get_transactions(&self, pagination: Option<Pagination>, sorted: bool) -> Vec<SimpleTransaction> {
+        let pagination = pagination.unwrap_or_default();
 
-        let txs = self
+        // We first need to sort transactions by their time (last_seen for unconfirmed ones and confirmation_time for confirmed one)
+        // The collection that happen here might be consuming, maybe later we need to rework this part
+        let simple_txs = self
             .wallet
             .transactions()
-            .skip(pagination.skip)
-            .take(pagination.take)
-            .map(|can_tx| {
-                let (sent, received) = self.wallet.spk_index().sent_and_received(can_tx.tx_node.tx);
-
-                SimpleTransaction {
-                    txid: can_tx.tx_node.txid,
-                    value: received as i64 - sent as i64,
-                    confirmation: can_tx.chain_position,
-                    fees: match self.wallet.calculate_fee(can_tx.tx_node.tx) {
-                        Ok(fees) => Some(fees),
-                        _ => None,
-                    },
-                }
-            })
+            // account_key is not usefull in a single-account context
+            .map(|can_tx| SimpleTransaction::from_can_tx(&can_tx, &self.wallet, None))
             .collect::<Vec<_>>();
 
-        txs
+        sort_and_paginate_txs(simple_txs, pagination, sorted)
     }
 
-    pub fn get_transaction(&self, txid: String) -> Result<Transaction, Error> {
+    pub fn get_transaction(&self, txid: String) -> Result<DetailledTransaction, Error> {
         let txid = Txid::from_str(&txid).map_err(|_| Error::InvalidTxId)?;
         let tx = match self.wallet.get_tx(txid) {
-            Some(tx) => Ok(tx.tx_node.tx.clone()),
+            Some(can_tx) => {
+                let tx = DetailledTransaction::from_can_tx(&can_tx, &self.wallet);
+                Ok(tx)
+            }
             _ => Err(Error::TransactionNotFound),
         }?;
 

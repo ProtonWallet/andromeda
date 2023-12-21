@@ -9,7 +9,13 @@ use crate::{
     account::{WasmAccount, WasmSupportedBIPs},
     error::DetailledWasmError,
     storage::OnchainStorage,
-    types::{balance::WasmBalance, defined::WasmNetwork},
+    types::{
+        balance::WasmBalance,
+        defined::WasmNetwork,
+        derivation_path::WasmDerivationPath,
+        pagination::WasmPagination,
+        transaction::{WasmDetailledTransaction, WasmSimpleTransaction},
+    },
 };
 
 #[wasm_bindgen]
@@ -57,28 +63,24 @@ impl WasmWallet {
     }
 
     #[wasm_bindgen]
-    pub fn add_account(&mut self, bip: WasmSupportedBIPs, account_index: u32) -> String {
+    pub fn add_account(&mut self, bip: WasmSupportedBIPs, account_index: u32) -> WasmDerivationPath {
         let tmp_derivation_path: DerivationPath =
             gen_account_derivation_path(bip.into(), self.inner.get_network(), account_index)
                 .unwrap()
                 .into();
 
-        // An account is defined by the BIP32 masterkey (fingerprint), and its derivation path (unique)
+        // In a multi-wallet context, an account must be defined by the BIP32 masterkey (fingerprint), and its derivation path (unique)
         let account_id = format!("{}_{}", self.inner.get_fingerprint(), tmp_derivation_path.to_string());
-
         let storage = OnchainStorage::new(account_id.clone());
-        self.inner.add_account(bip.into(), account_index, storage);
+        let derivation_path = self.inner.add_account(bip.into(), account_index, storage);
 
-        account_id
+        assert_eq!(derivation_path, tmp_derivation_path);
+        derivation_path.into()
     }
 
-    pub fn get_account(&mut self, bip: WasmSupportedBIPs, account_index: u32) -> Option<WasmAccount> {
-        let derivation_path: DerivationPath =
-            gen_account_derivation_path(bip.into(), self.inner.get_network(), account_index)
-                .unwrap()
-                .into();
-
-        let account = self.inner.get_account(&derivation_path);
+    pub fn get_account(&mut self, account_key: &WasmDerivationPath) -> Option<WasmAccount> {
+        let account_key: DerivationPath = account_key.into();
+        let account = self.inner.get_account(&account_key);
 
         if account.is_none() {
             return None;
@@ -91,6 +93,42 @@ impl WasmWallet {
     pub fn get_balance(&self) -> Result<WasmBalance, DetailledWasmError> {
         let balance = self.inner.get_balance().map_err(|e| e.into())?;
         Ok(balance.into())
+    }
+
+    #[wasm_bindgen]
+    pub fn get_transactions(&self, pagination: Option<WasmPagination>) -> Vec<WasmSimpleTransaction> {
+        let transaction = self
+            .inner
+            .get_transactions(
+                match pagination {
+                    Some(pagination) => Some(pagination.into()),
+                    _ => None,
+                },
+                true,
+            )
+            .into_iter()
+            .map(|tx| {
+                let wasm_tx: WasmSimpleTransaction = tx.into();
+                wasm_tx
+            })
+            .collect::<Vec<_>>();
+
+        transaction
+    }
+
+    #[wasm_bindgen]
+    pub fn get_transaction(
+        &self,
+        account_key: &WasmDerivationPath,
+        txid: String,
+    ) -> Result<WasmDetailledTransaction, DetailledWasmError> {
+        let account_key: DerivationPath = account_key.into();
+        let transaction = self
+            .inner
+            .get_transaction(&account_key, txid)
+            .map_err(|e| e.into())?;
+
+        Ok(transaction.into())
     }
 
     #[wasm_bindgen]

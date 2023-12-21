@@ -2,7 +2,7 @@ use proton_wallet_common::LocalUtxo;
 
 use super::{
     defined::WasmKeychainKind,
-    transaction::{WasmConfirmation, WasmOutPoint, WasmScript},
+    transaction::{WasmTransactionTime, WasmOutPoint, WasmScript},
 };
 use wasm_bindgen::prelude::*;
 
@@ -14,7 +14,7 @@ pub struct WasmUtxo {
     pub keychain: WasmKeychainKind,
     pub is_spent: bool,
     pub derivation_index: u32,
-    pub confirmation_time: WasmConfirmation,
+    pub confirmation_time: WasmTransactionTime,
 }
 
 impl Into<WasmUtxo> for LocalUtxo {

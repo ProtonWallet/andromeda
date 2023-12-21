@@ -42,6 +42,12 @@ impl WasmPartiallySignedTransaction {
     }
 }
 
+impl Into<PartiallySignedTransaction> for &WasmPartiallySignedTransaction {
+    fn into(self) -> PartiallySignedTransaction {
+        self.inner.clone()
+    }
+}
+
 #[wasm_bindgen]
 impl WasmPartiallySignedTransaction {
     #[wasm_bindgen]

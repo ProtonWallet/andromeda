@@ -1,13 +1,18 @@
 use std::str::FromStr;
 
-use crate::error::WasmError;
+use crate::{
+    account::WasmAccount,
+    error::{DetailledWasmError, WasmError},
+    psbt::WasmPartiallySignedTransaction,
+};
 
-use super::locktime::WasmLockTime;
 use proton_wallet_common::{
-    account::SimpleTransaction, ChainPosition, ConfirmationTime, ConfirmationTimeAnchor, OutPoint, ScriptBuf, Sequence,
-    Transaction, TxIn, TxOut,
+    transactions::{DetailledTransaction, DetailledTxOutput, SimpleTransaction, TransactionTime},
+    Address, ConfirmationTime, OutPoint, PartiallySignedTransaction, ScriptBuf, Sequence, TxIn,
 };
 use wasm_bindgen::prelude::*;
+
+use super::{address::WasmAddress, defined::WasmNetwork, derivation_path::WasmDerivationPath};
 
 #[wasm_bindgen(getter_with_clone)]
 #[derive(Clone)]
@@ -19,9 +24,24 @@ impl Into<ScriptBuf> for WasmScript {
     }
 }
 
+impl Into<ScriptBuf> for &WasmScript {
+    fn into(self) -> ScriptBuf {
+        ScriptBuf::from_bytes(self.0.clone())
+    }
+}
+
 impl Into<WasmScript> for ScriptBuf {
     fn into(self) -> WasmScript {
         WasmScript(self.to_bytes())
+    }
+}
+
+#[wasm_bindgen]
+impl WasmScript {
+    pub fn to_address(&self, network: WasmNetwork) -> Result<WasmAddress, DetailledWasmError> {
+        let script_bug: ScriptBuf = self.into();
+        let address = Address::from_script(script_bug.as_script(), network.into()).unwrap();
+        Ok(address.into())
     }
 }
 
@@ -78,53 +98,75 @@ impl Into<WasmTxIn> for TxIn {
 pub struct WasmTxOut {
     pub value: u64,
     pub script_pubkey: WasmScript,
+    pub address: WasmAddress,
 }
 
-impl Into<WasmTxOut> for TxOut {
+impl Into<WasmTxOut> for DetailledTxOutput {
     fn into(self) -> WasmTxOut {
         WasmTxOut {
             value: self.value,
             script_pubkey: self.script_pubkey.into(),
+            address: self.address.into(),
         }
     }
 }
 
 #[wasm_bindgen(getter_with_clone)]
-pub struct WasmTransaction {
-    pub version: i32,
-    pub lock_time: WasmLockTime,
-    pub input: Vec<WasmTxIn>,
-    pub output: Vec<WasmTxOut>,
+pub struct WasmDetailledTransaction {
+    pub txid: String,
+    pub value: i64,
+    pub fees: Option<u64>,
+    pub time: Option<WasmTransactionTime>,
+    pub inputs: Vec<WasmTxIn>,
+    pub outputs: Vec<WasmTxOut>,
 }
 
-impl Into<WasmTransaction> for Transaction {
-    fn into(self) -> WasmTransaction {
-        WasmTransaction {
-            version: self.version,
-            lock_time: self.lock_time.into(),
-            input: self.input.into_iter().map(|i| i.into()).collect::<Vec<_>>(),
-            output: self.output.into_iter().map(|o| o.into()).collect::<Vec<_>>(),
+impl Into<WasmDetailledTransaction> for DetailledTransaction {
+    fn into(self) -> WasmDetailledTransaction {
+        WasmDetailledTransaction {
+            txid: self.txid.to_string(),
+            value: self.value,
+            fees: self.fees,
+            time: match self.time {
+                Some(time) => Some(time.into()),
+                _ => None,
+            },
+            inputs: self.inputs.into_iter().map(|input| input.into()).collect::<Vec<_>>(),
+            outputs: self.outputs.into_iter().map(|output| output.into()).collect::<Vec<_>>(),
         }
+    }
+}
+
+#[wasm_bindgen]
+impl WasmDetailledTransaction {
+    pub fn from_psbt(psbt: &WasmPartiallySignedTransaction, account: &WasmAccount) -> Self {
+        let psbt: PartiallySignedTransaction = psbt.into();
+        let inner = account.get_inner();
+        let account = inner.lock().unwrap();
+        let wallet = account.get_wallet();
+
+        let tx = DetailledTransaction::from_psbt(&psbt, wallet);
+        tx.into()
     }
 }
 
 #[wasm_bindgen(getter_with_clone)]
 #[derive(Clone)]
-pub struct WasmConfirmation {
+pub struct WasmTransactionTime {
     pub confirmed: bool,
     pub confirmation_time: Option<u64>,
     pub last_seen: Option<u64>,
 }
 
-impl Into<WasmConfirmation> for ChainPosition<&ConfirmationTimeAnchor> {
-    fn into(self) -> WasmConfirmation {
+impl Into<WasmTransactionTime> for TransactionTime {
+    fn into(self) -> WasmTransactionTime {
         match self {
-            ChainPosition::Confirmed(anchor) => WasmConfirmation {
+            TransactionTime::Confirmed { confirmation_time } => WasmTransactionTime {
                 confirmed: true,
-                confirmation_time: Some(anchor.confirmation_time),
+                confirmation_time: Some(confirmation_time),
                 last_seen: None,
             },
-            ChainPosition::Unconfirmed(last_seen) => WasmConfirmation {
+            TransactionTime::Unconfirmed { last_seen } => WasmTransactionTime {
                 confirmed: false,
                 confirmation_time: None,
                 last_seen: Some(last_seen),
@@ -133,15 +175,15 @@ impl Into<WasmConfirmation> for ChainPosition<&ConfirmationTimeAnchor> {
     }
 }
 
-impl Into<WasmConfirmation> for ConfirmationTime {
-    fn into(self) -> WasmConfirmation {
+impl Into<WasmTransactionTime> for ConfirmationTime {
+    fn into(self) -> WasmTransactionTime {
         match self {
-            ConfirmationTime::Confirmed { time, height: _ } => WasmConfirmation {
+            ConfirmationTime::Confirmed { time, .. } => WasmTransactionTime {
                 confirmed: true,
                 confirmation_time: Some(time),
                 last_seen: None,
             },
-            ConfirmationTime::Unconfirmed { last_seen } => WasmConfirmation {
+            ConfirmationTime::Unconfirmed { last_seen } => WasmTransactionTime {
                 confirmed: false,
                 confirmation_time: None,
                 last_seen: Some(last_seen),
@@ -155,16 +197,21 @@ pub struct WasmSimpleTransaction {
     pub txid: String,
     pub value: i64,
     pub fees: Option<u64>,
-    pub confirmation: WasmConfirmation,
+    pub time: WasmTransactionTime,
+    pub account_key: Option<WasmDerivationPath>,
 }
 
-impl Into<WasmSimpleTransaction> for SimpleTransaction<'_> {
+impl Into<WasmSimpleTransaction> for SimpleTransaction {
     fn into(self) -> WasmSimpleTransaction {
         WasmSimpleTransaction {
             txid: self.txid.to_string(),
             value: self.value,
             fees: self.fees,
-            confirmation: self.confirmation.into(),
+            time: self.time.into(),
+            account_key: match self.account_key {
+                Some(account_key) => Some(account_key.into()),
+                _ => None,
+            },
         }
     }
 }

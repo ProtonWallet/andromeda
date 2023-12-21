@@ -11,11 +11,16 @@ use proton_wallet_common::{
 use wasm_bindgen::prelude::*;
 
 use crate::{
+    error::DetailledWasmError,
     payment_link::WasmPaymentLink,
     storage::OnchainStorage,
     types::{
-        address::WasmAddress, balance::WasmBalance, defined::WasmNetwork, pagination::WasmPagination,
-        transaction::WasmSimpleTransaction, utxo::WasmUtxo,
+        address::WasmAddress,
+        balance::WasmBalance,
+        defined::WasmNetwork,
+        pagination::WasmPagination,
+        transaction::{WasmDetailledTransaction, WasmSimpleTransaction},
+        utxo::WasmUtxo,
     },
 };
 
@@ -175,10 +180,13 @@ impl WasmAccount {
             .inner
             .lock()
             .unwrap()
-            .get_transactions(match pagination {
-                Some(pagination) => Some(pagination.into()),
-                _ => None,
-            })
+            .get_transactions(
+                match pagination {
+                    Some(pagination) => Some(pagination.into()),
+                    _ => None,
+                },
+                true,
+            )
             .into_iter()
             .map(|tx| {
                 let wasm_tx: WasmSimpleTransaction = tx.into();
@@ -187,6 +195,18 @@ impl WasmAccount {
             .collect::<Vec<_>>();
 
         transaction
+    }
+
+    #[wasm_bindgen]
+    pub fn get_transaction(&self, txid: String) -> Result<WasmDetailledTransaction, DetailledWasmError> {
+        let transaction = self
+            .inner
+            .lock()
+            .expect("Account should be available")
+            .get_transaction(txid)
+            .map_err(|e| e.into())?;
+
+        Ok(transaction.into())
     }
 }
 
