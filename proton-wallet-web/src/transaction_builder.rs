@@ -3,7 +3,6 @@ use proton_wallet_common::{
     ChangeSpendPolicy, OutPoint,
 };
 use wasm_bindgen::prelude::*;
-use web_sys::console::log_2;
 
 use crate::{
     account::WasmAccount,
@@ -90,14 +89,9 @@ impl WasmTxBuilder {
     }
 
     #[wasm_bindgen]
-    pub fn set_account(&self, account: &WasmAccount) -> Self {
-        let inner = self.inner.set_account(account.get_inner());
-
-        log_2(
-            &"account_set".into(),
-            &account.get_inner().lock().unwrap().get_derivation_path().to_string().into(),
-        );
-        WasmTxBuilder { inner }
+    pub fn set_account(&self, account: &WasmAccount) -> Result<WasmTxBuilder, DetailledWasmError> {
+        let inner = self.inner.set_account(account.get_inner()).map_err(|e| e.into())?;
+        Ok(WasmTxBuilder { inner })
     }
 
     #[wasm_bindgen]

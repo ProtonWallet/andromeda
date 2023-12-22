@@ -1,5 +1,6 @@
 use proton_wallet_common::{chain::Chain, client::Client};
 use wasm_bindgen::prelude::*;
+use web_sys::console::log_2;
 
 use crate::{
     account::WasmAccount,
@@ -29,7 +30,7 @@ impl WasmChain {
     /// Generates a Mnemonic with a random entropy based on the given word count.
     #[wasm_bindgen(constructor)]
     pub fn new() -> Result<WasmChain, DetailledWasmError> {
-        let client = Client::new(None).unwrap();
+        let client = Client::new(None).unwrap(); // TODO: change this
         let inner = Chain::new(client.inner());
 
         Ok(WasmChain { inner })
@@ -42,20 +43,50 @@ impl WasmChain {
     }
 
     pub async fn full_sync(&self, account: &WasmAccount) -> Result<(), DetailledWasmError> {
+        log_2(
+            &"Start full sync".into(),
+            &account.get_derivation_path().unwrap().to_string().into(),
+        );
+
         self.inner
-            .full_sync(account.get_inner().lock().unwrap().get_mutable_wallet())
+            .full_sync(
+                account
+                    .get_inner()
+                    .write()
+                    .map_err(|_| WasmError::LockError.into())?
+                    .get_mutable_wallet(),
+            )
             .await
             .map_err(|e| e.into())?;
 
+        log_2(
+            &"Finished full sync".into(),
+            &account.get_derivation_path().unwrap().to_string().into(),
+        );
         Ok(())
     }
 
     pub async fn partial_sync(&self, account: &WasmAccount) -> Result<(), DetailledWasmError> {
+        log_2(
+            &"Start part. sync".into(),
+            &account.get_derivation_path().unwrap().to_string().into(),
+        );
+
         self.inner
-            .partial_sync(account.get_inner().lock().unwrap().get_mutable_wallet())
+            .partial_sync(
+                account
+                    .get_inner()
+                    .write()
+                    .map_err(|_| WasmError::LockError.into())?
+                    .get_mutable_wallet(),
+            )
             .await
             .map_err(|e| e.into())?;
 
+        log_2(
+            &"Finished part. sync".into(),
+            &account.get_derivation_path().unwrap().to_string().into(),
+        );
         Ok(())
     }
 

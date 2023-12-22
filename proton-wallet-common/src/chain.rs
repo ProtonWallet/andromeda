@@ -9,8 +9,6 @@ use miniscript::bitcoin::{Transaction, Txid};
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
-use std::thread::sleep;
-use std::time::Duration;
 
 use bdk_esplora::EsploraAsyncExt;
 
@@ -148,19 +146,6 @@ impl Chain {
         };
 
         Self::apply_and_commit_update(wallet, update)
-    }
-
-    pub async fn poll_partial_sync<Storage>(&mut self, wallet: &mut BdkWallet<Storage>, poll_interval: Option<u64>)
-    where
-        Storage: PersistBackend<ChangeSet>,
-    {
-        self.should_poll = true;
-
-        while self.should_poll {
-            let _ = self.partial_sync(wallet).await;
-
-            sleep(Duration::from_secs(poll_interval.unwrap_or(60u64)))
-        }
     }
 
     pub fn abort_partial_sync(&mut self) {

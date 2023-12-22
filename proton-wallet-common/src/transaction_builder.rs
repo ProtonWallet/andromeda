@@ -1,7 +1,7 @@
 use std::{
     collections::HashSet,
     str::FromStr,
-    sync::{Arc, Mutex},
+    sync::{Arc, RwLock},
 };
 
 use bdk::{
@@ -36,7 +36,7 @@ pub struct TmpRecipient(pub String, pub String, pub u64);
 
 #[derive(Clone, Debug)]
 pub struct TxBuilder<Storage> {
-    account: Option<Arc<Mutex<Account<Storage>>>>,
+    account: Option<Arc<RwLock<Account<Storage>>>>,
     pub recipients: Vec<TmpRecipient>,
     pub utxos_to_spend: HashSet<OutPoint>,
     pub change_policy: ChangeSpendPolicy,
@@ -139,8 +139,8 @@ where
         }
     }
 
-    pub fn set_account(&self, account: Arc<Mutex<Account<Storage>>>) -> Self {
-        let balance = &account.lock().unwrap().get_balance();
+    pub fn set_account(&self, account: Arc<RwLock<Account<Storage>>>) -> Result<Self, Error> {
+        let balance = &account.read().map_err(|_| Error::LockError)?.get_balance();
 
         let tx_builder = TxBuilder::<Storage> {
             account: Some(account),
@@ -148,7 +148,7 @@ where
             ..self.clone()
         };
 
-        tx_builder.constrain_recipient_amounts()
+        Ok(tx_builder.constrain_recipient_amounts())
     }
 
     /// Add a recipient to the internal list.
@@ -391,7 +391,7 @@ where
 
     pub fn create_pbst_with_coin_selection(&self, allow_dust: bool) -> Result<PartiallySignedTransaction, Error> {
         let account = self.account.clone().ok_or(Error::NoRecipients)?;
-        let mut account = account.lock().unwrap();
+        let mut account = account.write().map_err(|_| Error::LockError)?;
         let wallet = account.get_mutable_wallet();
 
         match self.coin_selection {

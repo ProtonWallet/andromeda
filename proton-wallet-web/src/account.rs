@@ -1,6 +1,6 @@
 use std::{
     fmt::Display,
-    sync::{Arc, Mutex},
+    sync::{Arc, RwLock},
 };
 
 use proton_wallet_common::{
@@ -9,9 +9,10 @@ use proton_wallet_common::{
 };
 
 use wasm_bindgen::prelude::*;
+use web_sys::console::log_2;
 
 use crate::{
-    error::DetailledWasmError,
+    error::{DetailledWasmError, WasmError},
     payment_link::WasmPaymentLink,
     storage::OnchainStorage,
     types::{
@@ -61,16 +62,16 @@ impl Into<SupportedBIPs> for WasmSupportedBIPs {
 
 #[wasm_bindgen]
 pub struct WasmAccount {
-    inner: Arc<Mutex<Account<OnchainStorage>>>,
+    inner: Arc<RwLock<Account<OnchainStorage>>>,
 }
 
 impl WasmAccount {
-    pub fn get_inner(&self) -> Arc<Mutex<Account<OnchainStorage>>> {
+    pub fn get_inner(&self) -> Arc<RwLock<Account<OnchainStorage>>> {
         self.inner.clone()
     }
 }
 
-impl Into<WasmAccount> for &Arc<Mutex<Account<OnchainStorage>>> {
+impl Into<WasmAccount> for &Arc<RwLock<Account<OnchainStorage>>> {
     fn into(self) -> WasmAccount {
         WasmAccount { inner: self.clone() }
     }
@@ -119,7 +120,7 @@ impl WasmAccountConfig {
 impl WasmAccount {
     #[wasm_bindgen]
     pub fn has_sync_data(&self) -> bool {
-        match self.get_inner().lock() {
+        match self.get_inner().read() {
             Ok(inner) => inner.get_storage().exists(),
             _ => false,
         }
@@ -132,54 +133,79 @@ impl WasmAccount {
         amount: Option<u64>,
         label: Option<String>,
         message: Option<String>,
-    ) -> WasmPaymentLink {
-        self.get_inner()
-            .lock()
-            .unwrap()
+    ) -> Result<WasmPaymentLink, DetailledWasmError> {
+        let payment_link: WasmPaymentLink = self
+            .get_inner()
+            .write()
+            .map_err(|_| WasmError::LockError.into())?
             .get_bitcoin_uri(index, amount, label, message)
-            .into()
+            .into();
+
+        Ok(payment_link)
     }
 
     #[wasm_bindgen]
-    pub fn owns(&self, address: &WasmAddress) -> bool {
+    pub fn owns(&self, address: &WasmAddress) -> Result<bool, DetailledWasmError> {
         let address: Address = address.into();
 
-        let mut acc = self.inner.lock().unwrap();
-        let wallet = acc.get_mutable_wallet();
+        let acc = self.inner.read().map_err(|_| WasmError::LockError.into())?;
+        let wallet = acc.get_wallet();
 
-        wallet.is_mine(&address.script_pubkey())
+        Ok(wallet.is_mine(&address.script_pubkey()))
     }
 
     #[wasm_bindgen]
-    pub fn get_balance(&self) -> WasmBalance {
-        self.inner.lock().unwrap().get_balance().into()
+    pub fn get_balance(&self) -> Result<WasmBalance, DetailledWasmError> {
+        let balance: WasmBalance = self
+            .inner
+            .read()
+            .map_err(|_| WasmError::LockError.into())?
+            .get_balance()
+            .into();
+
+        Ok(balance)
     }
 
     #[wasm_bindgen]
-    pub fn get_derivation_path(&self) -> String {
-        self.inner.lock().unwrap().get_derivation_path().to_string()
+    pub fn get_derivation_path(&self) -> Result<String, DetailledWasmError> {
+        let derivation_path = self
+            .inner
+            .read()
+            .map_err(|_| WasmError::LockError.into())?
+            .get_derivation_path()
+            .to_string();
+
+        Ok(derivation_path)
     }
 
     #[wasm_bindgen]
-    pub fn get_utxos(&self) -> Vec<WasmUtxo> {
+    pub fn get_utxos(&self) -> Result<Vec<WasmUtxo>, DetailledWasmError> {
         let utxos = self
             .inner
-            .lock()
-            .unwrap()
+            .read()
+            .map_err(|_| WasmError::LockError.into())?
             .get_utxos()
             .into_iter()
             .map(|utxo| utxo.into())
             .collect::<Vec<WasmUtxo>>();
 
-        utxos
+        Ok(utxos)
     }
 
     #[wasm_bindgen]
-    pub fn get_transactions(&self, pagination: Option<WasmPagination>) -> Vec<WasmSimpleTransaction> {
+    pub fn get_transactions(
+        &self,
+        pagination: Option<WasmPagination>,
+    ) -> Result<Vec<WasmSimpleTransaction>, DetailledWasmError> {
+        log_2(
+            &"Start get_transactions".into(),
+            &self.get_derivation_path().unwrap().to_string().into(),
+        );
+
         let transaction = self
             .inner
-            .lock()
-            .unwrap()
+            .read()
+            .map_err(|_| WasmError::LockError.into())?
             .get_transactions(
                 match pagination {
                     Some(pagination) => Some(pagination.into()),
@@ -194,17 +220,31 @@ impl WasmAccount {
             })
             .collect::<Vec<_>>();
 
-        transaction
+        log_2(
+            &"Finished get_transactions".into(),
+            &self.get_derivation_path().unwrap().to_string().into(),
+        );
+        Ok(transaction)
     }
 
     #[wasm_bindgen]
     pub fn get_transaction(&self, txid: String) -> Result<WasmDetailledTransaction, DetailledWasmError> {
+        log_2(
+            &"Start SINGLE get_transaction".into(),
+            &self.get_derivation_path().unwrap().to_string().into(),
+        );
+
         let transaction = self
             .inner
-            .lock()
-            .expect("Account should be available")
+            .read()
+            .map_err(|_| WasmError::LockError.into())?
             .get_transaction(txid)
             .map_err(|e| e.into())?;
+
+        log_2(
+            &"Finish SINGLE get_transaction".into(),
+            &self.get_derivation_path().unwrap().to_string().into(),
+        );
 
         Ok(transaction.into())
     }

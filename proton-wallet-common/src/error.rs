@@ -1,9 +1,11 @@
+use bdk::descriptor::DescriptorError;
+use bdk::keys::bip39::Error as Bip39Error;
 use bdk::{Error as BdkError, KeychainKind};
 use miniscript::bitcoin::bip32::Error as Bip32Error;
 use std::error;
 use std::fmt;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub enum Error {
     InvalidAddress,
     InvalidSecretKey,
@@ -17,6 +19,12 @@ pub enum Error {
     InvalidData,
     CannotComputeTxFees,
     CannotGetFeeEstimation,
+    CannotCreateAddressFromScript,
+    InvalidMnemonic,
+    DescriptorError(DescriptorError),
+    LoadError,
+    LockError,
+    AccountNotFound,
 
     // BDK Errors
     Generic { msg: String },
@@ -44,6 +52,7 @@ pub enum Error {
     Descriptor { error: String },
     Miniscript { error: String },
     Bip32 { error: String },
+    Bip39 { error: Option<Bip39Error> },
     Psbt { error: String },
 }
 
@@ -155,3 +164,46 @@ impl Into<Error> for Bip32Error {
         }
     }
 }
+
+impl Into<Error> for DescriptorError {
+    fn into(self) -> Error {
+        Error::DescriptorError(self)
+    }
+}
+
+impl Into<Error> for Bip39Error {
+    fn into(self) -> Error {
+        Error::Bip39 { error: Some(self) }
+    }
+}
+
+// #[derive(Debug)]
+// pub enum Error {
+//     /// Invalid HD Key path, such as having a wildcard but a length != 1
+//     InvalidHdKeyPath,
+//     /// The provided descriptor doesn't match its checksum
+//     InvalidDescriptorChecksum,
+//     /// The descriptor contains hardened derivation steps on public extended keys
+//     HardenedDerivationXpub,
+//     /// The descriptor contains multipath keys
+//     MultiPath,
+
+//     /// Error thrown while working with [`keys`](crate::keys)
+//     Key(crate::keys::KeyError),
+//     /// Error while extracting and manipulating policies
+//     Policy(crate::descriptor::policy::PolicyError),
+
+//     /// Invalid byte found in the descriptor checksum
+//     InvalidDescriptorCharacter(u8),
+
+//     /// BIP32 error
+//     Bip32(bitcoin::bip32::Error),
+//     /// Error during base58 decoding
+//     Base58(bitcoin::base58::Error),
+//     /// Key-related error
+//     Pk(bitcoin::key::Error),
+//     /// Miniscript error
+//     Miniscript(miniscript::Error),
+//     /// Hex decoding error
+//     Hex(bitcoin::hashes::hex::Error),
+// }

@@ -26,6 +26,12 @@ pub enum WasmError {
     CannotPersistData,
     CannotFindPersistedData,
     CannotParsePersistedData,
+    CannotGetAddressFromScript,
+    CannotCreateDescriptor,
+    DescriptorError,
+    LoadError,
+    CannotCreateAddressFromScript,
+    AccountNotFound,
 
     // BDK Errors
     Generic,
@@ -53,7 +59,11 @@ pub enum WasmError {
     Miniscript,
     MiniscriptPsbt,
     Bip32,
+    Bip39,
     Psbt,
+
+    // Core
+    LockError,
 }
 
 #[wasm_bindgen(getter_with_clone)]
@@ -76,6 +86,37 @@ impl Into<DetailledWasmError> for WasmError {
 impl Into<DetailledWasmError> for Error {
     fn into(self) -> DetailledWasmError {
         match self {
+            Error::Bip39 { error } => DetailledWasmError {
+                kind: WasmError::Bip39,
+                details: match error {
+                    Some(error) => JsValue::from_str(&error.to_string()),
+                    _ => JsValue::null(),
+                },
+            },
+            Error::AccountNotFound => DetailledWasmError {
+                kind: WasmError::AccountNotFound,
+                details: JsValue::null(),
+            },
+            Error::CannotCreateAddressFromScript => DetailledWasmError {
+                kind: WasmError::CannotCreateAddressFromScript,
+                details: JsValue::null(),
+            },
+            Error::InvalidMnemonic => DetailledWasmError {
+                kind: WasmError::InvalidMnemonic,
+                details: JsValue::null(),
+            },
+            Error::LockError => DetailledWasmError {
+                kind: WasmError::LockError,
+                details: JsValue::null(),
+            },
+            Error::DescriptorError(_) => DetailledWasmError {
+                kind: WasmError::DescriptorError,
+                details: JsValue::null(),
+            },
+            Error::LoadError => DetailledWasmError {
+                kind: WasmError::LoadError,
+                details: JsValue::null(),
+            },
             Error::InvalidNetwork => DetailledWasmError {
                 kind: WasmError::InvalidNetwork,
                 details: JsValue::null(),

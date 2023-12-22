@@ -299,28 +299,26 @@ mod tests {
 
     #[test]
     fn should_return_error_when_parsing_invalid_btc_address() {
-        assert_eq!(
-            PaymentLink::try_parse(
-                "tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn--".to_string(),
-                miniscript::bitcoin::Network::Testnet
-            )
-            .err()
-            .unwrap(),
-            Error::InvalidAddress
-        );
+        let error = PaymentLink::try_parse(
+            "tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn--".to_string(),
+            miniscript::bitcoin::Network::Testnet,
+        )
+        .err()
+        .unwrap();
+
+        assert_eq!(error.to_string(), Error::InvalidAddress.to_string());
     }
 
     #[test]
     fn should_return_error_when_parsing_btc_address_with_invalid_network() {
-        assert_eq!(
-            PaymentLink::try_parse(
-                "tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn".to_string(),
-                miniscript::bitcoin::Network::Bitcoin
-            )
-            .err()
-            .unwrap(),
-            Error::InvalidNetwork
-        );
+        let error = PaymentLink::try_parse(
+            "tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn".to_string(),
+            miniscript::bitcoin::Network::Bitcoin,
+        )
+        .err()
+        .unwrap();
+
+        assert_eq!(error.to_string(), Error::InvalidNetwork.to_string());
     }
 
     #[test]
@@ -382,27 +380,25 @@ mod tests {
 
     #[test]
     fn should_return_error_when_parsing_bitcoin_uri_with_invalid_btc_address() {
-        assert_eq!(
-            PaymentLink::try_parse(
-                "bitcoin:tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn--?amount=0.00192880&label=Fermi%20Pasta&message=Thanks%20for%20your%20donation".to_string(),
-                miniscript::bitcoin::Network::Testnet
-            )
-            .err()
-            .unwrap(),
-            Error::InvalidAddress
-        );
+        let error = PaymentLink::try_parse(
+            "bitcoin:tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn--?amount=0.00192880&label=Fermi%20Pasta&message=Thanks%20for%20your%20donation".to_string(),
+            miniscript::bitcoin::Network::Testnet
+        )
+        .err()
+        .unwrap();
+
+        assert_eq!(error.to_string(), Error::InvalidAddress.to_string());
     }
 
     #[test]
     fn should_return_error_when_parsing_bitcoin_uri_with_invalid_network() {
-        assert_eq!(
-            PaymentLink::try_parse(
-                "bitcoin:tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn?amount=0.00192880&label=Fermi%20Pasta&message=Thanks%20for%20your%20donation".to_string(),
-                miniscript::bitcoin::Network::Bitcoin
-            )
-            .err()
-            .unwrap(),
-            Error::InvalidNetwork
-        );
+        let error =      PaymentLink::try_parse(
+            "bitcoin:tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn?amount=0.00192880&label=Fermi%20Pasta&message=Thanks%20for%20your%20donation".to_string(),
+            miniscript::bitcoin::Network::Bitcoin
+        )
+        .err()
+        .unwrap();
+
+        assert_eq!(error.to_string(), Error::InvalidNetwork.to_string());
     }
 }

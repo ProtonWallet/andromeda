@@ -34,8 +34,8 @@ pub struct WasmMnemonic {
 impl WasmMnemonic {
     /// Generates a Mnemonic with a random entropy based on the given word count.
     #[wasm_bindgen(constructor)]
-    pub fn new(word_count: WasmWordCount) -> Result<WasmMnemonic, JsValue> {
-        let mnemonic = Mnemonic::new(word_count.into());
+    pub fn new(word_count: WasmWordCount) -> Result<WasmMnemonic, DetailledWasmError> {
+        let mnemonic = Mnemonic::new(word_count.into()).map_err(|e| e.into())?;
         Ok(WasmMnemonic { inner: mnemonic })
     }
 

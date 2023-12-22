@@ -6,17 +6,13 @@ use bdk::{
         secp256k1::Secp256k1,
     },
     descriptor,
-    miniscript::DescriptorPublicKey as BdkDescriptorPublicKey,
     wallet::{AddressInfo, Balance, ChangeSet},
     KeychainKind, LocalUtxo, SignOptions,
 };
 
 use bdk::Wallet;
 use bdk_chain::PersistBackend;
-use miniscript::{
-    bitcoin::{bip32::DerivationPath, psbt::PartiallySignedTransaction, Txid},
-    Descriptor,
-};
+use miniscript::bitcoin::{bip32::DerivationPath, psbt::PartiallySignedTransaction, Txid};
 
 use crate::{
     bitcoin::Network,
@@ -74,7 +70,7 @@ pub fn gen_account_derivation_path(
             SupportedBIPs::Bip86 => 86,
             _ => 44,
         })
-        .unwrap(),
+        .unwrap_or_else(|_| unreachable!("an error occured while generating child number from bip")),
     );
 
     //  coin_type' derivation
@@ -83,7 +79,7 @@ pub fn gen_account_derivation_path(
             Network::Bitcoin => 0,
             _ => 1,
         })
-        .unwrap(),
+        .unwrap_or_else(|_| unreachable!("an error occured while generating child number from network")),
     );
 
     // account' derivation
@@ -96,14 +92,24 @@ impl<Storage> Account<Storage>
 where
     Storage: PersistBackend<ChangeSet> + Clone,
 {
-    fn build_wallet(account_xprv: ExtendedPrivKey, network: Network, storage: Storage) -> Wallet<Storage> {
-        let external_derivation = vec![ChildNumber::from_normal_idx(KeychainKind::External as u32).unwrap()];
-        let internal_derivation = vec![ChildNumber::from_normal_idx(KeychainKind::Internal as u32).unwrap()];
+    fn build_wallet(
+        account_xprv: ExtendedPrivKey,
+        network: Network,
+        storage: Storage,
+    ) -> Result<Wallet<Storage>, Error> {
+        let external_derivation =
+            vec![ChildNumber::from_normal_idx(KeychainKind::External as u32).unwrap_or_else(|_| unreachable!())];
+        let internal_derivation =
+            vec![ChildNumber::from_normal_idx(KeychainKind::Internal as u32).unwrap_or_else(|_| unreachable!())];
 
-        let external_descriptor = descriptor!(wpkh((account_xprv, external_derivation.into()))).unwrap();
-        let internal_descriptor = descriptor!(wpkh((account_xprv, internal_derivation.into()))).unwrap();
+        // TODO here we shouldn't use account wpkh descriptor but rather on the account type
+        let external_descriptor =
+            descriptor!(wpkh((account_xprv, external_derivation.into()))).map_err(|e| e.into())?;
+        let internal_descriptor =
+            descriptor!(wpkh((account_xprv, internal_derivation.into()))).map_err(|e| e.into())?;
 
-        Wallet::new(external_descriptor, Some(internal_descriptor), storage, network.into()).unwrap()
+        Wallet::new(external_descriptor, Some(internal_descriptor), storage, network.into())
+            .map_err(|_| Error::LoadError) // TODO: check how to implement Into<Error> for PersistBackend load error
     }
 
     pub fn get_mutable_wallet(&mut self) -> &mut Wallet<Storage> {
@@ -118,26 +124,20 @@ where
         let secp = Secp256k1::new();
 
         let derivation_path = gen_account_derivation_path(config.bip, config.network, config.account_index)?;
-        let account_xprv = master_secret_key.derive_priv(&secp, &derivation_path).unwrap();
+        let account_xprv = master_secret_key
+            .derive_priv(&secp, &derivation_path)
+            .map_err(|e| e.into())?;
 
         Ok(Self {
             account_xprv,
             derivation_path: derivation_path.into(),
             storage: storage.clone(),
-            wallet: Self::build_wallet(account_xprv, config.network.into(), storage),
+            wallet: Self::build_wallet(account_xprv, config.network.into(), storage)?,
         })
     }
 
     pub fn get_derivation_path(&self) -> DerivationPath {
         self.derivation_path.clone()
-    }
-
-    pub fn public_descriptor(&self) -> BdkDescriptorPublicKey {
-        let (descriptor, _, _) = descriptor!(wpkh((self.account_xprv, Vec::new().into()))).unwrap();
-        match descriptor {
-            Descriptor::Wpkh(pk) => pk.into_inner(),
-            _ => unreachable!(),
-        }
     }
 
     pub fn get_balance(&self) -> Balance {
@@ -188,7 +188,7 @@ where
         let txid = Txid::from_str(&txid).map_err(|_| Error::InvalidTxId)?;
         let tx = match self.wallet.get_tx(txid) {
             Some(can_tx) => {
-                let tx = DetailledTransaction::from_can_tx(&can_tx, &self.wallet);
+                let tx = DetailledTransaction::from_can_tx(&can_tx, &self.wallet)?;
                 Ok(tx)
             }
             _ => Err(Error::TransactionNotFound),

@@ -23,16 +23,21 @@ pub struct Mnemonic {
 
 impl Mnemonic {
     /// Generates Mnemonic with a random entropy
-    pub fn new(word_count: WordCount) -> Self {
+    pub fn new(word_count: WordCount) -> Result<Self, Error> {
         // TODO 4: I DON'T KNOW IF THIS IS A DECENT WAY TO GENERATE ENTROPY PLEASE CONFIRM
         let mut rng = rand::thread_rng();
         let mut entropy = [0u8; 32];
         rng.fill(&mut entropy);
 
         let generated_key: GeneratedKey<_, BareCtx> =
-            BdkMnemonic::generate_with_entropy((word_count, Language::English), entropy).unwrap();
-        let mnemonic = BdkMnemonic::parse_in(Language::English, generated_key.to_string()).unwrap();
-        Mnemonic { inner: mnemonic }
+            BdkMnemonic::generate_with_entropy((word_count, Language::English), entropy).map_err(|e| match e {
+                Some(e) => e.into(),
+                _ => Error::Bip39 { error: None },
+            })?;
+
+        let mnemonic = BdkMnemonic::parse_in(Language::English, generated_key.to_string()).map_err(|e| e.into())?;
+
+        Ok(Mnemonic { inner: mnemonic })
     }
 
     /// Parse a Mnemonic with given string
@@ -42,7 +47,7 @@ impl Mnemonic {
             .map_err(|e| Error::Generic { msg: e.to_string() })
     }
 
-     /// Returns Mnemonic as string
+    /// Returns Mnemonic as string
     pub fn as_string(&self) -> String {
         self.inner.to_string()
     }

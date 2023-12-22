@@ -40,7 +40,9 @@ impl Into<WasmScript> for ScriptBuf {
 impl WasmScript {
     pub fn to_address(&self, network: WasmNetwork) -> Result<WasmAddress, DetailledWasmError> {
         let script_bug: ScriptBuf = self.into();
-        let address = Address::from_script(script_bug.as_script(), network.into()).unwrap();
+        let address = Address::from_script(script_bug.as_script(), network.into())
+            .map_err(|_| WasmError::CannotGetAddressFromScript.into())?;
+
         Ok(address.into())
     }
 }
@@ -139,14 +141,18 @@ impl Into<WasmDetailledTransaction> for DetailledTransaction {
 
 #[wasm_bindgen]
 impl WasmDetailledTransaction {
-    pub fn from_psbt(psbt: &WasmPartiallySignedTransaction, account: &WasmAccount) -> Self {
+    pub fn from_psbt(
+        psbt: &WasmPartiallySignedTransaction,
+        account: &WasmAccount,
+    ) -> Result<WasmDetailledTransaction, DetailledWasmError> {
         let psbt: PartiallySignedTransaction = psbt.into();
         let inner = account.get_inner();
-        let account = inner.lock().unwrap();
+        let account = inner.read().map_err(|_| WasmError::LockError.into())?;
         let wallet = account.get_wallet();
 
-        let tx = DetailledTransaction::from_psbt(&psbt, wallet);
-        tx.into()
+        let tx = DetailledTransaction::from_psbt(&psbt, wallet).map_err(|e| e.into())?;
+
+        Ok(tx.into())
     }
 }
 

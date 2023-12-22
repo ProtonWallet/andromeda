@@ -4,10 +4,11 @@ use proton_wallet_common::{
     DerivationPath,
 };
 use wasm_bindgen::prelude::*;
+use web_sys::console::log_2;
 
 use crate::{
     account::{WasmAccount, WasmSupportedBIPs},
-    error::DetailledWasmError,
+    error::{DetailledWasmError, WasmError},
     storage::OnchainStorage,
     types::{
         balance::WasmBalance,
@@ -63,30 +64,33 @@ impl WasmWallet {
     }
 
     #[wasm_bindgen]
-    pub fn add_account(&mut self, bip: WasmSupportedBIPs, account_index: u32) -> WasmDerivationPath {
+    pub fn add_account(
+        &mut self,
+        bip: WasmSupportedBIPs,
+        account_index: u32,
+    ) -> Result<WasmDerivationPath, DetailledWasmError> {
         let tmp_derivation_path: DerivationPath =
             gen_account_derivation_path(bip.into(), self.inner.get_network(), account_index)
-                .unwrap()
+                .map_err(|_| WasmError::InvalidDerivationPath.into())?
                 .into();
 
         // In a multi-wallet context, an account must be defined by the BIP32 masterkey (fingerprint), and its derivation path (unique)
         let account_id = format!("{}_{}", self.inner.get_fingerprint(), tmp_derivation_path.to_string());
         let storage = OnchainStorage::new(account_id.clone());
-        let derivation_path = self.inner.add_account(bip.into(), account_index, storage);
+        let derivation_path = self
+            .inner
+            .add_account(bip.into(), account_index, storage)
+            .map_err(|e| e.into())?;
 
-        assert_eq!(derivation_path, tmp_derivation_path);
-        derivation_path.into()
+        // assert_eq!(derivation_path, tmp_derivation_path);
+        Ok(derivation_path.into())
     }
 
     pub fn get_account(&mut self, account_key: &WasmDerivationPath) -> Option<WasmAccount> {
         let account_key: DerivationPath = account_key.into();
         let account = self.inner.get_account(&account_key);
 
-        if account.is_none() {
-            return None;
-        }
-
-        Some(account.unwrap().into())
+        account.map(|account| account.into())
     }
 
     #[wasm_bindgen]
@@ -96,16 +100,24 @@ impl WasmWallet {
     }
 
     #[wasm_bindgen]
-    pub fn get_transactions(&self, pagination: Option<WasmPagination>) -> Vec<WasmSimpleTransaction> {
+    pub fn get_transactions(
+        &self,
+        pagination: Option<WasmPagination>,
+    ) -> Result<Vec<WasmSimpleTransaction>, DetailledWasmError> {
+        let pagination = match pagination {
+            Some(pagination) => Some(pagination.into()),
+            _ => None,
+        };
+
+        log_2(
+            &"Start (wallet) get_transactions".into(),
+            &self.inner.get_fingerprint().into(),
+        );
+
         let transaction = self
             .inner
-            .get_transactions(
-                match pagination {
-                    Some(pagination) => Some(pagination.into()),
-                    _ => None,
-                },
-                true,
-            )
+            .get_transactions(pagination, true)
+            .map_err(|e| e.into())?
             .into_iter()
             .map(|tx| {
                 let wasm_tx: WasmSimpleTransaction = tx.into();
@@ -113,7 +125,12 @@ impl WasmWallet {
             })
             .collect::<Vec<_>>();
 
-        transaction
+        log_2(
+            &"Finish (wallet) get_transactions".into(),
+            &self.inner.get_fingerprint().into(),
+        );
+
+        Ok(transaction)
     }
 
     #[wasm_bindgen]
@@ -123,10 +140,18 @@ impl WasmWallet {
         txid: String,
     ) -> Result<WasmDetailledTransaction, DetailledWasmError> {
         let account_key: DerivationPath = account_key.into();
-        let transaction = self
-            .inner
-            .get_transaction(&account_key, txid)
-            .map_err(|e| e.into())?;
+
+        log_2(
+            &"Start SINGLE (wallet) get_transaction".into(),
+            &account_key.to_string().into(),
+        );
+
+        let transaction = self.inner.get_transaction(&account_key, txid).map_err(|e| e.into())?;
+
+        log_2(
+            &"Finish SINGLE (wallet) get_transaction".into(),
+            &account_key.to_string().into(),
+        );
 
         Ok(transaction.into())
     }

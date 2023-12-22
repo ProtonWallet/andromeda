@@ -4,6 +4,8 @@ use miniscript::bitcoin::{
     bip32::DerivationPath, psbt::PartiallySignedTransaction, Address, ScriptBuf, Transaction, TxIn, Txid,
 };
 
+use crate::error::Error;
+
 #[derive(Clone, Debug)]
 pub struct SimpleTransaction {
     pub txid: Txid,
@@ -64,7 +66,7 @@ pub struct DetailledTransaction {
 }
 
 impl DetailledTransaction {
-    pub fn from_psbt<Storage>(psbt: &PartiallySignedTransaction, wallet: &Wallet<Storage>) -> Self {
+    pub fn from_psbt<Storage>(psbt: &PartiallySignedTransaction, wallet: &Wallet<Storage>) -> Result<Self, Error> {
         let tx = psbt.clone().extract_tx();
 
         let (sent, received) = wallet.spk_index().sent_and_received(&tx);
@@ -73,36 +75,62 @@ impl DetailledTransaction {
             _ => None,
         };
 
-        DetailledTransaction {
+        let outputs: Vec<DetailledTxOutput> = tx
+            .output
+            .clone()
+            .into_iter()
+            .map(|output| {
+                let tx = DetailledTxOutput {
+                    value: output.value,
+                    address: Address::from_script(&output.script_pubkey, wallet.network())
+                        .map_err(|_| Error::CannotCreateAddressFromScript)?,
+                    script_pubkey: output.script_pubkey,
+                };
+
+                Ok(tx)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let tx = DetailledTransaction {
             txid: tx.txid(),
             value: received as i64 - sent as i64,
             fees,
             time: None,
             inputs: tx.input.clone(),
-            outputs: tx
-                .output
-                .clone()
-                .into_iter()
-                .map(|output| DetailledTxOutput {
-                    value: output.value,
-                    address: Address::from_script(&output.script_pubkey, wallet.network()).unwrap(),
-                    script_pubkey: output.script_pubkey,
-                })
-                .collect::<Vec<_>>(),
-        }
+            outputs,
+        };
+
+        Ok(tx)
     }
 
     pub fn from_can_tx<Storage>(
         can_tx: &CanonicalTx<'_, Transaction, ConfirmationTimeAnchor>,
         wallet: &Wallet<Storage>,
-    ) -> Self {
+    ) -> Result<Self, Error> {
         let (sent, received) = wallet.spk_index().sent_and_received(can_tx.tx_node.tx);
         let fees = match wallet.calculate_fee(can_tx.tx_node.tx) {
             Ok(fees) => Some(fees),
             _ => None,
         };
 
-        DetailledTransaction {
+        let outputs: Vec<DetailledTxOutput> = can_tx
+            .tx_node
+            .output
+            .clone()
+            .into_iter()
+            .map(|output| {
+                let tx = DetailledTxOutput {
+                    value: output.value,
+                    address: Address::from_script(&output.script_pubkey, wallet.network())
+                        .map_err(|_| Error::CannotCreateAddressFromScript)?,
+                    script_pubkey: output.script_pubkey,
+                };
+
+                Ok(tx)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let tx = DetailledTransaction {
             txid: can_tx.tx_node.txid(),
             value: received as i64 - sent as i64,
             fees,
@@ -113,18 +141,10 @@ impl DetailledTransaction {
                 ChainPosition::Unconfirmed(last_seen) => TransactionTime::Unconfirmed { last_seen },
             }),
             inputs: can_tx.tx_node.input.clone(),
-            outputs: can_tx
-                .tx_node
-                .output
-                .clone()
-                .into_iter()
-                .map(|output| DetailledTxOutput {
-                    value: output.value,
-                    address: Address::from_script(&output.script_pubkey, wallet.network()).unwrap(),
-                    script_pubkey: output.script_pubkey,
-                })
-                .collect::<Vec<_>>(),
-        }
+            outputs,
+        };
+
+        Ok(tx)
     }
 }
 
