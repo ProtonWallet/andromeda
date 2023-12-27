@@ -48,17 +48,20 @@ impl WasmChain {
             &account.get_derivation_path().unwrap().to_string().into(),
         );
 
+        let account_inner = account.get_inner();
+
         self.inner
             .full_sync(
-                account
-                    .get_inner()
+                account_inner
                     .write()
+                    .await
                     .map_err(|_| WasmError::LockError.into())?
                     .get_mutable_wallet(),
             )
             .await
             .map_err(|e| e.into())?;
 
+        account_inner.release_write_lock();
         log_2(
             &"Finished full sync".into(),
             &account.get_derivation_path().unwrap().to_string().into(),
@@ -72,17 +75,20 @@ impl WasmChain {
             &account.get_derivation_path().unwrap().to_string().into(),
         );
 
+        let account_inner = account.get_inner();
+
         self.inner
             .partial_sync(
-                account
-                    .get_inner()
+                account_inner
                     .write()
+                    .await
                     .map_err(|_| WasmError::LockError.into())?
                     .get_mutable_wallet(),
             )
             .await
             .map_err(|e| e.into())?;
 
+        account_inner.release_write_lock();
         log_2(
             &"Finished part. sync".into(),
             &account.get_derivation_path().unwrap().to_string().into(),

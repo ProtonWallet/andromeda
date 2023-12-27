@@ -3,6 +3,7 @@ mod utils;
 
 // pub mod
 pub mod account;
+pub mod async_rw_lock;
 pub mod bitcoin;
 pub mod chain;
 pub mod client;

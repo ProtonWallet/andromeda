@@ -51,19 +51,22 @@ impl Into<PartiallySignedTransaction> for &WasmPartiallySignedTransaction {
 #[wasm_bindgen]
 impl WasmPartiallySignedTransaction {
     #[wasm_bindgen]
-    pub fn sign(
+    pub async fn sign(
         &mut self,
         wasm_account: &WasmAccount,
         network: WasmNetwork,
     ) -> Result<WasmPartiallySignedTransaction, DetailledWasmError> {
-        wasm_account
-            .get_inner()
+        let inner = wasm_account.get_inner();
+
+        inner
             .write()
+            .await
             .map_err(|_| WasmError::LockError.into())?
             .get_mutable_wallet()
             .sign(&mut self.inner, SignOptions::default())
             .map_err(|_| WasmError::CannotSignPsbt.into())?;
 
+        inner.release_write_lock();
         Ok(WasmPartiallySignedTransaction::from_psbt(&self.inner, network.into()))
     }
 }

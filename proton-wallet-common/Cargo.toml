@@ -17,6 +17,7 @@ wasm-bindgen = { version = "0.2.88", features=["serde-serialize"], optional = tr
 uuid = {version = "1.6.1", features = ["v4", "fast-rng"] }
 urlencoding = "2.1.3"
 querystring = "1.1.0"
+async-std = "1.10"
 
 #feature "async-interface", 
 # Platform-specific dependencies

@@ -89,8 +89,13 @@ impl WasmTxBuilder {
     }
 
     #[wasm_bindgen]
-    pub fn set_account(&self, account: &WasmAccount) -> Result<WasmTxBuilder, DetailledWasmError> {
-        let inner = self.inner.set_account(account.get_inner()).map_err(|e| e.into())?;
+    pub async fn set_account(&self, account: &WasmAccount) -> Result<WasmTxBuilder, DetailledWasmError> {
+        let inner = self
+            .inner
+            .set_account(account.get_inner())
+            .await
+            .map_err(|e| e.into())?;
+
         Ok(WasmTxBuilder { inner })
     }
 
@@ -107,13 +112,14 @@ impl WasmTxBuilder {
     }
 
     #[wasm_bindgen]
-    pub fn update_recipient(
+    pub async fn update_recipient(
         &self,
         index: usize,
         address_str: Option<String>,
         amount: Option<u64>,
     ) -> Result<WasmTxBuilder, WasmError> {
-        let inner = self.inner.update_recipient(index, (address_str, amount));
+        let inner = self.inner.update_recipient(index, (address_str, amount)).await;
+
         Ok(WasmTxBuilder { inner })
     }
 
@@ -228,8 +234,8 @@ impl WasmTxBuilder {
      */
 
     #[wasm_bindgen]
-    pub fn set_fee_rate(&self, sat_per_vb: f32) -> WasmTxBuilder {
-        let inner = self.inner.set_fee_rate(sat_per_vb);
+    pub async fn set_fee_rate(&self, sat_per_vb: f32) -> WasmTxBuilder {
+        let inner = self.inner.set_fee_rate(sat_per_vb).await;
         WasmTxBuilder { inner }
     }
 
@@ -271,10 +277,14 @@ impl WasmTxBuilder {
      */
 
     #[wasm_bindgen]
-    pub fn create_pbst(&self, network: WasmNetwork) -> Result<WasmPartiallySignedTransaction, DetailledWasmError> {
+    pub async fn create_pbst(
+        &self,
+        network: WasmNetwork,
+    ) -> Result<WasmPartiallySignedTransaction, DetailledWasmError> {
         let psbt = self
             .inner
             .create_pbst_with_coin_selection(false)
+            .await
             .map_err(|e| e.into())?;
 
         Ok(WasmPartiallySignedTransaction::from_psbt(&psbt, network.into()))

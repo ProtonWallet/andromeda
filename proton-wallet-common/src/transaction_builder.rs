@@ -1,8 +1,4 @@
-use std::{
-    collections::HashSet,
-    str::FromStr,
-    sync::{Arc, RwLock},
-};
+use std::{collections::HashSet, str::FromStr, sync::Arc};
 
 use bdk::{
     bitcoin::ScriptBuf,
@@ -21,7 +17,7 @@ use miniscript::bitcoin::{
 };
 use uuid::Uuid;
 
-use crate::{account::Account, error::Error};
+use crate::{account::Account, async_rw_lock::AsyncRwLock, error::Error};
 
 #[derive(Clone, Debug)]
 pub enum CoinSelection {
@@ -36,7 +32,8 @@ pub struct TmpRecipient(pub String, pub String, pub u64);
 
 #[derive(Clone, Debug)]
 pub struct TxBuilder<Storage> {
-    account: Option<Arc<RwLock<Account<Storage>>>>,
+    /// We need an async lock here because syncing can be in progress while creating a transaction
+    account: Option<Arc<AsyncRwLock<Account<Storage>>>>,
     pub recipients: Vec<TmpRecipient>,
     pub utxos_to_spend: HashSet<OutPoint>,
     pub change_policy: ChangeSpendPolicy,
@@ -139,7 +136,7 @@ where
         }
     }
 
-    pub fn set_account(&self, account: Arc<RwLock<Account<Storage>>>) -> Result<Self, Error> {
+    pub async fn set_account(&self, account: Arc<AsyncRwLock<Account<Storage>>>) -> Result<Self, Error> {
         let balance = &account.read().map_err(|_| Error::LockError)?.get_balance();
 
         let tx_builder = TxBuilder::<Storage> {
@@ -148,7 +145,7 @@ where
             ..self.clone()
         };
 
-        Ok(tx_builder.constrain_recipient_amounts())
+        Ok(tx_builder.constrain_recipient_amounts().await)
     }
 
     /// Add a recipient to the internal list.
@@ -176,11 +173,11 @@ where
         }
     }
 
-    fn constrain_recipient_amounts(&self) -> Self {
+    async fn constrain_recipient_amounts(&self) -> Self {
         if self.account.is_none() {
             return self.clone();
         } else {
-            let result = self.create_pbst_with_coin_selection(true);
+            let result = self.create_pbst_with_coin_selection(true).await;
 
             match result {
                 Err(Error::InsufficientFunds { needed, available }) => {
@@ -197,7 +194,7 @@ where
     }
 
     /// Remove a recipient from the internal list.
-    pub fn update_recipient(&self, index: usize, update: (Option<String>, Option<u64>)) -> Self {
+    pub async fn update_recipient(&self, index: usize, update: (Option<String>, Option<u64>)) -> Self {
         let mut recipients = self.recipients.clone();
         let TmpRecipient(uuid, current_script, current_amount) = recipients[index].clone();
 
@@ -218,7 +215,7 @@ where
             ..self.clone()
         };
 
-        tx_builder.constrain_recipient_amounts()
+        tx_builder.constrain_recipient_amounts().await
     }
 
     /**
@@ -319,13 +316,13 @@ where
      */
 
     /// Set a custom fee rate.
-    pub fn set_fee_rate(&self, sat_per_vb: f32) -> Self {
+    pub async fn set_fee_rate(&self, sat_per_vb: f32) -> Self {
         let tx_builder = TxBuilder::<Storage> {
             fee_rate: Some(FeeRate::from_sat_per_vb(sat_per_vb)),
             ..self.clone()
         };
 
-        tx_builder.constrain_recipient_amounts()
+        tx_builder.constrain_recipient_amounts().await
     }
 
     fn commit_utxos<'a, D: PersistBackend<ChangeSet>, Cs: CoinSelectionAlgorithm>(
@@ -389,12 +386,12 @@ where
         Ok(psbt.into())
     }
 
-    pub fn create_pbst_with_coin_selection(&self, allow_dust: bool) -> Result<PartiallySignedTransaction, Error> {
+    pub async fn create_pbst_with_coin_selection(&self, allow_dust: bool) -> Result<PartiallySignedTransaction, Error> {
         let account = self.account.clone().ok_or(Error::NoRecipients)?;
-        let mut account = account.write().map_err(|_| Error::LockError)?;
-        let wallet = account.get_mutable_wallet();
+        let mut account_write_lock = account.write().await.map_err(|_| Error::LockError)?;
+        let wallet = account_write_lock.get_mutable_wallet();
 
-        match self.coin_selection {
+        let updated = match self.coin_selection {
             CoinSelection::BranchAndBound => {
                 let tx_builder = wallet.build_tx().coin_selection(BranchAndBoundCoinSelection::default());
                 self.create_psbt(tx_builder, allow_dust)
@@ -413,7 +410,10 @@ where
                 tx_builder = self.commit_utxos(tx_builder)?;
                 self.create_psbt(tx_builder, allow_dust)
             }
-        }
+        };
+
+        account.release_write_lock();
+        updated
     }
 }
 

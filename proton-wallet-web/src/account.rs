@@ -1,10 +1,8 @@
-use std::{
-    fmt::Display,
-    sync::{Arc, RwLock},
-};
+use std::{fmt::Display, sync::Arc};
 
 use proton_wallet_common::{
     account::{Account, AccountConfig, SupportedBIPs},
+    async_rw_lock::AsyncRwLock,
     Address,
 };
 
@@ -62,16 +60,16 @@ impl Into<SupportedBIPs> for WasmSupportedBIPs {
 
 #[wasm_bindgen]
 pub struct WasmAccount {
-    inner: Arc<RwLock<Account<OnchainStorage>>>,
+    inner: Arc<AsyncRwLock<Account<OnchainStorage>>>,
 }
 
 impl WasmAccount {
-    pub fn get_inner(&self) -> Arc<RwLock<Account<OnchainStorage>>> {
+    pub fn get_inner(&self) -> Arc<AsyncRwLock<Account<OnchainStorage>>> {
         self.inner.clone()
     }
 }
 
-impl Into<WasmAccount> for &Arc<RwLock<Account<OnchainStorage>>> {
+impl Into<WasmAccount> for &Arc<AsyncRwLock<Account<OnchainStorage>>> {
     fn into(self) -> WasmAccount {
         WasmAccount { inner: self.clone() }
     }
@@ -127,20 +125,23 @@ impl WasmAccount {
     }
 
     #[wasm_bindgen]
-    pub fn get_bitcoin_uri(
+    pub async fn get_bitcoin_uri(
         &mut self,
         index: Option<u32>,
         amount: Option<u64>,
         label: Option<String>,
         message: Option<String>,
     ) -> Result<WasmPaymentLink, DetailledWasmError> {
-        let payment_link: WasmPaymentLink = self
-            .get_inner()
+        let account_inner = self.get_inner();
+        
+        let payment_link: WasmPaymentLink = account_inner
             .write()
+            .await
             .map_err(|_| WasmError::LockError.into())?
             .get_bitcoin_uri(index, amount, label, message)
             .into();
 
+        account_inner.release_write_lock();
         Ok(payment_link)
     }
 

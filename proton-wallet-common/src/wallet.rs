@@ -1,4 +1,5 @@
 use crate::account::{Account, AccountConfig, SupportedBIPs};
+use crate::async_rw_lock::AsyncRwLock;
 use crate::bitcoin::Network;
 use crate::error::Error;
 use crate::mnemonic::Mnemonic;
@@ -12,12 +13,12 @@ use miniscript::bitcoin::bip32::{DerivationPath, ExtendedPrivKey};
 use miniscript::bitcoin::secp256k1::Secp256k1;
 
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct Wallet<Storage> {
     mprv: ExtendedPrivKey,
-    accounts: HashMap<DerivationPath, Arc<RwLock<Account<Storage>>>>,
+    accounts: HashMap<DerivationPath, Arc<AsyncRwLock<Account<Storage>>>>,
     config: WalletConfig,
 }
 
@@ -62,12 +63,12 @@ where
 
         let derivation_path = account.get_derivation_path();
         self.accounts
-            .insert(derivation_path.clone(), Arc::new(RwLock::new(account)));
+            .insert(derivation_path.clone(), Arc::new(AsyncRwLock::new(account)));
 
         Ok(derivation_path)
     }
 
-    pub fn get_account(&mut self, derivation_path: &DerivationPath) -> Option<&Arc<RwLock<Account<Storage>>>> {
+    pub fn get_account(&mut self, derivation_path: &DerivationPath) -> Option<&Arc<AsyncRwLock<Account<Storage>>>> {
         self.accounts.get(derivation_path)
     }
 
