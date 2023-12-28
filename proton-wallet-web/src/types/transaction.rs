@@ -42,6 +42,7 @@ impl Into<WasmScript> for ScriptBuf {
 
 #[wasm_bindgen]
 impl WasmScript {
+    #[wasm_bindgen(js_name = toAddress)]
     pub fn to_address(&self, network: WasmNetwork) -> Result<WasmAddress, DetailledWasmError> {
         let script_bug: ScriptBuf = self.into();
         let address = Address::from_script(script_bug.as_script(), network.into())
@@ -58,6 +59,7 @@ pub struct WasmOutPoint(pub String);
 
 #[wasm_bindgen]
 impl WasmOutPoint {
+    #[wasm_bindgen(js_name = fromRawTs)]
     pub fn from_raw_ts(raw_ts: IWasmOutpoint) -> WasmOutPoint {
         WasmOutPoint(serde_wasm_bindgen::from_value(raw_ts.into()).unwrap())
     }
@@ -152,6 +154,7 @@ impl Into<WasmDetailledTransaction> for DetailledTransaction {
 
 #[wasm_bindgen]
 impl WasmDetailledTransaction {
+    #[wasm_bindgen(js_name = fromPsbt)]
     pub async fn from_psbt(
         psbt: &WasmPartiallySignedTransaction,
         account: &WasmAccount,

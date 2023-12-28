@@ -36,18 +36,14 @@ impl WasmChain {
         Ok(WasmChain { inner })
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = getFeesEstimation)]
     pub async fn get_fees_estimation(&self) -> FeeRateByBlockEstimation {
         let fees_estimation = self.inner.get_fees_estimation().await.unwrap_or_default();
         serde_wasm_bindgen::to_value(&fees_estimation).unwrap().into()
     }
 
+    #[wasm_bindgen(js_name = fullSync)]
     pub async fn full_sync(&self, account: &WasmAccount) -> Result<(), DetailledWasmError> {
-        log_2(
-            &"Start full sync".into(),
-            &account.get_derivation_path().await.unwrap().to_string().into(),
-        );
-
         let account_inner = account.get_inner();
 
         self.inner
@@ -62,19 +58,10 @@ impl WasmChain {
             .map_err(|e| e.into())?;
 
         account_inner.release_write_lock();
-        log_2(
-            &"Finished full sync".into(),
-            &account.get_derivation_path().await.unwrap().to_string().into(),
-        );
         Ok(())
     }
-
+    #[wasm_bindgen(js_name = partialSync)]
     pub async fn partial_sync(&self, account: &WasmAccount) -> Result<(), DetailledWasmError> {
-        log_2(
-            &"Start part. sync".into(),
-            &account.get_derivation_path().await.unwrap().to_string().into(),
-        );
-
         let account_inner = account.get_inner();
 
         self.inner
@@ -89,14 +76,10 @@ impl WasmChain {
             .map_err(|e| e.into())?;
 
         account_inner.release_write_lock();
-        log_2(
-            &"Finished part. sync".into(),
-            &account.get_derivation_path().await.unwrap().to_string().into(),
-        );
         Ok(())
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = broadcastPsbt)]
     pub async fn broadcast_psbt(&self, psbt: &WasmPartiallySignedTransaction) -> Result<String, WasmError> {
         let tx = psbt.get_inner().extract_tx();
 

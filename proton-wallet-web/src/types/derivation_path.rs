@@ -23,6 +23,7 @@ impl WasmDerivationPath {
         Ok(WasmDerivationPath { inner: derivation_path })
     }
 
+    #[wasm_bindgen(js_name = fromRawTs)]
     pub fn from_raw_ts(raw_ts: IWasmDerivationPath) -> WasmDerivationPath {
         WasmDerivationPath {
             inner: serde_wasm_bindgen::from_value(raw_ts.into()).unwrap(),

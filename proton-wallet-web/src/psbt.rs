@@ -50,7 +50,6 @@ impl Into<PartiallySignedTransaction> for &WasmPartiallySignedTransaction {
 
 #[wasm_bindgen]
 impl WasmPartiallySignedTransaction {
-    #[wasm_bindgen]
     pub async fn sign(
         &mut self,
         wasm_account: &WasmAccount,

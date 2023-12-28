@@ -63,7 +63,7 @@ impl WasmWallet {
         Ok(Self { inner: wallet })
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = addAccount)]
     pub fn add_account(
         &mut self,
         bip: WasmSupportedBIPs,
@@ -86,6 +86,7 @@ impl WasmWallet {
         Ok(derivation_path.into())
     }
 
+    #[wasm_bindgen(js_name = getAccount)]
     pub fn get_account(&mut self, account_key: &WasmDerivationPath) -> Option<WasmAccount> {
         let account_key: DerivationPath = account_key.into();
         let account = self.inner.get_account(&account_key);
@@ -93,13 +94,13 @@ impl WasmWallet {
         account.map(|account| account.into())
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = getBalance)]
     pub async fn get_balance(&self) -> Result<WasmBalance, DetailledWasmError> {
         let balance = self.inner.get_balance().await.map_err(|e| e.into())?;
         Ok(balance.into())
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = getTransactions)]
     pub async fn get_transactions(
         &self,
         pagination: Option<WasmPagination>,
@@ -124,7 +125,7 @@ impl WasmWallet {
         Ok(serde_wasm_bindgen::to_value(&transaction).unwrap().into())
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = getTransaction)]
     pub async fn get_transaction(
         &self,
         account_key: &WasmDerivationPath,
@@ -141,7 +142,7 @@ impl WasmWallet {
         Ok(transaction.into())
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = getFingerprint)]
     pub fn get_fingerprint(&self) -> String {
         self.inner.get_fingerprint()
     }

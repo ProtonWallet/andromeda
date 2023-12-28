@@ -88,7 +88,7 @@ impl WasmTxBuilder {
         }
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = setAccount)]
     pub async fn set_account(&self, account: &WasmAccount) -> Result<WasmTxBuilder, DetailledWasmError> {
         let inner = self
             .inner
@@ -99,19 +99,19 @@ impl WasmTxBuilder {
         Ok(WasmTxBuilder { inner })
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = addRecipient)]
     pub fn add_recipient(&self) -> WasmTxBuilder {
         let inner = self.inner.add_recipient();
         WasmTxBuilder { inner }
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = removeRecipient)]
     pub fn remove_recipient(&self, index: usize) -> WasmTxBuilder {
         let inner = self.inner.remove_recipient(index);
         WasmTxBuilder { inner }
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = updateRecipient)]
     pub async fn update_recipient(
         &self,
         index: usize,
@@ -123,6 +123,7 @@ impl WasmTxBuilder {
         Ok(WasmTxBuilder { inner })
     }
 
+    #[wasm_bindgen(js_name = getRecipients)]
     pub fn get_recipients(&self) -> Vec<WasmRecipient> {
         let recipients = self
             .inner
@@ -143,7 +144,7 @@ impl WasmTxBuilder {
      * UTXOs
      */
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = addUtxoToSpend)]
     pub fn add_utxo_to_spend(&self, outpoint: WasmOutPoint) -> Result<WasmTxBuilder, WasmError> {
         let serialised: OutPoint = outpoint.try_into()?;
         let inner = self.inner.add_utxo_to_spend(&serialised);
@@ -151,7 +152,7 @@ impl WasmTxBuilder {
         Ok(WasmTxBuilder { inner })
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = removeUtxoToSpend)]
     pub fn remove_utxo_to_spend(&self, outpoint: WasmOutPoint) -> Result<WasmTxBuilder, WasmError> {
         let serialised: OutPoint = outpoint.try_into()?;
         let inner = self.inner.remove_utxo_to_spend(&serialised);
@@ -159,13 +160,13 @@ impl WasmTxBuilder {
         Ok(WasmTxBuilder { inner })
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = clearUtxosToSpend)]
     pub fn clear_utxos_to_spend(&self) -> WasmTxBuilder {
         let inner = self.inner.clear_utxos_to_spend();
         WasmTxBuilder { inner }
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = getUtxosToSpend)]
     pub fn get_utxos_to_spend(&self) -> Vec<WasmOutPoint> {
         self.inner
             .utxos_to_spend
@@ -182,13 +183,13 @@ impl WasmTxBuilder {
      * Coin selection enforcement
      */
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = setCoinSelection)]
     pub fn set_coin_selection(&self, coin_selection: WasmCoinSelection) -> Self {
         let inner = self.inner.set_coin_selection(coin_selection.into());
         WasmTxBuilder { inner }
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = getCoinSelection)]
     pub fn get_coin_selection(&self) -> WasmCoinSelection {
         self.inner.coin_selection.clone().into()
     }
@@ -197,19 +198,19 @@ impl WasmTxBuilder {
      * RBF
      */
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = enableRbf)]
     pub fn enable_rbf(&self) -> WasmTxBuilder {
         let inner = self.inner.enable_rbf();
         WasmTxBuilder { inner }
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = disableRbf)]
     pub fn disable_rbf(&self) -> WasmTxBuilder {
         let inner = self.inner.disable_rbf();
         WasmTxBuilder { inner }
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = getRbfEnabled)]
     pub fn get_rbf_enabled(&self) -> bool {
         self.inner.rbf_enabled
     }
@@ -218,13 +219,13 @@ impl WasmTxBuilder {
      * Change policy
      */
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = setChangePolicy)]
     pub fn set_change_policy(&self, change_policy: WasmChangeSpendPolicy) -> Self {
         let inner = self.inner.set_change_policy(change_policy.into());
         WasmTxBuilder { inner }
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = getChangePolicy)]
     pub fn get_change_policy(&self) -> WasmChangeSpendPolicy {
         self.inner.change_policy.into()
     }
@@ -233,13 +234,13 @@ impl WasmTxBuilder {
      * Fees
      */
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = setFeeRate)]
     pub async fn set_fee_rate(&self, sat_per_vb: f32) -> WasmTxBuilder {
         let inner = self.inner.set_fee_rate(sat_per_vb).await;
         WasmTxBuilder { inner }
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = getFeeRate)]
     pub fn get_fee_rate(&self) -> Option<f32> {
         if let Some(fee_rate) = self.inner.fee_rate {
             Some(fee_rate.as_sat_per_vb())
@@ -252,19 +253,19 @@ impl WasmTxBuilder {
      * Locktime
      */
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = addLocktime)]
     pub fn add_locktime(&self, locktime: WasmLockTime) -> Self {
         let inner = self.inner.add_locktime(locktime.into());
         WasmTxBuilder { inner }
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = removeLocktime)]
     pub fn remove_locktime(&self) -> Self {
         let inner = self.inner.remove_locktime();
         WasmTxBuilder { inner }
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = getLocktime)]
     pub fn get_locktime(&self) -> Option<WasmLockTime> {
         match self.inner.locktime {
             Some(locktime) => Some(locktime.into()),
@@ -276,7 +277,7 @@ impl WasmTxBuilder {
      * Final
      */
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = createPsbt)]
     pub async fn create_pbst(
         &self,
         network: WasmNetwork,

@@ -122,7 +122,7 @@ pub struct WasmTransactionTime {
 
 #[wasm_bindgen]
 impl WasmAccount {
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = hasSyncData)]
     pub async fn has_sync_data(&self) -> bool {
         match self.get_inner().read().await {
             Ok(inner) => inner.get_storage().exists(),
@@ -130,7 +130,7 @@ impl WasmAccount {
         }
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = getBitcoinUri)]
     pub async fn get_bitcoin_uri(
         &mut self,
         index: Option<u32>,
@@ -161,7 +161,7 @@ impl WasmAccount {
         Ok(wallet.is_mine(&address.script_pubkey()))
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = getBalance)]
     pub async fn get_balance(&self) -> Result<WasmBalance, DetailledWasmError> {
         let balance: WasmBalance = self
             .inner
@@ -174,7 +174,7 @@ impl WasmAccount {
         Ok(balance)
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = getDerivationPath)]
     pub async fn get_derivation_path(&self) -> Result<String, DetailledWasmError> {
         let derivation_path = self
             .inner
@@ -187,7 +187,7 @@ impl WasmAccount {
         Ok(derivation_path)
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = getUtxos)]
     pub async fn get_utxos(&self) -> Result<IWasmUtxoArray, DetailledWasmError> {
         let utxos = self
             .inner
@@ -202,7 +202,7 @@ impl WasmAccount {
         Ok(serde_wasm_bindgen::to_value(&utxos).unwrap().into())
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = getTransactions)]
     pub async fn get_transactions(
         &self,
         pagination: Option<WasmPagination>,
@@ -229,7 +229,7 @@ impl WasmAccount {
         Ok(serde_wasm_bindgen::to_value(&transactions).unwrap().into())
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = getTransaction)]
     pub async fn get_transaction(&self, txid: String) -> Result<WasmDetailledTransaction, DetailledWasmError> {
         let transaction = self
             .inner

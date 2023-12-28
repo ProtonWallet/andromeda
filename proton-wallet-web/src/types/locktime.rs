@@ -35,14 +35,17 @@ impl WasmLockTime {
         }
     }
 
+    #[wasm_bindgen(js_name = isBlockHeight)]
     pub fn is_block_height(&self) -> bool {
         matches!(self.lock_time, LockTime::Blocks(_))
     }
 
+    #[wasm_bindgen(js_name = isBlockTime)]
     pub fn is_block_time(&self) -> bool {
         matches!(self.lock_time, LockTime::Seconds(_))
     }
 
+    #[wasm_bindgen(js_name = toConsensusU32)]
     pub fn to_consensus_u32(&self) -> u32 {
         match self.lock_time {
             LockTime::Blocks(height) => height.to_consensus_u32(),
