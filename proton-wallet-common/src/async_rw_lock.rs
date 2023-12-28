@@ -18,7 +18,11 @@ impl<T> AsyncRwLock<T> {
         }
     }
 
-    pub fn read(&self) -> Result<RwLockReadGuard<'_, T>, PoisonError<RwLockReadGuard<'_, T>>> {
+    pub async fn read(&self) -> Result<RwLockReadGuard<'_, T>, PoisonError<RwLockReadGuard<'_, T>>> {
+        while *self.write_lock_held.lock().unwrap() {
+            task::sleep(Duration::from_millis(100)).await;
+        }
+
         self.inner.read()
     }
 

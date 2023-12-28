@@ -1,4 +1,5 @@
 use proton_wallet_common::{bitcoin::Network, BdkNetwork, KeychainKind, WordCount};
+use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -59,7 +60,7 @@ impl From<BdkNetwork> for WasmNetwork {
 }
 
 #[wasm_bindgen]
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub enum WasmKeychainKind {
     /// External keychain, used for deriving recipient addresses.
     External,

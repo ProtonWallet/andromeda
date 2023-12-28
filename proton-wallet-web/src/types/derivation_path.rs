@@ -1,12 +1,15 @@
 use std::str::FromStr;
 
 use proton_wallet_common::DerivationPath;
+use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
 use crate::error::{DetailledWasmError, WasmError};
 
+use super::typescript_interfaces::IWasmDerivationPath;
+
 #[wasm_bindgen]
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct WasmDerivationPath {
     inner: DerivationPath,
 }
@@ -19,6 +22,12 @@ impl WasmDerivationPath {
 
         Ok(WasmDerivationPath { inner: derivation_path })
     }
+
+    pub fn from_raw_ts(raw_ts: IWasmDerivationPath) -> WasmDerivationPath {
+        WasmDerivationPath {
+            inner: serde_wasm_bindgen::from_value(raw_ts.into()).unwrap(),
+        }
+    }
 }
 
 impl Into<DerivationPath> for &WasmDerivationPath {
@@ -29,8 +38,6 @@ impl Into<DerivationPath> for &WasmDerivationPath {
 
 impl Into<WasmDerivationPath> for DerivationPath {
     fn into(self) -> WasmDerivationPath {
-        WasmDerivationPath {
-            inner: self.clone()
-        }
+        WasmDerivationPath { inner: self.clone() }
     }
 }

@@ -1,12 +1,14 @@
 use proton_wallet_common::LocalUtxo;
+use serde::Serialize;
 
 use super::{
     defined::WasmKeychainKind,
-    transaction::{WasmTransactionTime, WasmOutPoint, WasmScript},
+    transaction::{WasmOutPoint, WasmScript, WasmTransactionTime},
 };
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(getter_with_clone)]
+#[derive(Serialize)]
 pub struct WasmUtxo {
     pub value: u64,
     pub outpoint: WasmOutPoint,

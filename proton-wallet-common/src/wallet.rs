@@ -5,6 +5,7 @@ use crate::error::Error;
 use crate::mnemonic::Mnemonic;
 use crate::transactions::{DetailledTransaction, Pagination, SimpleTransaction};
 use crate::utils::sort_and_paginate_txs;
+use futures::future;
 
 use bdk::wallet::{Balance as BdkBalance, ChangeSet};
 
@@ -72,8 +73,16 @@ where
         self.accounts.get(derivation_path)
     }
 
-    pub fn get_balance(&self) -> Result<BdkBalance, Error> {
-        let iter = self.accounts.values();
+    pub async fn get_balance(&self) -> Result<BdkBalance, Error> {
+        let async_iter = self.accounts.keys().map(|account_key| async move {
+            let account = self.accounts.get(&account_key).ok_or(Error::AccountNotFound)?;
+            let account_guard = account.read().await.map_err(|_| Error::LockError)?;
+            let balance = account_guard.get_balance();
+
+            Ok(balance) as Result<BdkBalance, Error>
+        });
+
+        let account_balances = future::try_join_all(async_iter).await?;
 
         let init = BdkBalance {
             untrusted_pending: 0,
@@ -82,10 +91,9 @@ where
             trusted_pending: 0,
         };
 
-        let balance = iter.fold(Ok(init), |acc, account| {
-            let account_balance = account.read().map_err(|_| Error::LockError)?.get_balance();
-
-            match acc {
+        let balance = account_balances
+            .into_iter()
+            .fold(Ok(init), |acc, account_balance| match acc {
                 Ok(acc) => Ok(BdkBalance {
                     untrusted_pending: acc.untrusted_pending + account_balance.untrusted_pending,
                     confirmed: acc.confirmed + account_balance.confirmed,
@@ -93,45 +101,39 @@ where
                     trusted_pending: acc.trusted_pending + account_balance.trusted_pending,
                 }),
                 _ => acc,
-            }
-        })?;
+            })?;
 
         Ok(balance)
     }
 
-    pub fn get_transactions(
+    pub async fn get_transactions(
         &self,
         pagination: Option<Pagination>,
         sorted: bool,
     ) -> Result<Vec<SimpleTransaction>, Error> {
         let pagination = pagination.unwrap_or_default();
 
-        let simple_txs = self
-            .accounts
-            .keys()
-            .map(|account_key| {
-                let account = self.accounts.get(&account_key).ok_or(Error::AccountNotFound)?;
-                let account_guard = account.read().map_err(|_| Error::LockError)?;
-                let wallet = account_guard.get_wallet();
+        let async_iter = self.accounts.keys().map(|account_key| async move {
+            let account = self.accounts.get(&account_key).ok_or(Error::AccountNotFound)?;
+            let account_guard = account.read().await.map_err(|_| Error::LockError)?;
+            let wallet = account_guard.get_wallet();
 
-                let txs = wallet
-                    .transactions()
-                    .map(|can_tx| SimpleTransaction::from_can_tx(&can_tx, &wallet, Some(account_key.clone())))
-                    .collect::<Vec<_>>();
+            let txs = wallet
+                .transactions()
+                .map(|can_tx| SimpleTransaction::from_can_tx(&can_tx, &wallet, Some(account_key.clone())))
+                .collect::<Vec<_>>();
 
-                Ok(txs)
-            })
-            .collect::<Result<Vec<_>, _>>()?
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>();
+            Ok(txs) as Result<Vec<SimpleTransaction>, Error>
+        });
 
-        let sorted = sort_and_paginate_txs(simple_txs, pagination, sorted);
+        let result = future::try_join_all(async_iter).await.unwrap();
 
-        Ok(sorted)
+        let simple_txs = result.into_iter().flatten().collect::<Vec<_>>();
+
+        Ok(sort_and_paginate_txs(simple_txs, pagination, sorted))
     }
 
-    pub fn get_transaction(
+    pub async fn get_transaction(
         &self,
         derivation_path: &DerivationPath,
         txid: String,
@@ -139,7 +141,11 @@ where
         let account = self.accounts.get(derivation_path);
 
         match account {
-            Some(account) => account.read().map_err(|_| Error::LockError)?.get_transaction(txid),
+            Some(account) => account
+                .read()
+                .await
+                .map_err(|_| Error::LockError)?
+                .get_transaction(txid),
             _ => Err(Error::InvalidAccountIndex),
         }
     }

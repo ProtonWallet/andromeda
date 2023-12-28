@@ -45,7 +45,7 @@ impl WasmChain {
     pub async fn full_sync(&self, account: &WasmAccount) -> Result<(), DetailledWasmError> {
         log_2(
             &"Start full sync".into(),
-            &account.get_derivation_path().unwrap().to_string().into(),
+            &account.get_derivation_path().await.unwrap().to_string().into(),
         );
 
         let account_inner = account.get_inner();
@@ -64,7 +64,7 @@ impl WasmChain {
         account_inner.release_write_lock();
         log_2(
             &"Finished full sync".into(),
-            &account.get_derivation_path().unwrap().to_string().into(),
+            &account.get_derivation_path().await.unwrap().to_string().into(),
         );
         Ok(())
     }
@@ -72,7 +72,7 @@ impl WasmChain {
     pub async fn partial_sync(&self, account: &WasmAccount) -> Result<(), DetailledWasmError> {
         log_2(
             &"Start part. sync".into(),
-            &account.get_derivation_path().unwrap().to_string().into(),
+            &account.get_derivation_path().await.unwrap().to_string().into(),
         );
 
         let account_inner = account.get_inner();
@@ -91,7 +91,7 @@ impl WasmChain {
         account_inner.release_write_lock();
         log_2(
             &"Finished part. sync".into(),
-            &account.get_derivation_path().unwrap().to_string().into(),
+            &account.get_derivation_path().await.unwrap().to_string().into(),
         );
         Ok(())
     }

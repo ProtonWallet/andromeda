@@ -12,10 +12,14 @@ use proton_wallet_common::{
 };
 use wasm_bindgen::prelude::*;
 
-use super::{address::WasmAddress, defined::WasmNetwork, derivation_path::WasmDerivationPath};
+use super::{
+    address::WasmAddress, defined::WasmNetwork, derivation_path::WasmDerivationPath,
+    typescript_interfaces::IWasmOutpoint,
+};
+use serde::Serialize;
 
 #[wasm_bindgen(getter_with_clone)]
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct WasmScript(pub Vec<u8>);
 
 impl Into<ScriptBuf> for WasmScript {
@@ -48,9 +52,16 @@ impl WasmScript {
 }
 
 #[wasm_bindgen(getter_with_clone)]
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 /// Serialised Outpoint under the form <txid>:<index>
 pub struct WasmOutPoint(pub String);
+
+#[wasm_bindgen]
+impl WasmOutPoint {
+    pub fn from_raw_ts(raw_ts: IWasmOutpoint) -> WasmOutPoint {
+        WasmOutPoint(serde_wasm_bindgen::from_value(raw_ts.into()).unwrap())
+    }
+}
 
 impl TryInto<OutPoint> for WasmOutPoint {
     type Error = WasmError;
@@ -141,23 +152,22 @@ impl Into<WasmDetailledTransaction> for DetailledTransaction {
 
 #[wasm_bindgen]
 impl WasmDetailledTransaction {
-    pub fn from_psbt(
+    pub async fn from_psbt(
         psbt: &WasmPartiallySignedTransaction,
         account: &WasmAccount,
     ) -> Result<WasmDetailledTransaction, DetailledWasmError> {
         let psbt: PartiallySignedTransaction = psbt.into();
         let inner = account.get_inner();
-        let account = inner.read().map_err(|_| WasmError::LockError.into())?;
+        let account = inner.read().await.map_err(|_| WasmError::LockError.into())?;
         let wallet = account.get_wallet();
 
         let tx = DetailledTransaction::from_psbt(&psbt, wallet).map_err(|e| e.into())?;
-
         Ok(tx.into())
     }
 }
 
 #[wasm_bindgen(getter_with_clone)]
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct WasmTransactionTime {
     pub confirmed: bool,
     pub confirmation_time: Option<u64>,
@@ -199,6 +209,7 @@ impl Into<WasmTransactionTime> for ConfirmationTime {
 }
 
 #[wasm_bindgen(getter_with_clone)]
+#[derive(Serialize)]
 pub struct WasmSimpleTransaction {
     pub txid: String,
     pub value: i64,

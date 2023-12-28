@@ -4,7 +4,6 @@ use proton_wallet_common::{
     DerivationPath,
 };
 use wasm_bindgen::prelude::*;
-use web_sys::console::log_2;
 
 use crate::{
     account::{WasmAccount, WasmSupportedBIPs},
@@ -16,6 +15,7 @@ use crate::{
         derivation_path::WasmDerivationPath,
         pagination::WasmPagination,
         transaction::{WasmDetailledTransaction, WasmSimpleTransaction},
+        typescript_interfaces::IWasmSimpleTransactionArray,
     },
 };
 
@@ -94,29 +94,25 @@ impl WasmWallet {
     }
 
     #[wasm_bindgen]
-    pub fn get_balance(&self) -> Result<WasmBalance, DetailledWasmError> {
-        let balance = self.inner.get_balance().map_err(|e| e.into())?;
+    pub async fn get_balance(&self) -> Result<WasmBalance, DetailledWasmError> {
+        let balance = self.inner.get_balance().await.map_err(|e| e.into())?;
         Ok(balance.into())
     }
 
     #[wasm_bindgen]
-    pub fn get_transactions(
+    pub async fn get_transactions(
         &self,
         pagination: Option<WasmPagination>,
-    ) -> Result<Vec<WasmSimpleTransaction>, DetailledWasmError> {
+    ) -> Result<IWasmSimpleTransactionArray, DetailledWasmError> {
         let pagination = match pagination {
             Some(pagination) => Some(pagination.into()),
             _ => None,
         };
 
-        log_2(
-            &"Start (wallet) get_transactions".into(),
-            &self.inner.get_fingerprint().into(),
-        );
-
         let transaction = self
             .inner
             .get_transactions(pagination, true)
+            .await
             .map_err(|e| e.into())?
             .into_iter()
             .map(|tx| {
@@ -125,33 +121,22 @@ impl WasmWallet {
             })
             .collect::<Vec<_>>();
 
-        log_2(
-            &"Finish (wallet) get_transactions".into(),
-            &self.inner.get_fingerprint().into(),
-        );
-
-        Ok(transaction)
+        Ok(serde_wasm_bindgen::to_value(&transaction).unwrap().into())
     }
 
     #[wasm_bindgen]
-    pub fn get_transaction(
+    pub async fn get_transaction(
         &self,
         account_key: &WasmDerivationPath,
         txid: String,
     ) -> Result<WasmDetailledTransaction, DetailledWasmError> {
         let account_key: DerivationPath = account_key.into();
 
-        log_2(
-            &"Start SINGLE (wallet) get_transaction".into(),
-            &account_key.to_string().into(),
-        );
-
-        let transaction = self.inner.get_transaction(&account_key, txid).map_err(|e| e.into())?;
-
-        log_2(
-            &"Finish SINGLE (wallet) get_transaction".into(),
-            &account_key.to_string().into(),
-        );
+        let transaction = self
+            .inner
+            .get_transaction(&account_key, txid)
+            .await
+            .map_err(|e| e.into())?;
 
         Ok(transaction.into())
     }

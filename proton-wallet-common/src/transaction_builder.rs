@@ -137,10 +137,10 @@ where
     }
 
     pub async fn set_account(&self, account: Arc<AsyncRwLock<Account<Storage>>>) -> Result<Self, Error> {
-        let balance = &account.read().map_err(|_| Error::LockError)?.get_balance();
+        let balance = &account.read().await.map_err(|_| Error::LockError)?.get_balance();
 
         let tx_builder = TxBuilder::<Storage> {
-            account: Some(account),
+            account: Some(account.clone()),
             recipients: allocate_recipients_balance(self.recipients.clone(), balance),
             ..self.clone()
         };
