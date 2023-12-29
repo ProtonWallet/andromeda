@@ -1,6 +1,37 @@
-use proton_wallet_common::{bitcoin::Network, BdkNetwork, KeychainKind, WordCount};
-use serde::Serialize;
+use proton_wallet_common::{
+    bitcoin::{BitcoinUnit, Network},
+    BdkNetwork, KeychainKind, WordCount,
+};
+use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen]
+#[derive(Clone, Copy)]
+pub enum WasmBitcoinUnit {
+    BTC,
+    MBTC,
+    SAT,
+}
+
+impl Into<WasmBitcoinUnit> for BitcoinUnit {
+    fn into(self) -> WasmBitcoinUnit {
+        match self {
+            BitcoinUnit::BTC => WasmBitcoinUnit::BTC,
+            BitcoinUnit::MBTC => WasmBitcoinUnit::MBTC,
+            BitcoinUnit::SAT => WasmBitcoinUnit::SAT,
+        }
+    }
+}
+
+impl Into<BitcoinUnit> for WasmBitcoinUnit {
+    fn into(self) -> BitcoinUnit {
+        match self {
+            WasmBitcoinUnit::BTC => BitcoinUnit::BTC,
+            WasmBitcoinUnit::MBTC => BitcoinUnit::MBTC,
+            WasmBitcoinUnit::SAT => BitcoinUnit::SAT,
+        }
+    }
+}
 
 #[wasm_bindgen]
 #[derive(Clone, Copy)]
@@ -60,7 +91,7 @@ impl From<BdkNetwork> for WasmNetwork {
 }
 
 #[wasm_bindgen]
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub enum WasmKeychainKind {
     /// External keychain, used for deriving recipient addresses.
     External,

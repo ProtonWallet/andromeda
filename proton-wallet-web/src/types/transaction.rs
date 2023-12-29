@@ -16,10 +16,10 @@ use super::{
     address::WasmAddress, defined::WasmNetwork, derivation_path::WasmDerivationPath,
     typescript_interfaces::IWasmOutpoint,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[wasm_bindgen(getter_with_clone)]
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct WasmScript(pub Vec<u8>);
 
 impl Into<ScriptBuf> for WasmScript {
@@ -53,7 +53,7 @@ impl WasmScript {
 }
 
 #[wasm_bindgen(getter_with_clone)]
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 /// Serialised Outpoint under the form <txid>:<index>
 pub struct WasmOutPoint(pub String);
 
@@ -61,7 +61,7 @@ pub struct WasmOutPoint(pub String);
 impl WasmOutPoint {
     #[wasm_bindgen(js_name = fromRawTs)]
     pub fn from_raw_ts(raw_ts: IWasmOutpoint) -> WasmOutPoint {
-        WasmOutPoint(serde_wasm_bindgen::from_value(raw_ts.into()).unwrap())
+        serde_wasm_bindgen::from_value(raw_ts.into()).unwrap()
     }
 }
 
@@ -114,6 +114,7 @@ pub struct WasmTxOut {
     pub value: u64,
     pub script_pubkey: WasmScript,
     pub address: WasmAddress,
+    pub is_mine: bool,
 }
 
 impl Into<WasmTxOut> for DetailledTxOutput {
@@ -122,6 +123,7 @@ impl Into<WasmTxOut> for DetailledTxOutput {
             value: self.value,
             script_pubkey: self.script_pubkey.into(),
             address: self.address.into(),
+            is_mine: self.is_mine,
         }
     }
 }
@@ -142,10 +144,7 @@ impl Into<WasmDetailledTransaction> for DetailledTransaction {
             txid: self.txid.to_string(),
             value: self.value,
             fees: self.fees,
-            time: match self.time {
-                Some(time) => Some(time.into()),
-                _ => None,
-            },
+            time: self.time.map(|t| t.into()),
             inputs: self.inputs.into_iter().map(|input| input.into()).collect::<Vec<_>>(),
             outputs: self.outputs.into_iter().map(|output| output.into()).collect::<Vec<_>>(),
         }
@@ -170,7 +169,7 @@ impl WasmDetailledTransaction {
 }
 
 #[wasm_bindgen(getter_with_clone)]
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct WasmTransactionTime {
     pub confirmed: bool,
     pub confirmation_time: Option<u64>,
@@ -228,10 +227,7 @@ impl Into<WasmSimpleTransaction> for SimpleTransaction {
             value: self.value,
             fees: self.fees,
             time: self.time.into(),
-            account_key: match self.account_key {
-                Some(account_key) => Some(account_key.into()),
-                _ => None,
-            },
+            account_key: self.account_key.map(|k| k.into()),
         }
     }
 }

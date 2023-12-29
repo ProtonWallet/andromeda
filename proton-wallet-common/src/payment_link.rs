@@ -2,17 +2,17 @@ use std::str::FromStr;
 
 use bdk::{bitcoin::Address, wallet::ChangeSet};
 use bdk_chain::PersistBackend;
-use miniscript::bitcoin::Network;
 
 use crate::{
     account::Account,
+    bitcoin::{BitcoinUnit, Network},
     error::Error,
-    utils::{btc_to_sats, sats_to_btc},
+    utils::convert_amount,
 };
 
 use urlencoding::{decode, encode};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum PaymentLink {
     BitcoinAddress(Address),
     BitcoinURI {
@@ -66,10 +66,7 @@ fn get_query_params(query_params: &Vec<(&str, &str)>, key: &str) -> Option<Strin
 
 impl PaymentLink {
     fn get_querystring(amount: &Option<u64>, label: &Option<String>, message: &Option<String>) -> String {
-        let str_amount = match amount {
-            Some(amount) => Some(sats_to_btc(*amount).to_string()),
-            _ => None,
-        };
+        let str_amount = amount.map(|am| convert_amount(am as f64, BitcoinUnit::SAT, BitcoinUnit::BTC).to_string());
 
         vec![
             (AMOUNT_KEY, str_amount),
@@ -77,10 +74,7 @@ impl PaymentLink {
             (MESSAGE_KEY, message.clone()),
         ]
         .into_iter()
-        .filter_map(move |(key, value)| match value {
-            Some(value) => Some(format!("{}={}", key, encode(&value))),
-            _ => None,
-        })
+        .filter_map(move |(key, value)| value.map(|val| format!("{}={}", key, encode(&val))))
         .collect::<Vec<String>>()
         .join("&")
     }
@@ -112,7 +106,7 @@ impl PaymentLink {
     fn try_create_address(address_str: &str, network: Network) -> Result<Address, Error> {
         let address = Address::from_str(address_str)
             .map_err(|_| Error::InvalidAddress)?
-            .require_network(network)
+            .require_network(network.into())
             .map_err(|_| Error::InvalidNetwork)?;
 
         Ok(address)
@@ -126,6 +120,7 @@ impl PaymentLink {
         if payment_link_str.starts_with("bitcoin") {
             // Remove protocol prefix
             let splitted = payment_link_str.split("bitcoin:").collect::<Vec<&str>>()[1];
+
             // Separate query_string, if any from bitcoin address
             let splitted = splitted.split("?").collect::<Vec<&str>>();
 
@@ -139,13 +134,9 @@ impl PaymentLink {
 
             let query_params = querystring::querify(query_params_str);
 
-            let amount = match get_query_params(&query_params, AMOUNT_KEY) {
-                Some(amount_str) => match amount_str.parse::<f64>() {
-                    Ok(amount) => Some(btc_to_sats(amount)),
-                    _ => None,
-                },
-                _ => None,
-            };
+            let amount = get_query_params(&query_params, AMOUNT_KEY)
+                .and_then(|amount_str| amount_str.parse::<f64>().ok())
+                .map(|amount| convert_amount(amount, BitcoinUnit::BTC, BitcoinUnit::SAT).round() as u64);
 
             let label = get_query_params(&query_params, LABEL_KEY);
             let message = get_query_params(&query_params, MESSAGE_KEY);
@@ -197,7 +188,7 @@ mod tests {
 
     use miniscript::bitcoin::Address;
 
-    use crate::{error::Error, payment_link::PaymentLink};
+    use crate::{bitcoin::Network, error::Error, payment_link::PaymentLink};
 
     #[test]
     fn should_return_only_address() {
@@ -286,7 +277,7 @@ mod tests {
         assert_eq!(
             PaymentLink::try_parse(
                 "tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn".to_string(),
-                miniscript::bitcoin::Network::Testnet
+                Network::Testnet
             )
             .unwrap(),
             PaymentLink::BitcoinAddress(
@@ -301,24 +292,36 @@ mod tests {
     fn should_return_error_when_parsing_invalid_btc_address() {
         let error = PaymentLink::try_parse(
             "tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn--".to_string(),
-            miniscript::bitcoin::Network::Testnet,
+            Network::Testnet,
         )
         .err()
         .unwrap();
 
-        assert_eq!(error.to_string(), Error::InvalidAddress.to_string());
+        assert_eq!(
+            true,
+            match error {
+                Error::InvalidAddress => true,
+                _ => false,
+            }
+        );
     }
 
     #[test]
     fn should_return_error_when_parsing_btc_address_with_invalid_network() {
         let error = PaymentLink::try_parse(
             "tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn".to_string(),
-            miniscript::bitcoin::Network::Bitcoin,
+            Network::Bitcoin,
         )
         .err()
         .unwrap();
 
-        assert_eq!(error.to_string(), Error::InvalidNetwork.to_string());
+        assert_eq!(
+            true,
+            match error {
+                Error::InvalidNetwork => true,
+                _ => false,
+            }
+        );
     }
 
     #[test]
@@ -326,7 +329,7 @@ mod tests {
         assert_eq!(
             PaymentLink::try_parse(
                 "bitcoin:tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn?amount=0.00192880&label=Fermi%20Pasta&message=Thanks%20for%20your%20donation".to_string(),
-                miniscript::bitcoin::Network::Testnet
+                Network::Testnet
             )
             .unwrap(),
             PaymentLink::BitcoinURI {
@@ -345,7 +348,7 @@ mod tests {
         assert_eq!(
             PaymentLink::try_parse(
                 "bitcoin:tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn".to_string(),
-                miniscript::bitcoin::Network::Testnet
+                Network::Testnet
             )
             .unwrap(),
             PaymentLink::BitcoinURI {
@@ -364,7 +367,7 @@ mod tests {
         assert_eq!(
             PaymentLink::try_parse(
                 "bitcoin:tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn?amount=auyeuur".to_string(),
-                miniscript::bitcoin::Network::Testnet
+                Network::Testnet
             )
             .unwrap(),
             PaymentLink::BitcoinURI {
@@ -382,23 +385,33 @@ mod tests {
     fn should_return_error_when_parsing_bitcoin_uri_with_invalid_btc_address() {
         let error = PaymentLink::try_parse(
             "bitcoin:tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn--?amount=0.00192880&label=Fermi%20Pasta&message=Thanks%20for%20your%20donation".to_string(),
-            miniscript::bitcoin::Network::Testnet
-        )
-        .err()
-        .unwrap();
+            Network::Testnet
+        ) .err().unwrap();
 
-        assert_eq!(error.to_string(), Error::InvalidAddress.to_string());
+        assert_eq!(
+            true,
+            match error {
+                Error::InvalidAddress => true,
+                _ => false,
+            }
+        );
     }
 
     #[test]
     fn should_return_error_when_parsing_bitcoin_uri_with_invalid_network() {
         let error =      PaymentLink::try_parse(
             "bitcoin:tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn?amount=0.00192880&label=Fermi%20Pasta&message=Thanks%20for%20your%20donation".to_string(),
-            miniscript::bitcoin::Network::Bitcoin
+            Network::Bitcoin
         )
         .err()
         .unwrap();
 
-        assert_eq!(error.to_string(), Error::InvalidNetwork.to_string());
+        assert_eq!(
+            true,
+            match error {
+                Error::InvalidNetwork => true,
+                _ => false,
+            }
+        );
     }
 }

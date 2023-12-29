@@ -7,16 +7,10 @@ use bdk::miniscript::BareCtx;
 
 use std::str::FromStr;
 
-#[cfg(feature = "wasm")]
-use serde::{Deserialize, Serialize};
-
 pub use bdk::keys::bip39::{Language as BdkLanguage, Mnemonic as BdkMnemonic};
 
 use crate::error::Error;
 
-/// Mnemonic phrases are a human-readable version of the private keys.
-/// Supported number of words are 12, 15, 18, 21 and 24.
-#[cfg_attr(feature = "wasm", derive(Serialize, Deserialize))]
 pub struct Mnemonic {
     inner: BdkMnemonic,
 }

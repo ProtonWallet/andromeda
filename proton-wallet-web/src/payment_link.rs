@@ -16,6 +16,15 @@ pub struct WasmPaymentLink {
     inner: PaymentLink,
 }
 
+#[wasm_bindgen(getter_with_clone)]
+#[derive(Default)]
+pub struct WasmOnchainPaymentLink {
+    pub address: Option<String>,
+    pub amount: Option<u64>,
+    pub message: Option<String>,
+    pub label: Option<String>,
+}
+
 impl Into<WasmPaymentLink> for PaymentLink {
     fn into(self) -> WasmPaymentLink {
         WasmPaymentLink { inner: self }
@@ -54,6 +63,29 @@ impl WasmPaymentLink {
             PaymentLink::BitcoinURI { .. } => WasmPaymentLinkKind::BitcoinURI,
             PaymentLink::LightningURI { .. } => WasmPaymentLinkKind::LightningURI,
             PaymentLink::UnifiedURI { .. } => WasmPaymentLinkKind::UnifiedURI,
+        }
+    }
+
+    #[wasm_bindgen(js_name = assumeOnchain)]
+    pub fn assume_onchain(&self) -> WasmOnchainPaymentLink {
+        match self.inner.clone() {
+            PaymentLink::BitcoinAddress(address) => WasmOnchainPaymentLink {
+                address: Some(address.to_string()),
+                ..WasmOnchainPaymentLink::default()
+            },
+            PaymentLink::BitcoinURI {
+                address,
+                amount,
+                label,
+                message,
+            } => WasmOnchainPaymentLink {
+                address: Some(address.to_string()),
+                amount,
+                label,
+                message,
+            },
+            PaymentLink::LightningURI { .. } => WasmOnchainPaymentLink::default(),
+            PaymentLink::UnifiedURI { .. } => WasmOnchainPaymentLink::default(),
         }
     }
 }

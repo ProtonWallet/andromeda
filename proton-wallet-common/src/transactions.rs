@@ -27,15 +27,12 @@ impl SimpleTransaction {
             account_key,
             txid: can_tx.tx_node.txid,
             value: received as i64 - sent as i64,
+            fees: wallet.calculate_fee(can_tx.tx_node.tx).ok(),
             time: match can_tx.chain_position {
                 ChainPosition::Confirmed(anchor) => TransactionTime::Confirmed {
                     confirmation_time: anchor.confirmation_time,
                 },
                 ChainPosition::Unconfirmed(last_seen) => TransactionTime::Unconfirmed { last_seen },
-            },
-            fees: match wallet.calculate_fee(can_tx.tx_node.tx) {
-                Ok(fees) => Some(fees),
-                _ => None,
             },
         }
     }
@@ -53,6 +50,7 @@ pub struct DetailledTxOutput {
     pub value: u64,
     pub address: Address,
     pub script_pubkey: ScriptBuf,
+    pub is_mine: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -70,10 +68,7 @@ impl DetailledTransaction {
         let tx = psbt.clone().extract_tx();
 
         let (sent, received) = wallet.spk_index().sent_and_received(&tx);
-        let fees = match wallet.calculate_fee(&tx) {
-            Ok(fees) => Some(fees),
-            _ => None,
-        };
+        let fees = wallet.calculate_fee(&tx).ok();
 
         let outputs: Vec<DetailledTxOutput> = tx
             .output
@@ -84,6 +79,7 @@ impl DetailledTransaction {
                     value: output.value,
                     address: Address::from_script(&output.script_pubkey, wallet.network())
                         .map_err(|_| Error::CannotCreateAddressFromScript)?,
+                    is_mine: wallet.is_mine(&output.script_pubkey),
                     script_pubkey: output.script_pubkey,
                 };
 
@@ -108,10 +104,7 @@ impl DetailledTransaction {
         wallet: &Wallet<Storage>,
     ) -> Result<Self, Error> {
         let (sent, received) = wallet.spk_index().sent_and_received(can_tx.tx_node.tx);
-        let fees = match wallet.calculate_fee(can_tx.tx_node.tx) {
-            Ok(fees) => Some(fees),
-            _ => None,
-        };
+        let fees = wallet.calculate_fee(can_tx.tx_node.tx).ok();
 
         let outputs: Vec<DetailledTxOutput> = can_tx
             .tx_node
@@ -123,6 +116,7 @@ impl DetailledTransaction {
                     value: output.value,
                     address: Address::from_script(&output.script_pubkey, wallet.network())
                         .map_err(|_| Error::CannotCreateAddressFromScript)?,
+                    is_mine: wallet.is_mine(&output.script_pubkey),
                     script_pubkey: output.script_pubkey,
                 };
 

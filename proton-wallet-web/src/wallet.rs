@@ -105,14 +105,9 @@ impl WasmWallet {
         &self,
         pagination: Option<WasmPagination>,
     ) -> Result<IWasmSimpleTransactionArray, DetailledWasmError> {
-        let pagination = match pagination {
-            Some(pagination) => Some(pagination.into()),
-            _ => None,
-        };
-
         let transaction = self
             .inner
-            .get_transactions(pagination, true)
+            .get_transactions(pagination.map(|pa| pa.into()), true)
             .await
             .map_err(|e| e.into())?
             .into_iter()

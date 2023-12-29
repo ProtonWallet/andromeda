@@ -32,7 +32,6 @@ pub enum SupportedBIPs {
 
 #[derive(Debug)]
 pub struct Account<Storage> {
-    account_xprv: ExtendedPrivKey,
     derivation_path: DerivationPath,
     storage: Storage,
     wallet: Wallet<Storage>,
@@ -129,7 +128,6 @@ where
             .map_err(|e| e.into())?;
 
         Ok(Self {
-            account_xprv,
             derivation_path: derivation_path.into(),
             storage: storage.clone(),
             wallet: Self::build_wallet(account_xprv, config.network.into(), storage)?,
@@ -202,10 +200,7 @@ where
         psbt: &mut PartiallySignedTransaction,
         sign_options: Option<SignOptions>,
     ) -> Result<bool, Error> {
-        let sign_options = match sign_options {
-            Some(sign_options) => sign_options,
-            _ => SignOptions::default(),
-        };
+        let sign_options = sign_options.unwrap_or_default();
 
         self.wallet
             .sign(psbt, sign_options)

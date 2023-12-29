@@ -2,8 +2,6 @@ use bdk::descriptor::DescriptorError;
 use bdk::keys::bip39::Error as Bip39Error;
 use bdk::{Error as BdkError, KeychainKind};
 use miniscript::bitcoin::bip32::Error as Bip32Error;
-use std::error;
-use std::fmt;
 
 #[derive(Debug)]
 pub enum Error {
@@ -54,22 +52,6 @@ pub enum Error {
     Bip32 { error: String },
     Bip39 { error: Option<Bip39Error> },
     Psbt { error: String },
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Error: {}", self)
-    }
-}
-
-impl error::Error for Error {
-    fn description(&self) -> &str {
-        "Custom error"
-    }
-
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        Some(self)
-    }
 }
 
 impl Into<Error> for BdkError {

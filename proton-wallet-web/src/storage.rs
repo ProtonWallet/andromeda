@@ -1,4 +1,5 @@
 use proton_wallet_common::{Append, ChangeSet, PersistBackend};
+use serde::Serialize;
 
 use crate::error::WasmError;
 
@@ -27,13 +28,10 @@ impl OnchainStorage {
     }
 
     pub fn exists(&self) -> bool {
-        match get_storage() {
-            Ok(storage) => match storage.get_item(&self.changeset_key) {
-                Ok(item) => item.is_some() && !item.unwrap().is_empty(),
-                _ => false,
-            },
-            _ => false,
-        }
+        get_storage()
+            .ok()
+            .and_then(|storage| storage.get_item(&self.changeset_key).ok())
+            .map_or(false, |item| item.map_or(false, |i| i.is_empty()))
     }
 }
 

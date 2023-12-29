@@ -8,10 +8,7 @@ pub struct Client(AsyncEsploraClient);
 
 impl Client {
     pub fn new(url: Option<String>) -> Result<Self, Error> {
-        let url = match url {
-            Some(url) => url.clone(),
-            _ => "https://mempool.space/testnet/api".to_string(),
-        };
+        let url = url.unwrap_or("https://mempool.space/testnet/api".to_string());
 
         let client = esplora_client::Builder::new(&url)
             .build_async()

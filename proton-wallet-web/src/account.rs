@@ -212,13 +212,7 @@ impl WasmAccount {
             .read()
             .await
             .map_err(|_| WasmError::LockError.into())?
-            .get_transactions(
-                match pagination {
-                    Some(pagination) => Some(pagination.into()),
-                    _ => None,
-                },
-                true,
-            )
+            .get_transactions(pagination.map(|pa| pa.into()), true)
             .into_iter()
             .map(|tx| {
                 let wasm_tx: WasmSimpleTransaction = tx.into();

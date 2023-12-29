@@ -9,7 +9,11 @@ use crate::{
     error::{DetailledWasmError, WasmError},
     psbt::WasmPartiallySignedTransaction,
     storage::OnchainStorage,
-    types::{defined::WasmNetwork, locktime::WasmLockTime, transaction::WasmOutPoint},
+    types::{
+        defined::{WasmBitcoinUnit, WasmNetwork},
+        locktime::WasmLockTime,
+        transaction::WasmOutPoint,
+    },
 };
 
 #[wasm_bindgen]
@@ -77,7 +81,7 @@ impl Into<WasmChangeSpendPolicy> for ChangeSpendPolicy {
 }
 
 #[wasm_bindgen(getter_with_clone)]
-pub struct WasmRecipient(pub String, pub String, pub u64);
+pub struct WasmRecipient(pub String, pub String, pub f64, pub WasmBitcoinUnit);
 
 #[wasm_bindgen]
 impl WasmTxBuilder {
@@ -99,6 +103,12 @@ impl WasmTxBuilder {
         Ok(WasmTxBuilder { inner })
     }
 
+    #[wasm_bindgen(js_name = clearRecipients)]
+    pub fn clear_recipients(&self) -> WasmTxBuilder {
+        let inner = self.inner.clear_recipients();
+        WasmTxBuilder { inner }
+    }
+
     #[wasm_bindgen(js_name = addRecipient)]
     pub fn add_recipient(&self) -> WasmTxBuilder {
         let inner = self.inner.add_recipient();
@@ -116,9 +126,20 @@ impl WasmTxBuilder {
         &self,
         index: usize,
         address_str: Option<String>,
-        amount: Option<u64>,
+        amount: Option<f64>,
+        unit: Option<WasmBitcoinUnit>,
     ) -> Result<WasmTxBuilder, WasmError> {
-        let inner = self.inner.update_recipient(index, (address_str, amount)).await;
+        let inner = self
+            .inner
+            .update_recipient(index, (address_str, amount, unit.map(|u| u.into())))
+            .await;
+
+        Ok(WasmTxBuilder { inner })
+    }
+
+    #[wasm_bindgen(js_name = updateRecipientAmountToMax)]
+    pub async fn update_recipient_amount_to_max(&self, index: usize) -> Result<WasmTxBuilder, WasmError> {
+        let inner = self.inner.update_recipient_amount_to_max(index).await;
 
         Ok(WasmTxBuilder { inner })
     }
@@ -131,8 +152,8 @@ impl WasmTxBuilder {
             .clone()
             .into_iter()
             .map(|recipient| {
-                let TmpRecipient(uuid, address, amount) = recipient;
-                let wasm_recipient: WasmRecipient = WasmRecipient(uuid, address, amount);
+                let TmpRecipient(uuid, address, amount, unit) = recipient;
+                let wasm_recipient: WasmRecipient = WasmRecipient(uuid, address, amount, unit.into());
                 wasm_recipient
             })
             .collect();
@@ -267,10 +288,7 @@ impl WasmTxBuilder {
 
     #[wasm_bindgen(js_name = getLocktime)]
     pub fn get_locktime(&self) -> Option<WasmLockTime> {
-        match self.inner.locktime {
-            Some(locktime) => Some(locktime.into()),
-            _ => None,
-        }
+        self.inner.locktime.map(|l| l.into())
     }
 
     /**

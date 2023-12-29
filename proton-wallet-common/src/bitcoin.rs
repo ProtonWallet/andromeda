@@ -1,5 +1,16 @@
 use bdk::bitcoin::Network as BdkNetwork;
 
+pub const SATOSHI: u64 = 1;
+pub const BITCOIN: u64 = 100_000_000 * SATOSHI;
+pub const MILLI_BITCOIN: u64 = BITCOIN / 1000;
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum BitcoinUnit {
+    BTC,
+    MBTC,
+    SAT,
+}
+
 /**
  * We reimplement Network enum to have exhaustive enum
  */
@@ -37,4 +48,3 @@ impl From<BdkNetwork> for Network {
         }
     }
 }
-

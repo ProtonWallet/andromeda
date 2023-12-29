@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use proton_wallet_common::DerivationPath;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
 use crate::error::{DetailledWasmError, WasmError};
@@ -9,7 +9,7 @@ use crate::error::{DetailledWasmError, WasmError};
 use super::typescript_interfaces::IWasmDerivationPath;
 
 #[wasm_bindgen]
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct WasmDerivationPath {
     inner: DerivationPath,
 }
@@ -25,9 +25,7 @@ impl WasmDerivationPath {
 
     #[wasm_bindgen(js_name = fromRawTs)]
     pub fn from_raw_ts(raw_ts: IWasmDerivationPath) -> WasmDerivationPath {
-        WasmDerivationPath {
-            inner: serde_wasm_bindgen::from_value(raw_ts.into()).unwrap(),
-        }
+        serde_wasm_bindgen::from_value(raw_ts.into()).unwrap()
     }
 }
 
