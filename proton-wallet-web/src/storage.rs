@@ -1,5 +1,4 @@
 use proton_wallet_common::{Append, ChangeSet, PersistBackend};
-use serde::Serialize;
 
 use crate::error::WasmError;
 

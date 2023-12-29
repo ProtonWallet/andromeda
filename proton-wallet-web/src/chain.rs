@@ -1,6 +1,5 @@
 use proton_wallet_common::{chain::Chain, client::Client};
 use wasm_bindgen::prelude::*;
-use web_sys::console::log_2;
 
 use crate::{
     account::WasmAccount,
