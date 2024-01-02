@@ -1,7 +1,7 @@
 use std::{fmt::Display, sync::Arc};
 
 use proton_wallet_common::{
-    account::{Account, AccountConfig, SupportedBIPs},
+    account::{Account, AccountConfig, ScriptType},
     async_rw_lock::AsyncRwLock,
     Address,
 };
@@ -25,35 +25,35 @@ use crate::{
 
 #[wasm_bindgen]
 #[derive(Clone, Copy)]
-pub enum WasmSupportedBIPs {
-    Bip44,
-    Bip49,
-    Bip84,
-    Bip86,
+pub enum WasmScriptType {
+    Legacy,
+    NestedSegwit,
+    NativeSegwit,
+    Taproot,
 }
 
-impl Display for WasmSupportedBIPs {
+impl Display for WasmScriptType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "{}",
             match self {
-                WasmSupportedBIPs::Bip44 => "44",
-                WasmSupportedBIPs::Bip49 => "49",
-                WasmSupportedBIPs::Bip84 => "84",
-                WasmSupportedBIPs::Bip86 => "86",
+                WasmScriptType::Legacy => "Legacy",
+                WasmScriptType::NestedSegwit => "NestedSegwit",
+                WasmScriptType::NativeSegwit => "NativeSegwit",
+                WasmScriptType::Taproot => "Taproot",
             }
         )
     }
 }
 
-impl Into<SupportedBIPs> for WasmSupportedBIPs {
-    fn into(self) -> SupportedBIPs {
+impl Into<ScriptType> for WasmScriptType {
+    fn into(self) -> ScriptType {
         match self {
-            WasmSupportedBIPs::Bip44 => SupportedBIPs::Bip44,
-            WasmSupportedBIPs::Bip49 => SupportedBIPs::Bip49,
-            WasmSupportedBIPs::Bip84 => SupportedBIPs::Bip84,
-            WasmSupportedBIPs::Bip86 => SupportedBIPs::Bip86,
+            WasmScriptType::Legacy => ScriptType::Legacy,
+            WasmScriptType::NestedSegwit => ScriptType::NestedSegwit,
+            WasmScriptType::NativeSegwit => ScriptType::NativeSegwit,
+            WasmScriptType::Taproot => ScriptType::Taproot,
         }
     }
 }
@@ -78,7 +78,7 @@ impl Into<WasmAccount> for &Arc<AsyncRwLock<Account<OnchainStorage>>> {
 #[wasm_bindgen(getter_with_clone)]
 #[derive(Clone)]
 pub struct WasmAccountConfig {
-    pub bip: WasmSupportedBIPs,
+    pub script_type: WasmScriptType,
     pub network: WasmNetwork,
     pub account_index: u32,
 }
@@ -86,9 +86,10 @@ pub struct WasmAccountConfig {
 impl Into<AccountConfig> for WasmAccountConfig {
     fn into(self) -> AccountConfig {
         AccountConfig {
-            bip: self.bip.into(),
+            script_type: self.script_type.into(),
             account_index: self.account_index,
             network: self.network.into(),
+            multisig_threshold: None,
         }
     }
 }
@@ -96,12 +97,9 @@ impl Into<AccountConfig> for WasmAccountConfig {
 #[wasm_bindgen]
 impl WasmAccountConfig {
     #[wasm_bindgen(constructor)]
-    pub fn new(bip: Option<WasmSupportedBIPs>, network: Option<WasmNetwork>, account_index: Option<u32>) -> Self {
+    pub fn new(script_type: WasmScriptType, network: Option<WasmNetwork>, account_index: Option<u32>) -> Self {
         Self {
-            bip: match bip {
-                Some(bip) => bip,
-                None => WasmSupportedBIPs::Bip44,
-            },
+            script_type: script_type.into(),
             network: match network {
                 Some(network) => network,
                 None => WasmNetwork::Bitcoin,
@@ -241,7 +239,7 @@ impl WasmAccount {
 mod tests {
     use crate::types::{address::WasmAddress, defined::WasmNetwork};
 
-    use super::{WasmAccount, WasmAccountConfig, WasmSupportedBIPs};
+    use super::{WasmAccount, WasmAccountConfig};
 
     // #[actix_rt::test]
     // async fn should_return_true_account_owns_address() {

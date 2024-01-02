@@ -1,4 +1,4 @@
-use crate::account::{Account, AccountConfig, SupportedBIPs};
+use crate::account::{Account, AccountConfig, ScriptType};
 use crate::async_rw_lock::AsyncRwLock;
 use crate::bitcoin::Network;
 use crate::error::Error;
@@ -17,7 +17,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 #[derive(Debug)]
-pub struct Wallet<Storage> {
+pub struct Wallet<Storage>
+where
+    Storage: PersistBackend<ChangeSet> + Clone,
+{
     mprv: ExtendedPrivKey,
     accounts: HashMap<DerivationPath, Arc<AsyncRwLock<Account<Storage>>>>,
     config: WalletConfig,
@@ -52,13 +55,13 @@ where
 
     pub fn add_account(
         &mut self,
-        bip: SupportedBIPs,
+        script_type: ScriptType,
         account_index: u32,
         storage: Storage,
     ) -> Result<DerivationPath, Error> {
         let account = Account::new(
             self.mprv,
-            AccountConfig::new(bip, self.config.network.into(), account_index),
+            AccountConfig::new(script_type, self.config.network.into(), account_index, None),
             storage,
         )?;
 

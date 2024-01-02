@@ -68,14 +68,14 @@ enum IWasmKeychainKind {
 
 #[wasm_bindgen(typescript_custom_section)]
 pub const IWasmOutpoint: &'static str = r#"
-type IWasmOutpoint = [string]
+type IWasmOutpoint = string
 "#;
 
 #[wasm_bindgen(typescript_custom_section)]
 pub const IWasmUtxo: &'static str = r#"
 interface IWasmUtxo {
     value: BigInt;
-    outpoint: [string];
+    outpoint: IWasmOutpoint;
     script_pubkey: IWasmScript;
     keychain: IWasmKeychainKind;
     is_spent: boolean;

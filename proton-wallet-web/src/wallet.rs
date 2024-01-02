@@ -1,12 +1,12 @@
 use proton_wallet_common::{
-    account::gen_account_derivation_path,
+    account::{build_account_derivation_path, AccountConfig},
     wallet::{Wallet, WalletConfig},
     DerivationPath,
 };
 use wasm_bindgen::prelude::*;
 
 use crate::{
-    account::{WasmAccount, WasmSupportedBIPs},
+    account::{WasmAccount, WasmScriptType},
     error::{DetailledWasmError, WasmError},
     storage::OnchainStorage,
     types::{
@@ -28,6 +28,7 @@ pub struct WasmWallet {
 #[derive(Clone)]
 pub struct WasmWalletConfig {
     pub network: WasmNetwork,
+    pub no_persist: bool,
 }
 
 impl Into<WalletConfig> for &WasmWalletConfig {
@@ -41,12 +42,10 @@ impl Into<WalletConfig> for &WasmWalletConfig {
 #[wasm_bindgen]
 impl WasmWalletConfig {
     #[wasm_bindgen(constructor)]
-    pub fn new(network: Option<WasmNetwork>) -> Self {
+    pub fn new(network: Option<WasmNetwork>, no_persist: Option<bool>) -> Self {
         Self {
-            network: match network {
-                Some(network) => network,
-                None => WasmNetwork::Bitcoin,
-            },
+            network: network.unwrap_or(WasmNetwork::Bitcoin),
+            no_persist: no_persist.unwrap_or(false),
         }
     }
 }
@@ -66,20 +65,24 @@ impl WasmWallet {
     #[wasm_bindgen(js_name = addAccount)]
     pub fn add_account(
         &mut self,
-        bip: WasmSupportedBIPs,
+        script_type: WasmScriptType,
         account_index: u32,
     ) -> Result<WasmDerivationPath, DetailledWasmError> {
-        let tmp_derivation_path: DerivationPath =
-            gen_account_derivation_path(bip.into(), self.inner.get_network(), account_index)
-                .map_err(|_| WasmError::InvalidDerivationPath.into())?
-                .into();
+        let tmp_derivation_path: DerivationPath = build_account_derivation_path(AccountConfig::new(
+            script_type.into(),
+            self.inner.get_network(),
+            account_index,
+            None,
+        ))
+        .map_err(|_| WasmError::InvalidDerivationPath.into())?
+        .into();
 
         // In a multi-wallet context, an account must be defined by the BIP32 masterkey (fingerprint), and its derivation path (unique)
         let account_id = format!("{}_{}", self.inner.get_fingerprint(), tmp_derivation_path.to_string());
         let storage = OnchainStorage::new(account_id.clone());
         let derivation_path = self
             .inner
-            .add_account(bip.into(), account_index, storage)
+            .add_account(script_type.into(), account_index, storage)
             .map_err(|e| e.into())?;
 
         // assert_eq!(derivation_path, tmp_derivation_path);

@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{collections::HashMap, str::FromStr};
 
 use bdk::{
     bitcoin::{
@@ -12,7 +12,12 @@ use bdk::{
 
 use bdk::Wallet;
 use bdk_chain::PersistBackend;
-use miniscript::bitcoin::{bip32::DerivationPath, psbt::PartiallySignedTransaction, Txid};
+use hashbrown::HashSet;
+use miniscript::{
+    bitcoin::{bip32::DerivationPath, psbt::PartiallySignedTransaction, Network as BdkNetwork, Txid},
+    descriptor::DescriptorSecretKey,
+    Descriptor, DescriptorPublicKey,
+};
 
 use crate::{
     bitcoin::Network,
@@ -22,14 +27,6 @@ use crate::{
     utils::sort_and_paginate_txs,
 };
 
-#[derive(Clone, Copy, Debug)]
-pub enum SupportedBIPs {
-    Bip44,
-    Bip49,
-    Bip84,
-    Bip86,
-}
-
 #[derive(Debug)]
 pub struct Account<Storage> {
     derivation_path: DerivationPath,
@@ -38,53 +35,109 @@ pub struct Account<Storage> {
 }
 
 #[derive(Clone, Copy, Debug)]
+pub enum ScriptType {
+    Legacy,
+    NestedSegwit,
+    NativeSegwit,
+    Taproot,
+}
+
+#[derive(Clone, Copy, Debug)]
 pub struct AccountConfig {
-    pub bip: SupportedBIPs,
+    pub script_type: ScriptType,
     pub network: Network,
     pub account_index: u32,
+    pub multisig_threshold: Option<(u32, u32)>,
 }
 
 impl AccountConfig {
-    pub fn new(bip: SupportedBIPs, network: Network, account_index: u32) -> Self {
+    pub fn new(
+        script_type: ScriptType,
+        network: Network,
+        account_index: u32,
+        multisig_threshold: Option<(u32, u32)>,
+    ) -> Self {
         Self {
-            bip,
+            script_type,
             network,
             account_index,
+            multisig_threshold,
         }
     }
 }
 
-pub fn gen_account_derivation_path(
-    bip: SupportedBIPs,
-    network: Network,
-    account_index: u32,
-) -> Result<Vec<ChildNumber>, Error> {
-    let mut derivation_path = Vec::with_capacity(4);
+pub fn build_account_derivation_path(config: AccountConfig) -> Result<Vec<ChildNumber>, Error> {
+    let purpose = ChildNumber::from_hardened_idx(if config.multisig_threshold.is_some() {
+        87 // https://bips.dev/87/
+    } else {
+        match config.script_type {
+            ScriptType::Legacy => 44,       // https://bips.dev/44/
+            ScriptType::NestedSegwit => 49, // https://bips.dev/49/
+            ScriptType::NativeSegwit => 84, // https://bips.dev/84/
+            ScriptType::Taproot => 86,      // https://bips.dev/86/
+        }
+    })
+    .unwrap_or_else(|_| unreachable!("an error occured while generating child number from bip"));
 
-    // purpose' derivation
-    derivation_path.push(
-        ChildNumber::from_hardened_idx(match bip {
-            SupportedBIPs::Bip49 => 49,
-            SupportedBIPs::Bip84 => 84,
-            SupportedBIPs::Bip86 => 86,
-            _ => 44,
-        })
-        .unwrap_or_else(|_| unreachable!("an error occured while generating child number from bip")),
-    );
+    let coin_type = ChildNumber::from_hardened_idx(match config.network {
+        Network::Bitcoin => 0,
+        _ => 1,
+    })
+    .unwrap();
 
-    //  coin_type' derivation
-    derivation_path.push(
-        ChildNumber::from_hardened_idx(match network {
-            Network::Bitcoin => 0,
-            _ => 1,
-        })
-        .unwrap_or_else(|_| unreachable!("an error occured while generating child number from network")),
-    );
+    let account = ChildNumber::from_hardened_idx(config.account_index).map_err(|_| Error::InvalidAccountIndex)?;
 
-    // account' derivation
-    derivation_path.push(ChildNumber::from_hardened_idx(account_index).map_err(|_| Error::InvalidAccountIndex)?);
+    Ok(vec![purpose, coin_type, account])
+}
 
-    Ok(derivation_path)
+fn build_account_descriptors(
+    account_xprv: ExtendedPrivKey,
+    config: AccountConfig,
+) -> Result<
+    (
+        (
+            Descriptor<DescriptorPublicKey>,
+            HashMap<DescriptorPublicKey, DescriptorSecretKey>,
+            HashSet<BdkNetwork>,
+        ),
+        (
+            Descriptor<DescriptorPublicKey>,
+            HashMap<DescriptorPublicKey, DescriptorSecretKey>,
+            HashSet<BdkNetwork>,
+        ),
+    ),
+    Error,
+> {
+    let builder = if config.multisig_threshold.is_some() {
+        todo!()
+    } else {
+        match config.script_type {
+            ScriptType::Legacy => |xkey: (ExtendedPrivKey, DerivationPath)| descriptor!(pkh(xkey)),
+            ScriptType::NestedSegwit => |xkey: (ExtendedPrivKey, DerivationPath)| descriptor!(sh(wpkh(xkey))),
+            ScriptType::NativeSegwit => |xkey: (ExtendedPrivKey, DerivationPath)| descriptor!(wpkh(xkey)),
+            ScriptType::Taproot => |xkey: (ExtendedPrivKey, DerivationPath)| descriptor!(tr(xkey)),
+        }
+    };
+
+    let internal = builder((
+        account_xprv,
+        vec![ChildNumber::Normal {
+            index: KeychainKind::External as u32,
+        }]
+        .into(),
+    ))
+    .map_err(|e| e.into())?;
+
+    let external = builder((
+        account_xprv,
+        vec![ChildNumber::Normal {
+            index: KeychainKind::External as u32,
+        }]
+        .into(),
+    ))
+    .map_err(|e| e.into())?;
+
+    Ok((external, internal))
 }
 
 impl<Storage> Account<Storage>
@@ -93,22 +146,18 @@ where
 {
     fn build_wallet(
         account_xprv: ExtendedPrivKey,
-        network: Network,
+        config: AccountConfig,
         storage: Storage,
     ) -> Result<Wallet<Storage>, Error> {
-        let external_derivation =
-            vec![ChildNumber::from_normal_idx(KeychainKind::External as u32).unwrap_or_else(|_| unreachable!())];
-        let internal_derivation =
-            vec![ChildNumber::from_normal_idx(KeychainKind::Internal as u32).unwrap_or_else(|_| unreachable!())];
+        let (external_descriptor, internal_descriptor) = build_account_descriptors(account_xprv, config)?;
 
-        // TODO here we shouldn't use account wpkh descriptor but rather on the account type
-        let external_descriptor =
-            descriptor!(wpkh((account_xprv, external_derivation.into()))).map_err(|e| e.into())?;
-        let internal_descriptor =
-            descriptor!(wpkh((account_xprv, internal_derivation.into()))).map_err(|e| e.into())?;
-
-        Wallet::new(external_descriptor, Some(internal_descriptor), storage, network.into())
-            .map_err(|_| Error::LoadError) // TODO: check how to implement Into<Error> for PersistBackend load error
+        Wallet::new(
+            external_descriptor,
+            Some(internal_descriptor),
+            storage,
+            config.network.into(),
+        )
+        .map_err(|_| Error::LoadError) // TODO: check how to implement Into<Error> for PersistBackend load error
     }
 
     pub fn get_mutable_wallet(&mut self) -> &mut Wallet<Storage> {
@@ -122,7 +171,7 @@ where
     pub fn new(master_secret_key: ExtendedPrivKey, config: AccountConfig, storage: Storage) -> Result<Self, Error> {
         let secp = Secp256k1::new();
 
-        let derivation_path = gen_account_derivation_path(config.bip, config.network, config.account_index)?;
+        let derivation_path = build_account_derivation_path(config)?;
         let account_xprv = master_secret_key
             .derive_priv(&secp, &derivation_path)
             .map_err(|e| e.into())?;
@@ -130,7 +179,7 @@ where
         Ok(Self {
             derivation_path: derivation_path.into(),
             storage: storage.clone(),
-            wallet: Self::build_wallet(account_xprv, config.network.into(), storage)?,
+            wallet: Self::build_wallet(account_xprv, config, storage)?,
         })
     }
 

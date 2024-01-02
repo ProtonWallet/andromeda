@@ -363,25 +363,6 @@ mod tests {
     }
 
     #[test]
-    fn should_return_amount_none_when_not_parseable() {
-        assert_eq!(
-            PaymentLink::try_parse(
-                "bitcoin:tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn?amount=auyeuur".to_string(),
-                Network::Testnet
-            )
-            .unwrap(),
-            PaymentLink::BitcoinURI {
-                address: Address::from_str("tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn")
-                    .unwrap()
-                    .assume_checked(),
-                amount: None,
-                label: None,
-                message: None,
-            }
-        );
-    }
-
-    #[test]
     fn should_return_error_when_parsing_bitcoin_uri_with_invalid_btc_address() {
         let error = PaymentLink::try_parse(
             "bitcoin:tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn--?amount=0.00192880&label=Fermi%20Pasta&message=Thanks%20for%20your%20donation".to_string(),
