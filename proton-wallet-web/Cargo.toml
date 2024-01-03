@@ -19,7 +19,6 @@ console_error_panic_hook = { version = "0.1.7", optional = true }
 js-sys = "0.3.65"
 wasm-bindgen = { version = "0.2.88", features=["serde-serialize"] }
 wasm-bindgen-futures = "0.4.38"
-# actix-rt = "*"
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.38"

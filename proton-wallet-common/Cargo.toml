@@ -18,6 +18,11 @@ async-std = "1.10"
 futures = "0.3.30"
 hashbrown = "0.11.2"
 
+[dev-dependencies]
+actix-rt = "*"
+mockers = "0.22.0"
+mockall = "0.12.1"
+
 #feature "async-interface", 
 # Platform-specific dependencies
 [target.'cfg(target_arch = "wasm32")'.dependencies]

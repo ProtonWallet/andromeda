@@ -69,7 +69,6 @@ mod tests {
 
     #[test]
     fn should_return_max_value() {
-        println!("hello there! {}", max_f64(78.8, -97.4));
         assert_eq!(max_f64(78.8, -97.4), 78.8)
     }
 

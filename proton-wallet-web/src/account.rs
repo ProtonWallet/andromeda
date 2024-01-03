@@ -151,12 +151,14 @@ impl WasmAccount {
 
     #[wasm_bindgen]
     pub async fn owns(&self, address: &WasmAddress) -> Result<bool, DetailledWasmError> {
-        let address: Address = address.into();
+        let owns = self
+            .inner
+            .read()
+            .await
+            .map_err(|_| WasmError::LockError.into())?
+            .owns(&address.into());
 
-        let account = self.inner.read().await.map_err(|_| WasmError::LockError.into())?;
-        let wallet = account.get_wallet();
-
-        Ok(wallet.is_mine(&address.script_pubkey()))
+        Ok(owns)
     }
 
     #[wasm_bindgen(js_name = getBalance)]
@@ -233,20 +235,4 @@ impl WasmAccount {
 
         Ok(transaction.into())
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::types::{address::WasmAddress, defined::WasmNetwork};
-
-    use super::{WasmAccount, WasmAccountConfig};
-
-    // #[actix_rt::test]
-    // async fn should_return_true_account_owns_address() {
-    //     let mut account = WasmAccount::new("category law logic swear involve banner pink room diesel fragile sunset remove whale lounge captain code hobby lesson material current moment funny vast fade", None, WasmAccountConfig::new(Some(WasmSupportedBIPs::Bip84), Some(WasmNetwork::Testnet), Some(0))).unwrap();
-    //     let address = WasmAddress::new("tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn".to_string());
-    //     account.sync().await.unwrap();
-
-    //     assert!(account.owns(&address))
-    // }
 }

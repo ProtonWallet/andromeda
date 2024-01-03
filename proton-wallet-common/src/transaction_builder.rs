@@ -25,7 +25,7 @@ use crate::{
     utils::{convert_amount, max_f64, min_f64},
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum CoinSelection {
     BranchAndBound,
     LargestFirst,
@@ -277,17 +277,19 @@ where
 
     pub async fn update_recipient_amount_to_max(&self, index: usize) -> Self {
         let mut recipients = self.recipients.clone();
-        let TmpRecipient(uuid, script, _, unit) = recipients[index].clone();
-
-        let account_balance = match self.account.clone() {
-            Some(account) => account.read().await.unwrap().get_balance().confirmed,
-            _ => 0,
-        };
+        let TmpRecipient(uuid, script, prev_amount, unit) = recipients[index].clone();
 
         // account is always in sats so we need to convert it to chosen unit
-        let converted_balance = convert_amount(account_balance as f64, BitcoinUnit::SAT, unit);
+        let converted_max_amount = match self.account.clone() {
+            Some(account) => convert_amount(
+                account.read().await.unwrap().get_balance().confirmed as f64,
+                BitcoinUnit::SAT,
+                unit,
+            ),
+            _ => prev_amount,
+        };
 
-        recipients[index] = TmpRecipient(uuid, script, converted_balance, unit);
+        recipients[index] = TmpRecipient(uuid, script, converted_max_amount, unit);
 
         let tx_builder = TxBuilder::<Storage> {
             recipients,
@@ -502,9 +504,12 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::transaction_builder::BitcoinUnit;
+    use bdk::{wallet::tx_builder::ChangeSpendPolicy, FeeRate};
+    use miniscript::bitcoin::absolute::LockTime;
 
-    use super::{correct_recipients_amounts, TmpRecipient};
+    use crate::transaction_builder::{BitcoinUnit, CoinSelection};
+
+    use super::{correct_recipients_amounts, TmpRecipient, TxBuilder};
 
     /**
      * correct_recipients_amounts
@@ -558,5 +563,85 @@ mod tests {
         let updated = correct_recipients_amounts(recipients.clone(), 0.0);
 
         assert_eq!(updated, recipients);
+    }
+
+    #[test]
+    fn should_set_enable_rbf() {
+        let tx_builder = TxBuilder::<()>::new();
+
+        let updated = tx_builder.enable_rbf();
+        assert_eq!(updated.rbf_enabled, true);
+
+        let updated = tx_builder.disable_rbf();
+        assert_eq!(updated.rbf_enabled, false);
+    }
+
+    #[test]
+    fn should_set_locktime() {
+        let tx_builder = TxBuilder::<()>::new();
+
+        let updated = tx_builder.add_locktime(LockTime::from_consensus(788373));
+        assert_eq!(updated.locktime, Some(LockTime::from_consensus(788373)));
+
+        let updated = tx_builder.remove_locktime();
+        assert_eq!(updated.locktime, None);
+    }
+
+    #[test]
+    fn should_set_coin_selection() {
+        let tx_builder = TxBuilder::<()>::new();
+
+        let updated = tx_builder.set_coin_selection(CoinSelection::LargestFirst);
+        assert_eq!(updated.coin_selection, CoinSelection::LargestFirst);
+
+        let updated = tx_builder.set_coin_selection(CoinSelection::Manual);
+        assert_eq!(updated.coin_selection, CoinSelection::Manual);
+    }
+
+    #[test]
+    fn should_set_change_policy() {
+        let tx_builder = TxBuilder::<()>::new();
+
+        let updated = tx_builder.set_change_policy(ChangeSpendPolicy::ChangeAllowed);
+        assert_eq!(updated.change_policy, ChangeSpendPolicy::ChangeAllowed);
+
+        let updated = tx_builder.set_change_policy(ChangeSpendPolicy::ChangeForbidden);
+        assert_eq!(updated.change_policy, ChangeSpendPolicy::ChangeForbidden);
+    }
+
+    #[actix_rt::test]
+    async fn should_change_fee_rate() {
+        let tx_builder = TxBuilder::<()>::new();
+
+        let updated = tx_builder.set_fee_rate(15.4).await;
+        assert_eq!(updated.fee_rate, Some(FeeRate::from_sat_per_vb(15.4)));
+    }
+
+    #[test]
+    fn should_add_recipient() {
+        let tx_builder = TxBuilder::<()>::new();
+
+        let updated = tx_builder.add_recipient();
+        assert_eq!(updated.recipients.len(), 2);
+    }
+
+    #[actix_rt::test]
+    async fn should_update_recipient() {
+        let tx_builder = TxBuilder::<()>::new();
+
+        let updated = tx_builder
+            .update_recipient(0, (Some("tb1...xyz".to_string()), Some(15837.0), None))
+            .await;
+
+        assert_eq!(updated.recipients[0].1, "tb1...xyz".to_string());
+        assert_eq!(updated.recipients[0].2, 15837.0);
+
+        let updated = tx_builder.update_recipient(0, (None, Some(668932.0), None)).await;
+        assert_eq!(updated.recipients[0].2, 668932.0);
+
+        let updated = tx_builder
+            .update_recipient(0, (None, Some(668932.0), Some(BitcoinUnit::MBTC)))
+            .await;
+        assert_eq!(updated.recipients[0].3, BitcoinUnit::MBTC);
     }
 }

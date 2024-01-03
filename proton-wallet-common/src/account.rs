@@ -14,7 +14,7 @@ use bdk::Wallet;
 use bdk_chain::PersistBackend;
 use hashbrown::HashSet;
 use miniscript::{
-    bitcoin::{bip32::DerivationPath, psbt::PartiallySignedTransaction, Network as BdkNetwork, Txid},
+    bitcoin::{bip32::DerivationPath, psbt::PartiallySignedTransaction, Address, Network as BdkNetwork, Txid},
     descriptor::DescriptorSecretKey,
     Descriptor, DescriptorPublicKey,
 };
@@ -68,6 +68,7 @@ impl AccountConfig {
 
 pub fn build_account_derivation_path(config: AccountConfig) -> Result<Vec<ChildNumber>, Error> {
     let purpose = ChildNumber::from_hardened_idx(if config.multisig_threshold.is_some() {
+        // TODO maybe support legacy standard (45' + 48')
         87 // https://bips.dev/87/
     } else {
         match config.script_type {
@@ -206,6 +207,10 @@ where
         }
     }
 
+    pub fn owns(&self, address: &Address) -> bool {
+        self.wallet.is_mine(&address.script_pubkey())
+    }
+
     pub fn get_bitcoin_uri(
         &mut self,
         index: Option<u32>,
@@ -254,5 +259,123 @@ where
         self.wallet
             .sign(psbt, sign_options)
             .map_err(|e| Error::Generic { msg: e.to_string() })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use miniscript::bitcoin::{bip32::ExtendedPrivKey, Address};
+
+    use crate::mnemonic::Mnemonic;
+
+    use super::{Account, AccountConfig, ScriptType};
+
+    fn set_test_account(script_type: ScriptType) -> Account<()> {
+        let config = AccountConfig::new(script_type, crate::bitcoin::Network::Testnet, 0, None);
+
+        let mnemonic = Mnemonic::from_string("category law logic swear involve banner pink room diesel fragile sunset remove whale lounge captain code hobby lesson material current moment funny vast fade".to_string()).unwrap();
+        let master_secret_key =
+            ExtendedPrivKey::new_master(config.network.into(), &mnemonic.inner().to_seed("")).unwrap();
+
+        Account::new(master_secret_key, config, ()).unwrap()
+    }
+
+    #[test]
+    fn get_correct_derivation_legacy() {
+        let account = set_test_account(ScriptType::Legacy);
+        assert_eq!(account.get_derivation_path().to_string(), "m/44'/1'/0'".to_string());
+    }
+
+    #[test]
+    fn get_correct_derivation_native_segwit() {
+        let account = set_test_account(ScriptType::NativeSegwit);
+        assert_eq!(account.get_derivation_path().to_string(), "m/84'/1'/0'".to_string());
+    }
+
+    #[test]
+    fn get_correct_derivation_nested_segwit() {
+        let account = set_test_account(ScriptType::NestedSegwit);
+        assert_eq!(account.get_derivation_path().to_string(), "m/49'/1'/0'".to_string());
+    }
+
+    #[test]
+    fn get_correct_derivation_taproot() {
+        let account = set_test_account(ScriptType::Taproot);
+        assert_eq!(account.get_derivation_path().to_string(), "m/86'/1'/0'".to_string());
+    }
+
+    #[test]
+    fn get_address_by_index_legacy() {
+        let mut account = set_test_account(ScriptType::Legacy);
+        assert_eq!(
+            account.get_address(Some(13)).to_string(),
+            "mvqqkX5UmaqPvzS4Aa1gMhj4NFntGmju2N".to_string()
+        );
+    }
+
+    #[test]
+    fn get_address_by_index_nested_segwit() {
+        let mut account = set_test_account(ScriptType::NestedSegwit);
+        assert_eq!(
+            account.get_address(Some(13)).to_string(),
+            "2MzYfE5Bt1g2A9zDBocPtcDjRqpFfdCeqe3".to_string()
+        );
+    }
+
+    #[test]
+    fn get_address_by_index_native_segwit() {
+        let mut account = set_test_account(ScriptType::NativeSegwit);
+        assert_eq!(
+            account.get_address(Some(13)).to_string(),
+            "tb1qre68v280t3t5mdy0hcu86fnx3h289h0arfe6lr".to_string()
+        );
+    }
+
+    #[test]
+    fn get_address_by_index_taproot() {
+        let mut account = set_test_account(ScriptType::Taproot);
+        assert_eq!(
+            account.get_address(Some(13)).to_string(),
+            "tb1ppanhpmq38z6738s0mwnd9h0z2j5jv7q4x4pc2wxqu8jw0gwmf69qx3zpaf".to_string()
+        );
+    }
+
+    #[test]
+    fn get_last_unused_address() {
+        let mut account = set_test_account(ScriptType::Taproot);
+        assert_eq!(
+            account.get_address(None).to_string(),
+            "tb1pvv0tcny86mz4lsx97p03fvkkc09cg5nx5nvnxc7c323jv5sr6wnshfu377".to_string()
+        );
+    }
+
+    #[test]
+    fn get_bitcoin_uri_with_params() {
+        let mut account = set_test_account(ScriptType::NativeSegwit);
+        assert_eq!(
+            account
+                .get_bitcoin_uri(Some(5), Some(788927), Some("Hello world".to_string()), None)
+                .to_string(),
+            "bitcoin:tb1qkwfhq25jnjq4fca2tptdhpsstz9ss2pampswhc?amount=0.00788927&label=Hello%20world".to_string()
+        );
+    }
+
+    #[test]
+    fn get_is_address_owned_by_account() {
+        let mut account = set_test_account(ScriptType::Taproot);
+
+        let address = account.get_address(None);
+        assert!(account.owns(&address));
+
+        assert_eq!(
+            account.owns(
+                &Address::from_str("tb1qkwfhq25jnjq4fca2tptdhpsstz9ss2pampswhc")
+                    .unwrap()
+                    .assume_checked()
+            ),
+            false
+        );
     }
 }
