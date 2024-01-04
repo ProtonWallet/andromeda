@@ -1,13 +1,14 @@
 use proton_wallet_common::{
-    account::{build_account_derivation_path, AccountConfig},
-    wallet::{Wallet, WalletConfig},
+    onchain::{
+        account::{build_account_derivation_path, AccountConfig},
+        wallet::{Wallet, WalletConfig},
+    },
     DerivationPath,
 };
 use wasm_bindgen::prelude::*;
 
-use crate::{
+use super::{
     account::{WasmAccount, WasmScriptType},
-    error::{DetailledWasmError, WasmError},
     storage::OnchainStorage,
     types::{
         balance::WasmBalance,
@@ -18,6 +19,7 @@ use crate::{
         typescript_interfaces::IWasmSimpleTransactionArray,
     },
 };
+use crate::common::error::{DetailledWasmError, WasmError};
 
 #[wasm_bindgen]
 pub struct WasmWallet {

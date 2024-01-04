@@ -1,4 +1,4 @@
-use crate::{
+use super::{
     bitcoin::{BitcoinUnit, BITCOIN, MILLI_BITCOIN, SATOSHI},
     transactions::{Pagination, SimpleTransaction},
 };
@@ -62,7 +62,7 @@ pub fn min_f64(a: f64, b: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
+    use super::super::{
         bitcoin::BitcoinUnit,
         utils::{convert_amount, max_f64, min_f64},
     };

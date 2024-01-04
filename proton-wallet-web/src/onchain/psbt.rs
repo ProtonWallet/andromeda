@@ -1,11 +1,8 @@
-use proton_wallet_common::{bitcoin::Network, Address, PartiallySignedTransaction, SignOptions};
+use proton_wallet_common::{onchain::bitcoin::Network, Address, PartiallySignedTransaction, SignOptions};
 use wasm_bindgen::prelude::*;
 
-use crate::{
-    account::WasmAccount,
-    error::{DetailledWasmError, WasmError},
-    types::defined::WasmNetwork,
-};
+use super::{account::WasmAccount, types::defined::WasmNetwork};
+use crate::common::error::{DetailledWasmError, WasmError};
 
 #[wasm_bindgen(getter_with_clone)]
 #[derive(Clone)]

@@ -1,5 +1,4 @@
-use crate::error::Error;
-
+use crate::common::error::Error;
 use bdk::wallet::{ChangeSet, Update as BdkUpdate};
 use bdk::Wallet as BdkWallet;
 use bdk_chain::local_chain::Update;

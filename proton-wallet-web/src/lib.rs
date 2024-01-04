@@ -1,14 +1,5 @@
-mod account;
-mod chain;
-mod error;
-mod mnemonic;
-mod payment_link;
-mod psbt;
-mod storage;
-mod transaction_builder;
-mod wallet;
-
-mod types;
+mod common;
+mod onchain;
 mod utils;
 
 use wasm_bindgen::prelude::*;

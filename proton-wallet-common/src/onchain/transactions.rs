@@ -4,7 +4,7 @@ use miniscript::bitcoin::{
     bip32::DerivationPath, psbt::PartiallySignedTransaction, Address, ScriptBuf, Transaction, TxIn, Txid,
 };
 
-use crate::error::Error;
+use crate::common::error::Error;
 
 #[derive(Clone, Debug)]
 pub struct SimpleTransaction {

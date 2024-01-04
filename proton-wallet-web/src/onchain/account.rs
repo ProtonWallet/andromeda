@@ -1,15 +1,13 @@
 use std::{fmt::Display, sync::Arc};
 
 use proton_wallet_common::{
-    account::{Account, AccountConfig, ScriptType},
-    async_rw_lock::AsyncRwLock,
-    Address,
+    common::async_rw_lock::AsyncRwLock,
+    onchain::account::{Account, AccountConfig, ScriptType},
 };
 
 use wasm_bindgen::prelude::*;
 
-use crate::{
-    error::{DetailledWasmError, WasmError},
+use super::{
     payment_link::WasmPaymentLink,
     storage::OnchainStorage,
     types::{
@@ -22,6 +20,7 @@ use crate::{
         utxo::WasmUtxo,
     },
 };
+use crate::common::error::{DetailledWasmError, WasmError};
 
 #[wasm_bindgen]
 #[derive(Clone, Copy)]
@@ -110,12 +109,6 @@ impl WasmAccountConfig {
             },
         }
     }
-}
-
-pub struct WasmTransactionTime {
-    pub confirmed: bool,
-    pub confirmation_time: Option<u64>,
-    pub last_seen: Option<u64>,
 }
 
 #[wasm_bindgen]

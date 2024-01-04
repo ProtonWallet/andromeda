@@ -1,5 +1,5 @@
 use proton_wallet_common::{
-    bitcoin::{BitcoinUnit, Network},
+    onchain::bitcoin::{BitcoinUnit, Network},
     BdkNetwork, KeychainKind, WordCount,
 };
 use serde::{Deserialize, Serialize};

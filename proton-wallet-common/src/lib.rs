@@ -1,17 +1,6 @@
-mod utils;
+pub mod common;
 
-// pub mod
-pub mod account;
-pub mod async_rw_lock;
-pub mod bitcoin;
-pub mod chain;
-pub mod client;
-pub mod error;
-pub mod mnemonic;
-pub mod payment_link;
-pub mod transaction_builder;
-pub mod transactions;
-pub mod wallet;
+pub mod onchain;
 
 pub use bdk::{
     bitcoin::{

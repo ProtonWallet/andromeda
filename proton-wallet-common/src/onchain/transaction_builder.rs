@@ -17,11 +17,11 @@ use miniscript::bitcoin::{
 };
 use uuid::Uuid;
 
-use crate::{
+use crate::common::{error::Error, async_rw_lock::AsyncRwLock};
+
+use super::{
     account::Account,
-    async_rw_lock::AsyncRwLock,
     bitcoin::BitcoinUnit,
-    error::Error,
     utils::{convert_amount, max_f64, min_f64},
 };
 
@@ -507,7 +507,7 @@ mod tests {
     use bdk::{wallet::tx_builder::ChangeSpendPolicy, FeeRate};
     use miniscript::bitcoin::absolute::LockTime;
 
-    use crate::transaction_builder::{BitcoinUnit, CoinSelection};
+    use super::super::transaction_builder::{BitcoinUnit, CoinSelection};
 
     use super::{correct_recipients_amounts, TmpRecipient, TxBuilder};
 

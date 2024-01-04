@@ -19,9 +19,10 @@ use miniscript::{
     Descriptor, DescriptorPublicKey,
 };
 
-use crate::{
+use crate::common::error::Error;
+
+use super::{
     bitcoin::Network,
-    error::Error,
     payment_link::PaymentLink,
     transactions::{DetailledTransaction, Pagination, SimpleTransaction},
     utils::sort_and_paginate_txs,
@@ -268,12 +269,12 @@ mod tests {
 
     use miniscript::bitcoin::{bip32::ExtendedPrivKey, Address};
 
-    use crate::mnemonic::Mnemonic;
+    use super::super::{bitcoin::Network, mnemonic::Mnemonic};
 
     use super::{Account, AccountConfig, ScriptType};
 
     fn set_test_account(script_type: ScriptType) -> Account<()> {
-        let config = AccountConfig::new(script_type, crate::bitcoin::Network::Testnet, 0, None);
+        let config = AccountConfig::new(script_type, Network::Testnet, 0, None);
 
         let mnemonic = Mnemonic::from_string("category law logic swear involve banner pink room diesel fragile sunset remove whale lounge captain code hobby lesson material current moment funny vast fade".to_string()).unwrap();
         let master_secret_key =

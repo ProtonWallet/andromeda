@@ -1,4 +1,4 @@
-use crate::error::Error;
+use crate::common::error::Error;
 
 use bdk_esplora::esplora_client::AsyncClient as AsyncEsploraClient;
 

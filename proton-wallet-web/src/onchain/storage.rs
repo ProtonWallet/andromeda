@@ -1,6 +1,6 @@
 use proton_wallet_common::{Append, ChangeSet, PersistBackend};
 
-use crate::error::WasmError;
+use crate::common::error::WasmError;
 
 #[derive(Clone)]
 pub struct OnchainStorage {

@@ -1,11 +1,8 @@
-use proton_wallet_common::{chain::Chain, client::Client};
+use proton_wallet_common::onchain::{chain::Chain, client::Client};
 use wasm_bindgen::prelude::*;
 
-use crate::{
-    account::WasmAccount,
-    error::{DetailledWasmError, WasmError},
-    psbt::WasmPartiallySignedTransaction,
-};
+use super::{account::WasmAccount, psbt::WasmPartiallySignedTransaction};
+use crate::common::error::{DetailledWasmError, WasmError};
 
 #[wasm_bindgen(getter_with_clone)]
 pub struct WasmChain {

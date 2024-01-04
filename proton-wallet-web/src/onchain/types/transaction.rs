@@ -1,13 +1,11 @@
 use std::str::FromStr;
 
-use crate::{
-    account::WasmAccount,
-    error::{DetailledWasmError, WasmError},
-    psbt::WasmPartiallySignedTransaction,
-};
+use super::super::{account::WasmAccount, psbt::WasmPartiallySignedTransaction};
+
+use crate::common::error::{DetailledWasmError, WasmError};
 
 use proton_wallet_common::{
-    transactions::{DetailledTransaction, DetailledTxOutput, SimpleTransaction, TransactionTime},
+    onchain::transactions::{DetailledTransaction, DetailledTxOutput, SimpleTransaction, TransactionTime},
     Address, ConfirmationTime, OutPoint, PartiallySignedTransaction, ScriptBuf, Sequence, TxIn,
 };
 use wasm_bindgen::prelude::*;

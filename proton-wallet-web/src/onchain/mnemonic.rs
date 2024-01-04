@@ -1,7 +1,9 @@
-use proton_wallet_common::mnemonic::{BdkLanguage, Mnemonic};
+use proton_wallet_common::onchain::mnemonic::{BdkLanguage, Mnemonic};
 use wasm_bindgen::prelude::*;
 
-use crate::{error::DetailledWasmError, types::defined::WasmWordCount};
+use crate::common::error::DetailledWasmError;
+
+use super::types::defined::WasmWordCount;
 
 #[wasm_bindgen]
 #[derive(Clone)]

@@ -1,10 +1,12 @@
-use crate::account::{Account, AccountConfig, ScriptType};
-use crate::async_rw_lock::AsyncRwLock;
-use crate::bitcoin::Network;
-use crate::error::Error;
-use crate::mnemonic::Mnemonic;
-use crate::transactions::{DetailledTransaction, Pagination, SimpleTransaction};
-use crate::utils::sort_and_paginate_txs;
+use super::account::{Account, AccountConfig, ScriptType};
+
+use super::bitcoin::Network;
+
+use super::mnemonic::Mnemonic;
+use super::transactions::{DetailledTransaction, Pagination, SimpleTransaction};
+use super::utils::sort_and_paginate_txs;
+
+use crate::common::{async_rw_lock::AsyncRwLock, error::Error};
 use futures::future;
 
 use bdk::wallet::{Balance as BdkBalance, ChangeSet};

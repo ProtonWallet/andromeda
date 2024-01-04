@@ -1,7 +1,9 @@
-use proton_wallet_common::payment_link::PaymentLink;
+use proton_wallet_common::onchain::payment_link::PaymentLink;
 use wasm_bindgen::prelude::*;
 
-use crate::{error::DetailledWasmError, types::defined::WasmNetwork};
+use super::types::defined::WasmNetwork;
+
+use crate::common::error::DetailledWasmError;
 
 #[wasm_bindgen]
 pub enum WasmPaymentLinkKind {

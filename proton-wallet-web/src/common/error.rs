@@ -1,4 +1,4 @@
-use proton_wallet_common::{error::Error, KeychainKind};
+use proton_wallet_common::{common::error::Error, KeychainKind};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]

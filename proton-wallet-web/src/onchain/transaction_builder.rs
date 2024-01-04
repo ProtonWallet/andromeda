@@ -1,12 +1,11 @@
 use proton_wallet_common::{
-    transaction_builder::{CoinSelection, TmpRecipient, TxBuilder},
+    onchain::transaction_builder::{CoinSelection, TmpRecipient, TxBuilder},
     ChangeSpendPolicy, OutPoint,
 };
 use wasm_bindgen::prelude::*;
 
-use crate::{
+use super::{
     account::WasmAccount,
-    error::{DetailledWasmError, WasmError},
     psbt::WasmPartiallySignedTransaction,
     storage::OnchainStorage,
     types::{
@@ -15,6 +14,7 @@ use crate::{
         transaction::WasmOutPoint,
     },
 };
+use crate::common::error::{DetailledWasmError, WasmError};
 
 #[wasm_bindgen]
 pub struct WasmTxBuilder {

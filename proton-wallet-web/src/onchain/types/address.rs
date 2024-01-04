@@ -3,7 +3,7 @@ use std::str::FromStr;
 use proton_wallet_common::{Address, ScriptBuf};
 use wasm_bindgen::prelude::*;
 
-use crate::error::WasmError;
+use crate::common::error::WasmError;
 
 use super::{defined::WasmNetwork, transaction::WasmScript};
 
@@ -22,9 +22,7 @@ impl Into<Address> for &WasmAddress {
 
 impl Into<WasmAddress> for Address {
     fn into(self) -> WasmAddress {
-        WasmAddress {
-            inner: self.clone()
-        }
+        WasmAddress { inner: self.clone() }
     }
 }
 

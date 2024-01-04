@@ -9,7 +9,7 @@ use std::str::FromStr;
 
 pub use bdk::keys::bip39::{Language as BdkLanguage, Mnemonic as BdkMnemonic};
 
-use crate::error::Error;
+use crate::common::error::Error;
 
 #[derive(Debug)]
 pub struct Mnemonic {
@@ -60,7 +60,7 @@ impl Mnemonic {
 mod tests {
     use bdk::keys::bip39::Language;
 
-    use crate::error::Error;
+    use crate::common::error::Error;
 
     use super::Mnemonic;
 

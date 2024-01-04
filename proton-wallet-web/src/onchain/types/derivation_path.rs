@@ -4,7 +4,7 @@ use proton_wallet_common::DerivationPath;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
-use crate::error::{DetailledWasmError, WasmError};
+use crate::common::error::{DetailledWasmError, WasmError};
 
 use super::typescript_interfaces::IWasmDerivationPath;
 
