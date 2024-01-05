@@ -15,7 +15,6 @@ pub use proton_wallet_common::{
     Balance, DerivationPath, Height, KeychainKind, Language, LockTime, Time, Transaction, WordCount,
 };
 
-//
 pub fn library_version() -> String {
     proton_wallet_common::library_version()
 }

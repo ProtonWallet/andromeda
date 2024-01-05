@@ -61,6 +61,8 @@ impl Chain {
             msg: "Couldn't commit wallet sync update".to_string(),
         })?;
 
+        println!("Commited");
+
         Ok(())
     }
 

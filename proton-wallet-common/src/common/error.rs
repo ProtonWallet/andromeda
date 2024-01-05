@@ -11,6 +11,7 @@ pub enum Error {
     InvalidNetwork,
     InvalidDerivationPath,
     InvalidAccountIndex,
+    InvalidScriptType,
     InvalidTxId,
     DerivationError,
     SyncError,

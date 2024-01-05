@@ -33,6 +33,12 @@ pub struct WalletConfig {
     pub network: Network,
 }
 
+impl WalletConfig {
+    pub fn new(network: Network) -> Self {
+        Self { network }
+    }
+}
+
 impl<Storage> Wallet<Storage>
 where
     Storage: PersistBackend<ChangeSet> + Clone,

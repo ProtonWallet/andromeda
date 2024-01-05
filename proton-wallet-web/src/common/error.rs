@@ -9,6 +9,7 @@ pub enum WasmError {
     InvalidDescriptor,
     InvalidDerivationPath,
     InvalidAccountIndex,
+    InvalidScriptType,
     DerivationError,
     SyncError,
     OutpointParsingError,
@@ -92,6 +93,10 @@ impl Into<DetailledWasmError> for Error {
                     Some(error) => JsValue::from_str(&error.to_string()),
                     _ => JsValue::null(),
                 },
+            },
+            Error::InvalidScriptType => DetailledWasmError {
+                kind: WasmError::InvalidScriptType,
+                details: JsValue::null(),
             },
             Error::AccountNotFound => DetailledWasmError {
                 kind: WasmError::AccountNotFound,

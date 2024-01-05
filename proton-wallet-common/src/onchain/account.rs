@@ -43,6 +43,24 @@ pub enum ScriptType {
     Taproot,
 }
 
+impl TryFrom<String> for ScriptType {
+    type Error = Error;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        if value == "legacy" {
+            return Ok(ScriptType::Legacy);
+        } else if value == "nested_segwit" {
+            return Ok(ScriptType::NestedSegwit);
+        } else if value == "native_segwit" {
+            return Ok(ScriptType::NativeSegwit);
+        } else if value == "taproot" {
+            return Ok(ScriptType::Taproot);
+        }
+
+        Err(Error::InvalidScriptType)
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct AccountConfig {
     pub script_type: ScriptType,
@@ -124,7 +142,7 @@ fn build_account_descriptors(
     let internal = builder((
         account_xprv,
         vec![ChildNumber::Normal {
-            index: KeychainKind::External as u32,
+            index: KeychainKind::Internal as u32,
         }]
         .into(),
     ))

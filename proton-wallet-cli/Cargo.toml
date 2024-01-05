@@ -1,0 +1,9 @@
+[package]
+name = "proton-wallet-cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = "2.33.3"
+tokio = { version = "1", features = ["full"] }
+proton-wallet-common = { path = "../proton-wallet-common" }

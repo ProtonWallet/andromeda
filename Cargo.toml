@@ -4,6 +4,7 @@ members = [
     "proton-wallet-common",
     "proton-wallet-mobile",
     "proton-wallet-web",
+    "proton-wallet-cli"
 ]
 [profile.release]
 opt-level = "s" # Tell `rustc` to optimize for small code size.
