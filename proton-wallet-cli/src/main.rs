@@ -1,17 +1,13 @@
 use proton_wallet_common::{
-    common::async_rw_lock::AsyncRwLock,
+    common::{async_rw_lock::AsyncRwLock, bitcoin::Network, chain::Chain},
     onchain::{
         account::{Account, ScriptType},
-        bitcoin::Network,
-        chain::Chain,
-        client::Client,
         transactions::TransactionTime,
         wallet::{Wallet, WalletConfig},
     },
     DerivationPath,
 };
 use std::{
-    fmt::format,
     io::{self, Write},
     str::SplitWhitespace,
     sync::{Arc, Mutex},
@@ -155,8 +151,7 @@ async fn sync_account(
 
     let mut account_lock = account.write().await.unwrap();
 
-    let client = Client::new(None).unwrap();
-    let chain = Chain::new(client.inner());
+    let chain = Chain::new(None).map_err(|_| "ERROR: could not start connect to chain")?;
 
     chain.full_sync(account_lock.get_mutable_wallet()).await.unwrap();
     account.release_write_lock();

@@ -1,30 +1,54 @@
 use crate::common::error::Error;
+use bdk::bitcoin::{Transaction, Txid};
 use bdk::wallet::{ChangeSet, Update as BdkUpdate};
 use bdk::Wallet as BdkWallet;
 use bdk_chain::local_chain::Update;
 use bdk_chain::{ConfirmationTimeAnchor, PersistBackend, TxGraph};
-use bdk_esplora::esplora_client::AsyncClient as AsyncEsploraClient;
-use miniscript::bitcoin::{Transaction, Txid};
+use bdk_esplora::esplora_client::{AsyncClient as AsyncEsploraClient, Builder as EsploraClientBuilder};
+use lightning::chain::chaininterface::{BroadcasterInterface, ConfirmationTarget, FeeEstimator};
+use lightning::log_warn;
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 
 use bdk_esplora::EsploraAsyncExt;
 
+use super::utils::{self, now};
+
+#[derive(Clone)]
+struct FeesCache {
+    last_update: u64,
+    fees_by_block_target: HashMap<String, f64>,
+}
+
+/// The minimum feerate we are allowed to send, as specify by LDK.
+const MIN_FEERATE: u32 = 253;
+
 // TODO: Stop gap should be a setting
 const STOP_GAP: usize = 10;
 const PARALLEL_REQUESTS: usize = 5;
+
 pub struct Chain {
     client: AsyncEsploraClient,
     should_poll: bool,
+    fees: Option<FeesCache>,
 }
 
 impl Chain {
-    pub fn new(client: AsyncEsploraClient) -> Self {
-        Chain {
+    pub fn new(url: Option<String>) -> Result<Self, Error> {
+        let url = url.unwrap_or("https://mempool.space/testnet/api".to_string());
+
+        let client = EsploraClientBuilder::new(&url)
+            .build_async()
+            .map_err(|_| Error::Generic {
+                msg: "Could not create client".to_string(),
+            })?;
+
+        Ok(Chain {
             client,
             should_poll: false,
-        }
+            fees: None,
+        })
     }
 
     async fn chain_update<Storage>(
@@ -153,14 +177,33 @@ impl Chain {
         self.should_poll = true;
     }
 
-    pub async fn get_fees_estimation(&self) -> Result<HashMap<String, f64>, Error> {
-        let fees = self
-            .client
-            .get_fee_estimates()
-            .await
-            .map_err(|_| Error::CannotGetFeeEstimation)?;
+    pub async fn optionally_update_fees(&mut self) -> Result<(), Error> {
+        if self.fees.is_none() || now().as_secs() > self.fees.clone().unwrap().last_update + 60 * 10 {
+            let fees_by_block_target = self
+                .client
+                .get_fee_estimates()
+                .await
+                .map_err(|_| Error::CannotGetFeeEstimation)?;
 
-        Ok(fees)
+            self.fees = Some(FeesCache {
+                fees_by_block_target,
+                last_update: 0,
+            });
+        }
+
+        Ok(())
+    }
+
+    // TODO: poll fees
+
+    pub async fn get_fees_estimation(&mut self) -> Result<HashMap<String, f64>, Error> {
+        self.optionally_update_fees().await?;
+
+        Ok(self
+            .fees
+            .clone()
+            .expect("Should have fees set at this point")
+            .fees_by_block_target)
     }
 
     pub async fn broadcast(&self, transaction: Transaction) -> Result<(), Error> {
@@ -168,5 +211,50 @@ impl Chain {
             .broadcast(&transaction)
             .await
             .map_err(|e| Error::Generic { msg: e.to_string() })
+    }
+}
+
+fn default_fee_by_confirmation_target(confirmation_target: ConfirmationTarget) -> u32 {
+    match confirmation_target {
+        ConfirmationTarget::MinAllowedAnchorChannelRemoteFee => 3 * MIN_FEERATE,
+        ConfirmationTarget::MinAllowedNonAnchorChannelRemoteFee => 3 * MIN_FEERATE,
+        ConfirmationTarget::ChannelCloseMinimum => 3 * MIN_FEERATE,
+        ConfirmationTarget::AnchorChannelFee => 10 * MIN_FEERATE,
+        ConfirmationTarget::NonAnchorChannelFee => 20 * MIN_FEERATE,
+        ConfirmationTarget::OnChainSweep => 50 * MIN_FEERATE,
+    }
+}
+
+impl FeeEstimator for Chain {
+    fn get_est_sat_per_1000_weight(&self, confirmation_target: ConfirmationTarget) -> u32 {
+        let fee_key = match confirmation_target {
+            ConfirmationTarget::OnChainSweep => "1",
+            ConfirmationTarget::NonAnchorChannelFee => "18",
+            ConfirmationTarget::AnchorChannelFee => "144",
+            ConfirmationTarget::ChannelCloseMinimum => "144",
+            ConfirmationTarget::MinAllowedNonAnchorChannelRemoteFee => "1008",
+            ConfirmationTarget::MinAllowedAnchorChannelRemoteFee => "1008",
+        };
+
+        let fee = self
+            .fees
+            .clone()
+            .and_then(|fees| fees.fees_by_block_target.get(fee_key).map(|f| *f))
+            .unwrap_or(default_fee_by_confirmation_target(confirmation_target) as f64) as u32;
+
+        fee
+    }
+}
+
+impl BroadcasterInterface for Chain {
+    fn broadcast_transactions(&self, txs: &[&Transaction]) {
+        let txs_clone = txs.iter().map(|tx| (*tx).clone()).collect::<Vec<Transaction>>();
+        utils::spawn(async move {
+            for tx in txs_clone {
+                if let Err(e) = self.broadcast(tx).await {
+                    log_warn!(logger, "Error broadcasting transaction: {e}")
+                }
+            }
+        });
     }
 }

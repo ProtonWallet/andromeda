@@ -1,14 +1,14 @@
 use std::str::FromStr;
 
-use crate::common::error::Error;
+use crate::common::{
+    bitcoin::{BitcoinUnit, Network},
+    error::Error,
+    utils::convert_amount,
+};
 use bdk::{bitcoin::Address, wallet::ChangeSet};
 use bdk_chain::PersistBackend;
 
-use super::{
-    account::Account,
-    bitcoin::{BitcoinUnit, Network},
-    utils::convert_amount,
-};
+use super::account::Account;
 
 use urlencoding::{decode, encode};
 
@@ -188,8 +188,8 @@ mod tests {
 
     use miniscript::bitcoin::Address;
 
-    use super::super::{bitcoin::Network, payment_link::PaymentLink};
-    use crate::common::error::Error;
+    use super::super::payment_link::PaymentLink;
+    use crate::common::{bitcoin::Network, error::Error};
 
     #[test]
     fn should_return_only_address() {

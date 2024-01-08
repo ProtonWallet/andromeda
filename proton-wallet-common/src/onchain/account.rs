@@ -19,13 +19,11 @@ use miniscript::{
     Descriptor, DescriptorPublicKey,
 };
 
-use crate::common::error::Error;
+use crate::common::{bitcoin::Network, error::Error};
 
 use super::{
-    bitcoin::Network,
     payment_link::PaymentLink,
-    transactions::{DetailledTransaction, Pagination, SimpleTransaction},
-    utils::sort_and_paginate_txs,
+    transactions::{DetailledTransaction, Pagination, SimpleTransaction}, utils::sort_and_paginate_txs,
 };
 
 #[derive(Debug)]
@@ -287,7 +285,9 @@ mod tests {
 
     use miniscript::bitcoin::{bip32::ExtendedPrivKey, Address};
 
-    use super::super::{bitcoin::Network, mnemonic::Mnemonic};
+    use crate::common::bitcoin::Network;
+
+    use super::super::mnemonic::Mnemonic;
 
     use super::{Account, AccountConfig, ScriptType};
 

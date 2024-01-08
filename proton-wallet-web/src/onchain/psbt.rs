@@ -1,4 +1,4 @@
-use proton_wallet_common::{onchain::bitcoin::Network, Address, PartiallySignedTransaction, SignOptions};
+use proton_wallet_common::{Address, PartiallySignedTransaction, SignOptions, common::bitcoin::Network};
 use wasm_bindgen::prelude::*;
 
 use super::{account::WasmAccount, types::defined::WasmNetwork};

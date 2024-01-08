@@ -1,4 +1,4 @@
-use proton_wallet_common::onchain::{chain::Chain, client::Client};
+use proton_wallet_common::common::chain::Chain;
 use wasm_bindgen::prelude::*;
 
 use super::{account::WasmAccount, psbt::WasmPartiallySignedTransaction};
@@ -26,9 +26,7 @@ impl WasmChain {
     /// Generates a Mnemonic with a random entropy based on the given word count.
     #[wasm_bindgen(constructor)]
     pub fn new() -> Result<WasmChain, DetailledWasmError> {
-        let client = Client::new(None).unwrap(); // TODO: change this
-        let inner = Chain::new(client.inner());
-
+        let inner = Chain::new(None).map_err(|e| e.into())?;
         Ok(WasmChain { inner })
     }
 

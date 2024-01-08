@@ -17,13 +17,9 @@ use miniscript::bitcoin::{
 };
 use uuid::Uuid;
 
-use crate::common::{error::Error, async_rw_lock::AsyncRwLock};
+use crate::common::{async_rw_lock::AsyncRwLock, error::Error, bitcoin::BitcoinUnit, utils::{convert_amount, min_f64, max_f64}};
 
-use super::{
-    account::Account,
-    bitcoin::BitcoinUnit,
-    utils::{convert_amount, max_f64, min_f64},
-};
+use super::account::Account;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum CoinSelection {

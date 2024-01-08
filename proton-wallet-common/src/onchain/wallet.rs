@@ -1,11 +1,10 @@
 use super::account::{Account, AccountConfig, ScriptType};
 
-use super::bitcoin::Network;
-
 use super::mnemonic::Mnemonic;
 use super::transactions::{DetailledTransaction, Pagination, SimpleTransaction};
 use super::utils::sort_and_paginate_txs;
 
+use crate::common::bitcoin::Network;
 use crate::common::{async_rw_lock::AsyncRwLock, error::Error};
 use futures::future;
 
