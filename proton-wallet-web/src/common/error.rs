@@ -1,4 +1,5 @@
-use proton_wallet_common::{common::error::Error, KeychainKind};
+use core::fmt::Debug;
+use proton_wallet_common::{common::error::Error, ChangeSet, KeychainKind, PersistBackend};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -62,6 +63,14 @@ pub enum WasmError {
     Bip32,
     Bip39,
     Psbt,
+    ConnectionFailed,
+
+    CreateTxError,
+    CoinSelectionError,
+    BuildFeeBumpError,
+    AddUtxoError,
+    NewError,
+    NewOrLoadError,
 
     // Core
     LockError,
@@ -84,9 +93,16 @@ impl Into<DetailledWasmError> for WasmError {
     }
 }
 
-impl Into<DetailledWasmError> for Error {
+impl<Storage> Into<DetailledWasmError> for Error<Storage>
+where
+    Storage: PersistBackend<ChangeSet> + Debug,
+{
     fn into(self) -> DetailledWasmError {
         match self {
+            Error::ConnectionFailed => DetailledWasmError {
+                kind: WasmError::ConnectionFailed,
+                details: JsValue::null()
+            },
             Error::Bip39 { error } => DetailledWasmError {
                 kind: WasmError::Bip39,
                 details: match error {
@@ -276,6 +292,30 @@ impl Into<DetailledWasmError> for Error {
             Error::Psbt { error } => DetailledWasmError {
                 kind: WasmError::Psbt,
                 details: JsValue::from_str(&error),
+            },
+            Error::CreateTxError(err) => DetailledWasmError {
+                kind: WasmError::CreateTxError,
+                details: JsValue::from_str(&format!("{:?}", err)),
+            },
+            Error::CoinSelectionError(err) => DetailledWasmError {
+                kind: WasmError::CoinSelectionError,
+                details: JsValue::from_str(&format!("{:?}", err)),
+            },
+            Error::BuildFeeBumpError(err) => DetailledWasmError {
+                kind: WasmError::BuildFeeBumpError,
+                details: JsValue::from_str(&format!("{:?}", err)),
+            },
+            Error::AddUtxoError(err) => DetailledWasmError {
+                kind: WasmError::AddUtxoError,
+                details: JsValue::from_str(&format!("{:?}", err)),
+            },
+            Error::NewError(err) => DetailledWasmError {
+                kind: WasmError::NewError,
+                details: JsValue::from_str(&format!("{:?}", err)),
+            },
+            Error::NewOrLoadError(err) => DetailledWasmError {
+                kind: WasmError::NewOrLoadError,
+                details: JsValue::from_str(&format!("{:?}", err)),
             },
         }
     }

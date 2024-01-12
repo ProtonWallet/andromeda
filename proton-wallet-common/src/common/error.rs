@@ -1,10 +1,19 @@
 use bdk::descriptor::DescriptorError;
 use bdk::keys::bip39::Error as Bip39Error;
-use bdk::{Error as BdkError, KeychainKind};
+use bdk::wallet::coin_selection::Error as CoinSelectionError;
+use bdk::wallet::error::{BuildFeeBumpError, CreateTxError};
+use bdk::wallet::tx_builder::AddUtxoError;
+use bdk::wallet::{ChangeSet, NewError, NewOrLoadError};
+use bdk::KeychainKind;
+use bdk_chain::PersistBackend;
 use miniscript::bitcoin::bip32::Error as Bip32Error;
+use std::fmt::Debug;
 
 #[derive(Debug)]
-pub enum Error {
+pub enum Error<Storage>
+where
+    Storage: PersistBackend<ChangeSet>,
+{
     InvalidAddress,
     InvalidSecretKey,
     InvalidDescriptor,
@@ -53,140 +62,96 @@ pub enum Error {
     Bip32 { error: String },
     Bip39 { error: Option<Bip39Error> },
     Psbt { error: String },
+
+    ConnectionFailed,
+
+    CreateTxError(CreateTxError<Storage::WriteError>),
+    CoinSelectionError(CoinSelectionError),
+    BuildFeeBumpError(BuildFeeBumpError),
+    AddUtxoError(AddUtxoError),
+    NewError(NewError<Storage::WriteError>),
+    NewOrLoadError(NewOrLoadError<Storage::WriteError, Storage::LoadError>),
 }
 
-impl Into<Error> for BdkError {
-    fn into(self) -> Error {
-        match self {
-            // Generic error
-            BdkError::Generic(str) => Error::Generic { msg: str },
-            // Cannot build a tx without recipients
-            BdkError::NoRecipients => Error::NoRecipients,
-            // `manually_selected_only` option is selected but no utxo has been passed
-            BdkError::NoUtxosSelected => Error::NoUtxosSelected,
-            // Output created is under the dust limit, 546 satoshis
-            BdkError::OutputBelowDustLimit(outputs) => Error::OutputBelowDustLimit {
-                output: outputs.try_into().unwrap(),
-            },
-            // Wallet's UTXO set is not enough to cover recipient's requested plus fee
-            BdkError::InsufficientFunds { needed, available } => Error::InsufficientFunds { needed, available },
-            // Branch and bound coin selection possible attempts with sufficiently big UTXO set could grow
-            // exponentially, thus a limit is set, and when hit, this ErrorKind is thrown
-            BdkError::BnBTotalTriesExceeded => Error::BnBTotalTriesExceeded,
-            // Branch and bound coin selection tries to avoid needing a change by finding the right inputs for
-            // the desired outputs plus fee, if there is not such combination this ErrorKind is thrown
-            BdkError::BnBNoExactMatch => Error::BnBNoExactMatch,
-            // Happens when trying to spend an UTXO that is not in the internal database
-            BdkError::UnknownUtxo => Error::UnknownUtxo,
-            // Thrown when a tx is not found in the internal database
-            BdkError::TransactionNotFound => Error::TransactionNotFound,
-            // Happens when trying to bump a transaction that is already confirmed
-            BdkError::TransactionConfirmed => Error::TransactionConfirmed,
-            // Trying to replace a tx that has a sequence >= `0xFFFFFFFE`
-            BdkError::IrreplaceableTransaction => Error::IrreplaceableTransaction,
-            // When bumping a tx the fee rate requested is lower than required
-            BdkError::FeeRateTooLow { required } => Error::FeeRateTooLow {
-                required: required.as_sat_per_vb().to_string(),
-            },
-            // When bumping a tx the absolute fee requested is lower than replaced tx absolute fee
-            BdkError::FeeTooLow { required } => Error::FeeTooLow { required },
-            // Node doesn't have data to estimate a fee rate
-            BdkError::FeeRateUnavailable => Error::FeeRateUnavailable,
-            // In order to use the [`TxBuilder::add_global_xpubs`] option every extended
-            // key in the descriptor must either be a master key itself (having depth = 0) or have an
-            // explicit origin provided
-            //
-            // [`TxBuilder::add_global_xpubs`]: crate::wallet::tx_builder::TxBuilder::add_global_xpubs
-            BdkError::MissingKeyOrigin(key) => Error::MissingKeyOrigin { key },
-            // ErrorKind while working with [`keys`](crate::keys)
-            BdkError::Key(error) => Error::Key {
-                error: error.to_string(),
-            },
-            // Descriptor checksum mismatch
-            BdkError::ChecksumMismatch => Error::ChecksumMismatch,
-            // Spending policy is not compatible with this [`KeychainKind`](crate::types::KeychainKind)
-            BdkError::SpendingPolicyRequired(keychain_kind) => Error::SpendingPolicyRequired { keychain_kind },
-            // Error while extracting and manipulating policies
-            BdkError::InvalidPolicyPathError(error) => Error::InvalidPolicyPathError {
-                error: error.to_string(),
-            },
-            // Signing error
-            BdkError::Signer(error) => Error::Signer {
-                error: error.to_string(),
-            },
-            // Requested outpoint doesn't exist in the tx (vout greater than available outputs)
-            BdkError::InvalidOutpoint(outpoint) => Error::InvalidOutpoint {
-                outpoint: outpoint.to_string(),
-            },
-            // Error related to the parsing and usage of descriptors
-            BdkError::Descriptor(error) => Error::Descriptor {
-                error: error.to_string(),
-            },
-            // Miniscript error
-            BdkError::Miniscript(error) => Error::Miniscript {
-                error: error.to_string(),
-            },
-            // Miniscript PSBT error
-            BdkError::MiniscriptPsbt(_) => Error::MiniscriptPsbt,
-            // BIP32 error
-            BdkError::Bip32(error) => Error::Bip32 {
-                error: error.to_string(),
-            },
-            // Partially signed bitcoin transaction error
-            BdkError::Psbt(error) => Error::Psbt {
-                error: error.to_string(),
-            },
-        }
+impl<Storage> Into<Error<Storage>> for NewOrLoadError<Storage::WriteError, Storage::LoadError>
+where
+    Storage: PersistBackend<ChangeSet>,
+{
+    fn into(self) -> Error<Storage> {
+        Error::NewOrLoadError(self)
     }
 }
 
-impl Into<Error> for Bip32Error {
-    fn into(self) -> Error {
+impl<Storage> Into<Error<Storage>> for NewError<Storage::WriteError>
+where
+    Storage: PersistBackend<ChangeSet>,
+{
+    fn into(self) -> Error<Storage> {
+        Error::NewError(self)
+    }
+}
+
+impl<Storage> Into<Error<Storage>> for CoinSelectionError
+where
+    Storage: PersistBackend<ChangeSet>,
+{
+    fn into(self) -> Error<Storage> {
+        Error::CoinSelectionError(self)
+    }
+}
+
+impl<Storage> Into<Error<Storage>> for AddUtxoError
+where
+    Storage: PersistBackend<ChangeSet>,
+{
+    fn into(self) -> Error<Storage> {
+        Error::AddUtxoError(self)
+    }
+}
+
+impl<Storage> Into<Error<Storage>> for CreateTxError<Storage::WriteError>
+where
+    Storage: PersistBackend<ChangeSet>,
+{
+    fn into(self) -> Error<Storage> {
+        Error::CreateTxError(self)
+    }
+}
+
+impl<Storage> Into<Error<Storage>> for BuildFeeBumpError
+where
+    Storage: PersistBackend<ChangeSet>,
+{
+    fn into(self) -> Error<Storage> {
+        Error::BuildFeeBumpError(self)
+    }
+}
+
+impl<Storage> Into<Error<Storage>> for Bip32Error
+where
+    Storage: PersistBackend<ChangeSet>,
+{
+    fn into(self) -> Error<Storage> {
         Error::Bip32 {
             error: self.to_string(),
         }
     }
 }
 
-impl Into<Error> for DescriptorError {
-    fn into(self) -> Error {
+impl<Storage> Into<Error<Storage>> for DescriptorError
+where
+    Storage: PersistBackend<ChangeSet>,
+{
+    fn into(self) -> Error<Storage> {
         Error::DescriptorError(self)
     }
 }
 
-impl Into<Error> for Bip39Error {
-    fn into(self) -> Error {
+impl<Storage> Into<Error<Storage>> for Bip39Error
+where
+    Storage: PersistBackend<ChangeSet>,
+{
+    fn into(self) -> Error<Storage> {
         Error::Bip39 { error: Some(self) }
     }
 }
-
-// #[derive(Debug)]
-// pub enum Error {
-//     /// Invalid HD Key path, such as having a wildcard but a length != 1
-//     InvalidHdKeyPath,
-//     /// The provided descriptor doesn't match its checksum
-//     InvalidDescriptorChecksum,
-//     /// The descriptor contains hardened derivation steps on public extended keys
-//     HardenedDerivationXpub,
-//     /// The descriptor contains multipath keys
-//     MultiPath,
-
-//     /// Error thrown while working with [`keys`](crate::keys)
-//     Key(crate::keys::KeyError),
-//     /// Error while extracting and manipulating policies
-//     Policy(crate::descriptor::policy::PolicyError),
-
-//     /// Invalid byte found in the descriptor checksum
-//     InvalidDescriptorCharacter(u8),
-
-//     /// BIP32 error
-//     Bip32(bitcoin::bip32::Error),
-//     /// Error during base58 decoding
-//     Base58(bitcoin::base58::Error),
-//     /// Key-related error
-//     Pk(bitcoin::key::Error),
-//     /// Miniscript error
-//     Miniscript(miniscript::Error),
-//     /// Hex decoding error
-//     Hex(bitcoin::hashes::hex::Error),
-// }

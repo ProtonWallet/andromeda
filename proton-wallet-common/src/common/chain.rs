@@ -2,11 +2,10 @@ use crate::common::error::Error;
 use bdk::bitcoin::{Transaction, Txid};
 use bdk::wallet::{ChangeSet, Update as BdkUpdate};
 use bdk::Wallet as BdkWallet;
-use bdk_chain::local_chain::Update;
-use bdk_chain::{ConfirmationTimeAnchor, PersistBackend, TxGraph};
+use bdk_chain::{local_chain::Update, ConfirmationTimeHeightAnchor, PersistBackend, TxGraph};
 use bdk_esplora::esplora_client::{AsyncClient as AsyncEsploraClient, Builder as EsploraClientBuilder};
 use lightning::chain::chaininterface::{BroadcasterInterface, ConfirmationTarget, FeeEstimator};
-use lightning::log_warn;
+use lightning::chain::BestBlock;
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -26,8 +25,13 @@ const MIN_FEERATE: u32 = 253;
 
 // TODO: Stop gap should be a setting
 const STOP_GAP: usize = 10;
-const PARALLEL_REQUESTS: usize = 5;
 
+#[cfg(not(target_arch = "wasm32"))]
+const PARALLEL_REQUESTS: usize = 5;
+#[cfg(target_arch = "wasm32")]
+const PARALLEL_REQUESTS: usize = 1;
+
+#[derive(Clone)]
 pub struct Chain {
     client: AsyncEsploraClient,
     should_poll: bool,
@@ -35,7 +39,7 @@ pub struct Chain {
 }
 
 impl Chain {
-    pub fn new(url: Option<String>) -> Result<Self, Error> {
+    pub fn new(url: Option<String>) -> Result<Self, Error<()>> {
         let url = url.unwrap_or("https://mempool.space/testnet/api".to_string());
 
         let client = EsploraClientBuilder::new(&url)
@@ -54,8 +58,8 @@ impl Chain {
     async fn chain_update<Storage>(
         &self,
         wallet: &mut BdkWallet<Storage>,
-        graph_update: &TxGraph<ConfirmationTimeAnchor>,
-    ) -> Result<Update, Error>
+        graph_update: &TxGraph<ConfirmationTimeHeightAnchor>,
+    ) -> Result<Update, Error<Storage>>
     where
         Storage: PersistBackend<ChangeSet>,
     {
@@ -73,7 +77,10 @@ impl Chain {
         Ok(chain_update)
     }
 
-    fn apply_and_commit_update<Storage>(wallet: &mut BdkWallet<Storage>, update: BdkUpdate) -> Result<(), Error>
+    fn apply_and_commit_update<Storage>(
+        wallet: &mut BdkWallet<Storage>,
+        update: BdkUpdate,
+    ) -> Result<(), Error<Storage>>
     where
         Storage: PersistBackend<ChangeSet>,
     {
@@ -90,7 +97,7 @@ impl Chain {
         Ok(())
     }
 
-    pub async fn full_sync<Storage>(&self, wallet: &mut BdkWallet<Storage>) -> Result<(), Error>
+    pub async fn full_sync<Storage>(&self, wallet: &mut BdkWallet<Storage>) -> Result<(), Error<Storage>>
     where
         Storage: PersistBackend<ChangeSet>,
     {
@@ -102,16 +109,10 @@ impl Chain {
         // (`keychain_indices_update`).
         let (graph_update, last_active_indices) = self
             .client
-            .scan_txs_with_keychains(
-                keychain_spks,
-                core::iter::empty(),
-                core::iter::empty(),
-                STOP_GAP,
-                PARALLEL_REQUESTS,
-            )
+            .full_scan(keychain_spks, STOP_GAP, PARALLEL_REQUESTS)
             .await
-            .map_err(|_| Error::Generic {
-                msg: "Could not scan".to_string(),
+            .map_err(|err| Error::Generic {
+                msg: format!("{:?}", err),
             })?;
 
         let chain_update = self.chain_update(wallet, &graph_update).await?;
@@ -125,7 +126,7 @@ impl Chain {
         Self::apply_and_commit_update(wallet, update)
     }
 
-    pub async fn partial_sync<Storage>(&self, wallet: &mut BdkWallet<Storage>) -> Result<(), Error>
+    pub async fn partial_sync<Storage>(&self, wallet: &mut BdkWallet<Storage>) -> Result<(), Error<Storage>>
     where
         Storage: PersistBackend<ChangeSet>,
     {
@@ -137,8 +138,8 @@ impl Chain {
             .collect::<Vec<_>>();
 
         let chain = wallet.local_chain();
-        let chain_tip = chain.tip().map(|cp| cp.block_id()).unwrap_or_default();
-        let init_outpoints = wallet.spk_index().outpoints().iter().cloned();
+        let chain_tip = chain.tip().block_id();
+
         // Tx that are yet to be confirmed
         let unconfirmed_txids = wallet
             .tx_graph()
@@ -148,15 +149,11 @@ impl Chain {
             .collect::<Vec<Txid>>();
 
         // Tracked utxos
-        let utxos = wallet
-            .tx_graph()
-            .filter_chain_unspents(&*chain, chain_tip, init_outpoints)
-            .map(|(_, utxo)| utxo.outpoint)
-            .collect::<Vec<_>>();
+        let utxos = wallet.list_unspent().map(|utxo| utxo.outpoint).collect::<Vec<_>>();
 
         let graph_update = self
             .client
-            .scan_txs(unused_spks, unconfirmed_txids, utxos, PARALLEL_REQUESTS)
+            .sync(unused_spks, unconfirmed_txids, utxos, PARALLEL_REQUESTS)
             .await
             .map_err(|_| Error::Generic {
                 msg: "Could not sync".to_string(),
@@ -177,7 +174,7 @@ impl Chain {
         self.should_poll = true;
     }
 
-    pub async fn optionally_update_fees(&mut self) -> Result<(), Error> {
+    pub async fn optionally_update_fees(&mut self) -> Result<(), Error<()>> {
         if self.fees.is_none() || now().as_secs() > self.fees.clone().unwrap().last_update + 60 * 10 {
             let fees_by_block_target = self
                 .client
@@ -194,9 +191,24 @@ impl Chain {
         Ok(())
     }
 
-    // TODO: poll fees
+    pub async fn get_best_block(&self) -> Result<BestBlock, Error<()>> {
+        let tip_height = self
+            .client
+            .get_height()
+            .await
+            .map_err(|_| Error::CannotGetFeeEstimation)?;
 
-    pub async fn get_fees_estimation(&mut self) -> Result<HashMap<String, f64>, Error> {
+        let tip_hash = self
+            .client
+            .get_block_hash(tip_height)
+            .await
+            .map_err(|_| Error::CannotGetFeeEstimation)?;
+
+        Ok(BestBlock::new(tip_hash, tip_height))
+    }
+
+    // TODO: poll fees
+    pub async fn get_fees_estimation(&mut self) -> Result<HashMap<String, f64>, Error<()>> {
         self.optionally_update_fees().await?;
 
         Ok(self
@@ -206,7 +218,7 @@ impl Chain {
             .fees_by_block_target)
     }
 
-    pub async fn broadcast(&self, transaction: Transaction) -> Result<(), Error> {
+    pub async fn broadcast(&self, transaction: Transaction) -> Result<(), Error<()>> {
         self.client
             .broadcast(&transaction)
             .await
@@ -248,11 +260,14 @@ impl FeeEstimator for Chain {
 
 impl BroadcasterInterface for Chain {
     fn broadcast_transactions(&self, txs: &[&Transaction]) {
+        let chain_clone = self.clone();
         let txs_clone = txs.iter().map(|tx| (*tx).clone()).collect::<Vec<Transaction>>();
+
         utils::spawn(async move {
             for tx in txs_clone {
-                if let Err(e) = self.broadcast(tx).await {
-                    log_warn!(logger, "Error broadcasting transaction: {e}")
+                let cloned_tx = (tx).clone();
+                if let Err(_) = chain_clone.broadcast(cloned_tx).await {
+                    // log_warn!(logger, "Error broadcasting transaction: {e}")
                 }
             }
         });

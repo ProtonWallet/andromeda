@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use bdk::bitcoin::secp256k1::rand;
 use bdk::bitcoin::secp256k1::rand::Rng;
 use bdk::keys::bip39::Language;
@@ -5,9 +7,7 @@ use bdk::keys::bip39::WordCount;
 use bdk::keys::{GeneratableKey, GeneratedKey};
 use bdk::miniscript::BareCtx;
 
-use std::str::FromStr;
-
-pub use bdk::keys::bip39::{Language as BdkLanguage, Mnemonic as BdkMnemonic};
+use bdk::keys::bip39::Mnemonic as BdkMnemonic;
 
 use crate::common::error::Error;
 
@@ -18,7 +18,7 @@ pub struct Mnemonic {
 
 impl Mnemonic {
     /// Generates Mnemonic with a random entropy
-    pub fn new(word_count: WordCount) -> Result<Self, Error> {
+    pub fn new(word_count: WordCount) -> Result<Self, Error<()>> {
         // TODO 4: I DON'T KNOW IF THIS IS A DECENT WAY TO GENERATE ENTROPY PLEASE CONFIRM
         let mut rng = rand::thread_rng();
         let mut entropy = [0u8; 32];
@@ -36,7 +36,7 @@ impl Mnemonic {
     }
 
     /// Parse a Mnemonic with given string
-    pub fn from_string(mnemonic: String) -> Result<Self, Error> {
+    pub fn from_string(mnemonic: String) -> Result<Self, Error<()>> {
         BdkMnemonic::from_str(&mnemonic)
             .map(|m| Mnemonic { inner: m })
             .map_err(|_| Error::InvalidMnemonic)

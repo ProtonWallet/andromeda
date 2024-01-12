@@ -17,7 +17,12 @@ use miniscript::bitcoin::{
 };
 use uuid::Uuid;
 
-use crate::common::{async_rw_lock::AsyncRwLock, error::Error, bitcoin::BitcoinUnit, utils::{convert_amount, min_f64, max_f64}};
+use crate::common::{
+    async_rw_lock::AsyncRwLock,
+    bitcoin::BitcoinUnit,
+    error::Error,
+    utils::{convert_amount, max_f64, min_f64},
+};
 
 use super::account::Account;
 
@@ -33,7 +38,10 @@ pub enum CoinSelection {
 pub struct TmpRecipient(pub String, pub String, pub f64, pub BitcoinUnit);
 
 #[derive(Clone, Debug)]
-pub struct TxBuilder<Storage> {
+pub struct TxBuilder<Storage>
+where
+    Storage: PersistBackend<ChangeSet> + Clone,
+{
     /// We need an async lock here because syncing can be in progress while creating a transaction
     account: Option<Arc<AsyncRwLock<Account<Storage>>>>,
     pub recipients: Vec<TmpRecipient>,
@@ -152,7 +160,7 @@ where
         }
     }
 
-    pub async fn set_account(&self, account: Arc<AsyncRwLock<Account<Storage>>>) -> Result<Self, Error> {
+    pub async fn set_account(&self, account: Arc<AsyncRwLock<Account<Storage>>>) -> Result<Self, Error<Storage>> {
         let balance = &account.read().await.map_err(|_| Error::LockError)?.get_balance();
 
         let tx_builder = TxBuilder::<Storage> {
@@ -405,7 +413,7 @@ where
     fn commit_utxos<'a, D: PersistBackend<ChangeSet>, Cs: CoinSelectionAlgorithm>(
         &self,
         mut tx_builder: BdkTxBuilder<'a, D, Cs, CreateTx>,
-    ) -> Result<BdkTxBuilder<'a, D, Cs, CreateTx>, Error> {
+    ) -> Result<BdkTxBuilder<'a, D, Cs, CreateTx>, Error<Storage>> {
         if !self.utxos_to_spend.is_empty() {
             let bdk_utxos: Vec<OutPoint> = self
                 .utxos_to_spend
@@ -423,7 +431,7 @@ where
         &self,
         mut tx_builder: BdkTxBuilder<'a, D, Cs, CreateTx>,
         allow_dust: bool,
-    ) -> Result<PartiallySignedTransaction, Error> {
+    ) -> Result<PartiallySignedTransaction, Error<Storage>> {
         for TmpRecipient(_uuid, address, amount, unit) in &self.recipients {
             // We need to convert tmp amount in sats to create psbt
             let sats_amount = convert_amount(*amount, *unit, BitcoinUnit::SAT).round() as u64;
@@ -462,12 +470,16 @@ where
             tx_builder.add_data(&buf.as_push_bytes());
         }
 
-        let psbt = tx_builder.finish().map_err(|e| e.into())?;
+        let psbt = tx_builder.finish().unwrap();
+        // FIXME: .map_err(|e| e.into())?;
 
         Ok(psbt.into())
     }
 
-    pub async fn create_pbst_with_coin_selection(&self, allow_dust: bool) -> Result<PartiallySignedTransaction, Error> {
+    pub async fn create_pbst_with_coin_selection(
+        &self,
+        allow_dust: bool,
+    ) -> Result<PartiallySignedTransaction, Error<Storage>> {
         let account = self.account.clone().ok_or(Error::AccountNotFound)?;
         let mut account_write_lock = account.write().await.map_err(|_| Error::LockError)?;
         let wallet = account_write_lock.get_mutable_wallet();
@@ -488,7 +500,7 @@ where
             CoinSelection::Manual => {
                 let mut tx_builder = wallet.build_tx().coin_selection(BranchAndBoundCoinSelection::default());
 
-                tx_builder = self.commit_utxos(tx_builder)?;
+                tx_builder = self.commit_utxos(tx_builder).map_err(|e| e.into())?;
                 self.create_psbt(tx_builder, allow_dust)
             }
         };

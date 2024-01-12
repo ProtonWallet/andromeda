@@ -9,13 +9,13 @@ pub use bdk::{
         psbt::PartiallySignedTransaction,
         Address, Network as BdkNetwork, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Witness,
     },
-    chain::{ChainPosition, ConfirmationTime, ConfirmationTimeAnchor},
+    chain::{ChainPosition, ConfirmationTime, ConfirmationTimeHeightAnchor},
     keys::{
-        bip39::{Language, Mnemonic, MnemonicWithPassphrase, WordCount},
+        bip39::{Language as BdkLanguage, Mnemonic as BdkMnemonic, MnemonicWithPassphrase, WordCount},
         DerivableKey, ExtendedKey,
     },
     wallet::{tx_builder::ChangeSpendPolicy, AddressIndex, AddressInfo, Balance, ChangeSet},
-    KeychainKind, LocalUtxo, SignOptions,
+    KeychainKind, LocalOutput, SignOptions,
 };
 
 pub use bdk_chain::{Append, PersistBackend};

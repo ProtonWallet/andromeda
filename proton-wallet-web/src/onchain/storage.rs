@@ -2,7 +2,7 @@ use proton_wallet_common::{Append, ChangeSet, PersistBackend};
 
 use crate::common::error::WasmError;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct OnchainStorage {
     changeset_key: String,
 }
@@ -41,7 +41,7 @@ impl PersistBackend<ChangeSet> for OnchainStorage {
     fn write_changes(&mut self, changeset: &ChangeSet) -> Result<(), Self::WriteError> {
         let local_storage = get_storage()?;
 
-        let mut data = self.load_from_persistence()?;
+        let mut data = self.load_from_persistence().unwrap_or_default().unwrap_or_default();
         data.append(changeset.clone());
 
         let serialized = serde_json::to_string(&data).map_err(|_| WasmError::CannotSerializePersistedData)?;
@@ -53,7 +53,7 @@ impl PersistBackend<ChangeSet> for OnchainStorage {
         return Ok(());
     }
 
-    fn load_from_persistence(&mut self) -> Result<ChangeSet, Self::LoadError> {
+    fn load_from_persistence(&mut self) -> Result<Option<ChangeSet>, Self::LoadError> {
         let local_storage = get_storage()?;
 
         let serialized = local_storage
@@ -62,7 +62,7 @@ impl PersistBackend<ChangeSet> for OnchainStorage {
 
         match serialized {
             Some(serialized) => Ok(serde_json::from_str(&serialized).map_err(|_| WasmError::CannotParsePersistedData)?),
-            _ => Ok(ChangeSet::default()),
+            _ => Ok(None),
         }
     }
 }

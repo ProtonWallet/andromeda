@@ -34,7 +34,7 @@ impl Into<BitcoinUnit> for WasmBitcoinUnit {
 }
 
 #[wasm_bindgen]
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum WasmNetwork {
     /// Mainnet Bitcoin.
     Bitcoin,

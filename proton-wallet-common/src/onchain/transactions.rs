@@ -1,5 +1,5 @@
-use bdk::Wallet;
-use bdk_chain::{tx_graph::CanonicalTx, ChainPosition, ConfirmationTimeAnchor};
+use bdk::{wallet::ChangeSet, Wallet};
+use bdk_chain::{tx_graph::CanonicalTx, ChainPosition, ConfirmationTimeHeightAnchor, PersistBackend};
 use miniscript::bitcoin::{
     bip32::DerivationPath, psbt::PartiallySignedTransaction, Address, ScriptBuf, Transaction, TxIn, Txid,
 };
@@ -17,7 +17,7 @@ pub struct SimpleTransaction {
 
 impl SimpleTransaction {
     pub fn from_can_tx<Storage>(
-        can_tx: &CanonicalTx<'_, Transaction, ConfirmationTimeAnchor>,
+        can_tx: &CanonicalTx<'_, Transaction, ConfirmationTimeHeightAnchor>,
         wallet: &Wallet<Storage>,
         account_key: Option<DerivationPath>,
     ) -> Self {
@@ -64,7 +64,13 @@ pub struct DetailledTransaction {
 }
 
 impl DetailledTransaction {
-    pub fn from_psbt<Storage>(psbt: &PartiallySignedTransaction, wallet: &Wallet<Storage>) -> Result<Self, Error> {
+    pub fn from_psbt<Storage>(
+        psbt: &PartiallySignedTransaction,
+        wallet: &Wallet<Storage>,
+    ) -> Result<Self, Error<Storage>>
+    where
+        Storage: PersistBackend<ChangeSet>,
+    {
         let tx = psbt.clone().extract_tx();
 
         let (sent, received) = wallet.spk_index().sent_and_received(&tx);
@@ -100,9 +106,12 @@ impl DetailledTransaction {
     }
 
     pub fn from_can_tx<Storage>(
-        can_tx: &CanonicalTx<'_, Transaction, ConfirmationTimeAnchor>,
+        can_tx: &CanonicalTx<'_, Transaction, ConfirmationTimeHeightAnchor>,
         wallet: &Wallet<Storage>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, Error<Storage>>
+    where
+        Storage: PersistBackend<ChangeSet>,
+    {
         let (sent, received) = wallet.spk_index().sent_and_received(can_tx.tx_node.tx);
         let fees = wallet.calculate_fee(can_tx.tx_node.tx).ok();
 
@@ -148,7 +157,7 @@ pub enum TransactionTime {
     Unconfirmed { last_seen: u64 },
 }
 
-pub fn get_tx_time(can_tx: &CanonicalTx<'_, Transaction, ConfirmationTimeAnchor>) -> u64 {
+pub fn get_tx_time(can_tx: &CanonicalTx<'_, Transaction, ConfirmationTimeHeightAnchor>) -> u64 {
     match can_tx.chain_position {
         ChainPosition::Confirmed(anchor) => anchor.confirmation_time,
         ChainPosition::Unconfirmed(last_seen) => last_seen,

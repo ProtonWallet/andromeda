@@ -31,7 +31,7 @@ impl WasmChain {
     }
 
     #[wasm_bindgen(js_name = getFeesEstimation)]
-    pub async fn get_fees_estimation(&self) -> FeeRateByBlockEstimation {
+    pub async fn get_fees_estimation(&mut self) -> FeeRateByBlockEstimation {
         let fees_estimation = self.inner.get_fees_estimation().await.unwrap_or_default();
         serde_wasm_bindgen::to_value(&fees_estimation).unwrap().into()
     }

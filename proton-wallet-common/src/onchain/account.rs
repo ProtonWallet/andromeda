@@ -7,8 +7,9 @@ use bdk::{
     },
     descriptor,
     wallet::{AddressInfo, Balance, ChangeSet},
-    KeychainKind, LocalUtxo, SignOptions,
+    KeychainKind, LocalOutput, SignOptions,
 };
+use std::fmt::Debug;
 
 use bdk::Wallet;
 use bdk_chain::PersistBackend;
@@ -23,11 +24,15 @@ use crate::common::{bitcoin::Network, error::Error};
 
 use super::{
     payment_link::PaymentLink,
-    transactions::{DetailledTransaction, Pagination, SimpleTransaction}, utils::sort_and_paginate_txs,
+    transactions::{DetailledTransaction, Pagination, SimpleTransaction},
+    utils::sort_and_paginate_txs,
 };
 
 #[derive(Debug)]
-pub struct Account<Storage> {
+pub struct Account<Storage>
+where
+    Storage: PersistBackend<ChangeSet> + Clone,
+{
     derivation_path: DerivationPath,
     storage: Storage,
     wallet: Wallet<Storage>,
@@ -42,7 +47,7 @@ pub enum ScriptType {
 }
 
 impl TryFrom<String> for ScriptType {
-    type Error = Error;
+    type Error = Error<()>;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         if value == "legacy" {
@@ -83,7 +88,10 @@ impl AccountConfig {
     }
 }
 
-pub fn build_account_derivation_path(config: AccountConfig) -> Result<Vec<ChildNumber>, Error> {
+pub fn build_account_derivation_path<Storage>(config: AccountConfig) -> Result<Vec<ChildNumber>, Error<Storage>>
+where
+    Storage: PersistBackend<ChangeSet> + Clone,
+{
     let purpose = ChildNumber::from_hardened_idx(if config.multisig_threshold.is_some() {
         // TODO maybe support legacy standard (45' + 48')
         87 // https://bips.dev/87/
@@ -108,24 +116,19 @@ pub fn build_account_derivation_path(config: AccountConfig) -> Result<Vec<ChildN
     Ok(vec![purpose, coin_type, account])
 }
 
-fn build_account_descriptors(
+type ReturnedDescriptor = (
+    Descriptor<DescriptorPublicKey>,
+    HashMap<DescriptorPublicKey, DescriptorSecretKey>,
+    HashSet<BdkNetwork>,
+);
+
+fn build_account_descriptors<Storage>(
     account_xprv: ExtendedPrivKey,
     config: AccountConfig,
-) -> Result<
-    (
-        (
-            Descriptor<DescriptorPublicKey>,
-            HashMap<DescriptorPublicKey, DescriptorSecretKey>,
-            HashSet<BdkNetwork>,
-        ),
-        (
-            Descriptor<DescriptorPublicKey>,
-            HashMap<DescriptorPublicKey, DescriptorSecretKey>,
-            HashSet<BdkNetwork>,
-        ),
-    ),
-    Error,
-> {
+) -> Result<(ReturnedDescriptor, ReturnedDescriptor), Error<Storage>>
+where
+    Storage: PersistBackend<ChangeSet> + Clone,
+{
     let builder = if config.multisig_threshold.is_some() {
         todo!()
     } else {
@@ -166,16 +169,16 @@ where
         account_xprv: ExtendedPrivKey,
         config: AccountConfig,
         storage: Storage,
-    ) -> Result<Wallet<Storage>, Error> {
+    ) -> Result<Wallet<Storage>, Error<Storage>> {
         let (external_descriptor, internal_descriptor) = build_account_descriptors(account_xprv, config)?;
 
-        Wallet::new(
+        Wallet::new_or_load(
             external_descriptor,
             Some(internal_descriptor),
             storage,
             config.network.into(),
         )
-        .map_err(|_| Error::LoadError) // TODO: check how to implement Into<Error> for PersistBackend load error
+        .map_err(|e| e.into())
     }
 
     pub fn get_mutable_wallet(&mut self) -> &mut Wallet<Storage> {
@@ -186,7 +189,11 @@ where
         &self.wallet
     }
 
-    pub fn new(master_secret_key: ExtendedPrivKey, config: AccountConfig, storage: Storage) -> Result<Self, Error> {
+    pub fn new(
+        master_secret_key: ExtendedPrivKey,
+        config: AccountConfig,
+        storage: Storage,
+    ) -> Result<Self, Error<Storage>> {
         let secp = Secp256k1::new();
 
         let derivation_path = build_account_derivation_path(config)?;
@@ -209,7 +216,7 @@ where
         self.wallet.get_balance()
     }
 
-    pub fn get_utxos(&self) -> Vec<LocalUtxo> {
+    pub fn get_utxos(&self) -> Vec<LocalOutput> {
         self.wallet.list_unspent().collect()
     }
 
@@ -217,10 +224,16 @@ where
         self.storage.clone()
     }
 
-    pub fn get_address(&mut self, index: Option<u32>) -> AddressInfo {
+    pub fn get_address(&mut self, index: Option<u32>) -> Result<AddressInfo, Error<Storage>> {
         match index {
-            Some(index) => self.wallet.get_address(bdk::wallet::AddressIndex::Peek(index)),
-            _ => self.wallet.get_address(bdk::wallet::AddressIndex::LastUnused),
+            Some(index) => self
+                .wallet
+                .try_get_address(bdk::wallet::AddressIndex::Peek(index))
+                .map_err(|_| Error::InvalidAddress),
+            _ => self
+                .wallet
+                .try_get_address(bdk::wallet::AddressIndex::LastUnused)
+                .map_err(|_| Error::InvalidAddress),
         }
     }
 
@@ -234,7 +247,7 @@ where
         amount: Option<u64>,
         label: Option<String>,
         message: Option<String>,
-    ) -> PaymentLink {
+    ) -> Result<PaymentLink, Error<Storage>> {
         PaymentLink::new_bitcoin_uri(self, index, amount, label, message)
     }
 
@@ -253,7 +266,7 @@ where
         sort_and_paginate_txs(simple_txs, pagination, sorted)
     }
 
-    pub fn get_transaction(&self, txid: String) -> Result<DetailledTransaction, Error> {
+    pub fn get_transaction(&self, txid: String) -> Result<DetailledTransaction, Error<Storage>> {
         let txid = Txid::from_str(&txid).map_err(|_| Error::InvalidTxId)?;
         let tx = match self.wallet.get_tx(txid) {
             Some(can_tx) => {
@@ -270,7 +283,7 @@ where
         &self,
         psbt: &mut PartiallySignedTransaction,
         sign_options: Option<SignOptions>,
-    ) -> Result<bool, Error> {
+    ) -> Result<bool, Error<Storage>> {
         let sign_options = sign_options.unwrap_or_default();
 
         self.wallet
@@ -285,9 +298,7 @@ mod tests {
 
     use miniscript::bitcoin::{bip32::ExtendedPrivKey, Address};
 
-    use crate::common::bitcoin::Network;
-
-    use super::super::mnemonic::Mnemonic;
+    use crate::common::{bitcoin::Network, mnemonic::Mnemonic};
 
     use super::{Account, AccountConfig, ScriptType};
 
@@ -329,7 +340,7 @@ mod tests {
     fn get_address_by_index_legacy() {
         let mut account = set_test_account(ScriptType::Legacy);
         assert_eq!(
-            account.get_address(Some(13)).to_string(),
+            account.get_address(Some(13)).unwrap().to_string(),
             "mvqqkX5UmaqPvzS4Aa1gMhj4NFntGmju2N".to_string()
         );
     }
@@ -338,7 +349,7 @@ mod tests {
     fn get_address_by_index_nested_segwit() {
         let mut account = set_test_account(ScriptType::NestedSegwit);
         assert_eq!(
-            account.get_address(Some(13)).to_string(),
+            account.get_address(Some(13)).unwrap().to_string(),
             "2MzYfE5Bt1g2A9zDBocPtcDjRqpFfdCeqe3".to_string()
         );
     }
@@ -347,7 +358,7 @@ mod tests {
     fn get_address_by_index_native_segwit() {
         let mut account = set_test_account(ScriptType::NativeSegwit);
         assert_eq!(
-            account.get_address(Some(13)).to_string(),
+            account.get_address(Some(13)).unwrap().to_string(),
             "tb1qre68v280t3t5mdy0hcu86fnx3h289h0arfe6lr".to_string()
         );
     }
@@ -356,7 +367,7 @@ mod tests {
     fn get_address_by_index_taproot() {
         let mut account = set_test_account(ScriptType::Taproot);
         assert_eq!(
-            account.get_address(Some(13)).to_string(),
+            account.get_address(Some(13)).unwrap().to_string(),
             "tb1ppanhpmq38z6738s0mwnd9h0z2j5jv7q4x4pc2wxqu8jw0gwmf69qx3zpaf".to_string()
         );
     }
@@ -365,7 +376,7 @@ mod tests {
     fn get_last_unused_address() {
         let mut account = set_test_account(ScriptType::Taproot);
         assert_eq!(
-            account.get_address(None).to_string(),
+            account.get_address(None).unwrap().to_string(),
             "tb1pvv0tcny86mz4lsx97p03fvkkc09cg5nx5nvnxc7c323jv5sr6wnshfu377".to_string()
         );
     }
@@ -376,6 +387,7 @@ mod tests {
         assert_eq!(
             account
                 .get_bitcoin_uri(Some(5), Some(788927), Some("Hello world".to_string()), None)
+                .unwrap()
                 .to_string(),
             "bitcoin:tb1qkwfhq25jnjq4fca2tptdhpsstz9ss2pampswhc?amount=0.00788927&label=Hello%20world".to_string()
         );
@@ -385,7 +397,7 @@ mod tests {
     fn get_is_address_owned_by_account() {
         let mut account = set_test_account(ScriptType::Taproot);
 
-        let address = account.get_address(None);
+        let address = account.get_address(None).unwrap();
         assert!(account.owns(&address));
 
         assert_eq!(

@@ -4,3 +4,4 @@ pub mod chain;
 pub mod constants;
 pub mod error;
 pub mod utils;
+pub mod mnemonic;

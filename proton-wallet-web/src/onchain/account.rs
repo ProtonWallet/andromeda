@@ -136,6 +136,7 @@ impl WasmAccount {
             .await
             .map_err(|_| WasmError::LockError.into())?
             .get_bitcoin_uri(index, amount, label, message)
+            .map_err(|_| WasmError::LockError.into())?
             .into();
 
         account_inner.release_write_lock();

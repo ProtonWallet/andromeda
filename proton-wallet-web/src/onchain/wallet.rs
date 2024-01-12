@@ -6,6 +6,7 @@ use proton_wallet_common::{
     DerivationPath,
 };
 use wasm_bindgen::prelude::*;
+use web_sys::console::log_2;
 
 use super::{
     account::{WasmAccount, WasmScriptType},
@@ -60,6 +61,7 @@ impl WasmWallet {
         bip38_passphrase: Option<String>,
         config: &WasmWalletConfig,
     ) -> Result<WasmWallet, DetailledWasmError> {
+        log_2(&"NETWORK 1:".into(), &format!("{:?}", config.network.clone()).into());
         let wallet = Wallet::new(bip39_mnemonic, bip38_passphrase, config.into()).map_err(|e| e.into())?;
         Ok(Self { inner: wallet })
     }
@@ -70,7 +72,9 @@ impl WasmWallet {
         script_type: WasmScriptType,
         account_index: u32,
     ) -> Result<WasmDerivationPath, DetailledWasmError> {
-        let tmp_derivation_path: DerivationPath = build_account_derivation_path(AccountConfig::new(
+        log_2(&"NETWORK 2:".into(), &format!("{:?}", self.inner.get_network()).into());
+
+        let tmp_derivation_path: DerivationPath = build_account_derivation_path::<()>(AccountConfig::new(
             script_type.into(),
             self.inner.get_network(),
             account_index,

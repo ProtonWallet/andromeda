@@ -1,4 +1,4 @@
-use proton_wallet_common::LocalUtxo;
+use proton_wallet_common::LocalOutput;
 use serde::Serialize;
 
 use super::{
@@ -19,7 +19,7 @@ pub struct WasmUtxo {
     pub confirmation_time: WasmTransactionTime,
 }
 
-impl Into<WasmUtxo> for LocalUtxo {
+impl Into<WasmUtxo> for LocalOutput {
     fn into(self) -> WasmUtxo {
         WasmUtxo {
             value: self.txout.value,
