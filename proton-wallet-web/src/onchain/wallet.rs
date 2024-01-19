@@ -6,7 +6,7 @@ use proton_wallet_common::{
     DerivationPath,
 };
 use wasm_bindgen::prelude::*;
-use web_sys::console::log_2;
+use web_sys::console::{log_1, log_2};
 
 use super::{
     account::{WasmAccount, WasmScriptType},
@@ -63,6 +63,10 @@ impl WasmWallet {
     ) -> Result<WasmWallet, DetailledWasmError> {
         log_2(&"NETWORK 1:".into(), &format!("{:?}", config.network.clone()).into());
         let wallet = Wallet::new(bip39_mnemonic, bip38_passphrase, config.into()).map_err(|e| e.into())?;
+        log_2(
+            &"NETWORK 1 end:".into(),
+            &format!("{:?}", config.network.clone()).into(),
+        );
         Ok(Self { inner: wallet })
     }
 
@@ -86,10 +90,13 @@ impl WasmWallet {
         // In a multi-wallet context, an account must be defined by the BIP32 masterkey (fingerprint), and its derivation path (unique)
         let account_id = format!("{}_{}", self.inner.get_fingerprint(), tmp_derivation_path.to_string());
         let storage = OnchainStorage::new(account_id.clone());
+
+        log_1(&"Before add account".into());
         let derivation_path = self
             .inner
             .add_account(script_type.into(), account_index, storage)
             .map_err(|e| e.into())?;
+        log_1(&"After add account".into());
 
         // assert_eq!(derivation_path, tmp_derivation_path);
         Ok(derivation_path.into())

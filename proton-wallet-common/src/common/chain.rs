@@ -1,7 +1,7 @@
 use crate::common::error::Error;
 use bdk::bitcoin::{Transaction, Txid};
 use bdk::wallet::{ChangeSet, Update as BdkUpdate};
-use bdk::Wallet as BdkWallet;
+use bdk::{KeychainKind, Wallet as BdkWallet};
 use bdk_chain::{local_chain::Update, ConfirmationTimeHeightAnchor, PersistBackend, TxGraph};
 use bdk_esplora::esplora_client::{AsyncClient as AsyncEsploraClient, Builder as EsploraClientBuilder};
 use lightning::chain::chaininterface::{BroadcasterInterface, ConfirmationTarget, FeeEstimator};
@@ -57,7 +57,7 @@ impl Chain {
 
     async fn chain_update<Storage>(
         &self,
-        wallet: &mut BdkWallet<Storage>,
+        wallet: &BdkWallet<Storage>,
         graph_update: &TxGraph<ConfirmationTimeHeightAnchor>,
     ) -> Result<Update, Error<Storage>>
     where
@@ -97,7 +97,17 @@ impl Chain {
         Ok(())
     }
 
-    pub async fn full_sync<Storage>(&self, wallet: &mut BdkWallet<Storage>) -> Result<(), Error<Storage>>
+    pub async fn full_sync<Storage>(
+        &self,
+        wallet: &BdkWallet<Storage>,
+    ) -> Result<
+        (
+            TxGraph<ConfirmationTimeHeightAnchor>,
+            Update,
+            BTreeMap<KeychainKind, u32>,
+        ),
+        Error<Storage>,
+    >
     where
         Storage: PersistBackend<ChangeSet>,
     {
@@ -117,16 +127,13 @@ impl Chain {
 
         let chain_update = self.chain_update(wallet, &graph_update).await?;
 
-        let update = BdkUpdate {
-            last_active_indices,
-            graph: graph_update,
-            chain: Some(chain_update),
-        };
-
-        Self::apply_and_commit_update(wallet, update)
+        Ok((graph_update, chain_update, last_active_indices))
     }
 
-    pub async fn partial_sync<Storage>(&self, wallet: &mut BdkWallet<Storage>) -> Result<(), Error<Storage>>
+    pub async fn partial_sync<Storage>(
+        &self,
+        wallet: &BdkWallet<Storage>,
+    ) -> Result<(TxGraph<ConfirmationTimeHeightAnchor>, Update), Error<Storage>>
     where
         Storage: PersistBackend<ChangeSet>,
     {
@@ -161,9 +168,23 @@ impl Chain {
 
         let chain_update = self.chain_update(wallet, &graph_update).await?;
 
+        Ok((graph_update, chain_update))
+    }
+
+    pub fn commit_sync<Storage>(
+        &self,
+        wallet: &mut BdkWallet<Storage>,
+        graph_update: TxGraph<ConfirmationTimeHeightAnchor>,
+        chain_update: Update,
+        last_active_indices: Option<BTreeMap<KeychainKind, u32>>,
+    ) -> Result<(), Error<Storage>>
+    where
+        Storage: PersistBackend<ChangeSet>,
+    {
         let update = BdkUpdate {
             graph: graph_update,
             chain: Some(chain_update),
+            last_active_indices: last_active_indices.unwrap_or_default(),
             ..BdkUpdate::default()
         };
 

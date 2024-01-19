@@ -158,7 +158,7 @@ impl WasmDetailledTransaction {
     ) -> Result<WasmDetailledTransaction, DetailledWasmError> {
         let psbt: PartiallySignedTransaction = psbt.into();
         let inner = account.get_inner();
-        let account = inner.read().await.map_err(|_| WasmError::LockError.into())?;
+        let account = inner.read().map_err(|_| WasmError::LockError.into())?;
         let wallet = account.get_wallet();
 
         let tx = DetailledTransaction::from_psbt(&psbt, wallet).map_err(|e| e.into())?;

@@ -40,36 +40,44 @@ impl WasmChain {
     pub async fn full_sync(&self, account: &WasmAccount) -> Result<(), DetailledWasmError> {
         let account_inner = account.get_inner();
 
-        self.inner
-            .full_sync(
-                account_inner
-                    .write()
-                    .await
-                    .map_err(|_| WasmError::LockError.into())?
-                    .get_mutable_wallet(),
-            )
+        let read_lock = account_inner.read().map_err(|_| WasmError::LockError.into())?;
+        let (graph_update, chain_update, last_active_indices) = self
+            .inner
+            .full_sync(read_lock.get_wallet())
             .await
             .map_err(|e| e.into())?;
+        drop(read_lock);
 
-        account_inner.release_write_lock();
+        let mut write_lock = account_inner.write().map_err(|_| WasmError::LockError.into())?;
+        self.inner
+            .commit_sync(
+                write_lock.get_mutable_wallet(),
+                graph_update,
+                chain_update,
+                Some(last_active_indices),
+            )
+            .map_err(|e| e.into())?;
+
         Ok(())
     }
     #[wasm_bindgen(js_name = partialSync)]
     pub async fn partial_sync(&self, account: &WasmAccount) -> Result<(), DetailledWasmError> {
         let account_inner = account.get_inner();
 
-        self.inner
-            .partial_sync(
-                account_inner
-                    .write()
-                    .await
-                    .map_err(|_| WasmError::LockError.into())?
-                    .get_mutable_wallet(),
-            )
+        let read_lock = account_inner.read().map_err(|_| WasmError::LockError.into())?;
+        let (graph_update, chain_update) = self
+            .inner
+            .partial_sync(read_lock.get_wallet())
             .await
             .map_err(|e| e.into())?;
+        drop(read_lock);
 
-        account_inner.release_write_lock();
+        let mut write_lock = account_inner.write().map_err(|_| WasmError::LockError.into())?;
+
+        self.inner
+            .commit_sync(write_lock.get_mutable_wallet(), graph_update, chain_update, None)
+            .map_err(|e| e.into())?;
+
         Ok(())
     }
 

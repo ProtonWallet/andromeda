@@ -1,9 +1,9 @@
-use std::{fmt::Display, sync::Arc};
-
-use proton_wallet_common::{
-    common::async_rw_lock::AsyncRwLock,
-    onchain::account::{Account, AccountConfig, ScriptType},
+use std::{
+    fmt::Display,
+    sync::{Arc, RwLock},
 };
+
+use proton_wallet_common::onchain::account::{Account, AccountConfig, ScriptType};
 
 use wasm_bindgen::prelude::*;
 
@@ -59,16 +59,16 @@ impl Into<ScriptType> for WasmScriptType {
 
 #[wasm_bindgen]
 pub struct WasmAccount {
-    inner: Arc<AsyncRwLock<Account<OnchainStorage>>>,
+    inner: Arc<RwLock<Account<OnchainStorage>>>,
 }
 
 impl WasmAccount {
-    pub fn get_inner(&self) -> Arc<AsyncRwLock<Account<OnchainStorage>>> {
+    pub fn get_inner(&self) -> Arc<RwLock<Account<OnchainStorage>>> {
         self.inner.clone()
     }
 }
 
-impl Into<WasmAccount> for &Arc<AsyncRwLock<Account<OnchainStorage>>> {
+impl Into<WasmAccount> for &Arc<RwLock<Account<OnchainStorage>>> {
     fn into(self) -> WasmAccount {
         WasmAccount { inner: self.clone() }
     }
@@ -115,7 +115,7 @@ impl WasmAccountConfig {
 impl WasmAccount {
     #[wasm_bindgen(js_name = hasSyncData)]
     pub async fn has_sync_data(&self) -> bool {
-        match self.get_inner().read().await {
+        match self.get_inner().read() {
             Ok(inner) => inner.get_storage().exists(),
             _ => false,
         }
@@ -133,13 +133,11 @@ impl WasmAccount {
 
         let payment_link: WasmPaymentLink = account_inner
             .write()
-            .await
             .map_err(|_| WasmError::LockError.into())?
             .get_bitcoin_uri(index, amount, label, message)
             .map_err(|_| WasmError::LockError.into())?
             .into();
 
-        account_inner.release_write_lock();
         Ok(payment_link)
     }
 
@@ -148,7 +146,6 @@ impl WasmAccount {
         let owns = self
             .inner
             .read()
-            .await
             .map_err(|_| WasmError::LockError.into())?
             .owns(&address.into());
 
@@ -160,7 +157,6 @@ impl WasmAccount {
         let balance: WasmBalance = self
             .inner
             .read()
-            .await
             .map_err(|_| WasmError::LockError.into())?
             .get_balance()
             .into();
@@ -173,7 +169,6 @@ impl WasmAccount {
         let derivation_path = self
             .inner
             .read()
-            .await
             .map_err(|_| WasmError::LockError.into())?
             .get_derivation_path()
             .to_string();
@@ -186,7 +181,6 @@ impl WasmAccount {
         let utxos = self
             .inner
             .read()
-            .await
             .map_err(|_| WasmError::LockError.into())?
             .get_utxos()
             .into_iter()
@@ -204,7 +198,6 @@ impl WasmAccount {
         let transactions = self
             .inner
             .read()
-            .await
             .map_err(|_| WasmError::LockError.into())?
             .get_transactions(pagination.map(|pa| pa.into()), true)
             .into_iter()
@@ -222,7 +215,6 @@ impl WasmAccount {
         let transaction = self
             .inner
             .read()
-            .await
             .map_err(|_| WasmError::LockError.into())?
             .get_transaction(txid)
             .map_err(|e| e.into())?;

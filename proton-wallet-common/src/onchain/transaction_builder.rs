@@ -1,4 +1,8 @@
-use std::{collections::HashSet, str::FromStr, sync::Arc};
+use std::{
+    collections::HashSet,
+    str::FromStr,
+    sync::{Arc, RwLock},
+};
 
 use bdk::{
     bitcoin::ScriptBuf,
@@ -18,7 +22,6 @@ use miniscript::bitcoin::{
 use uuid::Uuid;
 
 use crate::common::{
-    async_rw_lock::AsyncRwLock,
     bitcoin::BitcoinUnit,
     error::Error,
     utils::{convert_amount, max_f64, min_f64},
@@ -43,7 +46,7 @@ where
     Storage: PersistBackend<ChangeSet> + Clone,
 {
     /// We need an async lock here because syncing can be in progress while creating a transaction
-    account: Option<Arc<AsyncRwLock<Account<Storage>>>>,
+    account: Option<Arc<RwLock<Account<Storage>>>>,
     pub recipients: Vec<TmpRecipient>,
     pub utxos_to_spend: HashSet<OutPoint>,
     pub change_policy: ChangeSpendPolicy,
@@ -160,8 +163,8 @@ where
         }
     }
 
-    pub async fn set_account(&self, account: Arc<AsyncRwLock<Account<Storage>>>) -> Result<Self, Error<Storage>> {
-        let balance = &account.read().await.map_err(|_| Error::LockError)?.get_balance();
+    pub async fn set_account(&self, account: Arc<RwLock<Account<Storage>>>) -> Result<Self, Error<Storage>> {
+        let balance = &account.read().map_err(|_| Error::LockError)?.get_balance();
 
         let tx_builder = TxBuilder::<Storage> {
             account: Some(account.clone()),
@@ -286,7 +289,7 @@ where
         // account is always in sats so we need to convert it to chosen unit
         let converted_max_amount = match self.account.clone() {
             Some(account) => convert_amount(
-                account.read().await.unwrap().get_balance().confirmed as f64,
+                account.read().unwrap().get_balance().confirmed as f64,
                 BitcoinUnit::SAT,
                 unit,
             ),
@@ -481,7 +484,7 @@ where
         allow_dust: bool,
     ) -> Result<PartiallySignedTransaction, Error<Storage>> {
         let account = self.account.clone().ok_or(Error::AccountNotFound)?;
-        let mut account_write_lock = account.write().await.map_err(|_| Error::LockError)?;
+        let mut account_write_lock = account.write().map_err(|_| Error::LockError)?;
         let wallet = account_write_lock.get_mutable_wallet();
 
         let updated = match self.coin_selection {
@@ -505,7 +508,6 @@ where
             }
         };
 
-        account.release_write_lock();
         updated
     }
 }

@@ -4,7 +4,7 @@ use super::transactions::{DetailledTransaction, Pagination, SimpleTransaction};
 use super::utils::sort_and_paginate_txs;
 
 use crate::common::bitcoin::Network;
-use crate::common::{async_rw_lock::AsyncRwLock, error::Error, mnemonic::Mnemonic};
+use crate::common::{error::Error, mnemonic::Mnemonic};
 use futures::future;
 
 use bdk::wallet::{Balance as BdkBalance, ChangeSet};
@@ -14,7 +14,7 @@ use miniscript::bitcoin::bip32::{DerivationPath, ExtendedPrivKey};
 use miniscript::bitcoin::secp256k1::Secp256k1;
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 #[derive(Debug)]
 pub struct Wallet<Storage>
@@ -22,7 +22,7 @@ where
     Storage: PersistBackend<ChangeSet> + Clone,
 {
     mprv: ExtendedPrivKey,
-    accounts: HashMap<DerivationPath, Arc<AsyncRwLock<Account<Storage>>>>,
+    accounts: HashMap<DerivationPath, Arc<RwLock<Account<Storage>>>>,
     config: WalletConfig,
 }
 
@@ -77,19 +77,19 @@ where
 
         let derivation_path = account.get_derivation_path();
         self.accounts
-            .insert(derivation_path.clone(), Arc::new(AsyncRwLock::new(account)));
+            .insert(derivation_path.clone(), Arc::new(RwLock::new(account)));
 
         Ok(derivation_path)
     }
 
-    pub fn get_account(&mut self, derivation_path: &DerivationPath) -> Option<&Arc<AsyncRwLock<Account<Storage>>>> {
+    pub fn get_account(&mut self, derivation_path: &DerivationPath) -> Option<&Arc<RwLock<Account<Storage>>>> {
         self.accounts.get(derivation_path)
     }
 
     pub async fn get_balance(&self) -> Result<BdkBalance, Error<Storage>> {
         let async_iter = self.accounts.keys().map(|account_key| async move {
             let account = self.accounts.get(&account_key).ok_or(Error::AccountNotFound)?;
-            let account_guard = account.read().await.map_err(|_| Error::LockError)?;
+            let account_guard = account.read().map_err(|_| Error::LockError)?;
             let balance = account_guard.get_balance();
 
             Ok(balance) as Result<BdkBalance, Error<Storage>>
@@ -128,7 +128,7 @@ where
 
         let async_iter = self.accounts.keys().map(|account_key| async move {
             let account = self.accounts.get(&account_key).ok_or(Error::AccountNotFound)?;
-            let account_guard = account.read().await.map_err(|_| Error::LockError)?;
+            let account_guard = account.read().map_err(|_| Error::LockError)?;
             let wallet = account_guard.get_wallet();
 
             let txs = wallet
@@ -154,11 +154,7 @@ where
         let account = self.accounts.get(derivation_path);
 
         match account {
-            Some(account) => account
-                .read()
-                .await
-                .map_err(|_| Error::LockError)?
-                .get_transaction(txid),
+            Some(account) => account.read().map_err(|_| Error::LockError)?.get_transaction(txid),
             _ => Err(Error::InvalidAccountIndex),
         }
     }

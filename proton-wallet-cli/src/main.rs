@@ -1,5 +1,5 @@
 use proton_wallet_common::{
-    common::{async_rw_lock::AsyncRwLock, bitcoin::Network, chain::Chain},
+    common::{bitcoin::Network, chain::Chain},
     onchain::{
         account::{Account, ScriptType},
         transactions::TransactionTime,
@@ -10,7 +10,7 @@ use proton_wallet_common::{
 use std::{
     io::{self, Write},
     str::SplitWhitespace,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, RwLock},
 };
 use tokio;
 
@@ -79,7 +79,7 @@ fn require_derivation_arg(words: &SplitWhitespace<'_>) -> Result<DerivationPath,
 fn require_account_lock(
     wallet: Arc<Mutex<Wallet<()>>>,
     derivation_path: &DerivationPath,
-) -> Result<Arc<AsyncRwLock<Account<()>>>, &'static str> {
+) -> Result<Arc<RwLock<Account<()>>>, &'static str> {
     let mut lock = wallet.lock().unwrap();
     let account = lock.get_account(derivation_path).ok_or("ERROR: account not found")?;
 
@@ -149,12 +149,21 @@ async fn sync_account(
     let derivation_path = require_derivation_arg(words)?;
     let account = require_account_lock(wallet, &derivation_path)?;
 
-    let mut account_lock = account.write().await.unwrap();
-
     let chain = Chain::new(None).map_err(|_| "ERROR: could not start connect to chain")?;
 
-    chain.full_sync(account_lock.get_mutable_wallet()).await.unwrap();
-    account.release_write_lock();
+    let read_lock = account.read().unwrap();
+    let (graph_update, chain_update, last_active_indices) = chain.full_sync(read_lock.get_wallet()).await.unwrap();
+    drop(read_lock);
+
+    let mut write_lock = account.write().unwrap();
+    chain
+        .commit_sync(
+            write_lock.get_mutable_wallet(),
+            graph_update,
+            chain_update,
+            Some(last_active_indices),
+        )
+        .unwrap();
 
     Ok(derivation_path)
 }
@@ -168,7 +177,7 @@ async fn get_account_balance(
     let derivation_path = require_derivation_arg(&words)?;
     let account = require_account_lock(wallet, &derivation_path)?;
 
-    let account_lock = account.read().await.unwrap();
+    let account_lock = account.read().unwrap();
     let balance = account_lock.get_balance();
 
     println!("\nBALANCE");
@@ -189,7 +198,7 @@ async fn get_account_transactions(
     let derivation_path = require_derivation_arg(&words)?;
     let account = require_account_lock(wallet, &derivation_path)?;
 
-    let account_lock = account.read().await.unwrap();
+    let account_lock = account.read().unwrap();
 
     println!("\nTRANSACTIONS");
     account_lock
@@ -223,7 +232,7 @@ async fn get_account_utxos(
     let derivation_path = require_derivation_arg(&words)?;
     let account = require_account_lock(wallet, &derivation_path)?;
 
-    let account_lock = account.read().await.unwrap();
+    let account_lock = account.read().unwrap();
 
     println!("\nUTXOs");
     account_lock.get_utxos().into_iter().for_each(|utxo| {

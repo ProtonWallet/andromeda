@@ -1,4 +1,4 @@
-use proton_wallet_common::{Address, PartiallySignedTransaction, SignOptions, common::bitcoin::Network};
+use proton_wallet_common::{common::bitcoin::Network, Address, PartiallySignedTransaction, SignOptions};
 use wasm_bindgen::prelude::*;
 
 use super::{account::WasmAccount, types::defined::WasmNetwork};
@@ -56,13 +56,11 @@ impl WasmPartiallySignedTransaction {
 
         inner
             .write()
-            .await
             .map_err(|_| WasmError::LockError.into())?
             .get_mutable_wallet()
             .sign(&mut self.inner, SignOptions::default())
             .map_err(|_| WasmError::CannotSignPsbt.into())?;
 
-        inner.release_write_lock();
         Ok(WasmPartiallySignedTransaction::from_psbt(&self.inner, network.into()))
     }
 }
