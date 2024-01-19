@@ -2,7 +2,7 @@ use wasm_bindgen::prelude::*;
 
 use super::types::defined::WasmWordCount;
 use crate::common::error::DetailledWasmError;
-use proton_wallet_common::{common::mnemonic::Mnemonic, BdkLanguage};
+use proton_wallet_common::{common::mnemonic::{Mnemonic, self}, BdkLanguage};
 
 #[wasm_bindgen]
 #[derive(Clone)]
@@ -59,4 +59,9 @@ impl WasmMnemonic {
     pub fn to_words(&self) -> Vec<String> {
         self.inner.to_words()
     }
+}
+
+#[wasm_bindgen(js_name = getWordsAutocomplete)]
+pub fn get_words_autocomplete(word_start: String) -> Vec<String> {
+    mnemonic::get_words_autocomplete(word_start)
 }

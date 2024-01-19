@@ -16,6 +16,15 @@ pub struct Mnemonic {
     inner: BdkMnemonic,
 }
 
+pub fn get_words_autocomplete(word_start: String) -> Vec<String> {
+    Language::English
+        .word_list()
+        .into_iter()
+        .filter(|word| word.starts_with(&word_start))
+        .map(|word| word.to_string())
+        .collect::<Vec<_>>()
+}
+
 impl Mnemonic {
     /// Generates Mnemonic with a random entropy
     pub fn new(word_count: WordCount) -> Result<Self, Error<()>> {
@@ -62,7 +71,34 @@ mod tests {
 
     use crate::common::error::Error;
 
-    use super::Mnemonic;
+    use super::{get_words_autocomplete, Mnemonic};
+
+    #[test]
+    fn should_return_match_words_in_english() {
+        assert_eq!(
+            get_words_autocomplete("can".to_string()),
+            vec![
+                String::from("can"),
+                String::from("canal"),
+                String::from("cancel"),
+                String::from("candy"),
+                String::from("cannon"),
+                String::from("canoe"),
+                String::from("canvas"),
+                String::from("canyon"),
+            ]
+        );
+
+        assert_eq!(
+            get_words_autocomplete("major".to_string()),
+            vec![String::from("major"),]
+        );
+    }
+
+    #[test]
+    fn should_return_empty_vector() {
+        assert!(get_words_autocomplete("canb".to_string()).is_empty());
+    }
 
     #[test]
     fn should_create_mnemonic_from_string() {
