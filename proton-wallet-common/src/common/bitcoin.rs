@@ -8,14 +8,15 @@ pub const MILLI_BITCOIN: u64 = BITCOIN / 1000;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum BitcoinUnit {
+    /// 100,000,000 sats
     BTC,
+    /// 100,000 sats
     MBTC,
+    /// 1 sat
     SAT,
 }
 
-/**
- * We reimplement Network enum to have exhaustive enum
- */
+/// Reimpl of BDK's Network enum to have exhaustive enum
 #[derive(Debug, Clone, Copy)]
 pub enum Network {
     /// Mainnet Bitcoin.

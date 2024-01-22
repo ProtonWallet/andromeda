@@ -40,6 +40,13 @@ pub enum CoinSelection {
 #[derive(Clone, Debug, PartialEq)]
 pub struct TmpRecipient(pub String, pub String, pub f64, pub BitcoinUnit);
 
+/// BDK's implementation of Transaction builder is quite complete, but we need a struct that enables stateful transaction creation, so we just added a layer on top of it.
+///
+/// Proton-wallet-common's Transaction Builder is simply an implementation expose setters and getters to tweak transaction options without mutating it but rather returning the updating version. This implementation fits better with ui-based wallets and can even later be used to provide versioning.
+///
+/// PWC's implementation support most of BDK's exposed options such as coin selection, RBF (enabled by default), Fee rate selection and many other
+///
+/// This transaction builder implementation aims at being used to enable both raw transaction building and bitcoin URI processing (bitcoin:tb1....?amount=x&label=y)
 #[derive(Clone, Debug)]
 pub struct TxBuilder<Storage>
 where
@@ -69,11 +76,9 @@ struct AllocateBalanceAcc {
     recipients: Vec<TmpRecipient>,
 }
 
-/**
- * This functions allocates a given balance accross the provided recipients.
- * If recipients total amount is greater than provided balance, the last recipients will be allocated less than initially.
- * "First come, first served"
- */
+/// This functions allocates a given balance accross the provided recipients.
+/// If recipients total amount is greater than provided balance, the last recipients will be allocated less than initially.
+/// "First come, first served"
 fn allocate_recipients_balance(recipients: Vec<TmpRecipient>, balance: &Balance) -> Vec<TmpRecipient> {
     let acc_result: AllocateBalanceAcc = recipients.into_iter().fold(
         AllocateBalanceAcc {
@@ -104,9 +109,7 @@ fn allocate_recipients_balance(recipients: Vec<TmpRecipient>, balance: &Balance)
     acc_result.recipients
 }
 
-/**
- * This function remove allocated amount from the last recipient to the first one and returns an array of updated recipients
- */
+/// This function remove allocated amount from the last recipient to the first one and returns an array of updated recipients
 fn correct_recipients_amounts(recipients: Vec<TmpRecipient>, amount_to_remove: f64) -> Vec<TmpRecipient> {
     let mut cloned = recipients.clone();
     cloned.reverse(); // R3 R2 R1
@@ -163,6 +166,14 @@ where
         }
     }
 
+    /// Sets the account to be used to finalise the transaction. It is also used to constrain transaction outputs to not oversize balance
+    ///
+    /// ```rust, no run
+    /// let tx_builder = TxBuilder::new();
+    /// let account = Account::new(master_priv_key, config, ());
+    ///
+    /// let updated = tx_builder.set_account(account).unwrap();
+    /// ```
     pub async fn set_account(&self, account: Arc<RwLock<Account<Storage>>>) -> Result<Self, Error<Storage>> {
         let balance = &account.read().map_err(|_| Error::LockError)?.get_balance();
 
@@ -175,7 +186,13 @@ where
         Ok(tx_builder.constrain_recipient_amounts().await)
     }
 
-    /// Clears internal recipient list.
+    /// Clears internal recipient list.    
+    ///
+    /// ```rust, no run
+    /// let tx_builder = TxBuilder::new();
+    /// ...
+    /// let updated = tx_builder.clear_recipients().unwrap();
+    /// ```
     pub fn clear_recipients(&self) -> Self {
         TxBuilder::<Storage> {
             recipients: Vec::new(),
@@ -183,7 +200,13 @@ where
         }
     }
 
-    /// Add a recipient to the internal list.
+    /// Add a recipient to the internal list.    
+    ///
+    /// ```rust, no run
+    /// let tx_builder = TxBuilder::new();
+    /// ...
+    /// let updated = tx_builder.add_recipient().unwrap();
+    /// ```
     pub fn add_recipient(&self) -> Self {
         let mut recipients = self.recipients.clone();
         recipients.append(&mut vec![TmpRecipient(
@@ -200,6 +223,12 @@ where
     }
 
     /// Remove a recipient from the internal list.
+    ///     
+    /// ```rust, no run
+    /// let tx_builder = TxBuilder::new();
+    /// ...
+    /// let updated = tx_builder.remove_recipient(1usize).unwrap();
+    /// ```
     pub fn remove_recipient(&self, index: usize) -> Self {
         let mut recipients = self.recipients.clone();
 
@@ -233,7 +262,17 @@ where
         }
     }
 
-    /// Remove a recipient from the internal list.
+    /// Update either recipient's address or amount at provided index
+    ///
+    /// # Notes
+    ///
+    /// If amount is too high (higher than balance-expected fees), it will be constrained
+    ///     
+    /// ```rust, no run
+    /// let tx_builder = TxBuilder::new();
+    /// ...
+    /// let updated = tx_builder.update_recipient(1usize, Some("bc1..."), Some(18788.0), Some(BitcoinUnit::SAT)).unwrap();
+    /// ```
     pub async fn update_recipient(
         &self,
         index: usize,
@@ -247,7 +286,6 @@ where
         // - no2: only unit change; reflected update => unit & amount (converted to new unit)
         // - no3: both unit and amount change; reflected update => unit & amount
         // - no4: none of unit and amount change; reflected update => nothing
-
         let (did_unit_changed, new_unit) = match update.2 {
             Some(unit) => (unit != current_unit, unit),
             _ => (false, current_unit),
@@ -282,6 +320,7 @@ where
         tx_builder.constrain_recipient_amounts().await
     }
 
+    /// Update one recipient's amount to max, meaning it sets remaining balance to him.
     pub async fn update_recipient_amount_to_max(&self, index: usize) -> Self {
         let mut recipients = self.recipients.clone();
         let TmpRecipient(uuid, script, prev_amount, unit) = recipients[index].clone();
@@ -306,13 +345,7 @@ where
         tx_builder.constrain_recipient_amounts().await
     }
 
-    /**
-     * UTXOs
-     */
-
-    /// Add the list of outpoints to the internal list of UTXOs that must be spent. If an error occurs while adding
-    /// any of the UTXOs then none of them are added and the error is returned. These have priority over the "unspendable"
-    /// utxos, meaning that if a utxo is present both in the "utxos" and the "unspendable" list, it will be spent.
+    /// Adds an outpoint to the list of outpoints to spend.
     pub fn add_utxo_to_spend(&self, utxo_to_spend: &OutPoint) -> Self {
         let mut utxos_to_spend = self.utxos_to_spend.clone();
         utxos_to_spend.insert(utxo_to_spend.clone());
@@ -323,6 +356,7 @@ where
         }
     }
 
+    /// Removes an outpoint from the list of outpoints to spend.
     pub fn remove_utxo_to_spend(&self, utxo_to_spend: &OutPoint) -> Self {
         let mut utxos_to_spend = self.utxos_to_spend.clone();
         utxos_to_spend.remove(utxo_to_spend);
@@ -333,6 +367,7 @@ where
         }
     }
 
+    /// Empty the list of outpoints to spend
     pub fn clear_utxos_to_spend(&self) -> Self {
         TxBuilder::<Storage> {
             utxos_to_spend: HashSet::new(),
@@ -340,10 +375,7 @@ where
         }
     }
 
-    /**
-     * Coin selection enforcement
-     */
-
+    /// Sets the selected coin selection algorithm
     pub fn set_coin_selection(&self, coin_selection: CoinSelection) -> Self {
         TxBuilder::<Storage> {
             coin_selection,
@@ -351,10 +383,7 @@ where
         }
     }
 
-    /**
-     * Enable RBF
-     */
-
+    /// Enable Replace-By_fee
     pub fn enable_rbf(&self) -> Self {
         TxBuilder::<Storage> {
             rbf_enabled: true,
@@ -362,6 +391,7 @@ where
         }
     }
 
+    /// Disable Replace-By_fee
     pub fn disable_rbf(&self) -> Self {
         TxBuilder::<Storage> {
             rbf_enabled: false,
@@ -369,10 +399,7 @@ where
         }
     }
 
-    /**
-     * Locktime
-     */
-
+    /// Adds a locktime to the transaction
     pub fn add_locktime(&self, locktime: LockTime) -> Self {
         TxBuilder::<Storage> {
             locktime: Some(locktime),
@@ -380,6 +407,7 @@ where
         }
     }
 
+    /// Removes the transaction's locktime
     pub fn remove_locktime(&self) -> Self {
         TxBuilder::<Storage> {
             locktime: None,
@@ -387,21 +415,17 @@ where
         }
     }
 
-    /**
-     * Change policy
-     */
-
     /// Do not spend change outputs. This effectively adds all the change outputs to the "unspendable" list. See TxBuilder.unspendable.
+    ///
+    /// # Notes
+    ///
+    /// This can conflict with the list of outpoints to spend
     pub fn set_change_policy(&self, change_policy: ChangeSpendPolicy) -> Self {
         TxBuilder::<Storage> {
             change_policy,
             ..self.clone()
         }
     }
-
-    /**
-     * Fees
-     */
 
     /// Set a custom fee rate.
     pub async fn set_fee_rate(&self, sat_per_vb: f32) -> Self {
@@ -479,6 +503,9 @@ where
         Ok(psbt.into())
     }
 
+    /// Creates a PSBT from current TxBuilder
+    ///
+    /// The resulting psbt can then be provided to Account.sign() method
     pub async fn create_pbst_with_coin_selection(
         &self,
         allow_dust: bool,
@@ -520,10 +547,6 @@ mod tests {
     use super::super::transaction_builder::{BitcoinUnit, CoinSelection};
 
     use super::{correct_recipients_amounts, TmpRecipient, TxBuilder};
-
-    /**
-     * correct_recipients_amounts
-     */
 
     #[test]
     fn should_remove_correct_amount() {

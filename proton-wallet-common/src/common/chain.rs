@@ -31,6 +31,10 @@ const PARALLEL_REQUESTS: usize = 5;
 #[cfg(target_arch = "wasm32")]
 const PARALLEL_REQUESTS: usize = 1;
 
+
+/// Blockchain Client, mainly responsible for blockchain syncing and checking for both onchain transactions and lightning channels
+/// 
+/// Syncing is a crucial part. BDK propose several to plug into a node, but in order to have PWC compatible with most platform possible, we've chosen for the esplora async http client (actually a wrapper around it, calling our API instead of node directly).
 #[derive(Clone)]
 pub struct Chain {
     client: AsyncEsploraClient,
@@ -39,6 +43,7 @@ pub struct Chain {
 }
 
 impl Chain {
+    /// Creates a new blockchain client given a url to an esplora server
     pub fn new(url: Option<String>) -> Result<Self, Error<()>> {
         let url = url.unwrap_or("https://mempool.space/testnet/api".to_string());
 
@@ -97,6 +102,14 @@ impl Chain {
         Ok(())
     }
 
+    /// Given a stop gap (10 currently, hard-coded) and a descriptor, we query transactions for each script pub key until we reach the stop gap, incrementing address index each time.
+    /// After fetching those transactions, we can query the blocks to check their confirmation. We get outpoints to track for spending and we also get unused addresses list
+    ///
+    /// # Notes
+    /// 
+    /// Full sync at startup and recurrent partial sync should be enough to have the UI always up to date. However, 2 edge cases might happen:
+    /// - Transaction received on an already used address: we make the assumption that user only uses Proton Wallet, which prevents addresses reuse so we won't encounter this issue often. We should still offer the possibility to manually trigger a new full sync via a button in the UI.
+    /// - Transaction received on an address above stop gap: Stop Gap is hardcoded so far. We should soon offer to change the stop gap setting for a given account, so that he can find transactions sent above the previously defined one.
     pub async fn full_sync<Storage>(
         &self,
         wallet: &BdkWallet<Storage>,
@@ -130,6 +143,11 @@ impl Chain {
         Ok((graph_update, chain_update, last_active_indices))
     }
 
+    /// Partial sync uses already synced transactions, outpoints and unused addresses and tracks them, checking for transaction confirmation, outpoints spending and transactions received on unused addresses
+    ///
+    /// # Notes
+    ///
+    /// This has to be done on top of a full sync.
     pub async fn partial_sync<Storage>(
         &self,
         wallet: &BdkWallet<Storage>,

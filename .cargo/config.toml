@@ -1,0 +1,2 @@
+[registries]
+protonvpn = { index = "sparse+https://protonvpn.gitlab-pages.protontech.ch/rust/registry/index/" }

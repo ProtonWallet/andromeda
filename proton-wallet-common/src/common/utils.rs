@@ -48,15 +48,49 @@ pub fn convert_amount(value: f64, from: BitcoinUnit, to: BitcoinUnit) -> f64 {
     }
 }
 
+/// Returns the maximum value between two `f64` numbers, or 0.0 if both are NaN.
+///
+/// # Notes
+/// 
+/// If either of the input values is NaN (Not a Number), the function returns 0.0.
+///
+/// # Examples
+///
+/// ```
+/// use proton_wallet_common::common::utils::max_f64;
+///
+/// let result = max_f64(3.5, 2.0);
+/// assert_eq!(result, 3.5);
+///
+/// let nan_result = max_f64(f64::NAN, f64::NAN);
+/// assert_eq!(nan_result, 0.0);
+/// ```
 pub fn max_f64(a: f64, b: f64) -> f64 {
     let max = a.max(b);
     if max.is_nan() {
-        0f64
+        0.0
     } else {
         max
     }
 }
 
+/// Returns the minimum value between two `f64` numbers, or 0.0 if both are NaN.
+///
+/// # Notes
+/// 
+/// If either of the input values is NaN (Not a Number), the function returns 0.0.
+///
+/// # Examples
+///
+/// ```
+/// use proton_wallet_common::common::utils::min_f64;
+///
+/// let result = min_f64(3.5, 2.0);
+/// assert_eq!(result, 2.0);
+///
+/// let nan_result = min_f64(f64::NAN, f64::NAN);
+/// assert_eq!(nan_result, 0.0);
+/// ```
 pub fn min_f64(a: f64, b: f64) -> f64 {
     let min = a.min(b);
     if min.is_nan() {

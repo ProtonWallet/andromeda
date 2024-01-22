@@ -16,6 +16,35 @@ pub struct Mnemonic {
     inner: BdkMnemonic,
 }
 
+/// Returns a vector of words from the English language word list that start with the given prefix.
+///
+/// # Arguments
+///
+/// * `word_start` - A string representing the prefix for which autocomplete suggestions are generated.
+///
+/// # Note
+///
+/// This function relies on the `word_list` method of the `Language::English` enum to obtain the
+/// English language word list. Ensure that the necessary dependencies are available and properly
+/// configured.
+///
+/// # Panics
+///
+/// This function should not panic under normal circumstances. If panics occur, they may indicate
+/// issues with the underlying word list or language enum implementation.
+///
+/// # Returns
+///
+/// A vector of strings representing words that start with the provided prefix.
+///
+/// # Examples
+///
+/// ```rust
+/// use proton_wallet_common::common::mnemonic::get_words_autocomplete;
+///
+/// let result = get_words_autocomplete(String::from("pre"));
+/// assert_eq!(result, vec!["predict", "prefer", "prepare", "present", "pretty", "prevent"]);
+/// ```
 pub fn get_words_autocomplete(word_start: String) -> Vec<String> {
     Language::English
         .word_list()
@@ -25,10 +54,32 @@ pub fn get_words_autocomplete(word_start: String) -> Vec<String> {
         .collect::<Vec<_>>()
 }
 
+/// Wrapper around BDK's Mnemonic struct
 impl Mnemonic {
-    /// Generates Mnemonic with a random entropy
+    /// Generates a new `Mnemonic` with a random entropy.
+    ///
+    /// # Arguments
+    ///
+    /// * `word_count` - number of words the mnemonic should be composed with
+    ///
+    /// # Note
+    ///
+    /// This function isn't pure since it relies on `rand::thread_rng` to generate entropy.
+    ///
+    /// # Returns
+    ///
+    /// A Mnemonic
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use proton_wallet_common::common::mnemonic::Mnemonic;
+    /// use bdk::keys::bip39::WordCount;
+    ///
+    /// let result = Mnemonic::new(WordCount::Words12);
+    /// println!("{:?}", result)
+    /// ```
     pub fn new(word_count: WordCount) -> Result<Self, Error<()>> {
-        // TODO 4: I DON'T KNOW IF THIS IS A DECENT WAY TO GENERATE ENTROPY PLEASE CONFIRM
         let mut rng = rand::thread_rng();
         let mut entropy = [0u8; 32];
         rng.fill(&mut entropy);
@@ -44,19 +95,53 @@ impl Mnemonic {
         Ok(Mnemonic { inner: mnemonic })
     }
 
-    /// Parse a Mnemonic with given string
+    /// Parses a string to a `Mnemonic`.
+    ///
+    /// # Arguments
+    ///
+    /// * `mnemonic` - the mnemonic string
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use proton_wallet_common::common::mnemonic::Mnemonic;
+    ///
+    /// let result = Mnemonic::from_string("desk prevent enhance husband hungry idle member vessel room moment simple behave".to_string());
+    /// println!("{:?}", result)
+    /// ```
     pub fn from_string(mnemonic: String) -> Result<Self, Error<()>> {
         BdkMnemonic::from_str(&mnemonic)
             .map(|m| Mnemonic { inner: m })
             .map_err(|_| Error::InvalidMnemonic)
     }
 
-    /// Returns Mnemonic as string
+    /// serialize a `Mnemonic` to a string.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use proton_wallet_common::common::mnemonic::Mnemonic;
+    ///
+    /// let str_mnemonic = "desk prevent enhance husband hungry idle member vessel room moment simple behave".to_string();
+    /// let result = Mnemonic::from_string(str_mnemonic.clone()).unwrap();
+    /// assert_eq!(str_mnemonic, result.as_string());
+    /// ```
     pub fn as_string(&self) -> String {
         self.inner.to_string()
     }
 
-    pub fn to_words(&self) -> Vec<String> {
+    /// serializes a `Mnemonic` to a vector of words.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use proton_wallet_common::common::mnemonic::Mnemonic;
+    ///
+    /// let str_mnemonic = "desk prevent enhance husband hungry idle member vessel room moment simple behave".to_string();
+    /// let result = Mnemonic::from_string(str_mnemonic.clone()).unwrap();
+    /// assert_eq!(result.as_words(), vec!["desk", "prevent", "enhance", "husband", "hungry", "idle", "member", "vessel", "room", "moment", "simple", "behave"]);
+    /// ```
+    pub fn as_words(&self) -> Vec<String> {
         self.inner.word_iter().map(|word| String::from(word)).collect()
     }
 
@@ -201,7 +286,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            mnemonic.to_words(),
+            mnemonic.as_words(),
             vec![
                 "affair", "recycle", "please", "start", "moment", "film", "grain", "myself", "flight", "issue",
                 "artwork", "silver"

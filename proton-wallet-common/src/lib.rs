@@ -2,6 +2,7 @@ pub mod common;
 
 pub mod onchain;
 
+#[doc(hidden)]
 pub use bdk::{
     bitcoin::{
         bip32::{DerivationPath, ExtendedPrivKey},
@@ -18,6 +19,7 @@ pub use bdk::{
     KeychainKind, LocalOutput, SignOptions,
 };
 
+#[doc(hidden)]
 pub use bdk_chain::{Append, PersistBackend};
 
 pub fn library_version() -> String {
