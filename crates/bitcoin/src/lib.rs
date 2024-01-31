@@ -1,5 +1,5 @@
 pub mod account;
-pub mod bitcoin; 
+pub mod bitcoin;
 pub mod chain;
 pub mod constants;
 pub mod error;
@@ -29,4 +29,3 @@ pub use bdk::{
 
 #[doc(hidden)]
 pub use bdk_chain::{Append, PersistBackend};
-
