@@ -1,3 +1,0 @@
-namespace proton_wallet_common {
-    string library_version();
-};

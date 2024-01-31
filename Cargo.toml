@@ -1,10 +1,9 @@
 [workspace]
 resolver = "1"
 members = [
-    "proton-wallet-common",
-    "proton-wallet-mobile",
-    "proton-wallet-web",
-    "proton-wallet-cli"
+    "crates/api",
+    "crates/bitcoin",
+    "crates/wasm"
 ]
 [profile.release]
 opt-level = "s" # Tell `rustc` to optimize for small code size.

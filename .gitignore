@@ -14,16 +14,3 @@ Cargo.lock
 *.pdb
 
 *.vscode
-
-
-proton-wallet-mobile/android/lib/**/*.kt
-proton-wallet-mobile/iOS/headers
-proton-wallet-mobile/iOS/frameworks
-proton-wallet-mobile/iOS/WalletRustCore/*.xcframework
-proton-wallet-mobile/src/proton
-proton-wallet-mobile/src/common.udl
-proton-wallet-mobile/src/*.h
-proton-wallet-mobile/src/*.swift
-proton-wallet-mobile/src/*.modulemap
-proton-wallet-mobile/iOS/**/*.swift
-proton-wallet-mobile/pkg
