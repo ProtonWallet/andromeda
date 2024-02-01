@@ -1,9 +1,5 @@
 [workspace]
 resolver = "1"
-members = [
-    "crates/api",
-    "crates/bitcoin",
-    "crates/wasm"
-]
+members = ["crates/api", "crates/bitcoin", "crates/wasm"]
 [profile.release]
 opt-level = "s" # Tell `rustc` to optimize for small code size.
