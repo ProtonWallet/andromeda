@@ -9,16 +9,17 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 proton-wallet-bitcoin = { path = "../bitcoin" }
+
 serde = { version = "1.0.144", features = ["derive"] }
 serde-wasm-bindgen = "0.6.1"
 serde_json = "1.0.108"
-web-sys = { version = "0.3.65", features = ["console", "Storage"]}
 
+wasm-bindgen = { version = "0.2.88", features = ["serde-serialize"] }
+wasm-bindgen-futures = "0.4.38"
+js-sys = "0.3.65"
+web-sys = { version = "0.3.65", features = ["console", "Storage"] }
 
 console_error_panic_hook = { version = "0.1.7", optional = true }
-js-sys = "0.3.65"
-wasm-bindgen = { version = "0.2.88", features=["serde-serialize"] }
-wasm-bindgen-futures = "0.4.38"
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.38"
