@@ -6,7 +6,7 @@
   <img src="https://res.cloudinary.com/dbulfrlrz/image/upload/v1693233221/static/logos/proton-logo_z7innb.svg" width="220" />
 
   <p>
-    <strong>Proton's toolsuit to integrate Bitcoin and Lightning into its ecosystem</strong>
+    <strong>"In the cosmic ballet of Andromeda's radiance, a delicate web of technologies emerges, crafted from the resilient strands of Rust."</strong>
   </p>
 
   <h4>
@@ -18,8 +18,7 @@
 
 ## About
 
-The `andromeda` libraries aims to provide logical blocks to build a privacy-focused, cross-platform, self-custody Bitcoin and Lightning wallet, integrated in
-Proton's ecosystem
+The `andromeda` libraries aims to provide logical blocks to build a privacy-focused, cross-platform, self-custody Bitcoin and Lightning wallet, integrated in Proton's ecosystem
 
 ## Architecture
 
@@ -35,10 +34,10 @@ The project is split up into several crates in the `/crates` directory:
 
 ## External dependencies
 
-[`bdk`]: https://docs.rs/bdk/
-[`pdk`]: https://docs.rs/pdk/
-[`ldk`]: https://docs.rs/ldk/
-[`muon`]: https://docs.rs/muon/
+- [`bdk`](https://docs.rs/bdk/)
+- [`pdk`](https://docs.rs/pdk/)
+- [`ldk`](https://docs.rs/ldk/)
+- [`muon`](https://docs.rs/muon/)
 
 ## License
 
