@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use proton_wallet_bitcoin::DerivationPath;
+use andromeda_bitcoin::DerivationPath;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 

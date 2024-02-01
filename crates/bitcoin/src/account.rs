@@ -215,9 +215,9 @@ where
     /// ```rust
     /// use bdk::bitcoin::bip32::ExtendedPrivKey;
     ///
-    /// use proton_wallet_bitcoin::account::{Account, AccountConfig, ScriptType};
-    /// use proton_wallet_bitcoin::mnemonic::Mnemonic;
-    /// use proton_wallet_bitcoin::bitcoin::Network;
+    /// use andromeda_bitcoin::account::{Account, AccountConfig, ScriptType};
+    /// use andromeda_bitcoin::mnemonic::Mnemonic;
+    /// use andromeda_bitcoin::bitcoin::Network;
     ///
     /// let mnemonic = Mnemonic::from_string(String::from("desk prevent enhance husband hungry idle member vessel room moment simple behave")).unwrap();
     /// let mprv = ExtendedPrivKey::new_master(Network::Testnet.into(), &mnemonic.inner().to_seed("")).unwrap();

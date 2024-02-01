@@ -2,7 +2,7 @@ use wasm_bindgen::prelude::*;
 
 use super::types::defined::WasmWordCount;
 use crate::common::error::DetailledWasmError;
-use proton_wallet_bitcoin::{
+use andromeda_bitcoin::{
     mnemonic::{self, Mnemonic},
     BdkLanguage,
 };

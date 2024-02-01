@@ -1,4 +1,4 @@
-use proton_wallet_bitcoin::payment_link::PaymentLink;
+use andromeda_bitcoin::payment_link::PaymentLink;
 use wasm_bindgen::prelude::*;
 
 use super::types::defined::WasmNetwork;

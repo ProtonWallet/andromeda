@@ -1,5 +1,5 @@
 use core::fmt::Debug;
-use proton_wallet_bitcoin::{error::Error, ChangeSet, KeychainKind, PersistBackend};
+use andromeda_bitcoin::{error::Error, ChangeSet, KeychainKind, PersistBackend};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]

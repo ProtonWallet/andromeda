@@ -40,7 +40,7 @@ pub struct Mnemonic {
 /// # Examples
 ///
 /// ```rust
-/// use proton_wallet_bitcoin::mnemonic::get_words_autocomplete;
+/// use andromeda_bitcoin::mnemonic::get_words_autocomplete;
 ///
 /// let result = get_words_autocomplete(String::from("pre"));
 /// assert_eq!(result, vec!["predict", "prefer", "prepare", "present", "pretty", "prevent"]);
@@ -73,7 +73,7 @@ impl Mnemonic {
     /// # Examples
     ///
     /// ```rust
-    /// use proton_wallet_bitcoin::mnemonic::Mnemonic;
+    /// use andromeda_bitcoin::mnemonic::Mnemonic;
     /// use bdk::keys::bip39::WordCount;
     ///
     /// let result = Mnemonic::new(WordCount::Words12);
@@ -104,7 +104,7 @@ impl Mnemonic {
     /// # Examples
     ///
     /// ```rust
-    /// use proton_wallet_bitcoin::mnemonic::Mnemonic;
+    /// use andromeda_bitcoin::mnemonic::Mnemonic;
     ///
     /// let result = Mnemonic::from_string("desk prevent enhance husband hungry idle member vessel room moment simple behave".to_string());
     /// println!("{:?}", result)
@@ -120,7 +120,7 @@ impl Mnemonic {
     /// # Examples
     ///
     /// ```rust
-    /// use proton_wallet_bitcoin::mnemonic::Mnemonic;
+    /// use andromeda_bitcoin::mnemonic::Mnemonic;
     ///
     /// let str_mnemonic = "desk prevent enhance husband hungry idle member vessel room moment simple behave".to_string();
     /// let result = Mnemonic::from_string(str_mnemonic.clone()).unwrap();
@@ -135,7 +135,7 @@ impl Mnemonic {
     /// # Examples
     ///
     /// ```rust
-    /// use proton_wallet_bitcoin::mnemonic::Mnemonic;
+    /// use andromeda_bitcoin::mnemonic::Mnemonic;
     ///
     /// let str_mnemonic = "desk prevent enhance husband hungry idle member vessel room moment simple behave".to_string();
     /// let result = Mnemonic::from_string(str_mnemonic.clone()).unwrap();

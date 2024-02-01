@@ -1,4 +1,4 @@
-use proton_wallet_bitcoin::{
+use andromeda_bitcoin::{
     bitcoin::{BitcoinUnit, Network},
     BdkNetwork, KeychainKind, WordCount,
 };

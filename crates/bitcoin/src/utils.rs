@@ -58,7 +58,7 @@ pub fn convert_amount(value: f64, from: BitcoinUnit, to: BitcoinUnit) -> f64 {
 /// # Examples
 ///
 /// ```
-/// use proton_wallet_bitcoin::utils::max_f64;
+/// use andromeda_bitcoin::utils::max_f64;
 ///
 /// let result = max_f64(3.5, 2.0);
 /// assert_eq!(result, 3.5);
@@ -84,7 +84,7 @@ pub fn max_f64(a: f64, b: f64) -> f64 {
 /// # Examples
 ///
 /// ```
-/// use proton_wallet_bitcoin::utils::min_f64;
+/// use andromeda_bitcoin::utils::min_f64;
 ///
 /// let result = min_f64(3.5, 2.0);
 /// assert_eq!(result, 2.0);

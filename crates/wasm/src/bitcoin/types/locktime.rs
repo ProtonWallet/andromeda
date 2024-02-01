@@ -1,4 +1,4 @@
-use proton_wallet_bitcoin::{Height, LockTime, Time};
+use andromeda_bitcoin::{Height, LockTime, Time};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]

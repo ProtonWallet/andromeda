@@ -1,4 +1,4 @@
-use proton_wallet_bitcoin::{Append, ChangeSet, PersistBackend};
+use andromeda_bitcoin::{Append, ChangeSet, PersistBackend};
 
 use crate::common::error::WasmError;
 

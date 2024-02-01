@@ -1,4 +1,4 @@
-use proton_wallet_bitcoin::transactions::Pagination;
+use andromeda_bitcoin::transactions::Pagination;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]

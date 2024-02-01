@@ -1,4 +1,4 @@
-use proton_wallet_bitcoin::{
+use andromeda_bitcoin::{
     transaction_builder::{CoinSelection, TmpRecipient, TxBuilder},
     ChangeSpendPolicy, OutPoint,
 };

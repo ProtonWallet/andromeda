@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use proton_wallet_bitcoin::account::{Account, AccountConfig, ScriptType};
+use andromeda_bitcoin::account::{Account, AccountConfig, ScriptType};
 
 use wasm_bindgen::prelude::*;
 

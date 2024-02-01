@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use proton_wallet_bitcoin::{Address, ScriptBuf};
+use andromeda_bitcoin::{Address, ScriptBuf};
 use wasm_bindgen::prelude::*;
 
 use crate::common::error::WasmError;

@@ -1,4 +1,4 @@
-use proton_wallet_bitcoin::chain::Chain;
+use andromeda_bitcoin::chain::Chain;
 use wasm_bindgen::prelude::*;
 
 use super::{account::WasmAccount, psbt::WasmPartiallySignedTransaction};

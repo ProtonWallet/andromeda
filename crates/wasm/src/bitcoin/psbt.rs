@@ -1,4 +1,4 @@
-use proton_wallet_bitcoin::{bitcoin::Network, Address, PartiallySignedTransaction, SignOptions};
+use andromeda_bitcoin::{bitcoin::Network, Address, PartiallySignedTransaction, SignOptions};
 use wasm_bindgen::prelude::*;
 
 use super::{account::WasmAccount, types::defined::WasmNetwork};

@@ -1,4 +1,4 @@
-use proton_wallet_bitcoin::AddressInfo;
+use andromeda_bitcoin::AddressInfo;
 use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
 pub struct WasmAddressInfo {

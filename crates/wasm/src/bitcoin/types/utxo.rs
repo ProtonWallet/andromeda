@@ -1,4 +1,4 @@
-use proton_wallet_bitcoin::LocalOutput;
+use andromeda_bitcoin::LocalOutput;
 use serde::Serialize;
 
 use super::{

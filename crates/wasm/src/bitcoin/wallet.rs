@@ -1,4 +1,4 @@
-use proton_wallet_bitcoin::{
+use andromeda_bitcoin::{
     account::{build_account_derivation_path, AccountConfig},
     wallet::{Wallet, WalletConfig},
     DerivationPath,

@@ -4,7 +4,7 @@ use super::super::{account::WasmAccount, psbt::WasmPartiallySignedTransaction};
 
 use crate::common::error::{DetailledWasmError, WasmError};
 
-use proton_wallet_bitcoin::{
+use andromeda_bitcoin::{
     transactions::{DetailledTransaction, DetailledTxOutput, SimpleTransaction, TransactionTime},
     Address, ConfirmationTime, OutPoint, PartiallySignedTransaction, ScriptBuf, Sequence, TxIn,
 };
