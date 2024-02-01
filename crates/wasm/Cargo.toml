@@ -1,5 +1,5 @@
 [package]
-name = "proton-wallet-wasm"
+name = "andromeda-wasm"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,7 +8,7 @@ doctest = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-proton-wallet-bitcoin = { path = "../bitcoin" }
+andromeda-bitcoin = { path = "../bitcoin" }
 
 serde = { version = "1.0.144", features = ["derive"] }
 serde-wasm-bindgen = "0.6.1"

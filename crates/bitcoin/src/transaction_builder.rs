@@ -40,7 +40,7 @@ pub struct TmpRecipient(pub String, pub String, pub f64, pub BitcoinUnit);
 
 /// BDK's implementation of Transaction builder is quite complete, but we need a struct that enables stateful transaction creation, so we just added a layer on top of it.
 ///
-/// Proton-wallet-bitcoin's Transaction Builder is simply an implementation expose setters and getters to tweak transaction options without mutating it but rather returning the updating version. This implementation fits better with ui-based wallets and can even later be used to provide versioning.
+/// andromeda-bitcoin's Transaction Builder is simply an implementation expose setters and getters to tweak transaction options without mutating it but rather returning the updating version. This implementation fits better with ui-based wallets and can even later be used to provide versioning.
 ///
 /// PWC's implementation support most of BDK's exposed options such as coin selection, RBF (enabled by default), Fee rate selection and many other
 ///
