@@ -640,7 +640,7 @@ mod tests {
         assert_eq!(updated.change_policy, ChangeSpendPolicy::ChangeForbidden);
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn should_change_fee_rate() {
         let tx_builder = TxBuilder::<()>::new();
 
@@ -656,7 +656,7 @@ mod tests {
         assert_eq!(updated.recipients.len(), 2);
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn should_update_recipient() {
         let tx_builder = TxBuilder::<()>::new();
 

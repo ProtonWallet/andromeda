@@ -1,5 +1,5 @@
-use core::fmt::Debug;
 use andromeda_bitcoin::{error::Error, ChangeSet, KeychainKind, PersistBackend};
+use core::fmt::Debug;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]

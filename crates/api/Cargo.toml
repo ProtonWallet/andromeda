@@ -2,3 +2,20 @@
 name = "andromeda-api"
 version = "0.1.0"
 edition = "2021"
+
+
+[dependencies]
+muon = { version = "0.1.0", path = "../../../../muon" }
+
+serde = { version = "1.0.144", features = ["derive"] }
+serde_json = "1.0"
+
+bitcoin = { version = "0.30.2", default-features = false, features = [
+  "no-std",
+  "serde",
+  "secp-recovery",
+  "rand",
+] }
+
+[dev-dependencies]
+tokio = { features = ["macros", "rt", "rt-multi-thread"], version = "1.35" }

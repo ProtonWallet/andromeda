@@ -57,6 +57,6 @@ wasm-bindgen = { version = "0.2.88", features = [
 wasm-bindgen-futures = "0.4.39"
 
 [dev-dependencies]
-actix-rt = "*"
+tokio = { features = ["macros", "rt", "rt-multi-thread"], version = "1.35" }
 mockers = "0.22.0"
 mockall = "0.12.1"
