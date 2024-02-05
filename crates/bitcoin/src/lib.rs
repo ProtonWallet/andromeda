@@ -1,6 +1,5 @@
 pub mod account;
 pub mod bitcoin;
-pub mod chain;
 pub mod constants;
 pub mod error;
 pub mod mnemonic;
@@ -18,14 +17,12 @@ pub use bdk::{
         psbt::PartiallySignedTransaction,
         Address, Network as BdkNetwork, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Witness,
     },
-    chain::{ChainPosition, ConfirmationTime, ConfirmationTimeHeightAnchor},
+    database::MemoryDatabase as BdkMemoryDatabase,
     keys::{
         bip39::{Language as BdkLanguage, Mnemonic as BdkMnemonic, MnemonicWithPassphrase, WordCount},
         DerivableKey, ExtendedKey,
     },
-    wallet::{tx_builder::ChangeSpendPolicy, AddressIndex, AddressInfo, Balance, ChangeSet},
-    KeychainKind, LocalOutput, SignOptions,
+    wallet::{tx_builder::ChangeSpendPolicy, AddressIndex, AddressInfo},
+    Balance as BdkBalance, BlockTime as BdkBlockTime, KeychainKind, LocalUtxo, SignOptions,
+    TransactionDetails as BdkTransactionDetails,
 };
-
-#[doc(hidden)]
-pub use bdk_chain::{Append, PersistBackend};

@@ -1,6 +1,6 @@
 use wasm_bindgen::prelude::*;
 
-use andromeda_bitcoin::Balance;
+use andromeda_bitcoin::BdkBalance;
 #[wasm_bindgen]
 pub struct WasmBalance {
     /// All coinbase outputs not yet matured
@@ -13,7 +13,7 @@ pub struct WasmBalance {
     pub confirmed: u64,
 }
 
-impl Into<WasmBalance> for Balance {
+impl Into<WasmBalance> for BdkBalance {
     fn into(self) -> WasmBalance {
         WasmBalance {
             immature: self.immature,

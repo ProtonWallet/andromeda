@@ -1,31 +1,28 @@
-use std::{
-    collections::HashSet,
-    str::FromStr,
-    sync::{Arc, RwLock},
-};
-
+use super::account::Account;
+use crate::bitcoin::BitcoinUnit;
+use crate::error::Error;
+use crate::utils::{convert_amount, max_f64, min_f64};
+use bdk::database::BatchDatabase;
+use bdk::Balance;
 use bdk::{
     bitcoin::ScriptBuf,
-    chain::PersistBackend,
     wallet::{
         coin_selection::{
             BranchAndBoundCoinSelection, CoinSelectionAlgorithm, LargestFirstCoinSelection, OldestFirstCoinSelection,
         },
         tx_builder::{ChangeSpendPolicy, CreateTx, TxBuilder as BdkTxBuilder},
-        Balance, ChangeSet,
     },
     FeeRate,
 };
+use hashbrown::HashSet;
 use miniscript::bitcoin::{
     absolute::LockTime, psbt::PartiallySignedTransaction, script::PushBytesBuf, Address, OutPoint,
 };
+use std::{
+    str::FromStr,
+    sync::{Arc, RwLock},
+};
 use uuid::Uuid;
-
-use crate::bitcoin::BitcoinUnit;
-use crate::error::Error;
-use crate::utils::{convert_amount, max_f64, min_f64};
-
-use super::account::Account;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum CoinSelection {
@@ -45,13 +42,13 @@ pub struct TmpRecipient(pub String, pub String, pub f64, pub BitcoinUnit);
 /// PWC's implementation support most of BDK's exposed options such as coin selection, RBF (enabled by default), Fee rate selection and many other
 ///
 /// This transaction builder implementation aims at being used to enable both raw transaction building and bitcoin URI processing (bitcoin:tb1....?amount=x&label=y)
-#[derive(Clone, Debug)]
-pub struct TxBuilder<Storage>
+#[derive(Debug)]
+pub struct TxBuilder<D>
 where
-    Storage: PersistBackend<ChangeSet> + Clone,
+    D: BatchDatabase,
 {
-    /// We need an async lock here because syncing can be in progress while creating a transaction
-    account: Option<Arc<RwLock<Account<Storage>>>>,
+    account: Option<Arc<RwLock<Account<D>>>>,
+
     pub recipients: Vec<TmpRecipient>,
     pub utxos_to_spend: HashSet<OutPoint>,
     pub change_policy: ChangeSpendPolicy,
@@ -62,6 +59,27 @@ where
     pub data: Vec<u8>,
     pub coin_selection: CoinSelection,
     pub locktime: Option<LockTime>,
+}
+
+impl<D> Clone for TxBuilder<D>
+where
+    D: BatchDatabase,
+{
+    fn clone(&self) -> Self {
+        TxBuilder {
+            account: self.account.clone(),
+            recipients: self.recipients.clone(),
+            utxos_to_spend: self.utxos_to_spend.clone(),
+            change_policy: self.change_policy.clone(),
+            fee_rate: self.fee_rate.clone(),
+            drain_wallet: self.drain_wallet,
+            drain_to: self.drain_to.clone(),
+            rbf_enabled: self.rbf_enabled,
+            data: self.data.clone(),
+            coin_selection: self.coin_selection.clone(),
+            locktime: self.locktime.clone(),
+        }
+    }
 }
 
 pub struct ScriptAmount {
@@ -139,12 +157,12 @@ fn correct_recipients_amounts(recipients: Vec<TmpRecipient>, amount_to_remove: f
     acc_result.recipients
 }
 
-impl<Storage> TxBuilder<Storage>
+impl<D> TxBuilder<D>
 where
-    Storage: PersistBackend<ChangeSet> + Clone,
+    D: BatchDatabase,
 {
     pub fn new() -> Self {
-        TxBuilder::<Storage> {
+        TxBuilder {
             account: None,
             recipients: vec![TmpRecipient(
                 Uuid::new_v4().to_string(),
@@ -172,10 +190,10 @@ where
     /// # ...
     /// let updated = tx_builder.set_account(account).await.unwrap();
     /// ```
-    pub async fn set_account(&self, account: Arc<RwLock<Account<Storage>>>) -> Result<Self, Error<Storage>> {
-        let balance = &account.read().map_err(|_| Error::LockError)?.get_balance();
+    pub async fn set_account(&self, account: Arc<RwLock<Account<D>>>) -> Result<Self, Error> {
+        let balance = &account.read().map_err(|_| Error::LockError)?.get_balance()?;
 
-        let tx_builder = TxBuilder::<Storage> {
+        let tx_builder = TxBuilder {
             account: Some(account.clone()),
             recipients: allocate_recipients_balance(self.recipients.clone(), balance),
             ..self.clone()
@@ -192,7 +210,7 @@ where
     /// let updated = tx_builder.clear_recipients().unwrap();
     /// ```
     pub fn clear_recipients(&self) -> Self {
-        TxBuilder::<Storage> {
+        TxBuilder {
             recipients: Vec::new(),
             ..self.clone()
         }
@@ -214,7 +232,7 @@ where
             BitcoinUnit::SAT,
         )]);
 
-        TxBuilder::<Storage> {
+        TxBuilder {
             recipients,
             ..self.clone()
         }
@@ -234,7 +252,7 @@ where
             recipients.remove(index);
         }
 
-        TxBuilder::<Storage> {
+        TxBuilder {
             recipients,
             ..self.clone()
         }
@@ -247,14 +265,17 @@ where
             let result = self.create_pbst_with_coin_selection(true).await;
 
             match result {
-                Err(Error::InsufficientFunds { needed, available }) => {
-                    let amount_to_remove = needed - available;
+                Err(Error::BdkError(err)) => match err {
+                    bdk::Error::InsufficientFunds { needed, available } => {
+                        let amount_to_remove = needed - available;
 
-                    TxBuilder::<Storage> {
-                        recipients: correct_recipients_amounts(self.recipients.clone(), amount_to_remove as f64),
-                        ..self.clone()
+                        TxBuilder {
+                            recipients: correct_recipients_amounts(self.recipients.clone(), amount_to_remove as f64),
+                            ..self.clone()
+                        }
                     }
-                }
+                    _ => self.clone(),
+                },
                 _ => self.clone(),
             }
         }
@@ -310,7 +331,7 @@ where
             new_unit,
         );
 
-        let tx_builder = TxBuilder::<Storage> {
+        let tx_builder = TxBuilder {
             recipients,
             ..self.clone()
         };
@@ -319,14 +340,14 @@ where
     }
 
     /// Update one recipient's amount to max, meaning it sets remaining balance to him.
-    pub async fn update_recipient_amount_to_max(&self, index: usize) -> Self {
+    pub async fn update_recipient_amount_to_max(&self, index: usize) -> Result<Self, Error> {
         let mut recipients = self.recipients.clone();
         let TmpRecipient(uuid, script, prev_amount, unit) = recipients[index].clone();
 
         // account is always in sats so we need to convert it to chosen unit
         let converted_max_amount = match self.account.clone() {
             Some(account) => convert_amount(
-                account.read().unwrap().get_balance().confirmed as f64,
+                account.read().unwrap().get_balance()?.confirmed as f64,
                 BitcoinUnit::SAT,
                 unit,
             ),
@@ -335,12 +356,14 @@ where
 
         recipients[index] = TmpRecipient(uuid, script, converted_max_amount, unit);
 
-        let tx_builder = TxBuilder::<Storage> {
+        let tx_builder = TxBuilder {
             recipients,
             ..self.clone()
         };
 
-        tx_builder.constrain_recipient_amounts().await
+        let updated = tx_builder.constrain_recipient_amounts().await;
+
+        Ok(updated)
     }
 
     /// Adds an outpoint to the list of outpoints to spend.
@@ -348,7 +371,7 @@ where
         let mut utxos_to_spend = self.utxos_to_spend.clone();
         utxos_to_spend.insert(utxo_to_spend.clone());
 
-        TxBuilder::<Storage> {
+        TxBuilder {
             utxos_to_spend,
             ..self.clone()
         }
@@ -359,7 +382,7 @@ where
         let mut utxos_to_spend = self.utxos_to_spend.clone();
         utxos_to_spend.remove(utxo_to_spend);
 
-        TxBuilder::<Storage> {
+        TxBuilder {
             utxos_to_spend,
             ..self.clone()
         }
@@ -367,7 +390,7 @@ where
 
     /// Empty the list of outpoints to spend
     pub fn clear_utxos_to_spend(&self) -> Self {
-        TxBuilder::<Storage> {
+        TxBuilder {
             utxos_to_spend: HashSet::new(),
             ..self.clone()
         }
@@ -375,7 +398,7 @@ where
 
     /// Sets the selected coin selection algorithm
     pub fn set_coin_selection(&self, coin_selection: CoinSelection) -> Self {
-        TxBuilder::<Storage> {
+        TxBuilder {
             coin_selection,
             ..self.clone()
         }
@@ -383,7 +406,7 @@ where
 
     /// Enable Replace-By_fee
     pub fn enable_rbf(&self) -> Self {
-        TxBuilder::<Storage> {
+        TxBuilder {
             rbf_enabled: true,
             ..self.clone()
         }
@@ -391,7 +414,7 @@ where
 
     /// Disable Replace-By_fee
     pub fn disable_rbf(&self) -> Self {
-        TxBuilder::<Storage> {
+        TxBuilder {
             rbf_enabled: false,
             ..self.clone()
         }
@@ -399,7 +422,7 @@ where
 
     /// Adds a locktime to the transaction
     pub fn add_locktime(&self, locktime: LockTime) -> Self {
-        TxBuilder::<Storage> {
+        TxBuilder {
             locktime: Some(locktime),
             ..self.clone()
         }
@@ -407,7 +430,7 @@ where
 
     /// Removes the transaction's locktime
     pub fn remove_locktime(&self) -> Self {
-        TxBuilder::<Storage> {
+        TxBuilder {
             locktime: None,
             ..self.clone()
         }
@@ -419,7 +442,7 @@ where
     ///
     /// This can conflict with the list of outpoints to spend
     pub fn set_change_policy(&self, change_policy: ChangeSpendPolicy) -> Self {
-        TxBuilder::<Storage> {
+        TxBuilder {
             change_policy,
             ..self.clone()
         }
@@ -427,7 +450,7 @@ where
 
     /// Set a custom fee rate.
     pub async fn set_fee_rate(&self, sat_per_vb: f32) -> Self {
-        let tx_builder = TxBuilder::<Storage> {
+        let tx_builder = TxBuilder {
             fee_rate: Some(FeeRate::from_sat_per_vb(sat_per_vb)),
             ..self.clone()
         };
@@ -435,10 +458,10 @@ where
         tx_builder.constrain_recipient_amounts().await
     }
 
-    fn commit_utxos<'a, D: PersistBackend<ChangeSet>, Cs: CoinSelectionAlgorithm>(
+    fn commit_utxos<'a, Cs: CoinSelectionAlgorithm<D>>(
         &self,
         mut tx_builder: BdkTxBuilder<'a, D, Cs, CreateTx>,
-    ) -> Result<BdkTxBuilder<'a, D, Cs, CreateTx>, Error<Storage>> {
+    ) -> Result<BdkTxBuilder<'a, D, Cs, CreateTx>, Error> {
         if !self.utxos_to_spend.is_empty() {
             let bdk_utxos: Vec<OutPoint> = self
                 .utxos_to_spend
@@ -452,11 +475,11 @@ where
         Ok(tx_builder)
     }
 
-    fn create_psbt<'a, D: PersistBackend<ChangeSet>, Cs: CoinSelectionAlgorithm>(
+    fn create_psbt<'a, Cs: CoinSelectionAlgorithm<D>>(
         &self,
         mut tx_builder: BdkTxBuilder<'a, D, Cs, CreateTx>,
         allow_dust: bool,
-    ) -> Result<PartiallySignedTransaction, Error<Storage>> {
+    ) -> Result<PartiallySignedTransaction, Error> {
         for TmpRecipient(_uuid, address, amount, unit) in &self.recipients {
             // We need to convert tmp amount in sats to create psbt
             let sats_amount = convert_amount(*amount, *unit, BitcoinUnit::SAT).round() as u64;
@@ -495,19 +518,16 @@ where
             tx_builder.add_data(&buf.as_push_bytes());
         }
 
-        let psbt = tx_builder.finish().unwrap();
+        let (psbt, _) = tx_builder.finish().unwrap();
         // FIXME: .map_err(|e| e.into())?;
 
-        Ok(psbt.into())
+        Ok(psbt)
     }
 
     /// Creates a PSBT from current TxBuilder
     ///
     /// The resulting psbt can then be provided to Account.sign() method
-    pub async fn create_pbst_with_coin_selection(
-        &self,
-        allow_dust: bool,
-    ) -> Result<PartiallySignedTransaction, Error<Storage>> {
+    pub async fn create_pbst_with_coin_selection(&self, allow_dust: bool) -> Result<PartiallySignedTransaction, Error> {
         let account = self.account.clone().ok_or(Error::AccountNotFound)?;
         let mut account_write_lock = account.write().map_err(|_| Error::LockError)?;
         let wallet = account_write_lock.get_mutable_wallet();
@@ -539,6 +559,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use bdk::database::MemoryDatabase;
     use bdk::{wallet::tx_builder::ChangeSpendPolicy, FeeRate};
     use miniscript::bitcoin::absolute::LockTime;
 
@@ -598,7 +619,7 @@ mod tests {
 
     #[test]
     fn should_set_enable_rbf() {
-        let tx_builder = TxBuilder::<()>::new();
+        let tx_builder = TxBuilder::<MemoryDatabase>::new();
 
         let updated = tx_builder.enable_rbf();
         assert_eq!(updated.rbf_enabled, true);
@@ -609,7 +630,7 @@ mod tests {
 
     #[test]
     fn should_set_locktime() {
-        let tx_builder = TxBuilder::<()>::new();
+        let tx_builder = TxBuilder::<MemoryDatabase>::new();
 
         let updated = tx_builder.add_locktime(LockTime::from_consensus(788373));
         assert_eq!(updated.locktime, Some(LockTime::from_consensus(788373)));
@@ -620,7 +641,7 @@ mod tests {
 
     #[test]
     fn should_set_coin_selection() {
-        let tx_builder = TxBuilder::<()>::new();
+        let tx_builder = TxBuilder::<MemoryDatabase>::new();
 
         let updated = tx_builder.set_coin_selection(CoinSelection::LargestFirst);
         assert_eq!(updated.coin_selection, CoinSelection::LargestFirst);
@@ -631,7 +652,7 @@ mod tests {
 
     #[test]
     fn should_set_change_policy() {
-        let tx_builder = TxBuilder::<()>::new();
+        let tx_builder = TxBuilder::<MemoryDatabase>::new();
 
         let updated = tx_builder.set_change_policy(ChangeSpendPolicy::ChangeAllowed);
         assert_eq!(updated.change_policy, ChangeSpendPolicy::ChangeAllowed);
@@ -642,7 +663,7 @@ mod tests {
 
     #[tokio::test]
     async fn should_change_fee_rate() {
-        let tx_builder = TxBuilder::<()>::new();
+        let tx_builder = TxBuilder::<MemoryDatabase>::new();
 
         let updated = tx_builder.set_fee_rate(15.4).await;
         assert_eq!(updated.fee_rate, Some(FeeRate::from_sat_per_vb(15.4)));
@@ -650,7 +671,7 @@ mod tests {
 
     #[test]
     fn should_add_recipient() {
-        let tx_builder = TxBuilder::<()>::new();
+        let tx_builder = TxBuilder::<MemoryDatabase>::new();
 
         let updated = tx_builder.add_recipient();
         assert_eq!(updated.recipients.len(), 2);
@@ -658,7 +679,7 @@ mod tests {
 
     #[tokio::test]
     async fn should_update_recipient() {
-        let tx_builder = TxBuilder::<()>::new();
+        let tx_builder = TxBuilder::<MemoryDatabase>::new();
 
         let updated = tx_builder
             .update_recipient(0, (Some("tb1...xyz".to_string()), Some(15837.0), None))

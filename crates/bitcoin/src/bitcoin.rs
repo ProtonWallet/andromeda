@@ -41,9 +41,9 @@ impl ToString for Network {
 }
 
 impl TryFrom<String> for Network {
-    type Error = Error<()>;
+    type Error = Error;
 
-    fn try_from(value: String) -> Result<Self, Error<()>> {
+    fn try_from(value: String) -> Result<Self, Error> {
         if value == "bitcoin" {
             return Ok(Network::Bitcoin);
         } else if value == "testnet" {

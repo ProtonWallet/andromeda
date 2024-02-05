@@ -1,9 +1,9 @@
-use andromeda_bitcoin::LocalOutput;
+use andromeda_bitcoin::LocalUtxo;
 use serde::Serialize;
 
 use super::{
     defined::WasmKeychainKind,
-    transaction::{WasmOutPoint, WasmScript, WasmTransactionTime},
+    transaction::{WasmOutPoint, WasmScript},
 };
 use wasm_bindgen::prelude::*;
 
@@ -15,11 +15,9 @@ pub struct WasmUtxo {
     pub script_pubkey: WasmScript,
     pub keychain: WasmKeychainKind,
     pub is_spent: bool,
-    pub derivation_index: u32,
-    pub confirmation_time: WasmTransactionTime,
 }
 
-impl Into<WasmUtxo> for LocalOutput {
+impl Into<WasmUtxo> for LocalUtxo {
     fn into(self) -> WasmUtxo {
         WasmUtxo {
             value: self.txout.value,
@@ -27,8 +25,6 @@ impl Into<WasmUtxo> for LocalOutput {
             script_pubkey: self.txout.script_pubkey.into(),
             keychain: self.keychain.into(),
             is_spent: self.is_spent,
-            derivation_index: self.derivation_index,
-            confirmation_time: self.confirmation_time.into(),
         }
     }
 }

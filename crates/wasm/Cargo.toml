@@ -17,7 +17,7 @@ serde_json = "1.0.108"
 wasm-bindgen = { version = "0.2.88", features = ["serde-serialize"] }
 wasm-bindgen-futures = "0.4.38"
 js-sys = "0.3.65"
-web-sys = { version = "0.3.65", features = ["console", "Storage"] }
+web-sys = { version = "0.3.65", features = ["console", "Storage", "Window"] }
 
 console_error_panic_hook = { version = "0.1.7", optional = true }
 

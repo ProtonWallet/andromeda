@@ -20,33 +20,16 @@ bitcoin = { version = "0.30.2", default-features = false, features = [
 ] }
 miniscript = { version = "10.0.0", default-features = false }
 
-bdk = { version = "1.0.0-alpha.5", default-features = false, features = [
-  "all-keys",
-  "keys-bip39",
+bdk = { version = "0.29.0", default-features = false, features = [
   "std",
+  "keys-bip39",
+  "use-esplora-reqwest",
+  "reqwest-default-tls",
+  "async-interface",
 ] }
-bdk_esplora = { version = "=0.7.0", default-features = false, features = [
-  "async-https",
+esplora-client = { version = "0.6.0", default-features = false, features = [
+  'async-https',
 ] }
-bdk_chain = { version = "=0.9.0", default-features = false, features = [
-  "hashbrown",
-] }
-
-lightning = { version = "0.0.119", default-features = true, features = [
-  "max_level_trace",
-  "grind_signatures",
-] }
-lightning-invoice = { version = "0.26.0", default-features = false, features = [
-  "no-std",
-  "serde",
-] }
-lightning-rapid-gossip-sync = { version = "0.0.119", default-features = false, features = [
-  "no-std",
-] }
-lightning-background-processor = { version = "0.0.119", features = ["futures"] }
-lightning-persister = { version = "0.0.119" }
-
-gloo-net = "0.5.0"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2.10", features = ["js"] }

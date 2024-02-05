@@ -53,7 +53,7 @@ impl WasmPaymentLink {
 
     #[wasm_bindgen(js_name = tryParse)]
     pub fn try_parse(str: String, network: WasmNetwork) -> Result<WasmPaymentLink, DetailledWasmError> {
-        let inner = PaymentLink::try_parse::<()>(str, network.into()).map_err(|e| e.into())?;
+        let inner = PaymentLink::try_parse(str, network.into()).map_err(|e| e.into())?;
 
         Ok(WasmPaymentLink { inner })
     }

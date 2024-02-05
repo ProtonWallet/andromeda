@@ -5,8 +5,8 @@ use super::super::{account::WasmAccount, psbt::WasmPartiallySignedTransaction};
 use crate::common::error::{DetailledWasmError, WasmError};
 
 use andromeda_bitcoin::{
-    transactions::{DetailledTransaction, DetailledTxOutput, SimpleTransaction, TransactionTime},
-    Address, ConfirmationTime, OutPoint, PartiallySignedTransaction, ScriptBuf, Sequence, TxIn,
+    transactions::{DetailledTxOutput, SimpleTransaction, TransactionDetails},
+    Address, OutPoint, PartiallySignedTransaction, ScriptBuf, Sequence, TxIn,
 };
 use wasm_bindgen::prelude::*;
 
@@ -14,6 +14,7 @@ use super::{
     address::WasmAddress, defined::WasmNetwork, derivation_path::WasmDerivationPath,
     typescript_interfaces::IWasmOutpoint,
 };
+use andromeda_bitcoin::BdkBlockTime;
 use serde::{Deserialize, Serialize};
 
 #[wasm_bindgen(getter_with_clone)]
@@ -127,22 +128,24 @@ impl Into<WasmTxOut> for DetailledTxOutput {
 }
 
 #[wasm_bindgen(getter_with_clone)]
-pub struct WasmDetailledTransaction {
+pub struct WasmTransactionDetails {
     pub txid: String,
-    pub value: i64,
-    pub fees: Option<u64>,
-    pub time: Option<WasmTransactionTime>,
+    pub received: u64,
+    pub sent: u64,
+    pub fee: Option<u64>,
+    pub confirmation_time: Option<WasmBlockTime>,
     pub inputs: Vec<WasmTxIn>,
     pub outputs: Vec<WasmTxOut>,
 }
 
-impl Into<WasmDetailledTransaction> for DetailledTransaction {
-    fn into(self) -> WasmDetailledTransaction {
-        WasmDetailledTransaction {
+impl Into<WasmTransactionDetails> for TransactionDetails {
+    fn into(self) -> WasmTransactionDetails {
+        WasmTransactionDetails {
             txid: self.txid.to_string(),
-            value: self.value,
-            fees: self.fees,
-            time: self.time.map(|t| t.into()),
+            received: self.received,
+            sent: self.sent,
+            fee: self.fees,
+            confirmation_time: self.confirmation_time.map(|t| t.into()),
             inputs: self.inputs.into_iter().map(|input| input.into()).collect::<Vec<_>>(),
             outputs: self.outputs.into_iter().map(|output| output.into()).collect::<Vec<_>>(),
         }
@@ -150,60 +153,34 @@ impl Into<WasmDetailledTransaction> for DetailledTransaction {
 }
 
 #[wasm_bindgen]
-impl WasmDetailledTransaction {
+impl WasmTransactionDetails {
     #[wasm_bindgen(js_name = fromPsbt)]
     pub async fn from_psbt(
         psbt: &WasmPartiallySignedTransaction,
         account: &WasmAccount,
-    ) -> Result<WasmDetailledTransaction, DetailledWasmError> {
+    ) -> Result<WasmTransactionDetails, DetailledWasmError> {
         let psbt: PartiallySignedTransaction = psbt.into();
         let inner = account.get_inner();
         let account = inner.read().map_err(|_| WasmError::LockError.into())?;
         let wallet = account.get_wallet();
 
-        let tx = DetailledTransaction::from_psbt(&psbt, wallet).map_err(|e| e.into())?;
+        let tx = TransactionDetails::from_psbt(&psbt, wallet).map_err(|e| e.into())?;
         Ok(tx.into())
     }
 }
 
 #[wasm_bindgen(getter_with_clone)]
 #[derive(Clone, Serialize, Deserialize)]
-pub struct WasmTransactionTime {
-    pub confirmed: bool,
-    pub confirmation_time: Option<u64>,
-    pub last_seen: Option<u64>,
+pub struct WasmBlockTime {
+    pub height: u32,
+    pub timestamp: u64,
 }
 
-impl Into<WasmTransactionTime> for TransactionTime {
-    fn into(self) -> WasmTransactionTime {
-        match self {
-            TransactionTime::Confirmed { confirmation_time } => WasmTransactionTime {
-                confirmed: true,
-                confirmation_time: Some(confirmation_time),
-                last_seen: None,
-            },
-            TransactionTime::Unconfirmed { last_seen } => WasmTransactionTime {
-                confirmed: false,
-                confirmation_time: None,
-                last_seen: Some(last_seen),
-            },
-        }
-    }
-}
-
-impl Into<WasmTransactionTime> for ConfirmationTime {
-    fn into(self) -> WasmTransactionTime {
-        match self {
-            ConfirmationTime::Confirmed { time, .. } => WasmTransactionTime {
-                confirmed: true,
-                confirmation_time: Some(time),
-                last_seen: None,
-            },
-            ConfirmationTime::Unconfirmed { last_seen } => WasmTransactionTime {
-                confirmed: false,
-                confirmation_time: None,
-                last_seen: Some(last_seen),
-            },
+impl Into<WasmBlockTime> for BdkBlockTime {
+    fn into(self) -> WasmBlockTime {
+        WasmBlockTime {
+            height: self.height,
+            timestamp: self.timestamp,
         }
     }
 }
@@ -212,9 +189,10 @@ impl Into<WasmTransactionTime> for ConfirmationTime {
 #[derive(Serialize)]
 pub struct WasmSimpleTransaction {
     pub txid: String,
-    pub value: i64,
+    pub received: u64,
+    pub sent: u64,
     pub fees: Option<u64>,
-    pub time: WasmTransactionTime,
+    pub confirmation_time: Option<WasmBlockTime>,
     pub account_key: Option<WasmDerivationPath>,
 }
 
@@ -222,9 +200,10 @@ impl Into<WasmSimpleTransaction> for SimpleTransaction {
     fn into(self) -> WasmSimpleTransaction {
         WasmSimpleTransaction {
             txid: self.txid.to_string(),
-            value: self.value,
+            received: self.received,
+            sent: self.sent,
             fees: self.fees,
-            time: self.time.into(),
+            confirmation_time: self.confirmation_time.map(|t| t.into()),
             account_key: self.account_key.map(|k| k.into()),
         }
     }

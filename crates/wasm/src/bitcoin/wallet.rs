@@ -1,20 +1,18 @@
 use andromeda_bitcoin::{
     account::{build_account_derivation_path, AccountConfig},
     wallet::{Wallet, WalletConfig},
-    DerivationPath,
+    BdkMemoryDatabase, DerivationPath,
 };
 use wasm_bindgen::prelude::*;
-use web_sys::console::{log_1, log_2};
 
 use super::{
     account::{WasmAccount, WasmScriptType},
-    storage::OnchainStorage,
     types::{
         balance::WasmBalance,
         defined::WasmNetwork,
         derivation_path::WasmDerivationPath,
         pagination::WasmPagination,
-        transaction::{WasmDetailledTransaction, WasmSimpleTransaction},
+        transaction::{WasmSimpleTransaction, WasmTransactionDetails},
         typescript_interfaces::IWasmSimpleTransactionArray,
     },
 };
@@ -22,7 +20,7 @@ use crate::common::error::{DetailledWasmError, WasmError};
 
 #[wasm_bindgen]
 pub struct WasmWallet {
-    inner: Wallet<OnchainStorage>,
+    inner: Wallet<BdkMemoryDatabase>,
 }
 
 #[wasm_bindgen(getter_with_clone)]
@@ -59,12 +57,7 @@ impl WasmWallet {
         bip38_passphrase: Option<String>,
         config: &WasmWalletConfig,
     ) -> Result<WasmWallet, DetailledWasmError> {
-        log_2(&"NETWORK 1:".into(), &format!("{:?}", config.network.clone()).into());
         let wallet = Wallet::new(bip39_mnemonic, bip38_passphrase, config.into()).map_err(|e| e.into())?;
-        log_2(
-            &"NETWORK 1 end:".into(),
-            &format!("{:?}", config.network.clone()).into(),
-        );
         Ok(Self { inner: wallet })
     }
 
@@ -74,9 +67,7 @@ impl WasmWallet {
         script_type: WasmScriptType,
         account_index: u32,
     ) -> Result<WasmDerivationPath, DetailledWasmError> {
-        log_2(&"NETWORK 2:".into(), &format!("{:?}", self.inner.get_network()).into());
-
-        let tmp_derivation_path: DerivationPath = build_account_derivation_path::<()>(AccountConfig::new(
+        let tmp_derivation_path: DerivationPath = build_account_derivation_path(AccountConfig::new(
             script_type.into(),
             self.inner.get_network(),
             account_index,
@@ -87,14 +78,12 @@ impl WasmWallet {
 
         // In a multi-wallet context, an account must be defined by the BIP32 masterkey (fingerprint), and its derivation path (unique)
         let account_id = format!("{}_{}", self.inner.get_fingerprint(), tmp_derivation_path.to_string());
-        let storage = OnchainStorage::new(account_id.clone());
+        let storage = BdkMemoryDatabase::new();
 
-        log_1(&"Before add account".into());
         let derivation_path = self
             .inner
             .add_account(script_type.into(), account_index, storage)
             .map_err(|e| e.into())?;
-        log_1(&"After add account".into());
 
         // assert_eq!(derivation_path, tmp_derivation_path);
         Ok(derivation_path.into())
@@ -139,7 +128,7 @@ impl WasmWallet {
         &self,
         account_key: &WasmDerivationPath,
         txid: String,
-    ) -> Result<WasmDetailledTransaction, DetailledWasmError> {
+    ) -> Result<WasmTransactionDetails, DetailledWasmError> {
         let account_key: DerivationPath = account_key.into();
 
         let transaction = self

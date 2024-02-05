@@ -1,13 +1,12 @@
 use andromeda_bitcoin::{
     transaction_builder::{CoinSelection, TmpRecipient, TxBuilder},
-    ChangeSpendPolicy, OutPoint,
+    BdkMemoryDatabase, ChangeSpendPolicy, OutPoint,
 };
 use wasm_bindgen::prelude::*;
 
 use super::{
     account::WasmAccount,
     psbt::WasmPartiallySignedTransaction,
-    storage::OnchainStorage,
     types::{
         defined::{WasmBitcoinUnit, WasmNetwork},
         locktime::WasmLockTime,
@@ -18,7 +17,7 @@ use crate::common::error::{DetailledWasmError, WasmError};
 
 #[wasm_bindgen]
 pub struct WasmTxBuilder {
-    inner: TxBuilder<OnchainStorage>,
+    inner: TxBuilder<BdkMemoryDatabase>,
 }
 
 #[wasm_bindgen]
@@ -139,7 +138,11 @@ impl WasmTxBuilder {
 
     #[wasm_bindgen(js_name = updateRecipientAmountToMax)]
     pub async fn update_recipient_amount_to_max(&self, index: usize) -> Result<WasmTxBuilder, WasmError> {
-        let inner = self.inner.update_recipient_amount_to_max(index).await;
+        let inner = self
+            .inner
+            .update_recipient_amount_to_max(index)
+            .await
+            .map_err(|e| e.into())?;
 
         Ok(WasmTxBuilder { inner })
     }

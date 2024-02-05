@@ -3,19 +3,21 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use andromeda_bitcoin::account::{Account, AccountConfig, ScriptType};
+use andromeda_bitcoin::{
+    account::{Account, AccountConfig, ScriptType},
+    BdkMemoryDatabase,
+};
 
 use wasm_bindgen::prelude::*;
 
 use super::{
     payment_link::WasmPaymentLink,
-    storage::OnchainStorage,
     types::{
         address::WasmAddress,
         balance::WasmBalance,
         defined::WasmNetwork,
         pagination::WasmPagination,
-        transaction::{WasmDetailledTransaction, WasmSimpleTransaction},
+        transaction::{WasmSimpleTransaction, WasmTransactionDetails},
         typescript_interfaces::{IWasmSimpleTransactionArray, IWasmUtxoArray},
         utxo::WasmUtxo,
     },
@@ -59,16 +61,16 @@ impl Into<ScriptType> for WasmScriptType {
 
 #[wasm_bindgen]
 pub struct WasmAccount {
-    inner: Arc<RwLock<Account<OnchainStorage>>>,
+    inner: Arc<RwLock<Account<BdkMemoryDatabase>>>,
 }
 
 impl WasmAccount {
-    pub fn get_inner(&self) -> Arc<RwLock<Account<OnchainStorage>>> {
+    pub fn get_inner(&self) -> Arc<RwLock<Account<BdkMemoryDatabase>>> {
         self.inner.clone()
     }
 }
 
-impl Into<WasmAccount> for &Arc<RwLock<Account<OnchainStorage>>> {
+impl Into<WasmAccount> for &Arc<RwLock<Account<BdkMemoryDatabase>>> {
     fn into(self) -> WasmAccount {
         WasmAccount { inner: self.clone() }
     }
@@ -113,14 +115,6 @@ impl WasmAccountConfig {
 
 #[wasm_bindgen]
 impl WasmAccount {
-    #[wasm_bindgen(js_name = hasSyncData)]
-    pub async fn has_sync_data(&self) -> bool {
-        match self.get_inner().read() {
-            Ok(inner) => inner.get_storage().exists(),
-            _ => false,
-        }
-    }
-
     #[wasm_bindgen(js_name = getBitcoinUri)]
     pub async fn get_bitcoin_uri(
         &mut self,
@@ -147,7 +141,8 @@ impl WasmAccount {
             .inner
             .read()
             .map_err(|_| WasmError::LockError.into())?
-            .owns(&address.into());
+            .owns(&address.into())
+            .map_err(|e| e.into())?;
 
         Ok(owns)
     }
@@ -159,6 +154,7 @@ impl WasmAccount {
             .read()
             .map_err(|_| WasmError::LockError.into())?
             .get_balance()
+            .map_err(|e| e.into())?
             .into();
 
         Ok(balance)
@@ -183,6 +179,7 @@ impl WasmAccount {
             .read()
             .map_err(|_| WasmError::LockError.into())?
             .get_utxos()
+            .map_err(|e| e.into())?
             .into_iter()
             .map(|utxo| utxo.into())
             .collect::<Vec<WasmUtxo>>();
@@ -200,6 +197,7 @@ impl WasmAccount {
             .read()
             .map_err(|_| WasmError::LockError.into())?
             .get_transactions(pagination.map(|pa| pa.into()), true)
+            .map_err(|e| e.into())?
             .into_iter()
             .map(|tx| {
                 let wasm_tx: WasmSimpleTransaction = tx.into();
@@ -211,7 +209,7 @@ impl WasmAccount {
     }
 
     #[wasm_bindgen(js_name = getTransaction)]
-    pub async fn get_transaction(&self, txid: String) -> Result<WasmDetailledTransaction, DetailledWasmError> {
+    pub async fn get_transaction(&self, txid: String) -> Result<WasmTransactionDetails, DetailledWasmError> {
         let transaction = self
             .inner
             .read()

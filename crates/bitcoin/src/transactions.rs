@@ -1,46 +1,114 @@
-use bdk::{wallet::ChangeSet, Wallet};
-use bdk_chain::{tx_graph::CanonicalTx, ChainPosition, ConfirmationTimeHeightAnchor, PersistBackend};
-use miniscript::bitcoin::{
-    bip32::DerivationPath, psbt::PartiallySignedTransaction, Address, ScriptBuf, Transaction, TxIn, Txid,
-};
+use bdk::{database::BatchDatabase, psbt::PsbtUtils, BlockTime, TransactionDetails as BdkTransactionDetails, Wallet};
+use bitcoin::{bip32::DerivationPath, psbt::PartiallySignedTransaction, TxIn, TxOut, Txid};
+use miniscript::bitcoin::{Address, ScriptBuf};
 
 use crate::error::Error;
 
 #[derive(Clone, Debug)]
-pub struct SimpleTransaction {
+pub struct TransactionDetails {
+    /// Transaction id
     pub txid: Txid,
-    pub value: i64,
+    /// Received value (sats)
+    /// Sum of owned outputs of this transaction.
+    pub received: u64,
+    /// Sent value (sats)
+    /// Sum of owned inputs of this transaction.
+    pub sent: u64,
+    /// Fee value (sats) if confirmed.
+    /// The availability of the fee depends on the backend. It's never `None` with an Electrum
+    /// Server backend, but it could be `None` with a Bitcoin RPC node without txindex that receive
+    /// funds while offline.
     pub fees: Option<u64>,
-    pub time: TransactionTime,
+    /// If the transaction is confirmed, contains height and Unix timestamp of the block containing the
+    /// transaction, unconfirmed transaction contains `None`.
+    pub confirmation_time: Option<BlockTime>,
+    /// List of transaction inputs.
+    pub inputs: Vec<TxIn>,
+    /// List of transaction outputs.
+    pub outputs: Vec<DetailledTxOutput>,
+}
+
+impl TransactionDetails {
+    pub fn from_bdk<Storage>(value: BdkTransactionDetails, wallet: &Wallet<Storage>) -> Result<Self, Error>
+    where
+        Storage: BatchDatabase,
+    {
+        Ok(Self {
+            txid: value.txid,
+            received: value.received,
+            sent: value.sent,
+            fees: value.fee,
+            confirmation_time: value.confirmation_time,
+            inputs: value.transaction.clone().map_or(Vec::new(), |tx| tx.input),
+            outputs: value.transaction.clone().map_or(Ok(Vec::new()), |tx| {
+                tx.output
+                    .into_iter()
+                    .map(|output| DetailledTxOutput::from_txout(output, wallet))
+                    .collect::<Result<Vec<_>, _>>()
+            })?,
+        })
+    }
+}
+
+impl TransactionDetails {
+    pub fn from_psbt<Storage>(psbt: &PartiallySignedTransaction, wallet: &Wallet<Storage>) -> Result<Self, Error>
+    where
+        Storage: BatchDatabase,
+    {
+        let tx = psbt.clone().extract_tx();
+
+        let outputs: Vec<DetailledTxOutput> = tx
+            .output
+            .clone()
+            .into_iter()
+            .map(|output| DetailledTxOutput::from_txout(output, wallet))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let tx = TransactionDetails {
+            txid: tx.txid(),
+            received: 0u64,
+            sent: 0u64,
+            fees: psbt.fee_amount(),
+            confirmation_time: None,
+            inputs: tx.input.clone(),
+            outputs,
+        };
+
+        Ok(tx)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SimpleTransaction {
+    /// Transaction id
+    pub txid: Txid,
+    /// Received value (sats)
+    /// Sum of owned outputs of this transaction.
+    pub received: u64,
+    /// Sent value (sats)
+    /// Sum of owned inputs of this transaction.
+    pub sent: u64,
+    /// Fee value (sats) if confirmed.
+    /// The availability of the fee depends on the backend. It's never `None` with an Electrum
+    /// Server backend, but it could be `None` with a Bitcoin RPC node without txindex that receive
+    /// funds while offline.
+    pub fees: Option<u64>,
+    /// If the transaction is confirmed, contains height and Unix timestamp of the block containing the
+    /// transaction, unconfirmed transaction contains `None`.
+    pub confirmation_time: Option<BlockTime>,
+    /// Derivation of the account linked to the transaction
     pub account_key: Option<DerivationPath>,
 }
 
 impl SimpleTransaction {
-    pub fn from_can_tx<Storage>(
-        can_tx: &CanonicalTx<'_, Transaction, ConfirmationTimeHeightAnchor>,
-        wallet: &Wallet<Storage>,
-        account_key: Option<DerivationPath>,
-    ) -> Self {
-        let (sent, received) = wallet.spk_index().sent_and_received(can_tx.tx_node.tx);
-
+    pub fn from_detailled_tx(detailled_tx: BdkTransactionDetails, account_key: Option<DerivationPath>) -> Self {
         SimpleTransaction {
             account_key,
-            txid: can_tx.tx_node.txid,
-            value: received as i64 - sent as i64,
-            fees: wallet.calculate_fee(can_tx.tx_node.tx).ok(),
-            time: match can_tx.chain_position {
-                ChainPosition::Confirmed(anchor) => TransactionTime::Confirmed {
-                    confirmation_time: anchor.confirmation_time,
-                },
-                ChainPosition::Unconfirmed(last_seen) => TransactionTime::Unconfirmed { last_seen },
-            },
-        }
-    }
-
-    pub fn get_time(&self) -> u64 {
-        match self.time {
-            TransactionTime::Confirmed { confirmation_time } => confirmation_time,
-            TransactionTime::Unconfirmed { last_seen } => last_seen,
+            txid: detailled_tx.txid,
+            received: detailled_tx.received,
+            sent: detailled_tx.sent,
+            fees: detailled_tx.fee,
+            confirmation_time: detailled_tx.confirmation_time,
         }
     }
 }
@@ -53,114 +121,18 @@ pub struct DetailledTxOutput {
     pub is_mine: bool,
 }
 
-#[derive(Clone, Debug)]
-pub struct DetailledTransaction {
-    pub txid: Txid,
-    pub value: i64,
-    pub fees: Option<u64>,
-    pub time: Option<TransactionTime>,
-    pub inputs: Vec<TxIn>,
-    pub outputs: Vec<DetailledTxOutput>,
-}
-
-impl DetailledTransaction {
-    pub fn from_psbt<Storage>(
-        psbt: &PartiallySignedTransaction,
-        wallet: &Wallet<Storage>,
-    ) -> Result<Self, Error<Storage>>
+impl DetailledTxOutput {
+    pub fn from_txout<Storage>(output: TxOut, wallet: &Wallet<Storage>) -> Result<DetailledTxOutput, Error>
     where
-        Storage: PersistBackend<ChangeSet>,
+        Storage: BatchDatabase,
     {
-        let tx = psbt.clone().extract_tx();
-
-        let (sent, received) = wallet.spk_index().sent_and_received(&tx);
-        let fees = wallet.calculate_fee(&tx).ok();
-
-        let outputs: Vec<DetailledTxOutput> = tx
-            .output
-            .clone()
-            .into_iter()
-            .map(|output| {
-                let tx = DetailledTxOutput {
-                    value: output.value,
-                    address: Address::from_script(&output.script_pubkey, wallet.network())
-                        .map_err(|_| Error::CannotCreateAddressFromScript)?,
-                    is_mine: wallet.is_mine(&output.script_pubkey),
-                    script_pubkey: output.script_pubkey,
-                };
-
-                Ok(tx)
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let tx = DetailledTransaction {
-            txid: tx.txid(),
-            value: received as i64 - sent as i64,
-            fees,
-            time: None,
-            inputs: tx.input.clone(),
-            outputs,
-        };
-
-        Ok(tx)
-    }
-
-    pub fn from_can_tx<Storage>(
-        can_tx: &CanonicalTx<'_, Transaction, ConfirmationTimeHeightAnchor>,
-        wallet: &Wallet<Storage>,
-    ) -> Result<Self, Error<Storage>>
-    where
-        Storage: PersistBackend<ChangeSet>,
-    {
-        let (sent, received) = wallet.spk_index().sent_and_received(can_tx.tx_node.tx);
-        let fees = wallet.calculate_fee(can_tx.tx_node.tx).ok();
-
-        let outputs: Vec<DetailledTxOutput> = can_tx
-            .tx_node
-            .output
-            .clone()
-            .into_iter()
-            .map(|output| {
-                let tx = DetailledTxOutput {
-                    value: output.value,
-                    address: Address::from_script(&output.script_pubkey, wallet.network())
-                        .map_err(|_| Error::CannotCreateAddressFromScript)?,
-                    is_mine: wallet.is_mine(&output.script_pubkey),
-                    script_pubkey: output.script_pubkey,
-                };
-
-                Ok(tx)
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let tx = DetailledTransaction {
-            txid: can_tx.tx_node.txid(),
-            value: received as i64 - sent as i64,
-            fees,
-            time: Some(match can_tx.chain_position {
-                ChainPosition::Confirmed(anchor) => TransactionTime::Confirmed {
-                    confirmation_time: anchor.confirmation_time,
-                },
-                ChainPosition::Unconfirmed(last_seen) => TransactionTime::Unconfirmed { last_seen },
-            }),
-            inputs: can_tx.tx_node.input.clone(),
-            outputs,
-        };
-
-        Ok(tx)
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum TransactionTime {
-    Confirmed { confirmation_time: u64 },
-    Unconfirmed { last_seen: u64 },
-}
-
-pub fn get_tx_time(can_tx: &CanonicalTx<'_, Transaction, ConfirmationTimeHeightAnchor>) -> u64 {
-    match can_tx.chain_position {
-        ChainPosition::Confirmed(anchor) => anchor.confirmation_time,
-        ChainPosition::Unconfirmed(last_seen) => last_seen,
+        Ok(DetailledTxOutput {
+            value: output.value,
+            is_mine: wallet.is_mine(&output.script_pubkey).map_err(|e| e.into())?,
+            address: Address::from_script(&output.script_pubkey, wallet.network())
+                .map_err(|_| Error::CannotCreateAddressFromScript)?,
+            script_pubkey: output.script_pubkey,
+        })
     }
 }
 

@@ -79,7 +79,7 @@ impl Mnemonic {
     /// let result = Mnemonic::new(WordCount::Words12);
     /// println!("{:?}", result)
     /// ```
-    pub fn new(word_count: WordCount) -> Result<Self, Error<()>> {
+    pub fn new(word_count: WordCount) -> Result<Self, Error> {
         let mut rng = rand::thread_rng();
         let mut entropy = [0u8; 32];
         rng.fill(&mut entropy);
@@ -87,7 +87,7 @@ impl Mnemonic {
         let generated_key: GeneratedKey<_, BareCtx> =
             BdkMnemonic::generate_with_entropy((word_count, Language::English), entropy).map_err(|e| match e {
                 Some(e) => e.into(),
-                _ => Error::Bip39 { error: None },
+                _ => Error::Bip39Error(None),
             })?;
 
         let mnemonic = BdkMnemonic::parse_in(Language::English, generated_key.to_string()).map_err(|e| e.into())?;
@@ -109,7 +109,7 @@ impl Mnemonic {
     /// let result = Mnemonic::from_string("desk prevent enhance husband hungry idle member vessel room moment simple behave".to_string());
     /// println!("{:?}", result)
     /// ```
-    pub fn from_string(mnemonic: String) -> Result<Self, Error<()>> {
+    pub fn from_string(mnemonic: String) -> Result<Self, Error> {
         BdkMnemonic::from_str(&mnemonic)
             .map(|m| Mnemonic { inner: m })
             .map_err(|_| Error::InvalidMnemonic)

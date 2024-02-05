@@ -1,33 +1,28 @@
-use std::{collections::HashMap, str::FromStr};
+use std::{
+    collections::{HashMap, HashSet},
+    str::FromStr,
+};
 
+use super::{payment_link::PaymentLink, transactions::Pagination, utils::sort_and_paginate_txs};
+use crate::{bitcoin::Network, transactions::TransactionDetails};
+use crate::{error::Error, transactions::SimpleTransaction};
 use bdk::{
     bitcoin::{
         bip32::{ChildNumber, ExtendedPrivKey},
         secp256k1::Secp256k1,
     },
+    blockchain::esplora::EsploraBlockchain,
+    database::BatchDatabase,
     descriptor,
-    wallet::{AddressInfo, Balance, ChangeSet},
-    KeychainKind, LocalOutput, SignOptions,
+    wallet::{AddressIndex, AddressInfo},
+    Balance as BdkBalance, KeychainKind, LocalUtxo, SignOptions, SyncOptions, Wallet,
 };
-use std::fmt::Debug;
-
-use bdk::Wallet;
-use bdk_chain::PersistBackend;
-use hashbrown::HashSet;
 use miniscript::{
     bitcoin::{bip32::DerivationPath, psbt::PartiallySignedTransaction, Address, Network as BdkNetwork, Txid},
     descriptor::DescriptorSecretKey,
     Descriptor, DescriptorPublicKey,
 };
-
-use crate::bitcoin::Network;
-use crate::error::Error;
-
-use super::{
-    payment_link::PaymentLink,
-    transactions::{DetailledTransaction, Pagination, SimpleTransaction},
-    utils::sort_and_paginate_txs,
-};
+use std::fmt::Debug;
 
 /// TLDR; A wallet is defined by its mnemonic + passphrase combo whereas a wallet account is defined by its derivation path from the wallet masterkey.
 /// In order to support wallet import from other major softwares, it has been decided to support the BIP44 standard from the very beginning. This BIP adds a granularity layer inside a wallet.
@@ -40,10 +35,9 @@ use super::{
 #[derive(Debug)]
 pub struct Account<Storage>
 where
-    Storage: PersistBackend<ChangeSet> + Clone,
+    Storage: BatchDatabase,
 {
     derivation_path: DerivationPath,
-    storage: Storage,
     wallet: Wallet<Storage>,
 }
 
@@ -60,7 +54,7 @@ pub enum ScriptType {
 }
 
 impl TryFrom<String> for ScriptType {
-    type Error = Error<()>;
+    type Error = Error;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         if value == "legacy" {
@@ -101,10 +95,7 @@ impl AccountConfig {
     }
 }
 
-pub fn build_account_derivation_path<Storage>(config: AccountConfig) -> Result<Vec<ChildNumber>, Error<Storage>>
-where
-    Storage: PersistBackend<ChangeSet> + Clone,
-{
+pub fn build_account_derivation_path(config: AccountConfig) -> Result<Vec<ChildNumber>, Error> {
     let purpose = ChildNumber::from_hardened_idx(if config.multisig_threshold.is_some() {
         // TODO maybe support legacy standard (45' + 48')
         87 // https://bips.dev/87/
@@ -135,13 +126,10 @@ type ReturnedDescriptor = (
     HashSet<BdkNetwork>,
 );
 
-fn build_account_descriptors<Storage>(
+fn build_account_descriptors(
     account_xprv: ExtendedPrivKey,
     config: AccountConfig,
-) -> Result<(ReturnedDescriptor, ReturnedDescriptor), Error<Storage>>
-where
-    Storage: PersistBackend<ChangeSet> + Clone,
-{
+) -> Result<(ReturnedDescriptor, ReturnedDescriptor), Error> {
     let builder = if config.multisig_threshold.is_some() {
         todo!()
     } else {
@@ -176,20 +164,20 @@ where
 
 impl<Storage> Account<Storage>
 where
-    Storage: PersistBackend<ChangeSet> + Clone,
+    Storage: BatchDatabase,
 {
     fn build_wallet(
         account_xprv: ExtendedPrivKey,
         config: AccountConfig,
         storage: Storage,
-    ) -> Result<Wallet<Storage>, Error<Storage>> {
+    ) -> Result<Wallet<Storage>, Error> {
         let (external_descriptor, internal_descriptor) = build_account_descriptors(account_xprv, config)?;
 
-        Wallet::new_or_load(
+        Wallet::new(
             external_descriptor,
             Some(internal_descriptor),
-            storage,
             config.network.into(),
+            storage,
         )
         .map_err(|e| e.into())
     }
@@ -213,22 +201,19 @@ where
     /// * storage : storage to persist account wallet data
     ///
     /// ```rust
-    /// use bdk::bitcoin::bip32::ExtendedPrivKey;
+    /// # use bdk::bitcoin::bip32::ExtendedPrivKey;
+    /// # use bdk::database::MemoryDatabase;
     ///
-    /// use andromeda_bitcoin::account::{Account, AccountConfig, ScriptType};
-    /// use andromeda_bitcoin::mnemonic::Mnemonic;
-    /// use andromeda_bitcoin::bitcoin::Network;
+    /// # use andromeda_bitcoin::account::{Account, AccountConfig, ScriptType};
+    /// # use andromeda_bitcoin::mnemonic::Mnemonic;
+    /// # use andromeda_bitcoin::bitcoin::Network;
     ///
     /// let mnemonic = Mnemonic::from_string(String::from("desk prevent enhance husband hungry idle member vessel room moment simple behave")).unwrap();
     /// let mprv = ExtendedPrivKey::new_master(Network::Testnet.into(), &mnemonic.inner().to_seed("")).unwrap();
     /// let config = AccountConfig::new(ScriptType::NativeSegwit, Network::Testnet, 0, None);
-    /// let account = Account::new(mprv, config, ());
+    /// let account = Account::new(mprv, config, MemoryDatabase::new());
     /// ```
-    pub fn new(
-        master_secret_key: ExtendedPrivKey,
-        config: AccountConfig,
-        storage: Storage,
-    ) -> Result<Self, Error<Storage>> {
+    pub fn new(master_secret_key: ExtendedPrivKey, config: AccountConfig, storage: Storage) -> Result<Self, Error> {
         let secp = Secp256k1::new();
 
         let derivation_path = build_account_derivation_path(config)?;
@@ -238,7 +223,6 @@ where
 
         Ok(Self {
             derivation_path: derivation_path.into(),
-            storage: storage.clone(),
             wallet: Self::build_wallet(account_xprv, config, storage)?,
         })
     }
@@ -257,8 +241,8 @@ where
     /// * trusted pending (unconfirmed internal)
     /// * untrusted pending (unconfirmed external)
     /// * confirmed coins
-    pub fn get_balance(&self) -> Balance {
-        self.wallet.get_balance()
+    pub fn get_balance(&self) -> Result<BdkBalance, Error> {
+        self.wallet.get_balance().map_err(|e| e.into())
     }
 
     /// Returns a list of unspent outputs as a vector
@@ -266,13 +250,8 @@ where
     /// # Notes
     ///
     /// Later we might want to add pagination on top of that.
-    pub fn get_utxos(&self) -> Vec<LocalOutput> {
-        self.wallet.list_unspent().collect()
-    }
-
-    /// Returns cloned storage
-    pub fn get_storage(&self) -> Storage {
-        self.storage.clone()
+    pub fn get_utxos(&self) -> Result<Vec<LocalUtxo>, Error> {
+        self.wallet.list_unspent().map_err(|e| e.into())
     }
 
     /// From a master private key, returns a bitcoin account (as defined in https://bips.dev/44/)
@@ -280,22 +259,14 @@ where
     /// # Note
     ///
     /// If index is None, it will return last unused address of the account. So to avoid address reuse, we need to sync before calling this method.
-    pub fn get_address(&mut self, index: Option<u32>) -> Result<AddressInfo, Error<Storage>> {
-        match index {
-            Some(index) => self
-                .wallet
-                .try_get_address(bdk::wallet::AddressIndex::Peek(index))
-                .map_err(|_| Error::InvalidAddress),
-            _ => self
-                .wallet
-                .try_get_address(bdk::wallet::AddressIndex::LastUnused)
-                .map_err(|_| Error::InvalidAddress),
-        }
+    pub fn get_address(&mut self, index: Option<u32>) -> Result<AddressInfo, Error> {
+        let index = index.map_or(AddressIndex::LastUnused, |index| AddressIndex::Peek(index));
+        self.wallet.get_address(index).map_err(|e| e.into())
     }
 
     /// Returns a boolean indicating whether or not the account owns the provided address
-    pub fn owns(&self, address: &Address) -> bool {
-        self.wallet.is_mine(&address.script_pubkey())
+    pub fn owns(&self, address: &Address) -> Result<bool, Error> {
+        self.wallet.is_mine(&address.script_pubkey()).map_err(|e| e.into())
     }
 
     /// Returns a bitcoin uri as defined in https://bips.dev/21/
@@ -305,7 +276,7 @@ where
         amount: Option<u64>,
         label: Option<String>,
         message: Option<String>,
-    ) -> Result<PaymentLink, Error<Storage>> {
+    ) -> Result<PaymentLink, Error> {
         PaymentLink::new_bitcoin_uri(self, index, amount, label, message)
     }
 
@@ -314,33 +285,37 @@ where
     /// # Notes
     ///
     /// Returned transaction are simple ones with only amount value, txid, confirmation time and fees value. For more details, `get_transaction` can be called with txid
-    pub fn get_transactions(&self, pagination: Option<Pagination>, sorted: bool) -> Vec<SimpleTransaction> {
+    pub fn get_transactions(
+        &self,
+        pagination: Option<Pagination>,
+        sorted: bool,
+    ) -> Result<Vec<SimpleTransaction>, Error> {
         let pagination = pagination.unwrap_or_default();
 
         // We first need to sort transactions by their time (last_seen for unconfirmed ones and confirmation_time for confirmed one)
         // The collection that happen here might be consuming, maybe later we need to rework this part
         let simple_txs = self
             .wallet
-            .transactions()
-            // account_key is not usefull in a single-account context
-            .map(|can_tx| SimpleTransaction::from_can_tx(&can_tx, &self.wallet, None))
+            .list_transactions(true)
+            .map_err(|e| e.into())?
+            .into_iter()
+            .map(|tx| SimpleTransaction::from_detailled_tx(tx, Some(self.derivation_path.clone())))
             .collect::<Vec<_>>();
 
-        sort_and_paginate_txs(simple_txs, pagination, sorted)
+        Ok(sort_and_paginate_txs(simple_txs, pagination, sorted))
     }
 
     /// Given a txid, returns a complete transaction    
-    pub fn get_transaction(&self, txid: String) -> Result<DetailledTransaction, Error<Storage>> {
+    pub fn get_transaction(&self, txid: String) -> Result<TransactionDetails, Error> {
         let txid = Txid::from_str(&txid).map_err(|_| Error::InvalidTxId)?;
-        let tx = match self.wallet.get_tx(txid) {
-            Some(can_tx) => {
-                let tx = DetailledTransaction::from_can_tx(&can_tx, &self.wallet)?;
-                Ok(tx)
-            }
-            _ => Err(Error::TransactionNotFound),
-        }?;
 
-        Ok(tx)
+        let tx = self
+            .wallet
+            .get_tx(&txid, false)
+            .map_err(|e| e.into())?
+            .ok_or(Error::TransactionNotFound)?;
+
+        TransactionDetails::from_bdk(tx, self.get_wallet())
     }
 
     /// Given a mutable reference to a PSBT, and sign options, tries to sign inputs elligible
@@ -348,12 +323,22 @@ where
         &self,
         psbt: &mut PartiallySignedTransaction,
         sign_options: Option<SignOptions>,
-    ) -> Result<bool, Error<Storage>> {
+    ) -> Result<bool, Error> {
         let sign_options = sign_options.unwrap_or_default();
 
+        self.wallet.sign(psbt, sign_options).map_err(|e| e.into())
+    }
+
+    /// Perform a full sync for the account
+    pub async fn full_sync(&self) -> Result<(), Error> {
+        let blockchain = EsploraBlockchain::new("https://mempool.space/testnet/api", 20);
+
         self.wallet
-            .sign(psbt, sign_options)
-            .map_err(|e| Error::Generic { msg: e.to_string() })
+            .sync(&blockchain, SyncOptions::default())
+            .await
+            .map_err(|e| e.into())?;
+
+        Ok(())
     }
 }
 
@@ -361,6 +346,7 @@ where
 mod tests {
     use std::str::FromStr;
 
+    use bdk::database::MemoryDatabase;
     use miniscript::bitcoin::{bip32::ExtendedPrivKey, Address};
 
     use crate::bitcoin::Network;
@@ -368,14 +354,14 @@ mod tests {
 
     use super::{Account, AccountConfig, ScriptType};
 
-    fn set_test_account(script_type: ScriptType) -> Account<()> {
+    fn set_test_account(script_type: ScriptType) -> Account<MemoryDatabase> {
         let config = AccountConfig::new(script_type, Network::Testnet, 0, None);
 
         let mnemonic = Mnemonic::from_string("category law logic swear involve banner pink room diesel fragile sunset remove whale lounge captain code hobby lesson material current moment funny vast fade".to_string()).unwrap();
         let master_secret_key =
             ExtendedPrivKey::new_master(config.network.into(), &mnemonic.inner().to_seed("")).unwrap();
 
-        Account::new(master_secret_key, config, ()).unwrap()
+        Account::new(master_secret_key, config, MemoryDatabase::new()).unwrap()
     }
 
     #[test]
@@ -464,14 +450,16 @@ mod tests {
         let mut account = set_test_account(ScriptType::Taproot);
 
         let address = account.get_address(None).unwrap();
-        assert!(account.owns(&address));
+        assert!(account.owns(&address).unwrap());
 
         assert_eq!(
-            account.owns(
-                &Address::from_str("tb1qkwfhq25jnjq4fca2tptdhpsstz9ss2pampswhc")
-                    .unwrap()
-                    .assume_checked()
-            ),
+            account
+                .owns(
+                    &Address::from_str("tb1qkwfhq25jnjq4fca2tptdhpsstz9ss2pampswhc")
+                        .unwrap()
+                        .assume_checked()
+                )
+                .unwrap(),
             false
         );
     }

@@ -1,7 +1,9 @@
 use std::time::Duration;
 
+use crate::transactions::SimpleTransaction;
+
 use super::bitcoin::{BitcoinUnit, BITCOIN, MILLI_BITCOIN, SATOSHI};
-use super::transactions::{Pagination, SimpleTransaction};
+use super::transactions::Pagination;
 
 pub fn now() -> Duration {
     #[cfg(target_arch = "wasm32")]
@@ -107,7 +109,7 @@ pub fn sort_and_paginate_txs(
     sorted: bool,
 ) -> Vec<SimpleTransaction> {
     if sorted {
-        simple_txs.sort_by(|a, b| b.get_time().partial_cmp(&a.get_time()).unwrap());
+        simple_txs.sort_by(|a, b| b.confirmation_time.partial_cmp(&a.confirmation_time).unwrap());
     }
 
     // We paginated sorted vector

@@ -1,13 +1,14 @@
 use super::account::{Account, AccountConfig, ScriptType};
 
-use super::transactions::{DetailledTransaction, Pagination, SimpleTransaction};
+use super::transactions::Pagination;
 use super::utils::sort_and_paginate_txs;
 
+use crate::transactions::{SimpleTransaction, TransactionDetails};
 use crate::{bitcoin::Network, error::Error, mnemonic::Mnemonic};
+use bdk::database::BatchDatabase;
+use bdk::Balance;
 use futures::future;
 
-use bdk::wallet::{Balance as BdkBalance, ChangeSet};
-use bdk_chain::PersistBackend;
 use core::fmt::Debug;
 use miniscript::bitcoin::bip32::{DerivationPath, ExtendedPrivKey};
 use miniscript::bitcoin::secp256k1::Secp256k1;
@@ -18,7 +19,7 @@ use std::sync::{Arc, RwLock};
 #[derive(Debug)]
 pub struct Wallet<Storage>
 where
-    Storage: PersistBackend<ChangeSet> + Clone,
+    Storage: BatchDatabase,
 {
     mprv: ExtendedPrivKey,
     accounts: HashMap<DerivationPath, Arc<RwLock<Account<Storage>>>>,
@@ -38,13 +39,9 @@ impl WalletConfig {
 
 impl<Storage> Wallet<Storage>
 where
-    Storage: PersistBackend<ChangeSet> + Clone + Debug,
+    Storage: BatchDatabase + Debug,
 {
-    pub fn new(
-        bip39_mnemonic: String,
-        bip38_passphrase: Option<String>,
-        config: WalletConfig,
-    ) -> Result<Self, Error<Storage>> {
+    pub fn new(bip39_mnemonic: String, bip38_passphrase: Option<String>, config: WalletConfig) -> Result<Self, Error> {
         let mnemonic = Mnemonic::from_string(bip39_mnemonic).map_err(|_| Error::InvalidMnemonic)?;
         let mprv = ExtendedPrivKey::new_master(
             config.network.into(),
@@ -67,7 +64,7 @@ where
         script_type: ScriptType,
         account_index: u32,
         storage: Storage,
-    ) -> Result<DerivationPath, Error<Storage>> {
+    ) -> Result<DerivationPath, Error> {
         let account = Account::new(
             self.mprv,
             AccountConfig::new(script_type, self.config.network.into(), account_index, None),
@@ -85,18 +82,16 @@ where
         self.accounts.get(derivation_path)
     }
 
-    pub async fn get_balance(&self) -> Result<BdkBalance, Error<Storage>> {
+    pub async fn get_balance(&self) -> Result<Balance, Error> {
         let async_iter = self.accounts.keys().map(|account_key| async move {
             let account = self.accounts.get(&account_key).ok_or(Error::AccountNotFound)?;
             let account_guard = account.read().map_err(|_| Error::LockError)?;
-            let balance = account_guard.get_balance();
-
-            Ok(balance) as Result<BdkBalance, Error<Storage>>
+            account_guard.get_balance()
         });
 
         let account_balances = future::try_join_all(async_iter).await?;
 
-        let init = BdkBalance {
+        let init = Balance {
             untrusted_pending: 0,
             confirmed: 0,
             immature: 0,
@@ -106,7 +101,7 @@ where
         let balance = account_balances
             .into_iter()
             .fold(Ok(init), |acc, account_balance| match acc {
-                Ok(acc) => Ok(BdkBalance {
+                Ok(acc) => Ok(Balance {
                     untrusted_pending: acc.untrusted_pending + account_balance.untrusted_pending,
                     confirmed: acc.confirmed + account_balance.confirmed,
                     immature: acc.immature + account_balance.immature,
@@ -122,25 +117,29 @@ where
         &self,
         pagination: Option<Pagination>,
         sorted: bool,
-    ) -> Result<Vec<SimpleTransaction>, Error<Storage>> {
+    ) -> Result<Vec<SimpleTransaction>, Error> {
         let pagination = pagination.unwrap_or_default();
 
-        let async_iter = self.accounts.keys().map(|account_key| async move {
-            let account = self.accounts.get(&account_key).ok_or(Error::AccountNotFound)?;
-            let account_guard = account.read().map_err(|_| Error::LockError)?;
-            let wallet = account_guard.get_wallet();
+        let simple_txs = self
+            .accounts
+            .keys()
+            .map(|account_key| {
+                let account = self.accounts.get(&account_key).ok_or(Error::AccountNotFound)?;
+                let account_guard = account.read().map_err(|_| Error::LockError)?;
+                let wallet = account_guard.get_wallet();
 
-            let txs = wallet
-                .transactions()
-                .map(|can_tx| SimpleTransaction::from_can_tx(&can_tx, &wallet, Some(account_key.clone())))
-                .collect::<Vec<_>>();
+                let transactions = wallet.list_transactions(true).map_err(|e| e.into())?;
 
-            Ok(txs) as Result<Vec<SimpleTransaction>, Error<Storage>>
-        });
+                let transactions = transactions
+                    .into_iter()
+                    .map(|tx| SimpleTransaction::from_detailled_tx(tx, Some(account_key.clone())))
+                    .collect::<Vec<_>>();
 
-        let result = future::try_join_all(async_iter).await.unwrap();
+                Ok(transactions)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
 
-        let simple_txs = result.into_iter().flatten().collect::<Vec<_>>();
+        let simple_txs = simple_txs.into_iter().flatten().collect::<Vec<_>>();
 
         Ok(sort_and_paginate_txs(simple_txs, pagination, sorted))
     }
@@ -149,7 +148,7 @@ where
         &self,
         derivation_path: &DerivationPath,
         txid: String,
-    ) -> Result<DetailledTransaction, Error<Storage>> {
+    ) -> Result<TransactionDetails, Error> {
         let account = self.accounts.get(derivation_path);
 
         match account {
