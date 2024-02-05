@@ -5,9 +5,9 @@
 
   <img src="https://res.cloudinary.com/dbulfrlrz/image/upload/v1693233221/static/logos/proton-logo_z7innb.svg" width="220" />
 
-  <p>
+  <h3>
     <strong>"In the cosmic ballet of Andromeda's radiance, a delicate web of technologies emerges, crafted from the resilient strands of Rust."</strong>
-  </p>
+  </h3>
 
   <h4>
     <a href="https://proton.me/">Proton Home</a>
@@ -26,11 +26,15 @@ The project is split up into several crates in the `/crates` directory:
 
 - [`api`](./crates/api): Contains an api client to call Proton Wallet backend HTTP API
 - [`vss`](./crates/vss): (TBD) A Versioned Storage Service client, used to persist encrypted chain data and lightning channel state
-- [`bitcoin`](./crates/bitcoin): A library that provides utilities to use bitcoin on the 1rst layer such as chain syncing, transactions/balance/utxos retrieving, address generating and obviously transaction building, signing and broadcasting. 
+- [`bitcoin`](./crates/bitcoin): A library that provides utilities to use bitcoin on the 1rst layer such as chain syncing, transactions/balance/utxos retrieving, address generating and obviously transaction building, signing and broadcasting.
 - [`coinjoin`](./crates/coinjoin): (TBD) A rust client for Whirlpool coinjoin protocol
 - [`lightning`](./crates/lightning): (TBD) A LDK-based lightning node that support BOLT11 invoice generation and payment
 - [`key-transparency`](./crates/key-transparency): (TBD) A rust client for Proton's Key Transparency protocol
-- [`wasm`](./crates/wasm): Relevant interfaces to WASM
+- [`wasm`](./crates/wasm): Relevant interfaces to WASM (_should be migrated to its own repo_)
+
+<div align="center">
+    <a href="https://ibb.co/bgV1MQ0"><img src="https://i.ibb.co/mCKJVbj/libs.png" alt="libs" border="0" width="400"></a>
+</div>
 
 ## External dependencies
 
