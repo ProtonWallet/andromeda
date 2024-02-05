@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use bitcoin::{consensus::deserialize, Transaction};
 use muon::{
-    request::{Error as ReqError, Method, ProtonRequest, Response},
+    request::{Error as ReqError, Method, ProtonRequest, Response, ResponseExt},
     session::Session,
 };
 use serde::{Deserialize, Serialize};

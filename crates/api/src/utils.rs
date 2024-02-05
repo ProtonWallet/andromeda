@@ -1,9 +1,12 @@
-use muon::{session::Session, AppSpec, Product, SimpleAuthStore};
+use muon::{session::Session, AppSpec, Product, ReqwestTransportFactory, SimpleAuthStore};
 
 pub async fn common_session() -> Session {
     let app = AppSpec::new(Product::Unspecified, "web-wallet@5.0.999.999-dev".to_string(), "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36".to_string());
     let auth = SimpleAuthStore::new("atlas");
-    let mut session = Session::new(auth, app).unwrap();
+
+    let transport = ReqwestTransportFactory::new();
+    let mut session = Session::new_with_transport(auth, app, transport).unwrap();
+    // let mut session = Session::new(auth, app).unwrap();
 
     session.authenticate("pro", "pro").await.unwrap();
     session

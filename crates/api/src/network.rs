@@ -34,6 +34,7 @@ impl NetworkClient {
 #[cfg(test)]
 mod tests {
     use crate::utils::common_session;
+    use wasm_bindgen_test::*;
 
     use super::NetworkClient;
 
