@@ -127,9 +127,9 @@ impl WasmAccount {
 
         let payment_link: WasmPaymentLink = account_inner
             .write()
-            .map_err(|_| WasmError::LockError.into())?
+            .expect("lock")
             .get_bitcoin_uri(index, amount, label, message)
-            .map_err(|_| WasmError::LockError.into())?
+            .map_err(|e| e.into())?
             .into();
 
         Ok(payment_link)
@@ -140,7 +140,7 @@ impl WasmAccount {
         let owns = self
             .inner
             .read()
-            .map_err(|_| WasmError::LockError.into())?
+            .expect("lock")
             .owns(&address.into())
             .map_err(|e| e.into())?;
 
@@ -152,7 +152,7 @@ impl WasmAccount {
         let balance: WasmBalance = self
             .inner
             .read()
-            .map_err(|_| WasmError::LockError.into())?
+            .expect("lock")
             .get_balance()
             .map_err(|e| e.into())?
             .into();
@@ -165,7 +165,7 @@ impl WasmAccount {
         let derivation_path = self
             .inner
             .read()
-            .map_err(|_| WasmError::LockError.into())?
+            .expect("lock")
             .get_derivation_path()
             .to_string();
 
@@ -177,7 +177,7 @@ impl WasmAccount {
         let utxos = self
             .inner
             .read()
-            .map_err(|_| WasmError::LockError.into())?
+            .expect("lock")
             .get_utxos()
             .map_err(|e| e.into())?
             .into_iter()
@@ -195,7 +195,7 @@ impl WasmAccount {
         let transactions = self
             .inner
             .read()
-            .map_err(|_| WasmError::LockError.into())?
+            .expect("lock")
             .get_transactions(pagination.map(|pa| pa.into()), true)
             .map_err(|e| e.into())?
             .into_iter()
@@ -213,7 +213,7 @@ impl WasmAccount {
         let transaction = self
             .inner
             .read()
-            .map_err(|_| WasmError::LockError.into())?
+            .expect("lock")
             .get_transaction(txid)
             .map_err(|e| e.into())?;
 

@@ -27,7 +27,6 @@ pub enum WasmError {
     InvalidSecretKey,
     InvalidMnemonic,
     LoadError,
-    LockError,
     OutpointParsingError,
     SyncError,
     TransactionNotFound,
@@ -73,7 +72,6 @@ impl Into<WasmError> for Error {
             Error::InvalidSecretKey => WasmError::InvalidSecretKey,
             Error::InvalidMnemonic => WasmError::InvalidMnemonic,
             Error::LoadError => WasmError::LoadError,
-            Error::LockError => WasmError::LockError,
             Error::SyncError => WasmError::SyncError,
             Error::TransactionNotFound => WasmError::TransactionNotFound,
         }

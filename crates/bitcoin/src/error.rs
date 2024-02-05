@@ -28,7 +28,6 @@ pub enum Error {
     InvalidSecretKey,
     InvalidMnemonic,
     LoadError,
-    LockError,
     SyncError,
     TransactionNotFound,
 }

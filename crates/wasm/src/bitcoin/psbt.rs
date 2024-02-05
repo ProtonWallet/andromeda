@@ -56,7 +56,7 @@ impl WasmPartiallySignedTransaction {
 
         inner
             .write()
-            .map_err(|_| WasmError::LockError.into())?
+            .expect("lock")
             .get_mutable_wallet()
             .sign(&mut self.inner, SignOptions::default())
             .map_err(|_| WasmError::CannotSignPsbt.into())?;

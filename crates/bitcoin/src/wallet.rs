@@ -85,7 +85,7 @@ where
     pub async fn get_balance(&self) -> Result<Balance, Error> {
         let async_iter = self.accounts.keys().map(|account_key| async move {
             let account = self.accounts.get(&account_key).ok_or(Error::AccountNotFound)?;
-            let account_guard = account.read().map_err(|_| Error::LockError)?;
+            let account_guard = account.read().expect("lock");
             account_guard.get_balance()
         });
 
@@ -125,7 +125,7 @@ where
             .keys()
             .map(|account_key| {
                 let account = self.accounts.get(&account_key).ok_or(Error::AccountNotFound)?;
-                let account_guard = account.read().map_err(|_| Error::LockError)?;
+                let account_guard = account.read().expect("lock");
                 let wallet = account_guard.get_wallet();
 
                 let transactions = wallet.list_transactions(true).map_err(|e| e.into())?;
@@ -152,7 +152,7 @@ where
         let account = self.accounts.get(derivation_path);
 
         match account {
-            Some(account) => account.read().map_err(|_| Error::LockError)?.get_transaction(txid),
+            Some(account) => account.read().expect("lock").get_transaction(txid),
             _ => Err(Error::InvalidAccountIndex),
         }
     }

@@ -191,7 +191,7 @@ where
     /// let updated = tx_builder.set_account(account).await.unwrap();
     /// ```
     pub async fn set_account(&self, account: Arc<RwLock<Account<D>>>) -> Result<Self, Error> {
-        let balance = &account.read().map_err(|_| Error::LockError)?.get_balance()?;
+        let balance = &account.read().expect("lock").get_balance()?;
 
         let tx_builder = TxBuilder {
             account: Some(account.clone()),
@@ -529,7 +529,7 @@ where
     /// The resulting psbt can then be provided to Account.sign() method
     pub async fn create_pbst_with_coin_selection(&self, allow_dust: bool) -> Result<PartiallySignedTransaction, Error> {
         let account = self.account.clone().ok_or(Error::AccountNotFound)?;
-        let mut account_write_lock = account.write().map_err(|_| Error::LockError)?;
+        let mut account_write_lock = account.write().expect("lock");
         let wallet = account_write_lock.get_mutable_wallet();
 
         let updated = match self.coin_selection {
