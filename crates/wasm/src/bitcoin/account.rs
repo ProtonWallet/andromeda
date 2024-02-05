@@ -162,12 +162,7 @@ impl WasmAccount {
 
     #[wasm_bindgen(js_name = getDerivationPath)]
     pub async fn get_derivation_path(&self) -> Result<String, DetailledWasmError> {
-        let derivation_path = self
-            .inner
-            .read()
-            .expect("lock")
-            .get_derivation_path()
-            .to_string();
+        let derivation_path = self.inner.read().expect("lock").get_derivation_path().to_string();
 
         Ok(derivation_path)
     }
