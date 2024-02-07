@@ -1,6 +1,6 @@
 use andromeda_bitcoin::{
     account::{build_account_derivation_path, AccountConfig},
-    wallet::{Wallet, WalletConfig},
+    wallet::Wallet,
     BdkMemoryDatabase, DerivationPath,
 };
 use wasm_bindgen::prelude::*;
@@ -23,41 +23,34 @@ pub struct WasmWallet {
     inner: Wallet<BdkMemoryDatabase>,
 }
 
-#[wasm_bindgen(getter_with_clone)]
-#[derive(Clone)]
-pub struct WasmWalletConfig {
-    pub network: WasmNetwork,
-    pub no_persist: bool,
-}
-
-impl Into<WalletConfig> for &WasmWalletConfig {
-    fn into(self) -> WalletConfig {
-        WalletConfig {
-            network: self.network.into(),
-        }
-    }
-}
-
 #[wasm_bindgen]
-impl WasmWalletConfig {
-    #[wasm_bindgen(constructor)]
-    pub fn new(network: Option<WasmNetwork>, no_persist: Option<bool>) -> Self {
-        Self {
-            network: network.unwrap_or(WasmNetwork::Bitcoin),
-            no_persist: no_persist.unwrap_or(false),
-        }
-    }
+extern "C" {
+    #[wasm_bindgen(typescript_type = "[WasmScriptType, number]")]
+    pub type AccountConfigTupple;
 }
 
 #[wasm_bindgen]
 impl WasmWallet {
     #[wasm_bindgen(constructor)]
     pub fn new(
+        network: WasmNetwork,
         bip39_mnemonic: String,
         bip38_passphrase: Option<String>,
-        config: &WasmWalletConfig,
+        accounts: Option<Vec<AccountConfigTupple>>,
     ) -> Result<WasmWallet, DetailledWasmError> {
-        let wallet = Wallet::new(bip39_mnemonic, bip38_passphrase, config.into()).map_err(|e| e.into())?;
+        let accounts = accounts.map_or(Vec::new(), |accounts| {
+            accounts
+                .into_iter()
+                .map(|acc| {
+                    let acc: (WasmScriptType, u32) = serde_wasm_bindgen::from_value(acc.into()).unwrap();
+                    (acc.0.into(), acc.1, BdkMemoryDatabase::new())
+                })
+                .collect::<Vec<_>>()
+        });
+
+        let wallet = Wallet::new_with_accounts(network.into(), bip39_mnemonic, bip38_passphrase, accounts)
+            .map_err(|e| e.into())?;
+
         Ok(Self { inner: wallet })
     }
 

@@ -8,6 +8,7 @@ use andromeda_bitcoin::{
     BdkMemoryDatabase,
 };
 
+use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
 use super::{
@@ -25,7 +26,7 @@ use super::{
 use crate::common::error::DetailledWasmError;
 
 #[wasm_bindgen]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Deserialize, Serialize)]
 pub enum WasmScriptType {
     Legacy,
     NestedSegwit,

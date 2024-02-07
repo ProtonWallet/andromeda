@@ -23,28 +23,17 @@ where
 {
     mprv: ExtendedPrivKey,
     accounts: HashMap<DerivationPath, Arc<RwLock<Account<Storage>>>>,
-    config: WalletConfig,
-}
-
-#[derive(Debug)]
-pub struct WalletConfig {
-    pub network: Network,
-}
-
-impl WalletConfig {
-    pub fn new(network: Network) -> Self {
-        Self { network }
-    }
+    network: Network,
 }
 
 impl<Storage> Wallet<Storage>
 where
     Storage: BatchDatabase + Debug,
 {
-    pub fn new(bip39_mnemonic: String, bip38_passphrase: Option<String>, config: WalletConfig) -> Result<Self, Error> {
+    pub fn new(network: Network, bip39_mnemonic: String, bip38_passphrase: Option<String>) -> Result<Self, Error> {
         let mnemonic = Mnemonic::from_string(bip39_mnemonic).map_err(|_| Error::InvalidMnemonic)?;
         let mprv = ExtendedPrivKey::new_master(
-            config.network.into(),
+            network.into(),
             &mnemonic.inner().to_seed(match bip38_passphrase {
                 Some(bip38_passphrase) => bip38_passphrase,
                 None => "".to_string(),
@@ -55,8 +44,23 @@ where
         Ok(Wallet {
             mprv,
             accounts: HashMap::new(),
-            config,
+            network,
         })
+    }
+
+    pub fn new_with_accounts(
+        network: Network,
+        bip39_mnemonic: String,
+        bip38_passphrase: Option<String>,
+        accounts: Vec<(ScriptType, u32, Storage)>,
+    ) -> Result<Self, Error> {
+        let mut wallet = Self::new(network, bip39_mnemonic, bip38_passphrase)?;
+
+        for (script_type, account_index, storage) in accounts {
+            wallet.add_account(script_type, account_index, storage)?;
+        }
+
+        Ok(wallet)
     }
 
     pub fn add_account(
@@ -67,7 +71,7 @@ where
     ) -> Result<DerivationPath, Error> {
         let account = Account::new(
             self.mprv,
-            AccountConfig::new(script_type, self.config.network.into(), account_index, None),
+            AccountConfig::new(script_type, self.network.into(), account_index, None),
             storage,
         )?;
 
@@ -158,7 +162,7 @@ where
     }
 
     pub fn get_network(&self) -> Network {
-        self.config.network
+        self.network
     }
 
     pub fn get_fingerprint(&self) -> String {

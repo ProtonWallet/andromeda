@@ -2,7 +2,7 @@ use andromeda_bitcoin::{
     account::{Account, ScriptType},
     bitcoin::Network,
     blockchain::Blockchain,
-    wallet::{Wallet, WalletConfig},
+    wallet::Wallet,
     BdkMemoryDatabase, DerivationPath,
 };
 use std::{
@@ -42,9 +42,7 @@ fn create_wallet(words: &mut SplitWhitespace<'_>) -> Result<Arc<Mutex<Wallet<Bdk
         .map_or(Ok(Network::Testnet), |str| str.to_string().try_into())
         .map_err(|_| "ERROR: invalid network")?;
 
-    let config = WalletConfig::new(network);
-
-    let wallet = Wallet::new(bip39, bip38, config);
+    let wallet = Wallet::new(network, bip39, bip38);
 
     wallet
         .map(|wallet| Arc::new(Mutex::new(wallet)))
