@@ -82,7 +82,7 @@ impl Into<WasmError> for Error {
 
 impl Into<DetailledWasmError> for Error {
     fn into(self) -> DetailledWasmError {
-        let wasm_error: DetailledWasmError = self.into();
+        let wasm_error: WasmError = self.into();
         wasm_error.into()
     }
 }
