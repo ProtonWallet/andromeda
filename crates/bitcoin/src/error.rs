@@ -11,6 +11,7 @@ pub enum Error {
     BdkError(BdkError),
     Bip32Error(Bip32Error),
     Bip39Error(Option<Bip39Error>),
+    CannotBroadcastTransaction,
     CannotComputeTxFees,
     CannotGetFeeEstimation,
     CannotCreateAddressFromScript,

@@ -22,7 +22,7 @@ use super::{
         utxo::WasmUtxo,
     },
 };
-use crate::common::error::{DetailledWasmError, WasmError};
+use crate::common::error::DetailledWasmError;
 
 #[wasm_bindgen]
 #[derive(Clone, Copy)]

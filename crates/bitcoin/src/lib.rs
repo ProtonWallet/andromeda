@@ -1,5 +1,6 @@
 pub mod account;
 pub mod bitcoin;
+pub mod blockchain;
 pub mod constants;
 pub mod error;
 pub mod mnemonic;

@@ -17,6 +17,7 @@ use bdk::{
     wallet::{AddressIndex, AddressInfo},
     Balance as BdkBalance, KeychainKind, LocalUtxo, SignOptions, SyncOptions, Wallet,
 };
+use bitcoin::Transaction;
 use miniscript::{
     bitcoin::{bip32::DerivationPath, psbt::PartiallySignedTransaction, Address, Network as BdkNetwork, Txid},
     descriptor::DescriptorSecretKey,
@@ -327,6 +328,16 @@ where
         let sign_options = sign_options.unwrap_or_default();
 
         self.wallet.sign(psbt, sign_options).map_err(|e| e.into())
+    }
+
+    /// Broadcasts a given transaction
+    pub async fn broadcast(&self, transaction: Transaction) -> Result<(), Error> {
+        let blockchain = EsploraBlockchain::new("https://mempool.space/testnet/api", 20);
+
+        blockchain
+            .broadcast(&transaction)
+            .await
+            .map_err(|_| Error::CannotBroadcastTransaction)
     }
 
     /// Perform a full sync for the account
