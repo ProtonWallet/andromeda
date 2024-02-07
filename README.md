@@ -1,5 +1,3 @@
-# The Bitcoin Dev Kit
-
 <div align="center">
   <h1>Andromeda</h1>
 
