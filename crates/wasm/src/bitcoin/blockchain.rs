@@ -27,12 +27,9 @@ impl WasmBlockchain {
     #[wasm_bindgen(js_name = fullSync)]
     pub async fn full_sync(&self, account: &WasmAccount) -> Result<(), WasmError> {
         let inner = account.get_inner();
-        let mut inner = inner.write().unwrap();
+        let inner = inner.read().unwrap();
 
-        self.0
-            .full_sync(inner.get_mutable_wallet())
-            .await
-            .map_err(|e| e.into())?;
+        self.0.full_sync(inner.get_wallet()).await.map_err(|e| e.into())?;
 
         Ok(())
     }

@@ -1,9 +1,10 @@
 [workspace]
 resolver = "2"
 members = [
-    # "crates/api", Muon is not ready yet
+    "crates/api", # Muon is not ready yet
     "crates/bitcoin",
     "crates/wasm",
+    "examples/cli",
 ]
 [profile.release]
 opt-level = "s" # Tell `rustc` to optimize for small code size.

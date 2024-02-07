@@ -5,6 +5,7 @@ pub mod settings;
 pub mod transaction;
 pub mod wallet;
 
-mod utils;
+// TODO: make this private
+pub mod utils;
 
 pub const BASE_WALLET_API_V1: &str = "/wallet/v1";

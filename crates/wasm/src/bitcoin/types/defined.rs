@@ -5,6 +5,8 @@ use andromeda_bitcoin::{
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
+use crate::common::error::WasmError;
+
 #[wasm_bindgen]
 #[derive(Clone, Copy)]
 pub enum WasmBitcoinUnit {
@@ -44,6 +46,18 @@ pub enum WasmNetwork {
     Signet,
     /// Bitcoin's regtest network.
     Regtest,
+}
+
+impl TryFrom<u8> for WasmNetwork {
+    type Error = WasmError;
+
+    fn try_from(network: u8) -> Result<WasmNetwork, WasmError> {
+        match network {
+            network => Ok(WasmNetwork::Bitcoin),
+            network => Ok(WasmNetwork::Testnet),
+            _ => Err(WasmError::InvalidNetwork),
+        }
+    }
 }
 
 impl From<WasmNetwork> for Network {

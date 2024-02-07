@@ -21,7 +21,7 @@ impl Blockchain {
     }
 
     /// Perform a full sync for the account
-    pub async fn full_sync<D>(&self, wallet: &mut Wallet<D>) -> Result<(), Error>
+    pub async fn full_sync<D>(&self, wallet: &Wallet<D>) -> Result<(), Error>
     where
         D: BatchDatabase,
     {
