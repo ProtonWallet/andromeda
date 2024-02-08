@@ -1,9 +1,9 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/api", # Muon is not ready yet
+    # "crates/api", # Muon is not ready yet
     "crates/bitcoin",
-    "crates/wasm",
+    # "crates/wasm", # Muon wasm depends on Muon
     "examples/cli",
 ]
 [profile.release]
