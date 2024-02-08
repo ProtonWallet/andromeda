@@ -9,11 +9,10 @@ use wasm_bindgen::prelude::*;
 // Transaction
 
 #[wasm_bindgen(typescript_custom_section)]
-pub const IWasmDerivationPath: &'static str = r#"
-interface IWasmTransactionTime {
-    confirmed: boolean;
-    confirmation_time?: BigInt;
-    last_seen?: BigInt;
+pub const IWasmBlockTime: &'static str = r#"
+interface IWasmBlockTime {
+    height: BigInt,
+    timestamp: BigInt,
 }
 "#;
 
@@ -30,9 +29,10 @@ interface IWasmDerivationPath {
 pub const IWasmSimpleTransaction: &'static str = r#"
 interface IWasmSimpleTransaction {
     txid: string;
-    value: BigInt;
+    sent: BigInt;
+    received: BigInt;
     fees?: BigInt;
-    time: IWasmTransactionTime,
+    confirmation_time?: IWasmBlockTime
     account_key?: IWasmDerivationPath,
 }
 "#;
@@ -79,8 +79,6 @@ interface IWasmUtxo {
     script_pubkey: IWasmScript;
     keychain: IWasmKeychainKind;
     is_spent: boolean;
-    derivation_index: BigInt;
-    confirmation_time: IWasmTransactionTime;
 }
 "#;
 
