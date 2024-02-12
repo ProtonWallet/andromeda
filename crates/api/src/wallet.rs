@@ -1,3 +1,6 @@
+use std::sync::Arc;
+
+use async_std::sync::RwLock;
 use muon::{
     request::{Error as ReqError, Method, ProtonRequest, Response},
     session::Session,
@@ -55,7 +58,7 @@ impl Into<String> for ScriptType {
 }
 
 pub struct WalletClient {
-    session: Session,
+    session: Arc<RwLock<Session>>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -244,14 +247,14 @@ struct DeleteWalletTransactionResponseBody {
 }
 
 impl WalletClient {
-    pub fn new(session: Session) -> Self {
+    pub fn new(session: Arc<RwLock<Session>>) -> Self {
         Self { session }
     }
 
     pub async fn get_wallets(&self) -> Result<Vec<WalletData>, ReqError> {
         let request = ProtonRequest::new(Method::GET, format!("{}/wallets", BASE_WALLET_API_V1));
 
-        let response = self.session.bind(request)?.send().await?;
+        let response = self.session.read().await.bind(request)?.send().await?;
         println!("response here: {:?}", response.to_json::<serde_json::Value>()?);
         let parsed = response.to_json::<GetWalletsResponseBody>()?;
 
@@ -263,7 +266,7 @@ impl WalletClient {
             .json_body(payload)
             .unwrap();
 
-        let response = self.session.bind(request).unwrap().send().await.unwrap();
+        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
         println!("response here: {:?}", response.to_json::<serde_json::Value>().unwrap());
         let parsed = response.to_json::<CreateWalletResponseBody>().unwrap();
 
@@ -280,7 +283,7 @@ impl WalletClient {
             format!("{}/wallets/{}/accounts", BASE_WALLET_API_V1, wallet_id),
         );
 
-        let response = self.session.bind(request).unwrap().send().await.unwrap();
+        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
         let parsed = response.to_json::<GetWalletAccountsResponseBody>().unwrap();
 
         Ok(parsed.Accounts)
@@ -298,7 +301,7 @@ impl WalletClient {
         .json_body(payload)
         .unwrap();
 
-        let response = self.session.bind(request).unwrap().send().await.unwrap();
+        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
         println!("response here: {:?}", response.to_json::<serde_json::Value>().unwrap());
         let parsed = response.to_json::<CreateWalletAccountResponseBody>().unwrap();
 
@@ -323,7 +326,7 @@ impl WalletClient {
         .json_body(payload)
         .unwrap();
 
-        let response = self.session.bind(request).unwrap().send().await.unwrap();
+        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
         let parsed = response.to_json::<UpdateWalletAccountLabelResponseBody>().unwrap();
 
         Ok(parsed.Account)
@@ -338,7 +341,7 @@ impl WalletClient {
             ),
         );
 
-        let response = self.session.bind(request).unwrap().send().await.unwrap();
+        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
         let _parsed = response.to_json::<DeleteWalletAccountResponseBody>().unwrap();
 
         Ok(())
@@ -347,7 +350,7 @@ impl WalletClient {
     pub async fn get_wallet_transactions(&self, wallet_id: String) -> Result<Vec<WalletTransaction>, ReqError> {
         let request = ProtonRequest::new(Method::GET, format!("{}/wallets/{}", BASE_WALLET_API_V1, wallet_id));
 
-        let response = self.session.bind(request).unwrap().send().await.unwrap();
+        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
         let parsed = response.to_json::<GetWalletTransactionsResponseBody>().unwrap();
 
         Ok(parsed.WalletTransactions)
@@ -365,7 +368,7 @@ impl WalletClient {
         .json_body(payload)
         .unwrap();
 
-        let response = self.session.bind(request).unwrap().send().await.unwrap();
+        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
         let parsed = response.to_json::<CreateWalletTransactionResponseBody>().unwrap();
 
         Ok(parsed.WalletTransaction)
@@ -389,7 +392,7 @@ impl WalletClient {
         .json_body(payload)
         .unwrap();
 
-        let response = self.session.bind(request).unwrap().send().await.unwrap();
+        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
         let parsed = response.to_json::<UpdateWalletTransactionLabelResponseBody>().unwrap();
 
         Ok(parsed.WalletTransaction)
@@ -408,7 +411,7 @@ impl WalletClient {
             ),
         );
 
-        let response = self.session.bind(request).unwrap().send().await.unwrap();
+        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
         let _parsed = response.to_json::<DeleteWalletTransactionResponseBody>().unwrap();
 
         Ok(())
@@ -417,21 +420,10 @@ impl WalletClient {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
-    use bitcoin::bip32::DerivationPath;
-    use muon::{session::Session, AppSpec, Product, SimpleAuthStore};
-
     use super::{CreateWalletAccountRequestBody, CreateWalletRequestBody, ScriptType, WalletClient};
-
-    async fn common_session() -> Session {
-        let app = AppSpec::new(Product::Unspecified, "web-wallet@5.0.999.999-dev".to_string(), "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36".to_string());
-        let auth = SimpleAuthStore::new("atlas");
-        let mut session = Session::new(auth, app).unwrap();
-
-        session.authenticate("pro", "pro").await.unwrap();
-        session
-    }
+    use crate::utils::common_session;
+    use bitcoin::bip32::DerivationPath;
+    use std::str::FromStr;
 
     #[tokio::test]
     #[ignore]

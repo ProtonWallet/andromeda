@@ -1,7 +1,8 @@
-use std::str::FromStr;
+use std::{str::FromStr, sync::Arc};
 
 use super::BASE_WALLET_API_V1;
 
+use async_std::sync::RwLock;
 use bitcoin::{block::Header as BlockHeader, consensus::deserialize, hashes::hex::FromHex, Block, BlockHash};
 use muon::{
     request::{Error as ReqError, Method, ProtonRequest, Response},
@@ -10,7 +11,7 @@ use muon::{
 use serde::Deserialize;
 
 pub struct BlockClient {
-    session: Session,
+    session: Arc<RwLock<Session>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -78,7 +79,7 @@ struct GetTipHashResponseBody {
 }
 
 impl BlockClient {
-    pub fn new(session: Session) -> Self {
+    pub fn new(session: Arc<RwLock<Session>>) -> Self {
         Self { session }
     }
 
@@ -90,7 +91,7 @@ impl BlockClient {
         };
 
         let request = ProtonRequest::new(Method::GET, url);
-        let response = self.session.bind(request).unwrap().send().await.unwrap();
+        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
 
         println!("{:?}", response.to_json::<serde_json::Value>().unwrap());
 
@@ -105,7 +106,7 @@ impl BlockClient {
             format!("{}/blocks/{}/header", BASE_WALLET_API_V1, block_hash),
         );
 
-        let response = self.session.bind(request).unwrap().send().await.unwrap();
+        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
         let parsed = response.to_json::<GetHeaderByHashResponseBody>().unwrap();
 
         Ok(deserialize(&Vec::from_hex(&parsed.BlockHeader).unwrap()).unwrap())
@@ -117,7 +118,7 @@ impl BlockClient {
             format!("{}/blocks/height/{}/hash", BASE_WALLET_API_V1, block_height),
         );
 
-        let response = self.session.bind(request).unwrap().send().await.unwrap();
+        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
         let parsed = response.to_json::<GetBlockHashByBlockHeightResponseBody>().unwrap();
 
         Ok(BlockHash::from_str(&parsed.BlockHash).unwrap())
@@ -129,7 +130,7 @@ impl BlockClient {
             format!("{}/blocks/{}/status", BASE_WALLET_API_V1, block_hash),
         );
 
-        let response = self.session.bind(request).unwrap().send().await.unwrap();
+        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
         let parsed = response.to_json::<GetBlockStatusResponseBody>().unwrap();
 
         Ok(parsed.BlockStatus)
@@ -138,7 +139,7 @@ impl BlockClient {
     pub async fn get_block_by_hash(&self, block_hash: &BlockHash) -> Result<Block, ReqError> {
         let request = ProtonRequest::new(Method::GET, format!("{}/blocks/{}/raw", BASE_WALLET_API_V1, block_hash));
 
-        let response = self.session.bind(request).unwrap().send().await.unwrap();
+        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
 
         Ok(deserialize(response.body()).unwrap())
     }
@@ -149,7 +150,7 @@ impl BlockClient {
             format!("{}/blocks/{}/txid/{}", BASE_WALLET_API_V1, block_hash, index),
         );
 
-        let response = self.session.bind(request).unwrap().send().await.unwrap();
+        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
         let parsed = response.to_json::<GetTxIdAtBlockIndexResponseBody>().unwrap();
 
         Ok(parsed.TransactionId)
@@ -158,7 +159,7 @@ impl BlockClient {
     pub async fn get_tip_height(&self) -> Result<u32, ReqError> {
         let request = ProtonRequest::new(Method::GET, format!("{}/blocks/tip/height", BASE_WALLET_API_V1,));
 
-        let response = self.session.bind(request).unwrap().send().await.unwrap();
+        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
         let parsed = response.to_json::<GetTipHeightResponseBody>().unwrap();
 
         Ok(parsed.Height)
@@ -167,7 +168,7 @@ impl BlockClient {
     pub async fn get_tip_hash(&self) -> Result<BlockHash, ReqError> {
         let request = ProtonRequest::new(Method::GET, format!("{}/blocks/tip/hash", BASE_WALLET_API_V1,));
 
-        let response = self.session.bind(request).unwrap().send().await.unwrap();
+        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
         let parsed = response.to_json::<GetTipHashResponseBody>().unwrap();
 
         Ok(BlockHash::from_str(&parsed.BlockHash).unwrap())
@@ -176,21 +177,12 @@ impl BlockClient {
 
 #[cfg(test)]
 mod tests {
+    use bitcoin::BlockHash;
     use std::str::FromStr;
 
-    use bitcoin::BlockHash;
-    use muon::{session::Session, AppSpec, Product, SimpleAuthStore};
+    use crate::utils::common_session;
 
     use super::BlockClient;
-
-    async fn common_session() -> Session {
-        let app = AppSpec::new(Product::Unspecified, "web-wallet@5.0.999.999-dev".to_string(), "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36".to_string());
-        let auth = SimpleAuthStore::new("atlas");
-        let mut session = Session::new(auth, app).unwrap();
-
-        session.authenticate("pro", "pro").await.unwrap();
-        session
-    }
 
     #[tokio::test]
     #[ignore]

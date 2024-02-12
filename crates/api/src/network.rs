@@ -1,3 +1,6 @@
+use std::sync::Arc;
+
+use async_std::sync::RwLock;
 use muon::{
     request::{Error as ReqError, Method, ProtonRequest, Response},
     session::Session,
@@ -7,7 +10,7 @@ use serde::Deserialize;
 use crate::BASE_WALLET_API_V1;
 
 pub struct NetworkClient {
-    session: Session,
+    session: Arc<RwLock<Session>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -18,13 +21,13 @@ struct GetNetworkResponseBody {
 }
 
 impl NetworkClient {
-    pub fn new(session: Session) -> Self {
+    pub fn new(session: Arc<RwLock<Session>>) -> Self {
         Self { session }
     }
 
     pub async fn get_network(&self) -> Result<u8, ReqError> {
         let request = ProtonRequest::new(Method::GET, format!("{}/network", BASE_WALLET_API_V1));
-        let response = self.session.bind(request)?.send().await?;
+        let response = self.session.read().await.bind(request)?.send().await?;
 
         let parsed = response.to_json::<GetNetworkResponseBody>()?;
         Ok(parsed.Network)
@@ -34,7 +37,6 @@ impl NetworkClient {
 #[cfg(test)]
 mod tests {
     use crate::utils::common_session;
-    use wasm_bindgen_test::*;
 
     use super::NetworkClient;
 
