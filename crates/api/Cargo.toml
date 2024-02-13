@@ -6,7 +6,7 @@ edition = "2021"
 
 [dependencies]
 andromeda-common = { path = "../common" }
-muon = { version = "0.1.0", path = "../../../../muon" }
+muon = { version = "0.1.0", registry = "protonvpn" }
 async-std = "1.10"
 
 serde = { version = "1.0.144", features = ["derive"] }
