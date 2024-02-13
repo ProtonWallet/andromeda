@@ -1,3 +1,4 @@
+use andromeda_api::error::Error as ApiError;
 use andromeda_bitcoin::error::Error;
 use core::fmt::Debug;
 use wasm_bindgen::prelude::*;
@@ -6,6 +7,7 @@ use wasm_bindgen::prelude::*;
 #[derive(Clone, Copy, Debug)]
 pub enum WasmError {
     AccountNotFound,
+    ApiError,
     BdkError,
     Bip32Error,
     Bip39Error,
@@ -46,6 +48,12 @@ impl Into<DetailledWasmError> for WasmError {
             kind: self,
             details: JsValue::null(),
         }
+    }
+}
+
+impl Into<WasmError> for ApiError {
+    fn into(self) -> WasmError {
+        WasmError::ApiError
     }
 }
 

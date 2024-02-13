@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use async_std::sync::RwLock;
 use muon::{
-    request::{Error as ReqError, Method, ProtonRequest, Response},
+    request::{Method, ProtonRequest, Response},
     session::Session,
 };
 use serde::{Deserialize, Serialize};
 
-use crate::BASE_WALLET_API_V1;
+use crate::{error::Error, BASE_WALLET_API_V1};
 
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
 pub enum BitcoinUnit {
@@ -26,6 +26,7 @@ pub enum FiatCurrency {
     CHF,
 }
 
+#[derive(Clone)]
 pub struct SettingsClient {
     session: Arc<RwLock<Session>>,
 }
@@ -76,58 +77,117 @@ impl SettingsClient {
         Self { session }
     }
 
-    pub async fn get_user_settings(&self) -> Result<UserSettings, ReqError> {
+    pub async fn get_user_settings(&self) -> Result<UserSettings, Error> {
         let request = ProtonRequest::new(Method::GET, format!("{}/settings", BASE_WALLET_API_V1));
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
 
-        let parsed = response.to_json::<GetUserSettingsResponseBody>()?;
+        let parsed = response
+            .to_json::<GetUserSettingsResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
+
         Ok(parsed.WalletUserSettings)
     }
 
-    pub async fn bitcoin_unit(&self, symbol: BitcoinUnit) -> Result<UserSettings, ReqError> {
+    pub async fn bitcoin_unit(&self, symbol: BitcoinUnit) -> Result<UserSettings, Error> {
         let request = ProtonRequest::new(Method::PUT, format!("{}/settings/currency/bitcoin", BASE_WALLET_API_V1))
-            .json_body(UpdateBitcoinUnitRequestBody { Symbol: symbol })?;
+            .json_body(UpdateBitcoinUnitRequestBody { Symbol: symbol })
+            .map_err(|_| Error::SerializeError)?;
 
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
 
-        let parsed = response.to_json::<GetUserSettingsResponseBody>()?;
+        let parsed = response
+            .to_json::<GetUserSettingsResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
+
         Ok(parsed.WalletUserSettings)
     }
 
-    pub async fn fiat_currency(&self, symbol: FiatCurrency) -> Result<UserSettings, ReqError> {
+    pub async fn fiat_currency(&self, symbol: FiatCurrency) -> Result<UserSettings, Error> {
         let request = ProtonRequest::new(Method::PUT, format!("{}/settings/currency/fiat", BASE_WALLET_API_V1))
-            .json_body(UpdateFiatCurrencyRequestBody { Symbol: symbol })?;
+            .json_body(UpdateFiatCurrencyRequestBody { Symbol: symbol })
+            .map_err(|_| Error::SerializeError)?;
 
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
 
-        let parsed = response.to_json::<GetUserSettingsResponseBody>()?;
+        let parsed = response
+            .to_json::<GetUserSettingsResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
+
         Ok(parsed.WalletUserSettings)
     }
 
-    pub async fn two_fa_threshold(&self, amount: u64) -> Result<UserSettings, ReqError> {
+    pub async fn two_fa_threshold(&self, amount: u64) -> Result<UserSettings, Error> {
         let request = ProtonRequest::new(Method::PUT, format!("{}/settings/2fa/threshold", BASE_WALLET_API_V1))
             .json_body(Update2FAThresholdRequestBody {
                 TwoFactorAmountThreshold: amount,
-            })?;
+            })
+            .map_err(|_| Error::SerializeError)?;
 
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
 
-        let parsed = response.to_json::<GetUserSettingsResponseBody>()?;
+        let parsed = response
+            .to_json::<GetUserSettingsResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
+
         Ok(parsed.WalletUserSettings)
     }
 
-    pub async fn hide_empty_used_addresses(&self, hide_empty_used_addresses: bool) -> Result<UserSettings, ReqError> {
+    pub async fn hide_empty_used_addresses(&self, hide_empty_used_addresses: bool) -> Result<UserSettings, Error> {
         let request = ProtonRequest::new(
             Method::PUT,
             format!("{}/settings/addresses/used/hide", BASE_WALLET_API_V1),
         )
         .json_body(UpdateHideEmptyUsedAddressesRequestBody {
             HideEmptyUsedAddresses: hide_empty_used_addresses.into(),
-        })?;
+        })
+        .map_err(|_| Error::SerializeError)?;
 
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
 
-        let parsed = response.to_json::<GetUserSettingsResponseBody>()?;
+        let parsed = response
+            .to_json::<GetUserSettingsResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
+
         Ok(parsed.WalletUserSettings)
     }
 }

@@ -1,4 +1,7 @@
-use bdk::{database::BatchDatabase, psbt::PsbtUtils, BlockTime, TransactionDetails as BdkTransactionDetails, Wallet};
+use bdk::{
+    database::BatchDatabase, psbt::PsbtUtils, BlockTime, TransactionDetails as BdkTransactionDetails,
+    Wallet as BdkWallet,
+};
 use bitcoin::{bip32::DerivationPath, psbt::PartiallySignedTransaction, TxIn, TxOut, Txid};
 use miniscript::bitcoin::{Address, ScriptBuf};
 
@@ -29,7 +32,7 @@ pub struct TransactionDetails {
 }
 
 impl TransactionDetails {
-    pub fn from_bdk<Storage>(value: BdkTransactionDetails, wallet: &Wallet<Storage>) -> Result<Self, Error>
+    pub fn from_bdk<Storage>(value: BdkTransactionDetails, wallet: &BdkWallet<Storage>) -> Result<Self, Error>
     where
         Storage: BatchDatabase,
     {
@@ -51,7 +54,7 @@ impl TransactionDetails {
 }
 
 impl TransactionDetails {
-    pub fn from_psbt<Storage>(psbt: &PartiallySignedTransaction, wallet: &Wallet<Storage>) -> Result<Self, Error>
+    pub fn from_psbt<Storage>(psbt: &PartiallySignedTransaction, wallet: &BdkWallet<Storage>) -> Result<Self, Error>
     where
         Storage: BatchDatabase,
     {
@@ -122,7 +125,7 @@ pub struct DetailledTxOutput {
 }
 
 impl DetailledTxOutput {
-    pub fn from_txout<Storage>(output: TxOut, wallet: &Wallet<Storage>) -> Result<DetailledTxOutput, Error>
+    pub fn from_txout<Storage>(output: TxOut, wallet: &BdkWallet<Storage>) -> Result<DetailledTxOutput, Error>
     where
         Storage: BatchDatabase,
     {

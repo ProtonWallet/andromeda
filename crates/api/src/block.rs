@@ -1,11 +1,13 @@
 use std::{str::FromStr, sync::Arc};
 
+use crate::error::Error;
+
 use super::BASE_WALLET_API_V1;
 
 use async_std::sync::RwLock;
 use bitcoin::{block::Header as BlockHeader, consensus::deserialize, hashes::hex::FromHex, Block, BlockHash};
 use muon::{
-    request::{Error as ReqError, Method, ProtonRequest, Response},
+    request::{Method, ProtonRequest, Response},
     session::Session,
 };
 use serde::Deserialize;
@@ -84,94 +86,181 @@ impl BlockClient {
     }
 
     /// Get recent block summaries, starting at tip or height if provided
-    pub async fn get_blocks(&self, height: Option<u32>) -> Result<Vec<Block>, ReqError> {
+    pub async fn get_blocks(&self, height: Option<u32>) -> Result<Vec<Block>, Error> {
         let url = match height {
             Some(height) => format!("{}/blocks/{}", BASE_WALLET_API_V1, height),
             None => format!("{}/blocks", BASE_WALLET_API_V1),
         };
 
         let request = ProtonRequest::new(Method::GET, url);
-        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
 
         println!("{:?}", response.to_json::<serde_json::Value>().unwrap());
 
-        let parsed = response.to_json::<GetBlocksResponseBody>().unwrap();
+        let parsed = response
+            .to_json::<GetBlocksResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
         Ok(parsed.Blocks)
     }
 
     /// Get a [`BlockHeader`] given a particular block hash.
-    pub async fn get_header_by_hash(&self, block_hash: &BlockHash) -> Result<BlockHeader, ReqError> {
+    pub async fn get_header_by_hash(&self, block_hash: &BlockHash) -> Result<BlockHeader, Error> {
         let request = ProtonRequest::new(
             Method::GET,
             format!("{}/blocks/{}/header", BASE_WALLET_API_V1, block_hash),
         );
 
-        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
-        let parsed = response.to_json::<GetHeaderByHashResponseBody>().unwrap();
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
 
-        Ok(deserialize(&Vec::from_hex(&parsed.BlockHeader).unwrap()).unwrap())
+        let parsed = response
+            .to_json::<GetHeaderByHashResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
+
+        Ok(
+            deserialize(&Vec::from_hex(&parsed.BlockHeader).map_err(|_| Error::DeserializeError)?)
+                .map_err(|_| Error::DeserializeError)?,
+        )
     }
 
-    pub async fn get_block_hash(&self, block_height: u32) -> Result<BlockHash, ReqError> {
+    pub async fn get_block_hash(&self, block_height: u32) -> Result<BlockHash, Error> {
         let request = ProtonRequest::new(
             Method::GET,
             format!("{}/blocks/height/{}/hash", BASE_WALLET_API_V1, block_height),
         );
 
-        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
-        let parsed = response.to_json::<GetBlockHashByBlockHeightResponseBody>().unwrap();
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
 
-        Ok(BlockHash::from_str(&parsed.BlockHash).unwrap())
+        let parsed = response
+            .to_json::<GetBlockHashByBlockHeightResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
+
+        Ok(BlockHash::from_str(&parsed.BlockHash).map_err(|_| Error::DeserializeError)?)
     }
 
-    pub async fn get_block_status(&self, block_hash: &BlockHash) -> Result<BlockStatus, ReqError> {
+    pub async fn get_block_status(&self, block_hash: &BlockHash) -> Result<BlockStatus, Error> {
         let request = ProtonRequest::new(
             Method::GET,
             format!("{}/blocks/{}/status", BASE_WALLET_API_V1, block_hash),
         );
 
-        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
-        let parsed = response.to_json::<GetBlockStatusResponseBody>().unwrap();
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+
+        let parsed = response
+            .to_json::<GetBlockStatusResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
 
         Ok(parsed.BlockStatus)
     }
 
-    pub async fn get_block_by_hash(&self, block_hash: &BlockHash) -> Result<Block, ReqError> {
+    pub async fn get_block_by_hash(&self, block_hash: &BlockHash) -> Result<Block, Error> {
         let request = ProtonRequest::new(Method::GET, format!("{}/blocks/{}/raw", BASE_WALLET_API_V1, block_hash));
 
-        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
 
-        Ok(deserialize(response.body()).unwrap())
+        Ok(deserialize(response.body()).map_err(|_| Error::DeserializeError)?)
     }
 
-    pub async fn get_txid_at_block_index(&self, block_hash: &BlockHash, index: usize) -> Result<String, ReqError> {
+    pub async fn get_txid_at_block_index(&self, block_hash: &BlockHash, index: usize) -> Result<String, Error> {
         let request = ProtonRequest::new(
             Method::GET,
             format!("{}/blocks/{}/txid/{}", BASE_WALLET_API_V1, block_hash, index),
         );
 
-        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
-        let parsed = response.to_json::<GetTxIdAtBlockIndexResponseBody>().unwrap();
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+
+        let parsed = response
+            .to_json::<GetTxIdAtBlockIndexResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
 
         Ok(parsed.TransactionId)
     }
 
-    pub async fn get_tip_height(&self) -> Result<u32, ReqError> {
+    pub async fn get_tip_height(&self) -> Result<u32, Error> {
         let request = ProtonRequest::new(Method::GET, format!("{}/blocks/tip/height", BASE_WALLET_API_V1,));
 
-        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
-        let parsed = response.to_json::<GetTipHeightResponseBody>().unwrap();
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+
+        let parsed = response
+            .to_json::<GetTipHeightResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
 
         Ok(parsed.Height)
     }
 
-    pub async fn get_tip_hash(&self) -> Result<BlockHash, ReqError> {
+    pub async fn get_tip_hash(&self) -> Result<BlockHash, Error> {
         let request = ProtonRequest::new(Method::GET, format!("{}/blocks/tip/hash", BASE_WALLET_API_V1,));
 
-        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
-        let parsed = response.to_json::<GetTipHashResponseBody>().unwrap();
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
 
-        Ok(BlockHash::from_str(&parsed.BlockHash).unwrap())
+        let parsed = response
+            .to_json::<GetTipHashResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
+
+        Ok(BlockHash::from_str(&parsed.BlockHash).map_err(|_| Error::DeserializeError)?)
     }
 }
 

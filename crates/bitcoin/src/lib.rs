@@ -13,9 +13,10 @@ pub mod wallet;
 pub use bdk::{
     bitcoin::{
         bip32::{DerivationPath, ExtendedPrivKey},
+        block::Header as BlockHeader,
         blockdata::locktime::absolute::{Height, LockTime, Time},
         psbt::PartiallySignedTransaction,
-        Address, Network as BdkNetwork, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Witness,
+        Address, BlockHash, Network as BdkNetwork, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Witness,
     },
     database::MemoryDatabase as BdkMemoryDatabase,
     keys::{
