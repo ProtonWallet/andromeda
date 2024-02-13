@@ -1,3 +1,6 @@
+use std::sync::Arc;
+
+use async_std::sync::RwLock;
 use muon::{
     request::{Error as ReqError, Method, ProtonRequest, Response},
     session::Session,
@@ -24,7 +27,7 @@ pub enum FiatCurrency {
 }
 
 pub struct SettingsClient {
-    session: Session,
+    session: Arc<RwLock<Session>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -69,13 +72,13 @@ struct UpdateHideEmptyUsedAddressesRequestBody {
 }
 
 impl SettingsClient {
-    pub fn new(session: Session) -> Self {
+    pub fn new(session: Arc<RwLock<Session>>) -> Self {
         Self { session }
     }
 
     pub async fn get_user_settings(&self) -> Result<UserSettings, ReqError> {
         let request = ProtonRequest::new(Method::GET, format!("{}/settings", BASE_WALLET_API_V1));
-        let response = self.session.bind(request)?.send().await?;
+        let response = self.session.read().await.bind(request)?.send().await?;
 
         let parsed = response.to_json::<GetUserSettingsResponseBody>()?;
         Ok(parsed.WalletUserSettings)
@@ -85,7 +88,7 @@ impl SettingsClient {
         let request = ProtonRequest::new(Method::PUT, format!("{}/settings/currency/bitcoin", BASE_WALLET_API_V1))
             .json_body(UpdateBitcoinUnitRequestBody { Symbol: symbol })?;
 
-        let response = self.session.bind(request)?.send().await?;
+        let response = self.session.read().await.bind(request)?.send().await?;
 
         let parsed = response.to_json::<GetUserSettingsResponseBody>()?;
         Ok(parsed.WalletUserSettings)
@@ -95,7 +98,7 @@ impl SettingsClient {
         let request = ProtonRequest::new(Method::PUT, format!("{}/settings/currency/fiat", BASE_WALLET_API_V1))
             .json_body(UpdateFiatCurrencyRequestBody { Symbol: symbol })?;
 
-        let response = self.session.bind(request)?.send().await?;
+        let response = self.session.read().await.bind(request)?.send().await?;
 
         let parsed = response.to_json::<GetUserSettingsResponseBody>()?;
         Ok(parsed.WalletUserSettings)
@@ -107,7 +110,7 @@ impl SettingsClient {
                 TwoFactorAmountThreshold: amount,
             })?;
 
-        let response = self.session.bind(request)?.send().await?;
+        let response = self.session.read().await.bind(request)?.send().await?;
 
         let parsed = response.to_json::<GetUserSettingsResponseBody>()?;
         Ok(parsed.WalletUserSettings)
@@ -122,7 +125,7 @@ impl SettingsClient {
             HideEmptyUsedAddresses: hide_empty_used_addresses.into(),
         })?;
 
-        let response = self.session.bind(request)?.send().await?;
+        let response = self.session.read().await.bind(request)?.send().await?;
 
         let parsed = response.to_json::<GetUserSettingsResponseBody>()?;
         Ok(parsed.WalletUserSettings)
