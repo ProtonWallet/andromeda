@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{error::Error, BASE_WALLET_API_V1};
 
+#[derive(Clone)]
 pub struct TransactionClient {
     session: Arc<RwLock<Session>>,
 }

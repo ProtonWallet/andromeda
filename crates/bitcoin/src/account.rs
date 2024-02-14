@@ -15,7 +15,7 @@ use bdk::{
     database::BatchDatabase,
     descriptor,
     wallet::{AddressIndex, AddressInfo},
-    Balance as BdkBalance, KeychainKind, LocalUtxo, SignOptions, SyncOptions, Wallet,
+    Balance as BdkBalance, KeychainKind, LocalUtxo, SignOptions, SyncOptions, Wallet as BdkWallet,
 };
 use bitcoin::Transaction;
 use miniscript::{
@@ -39,7 +39,7 @@ where
     Storage: BatchDatabase,
 {
     derivation_path: DerivationPath,
-    wallet: Wallet<Storage>,
+    wallet: BdkWallet<Storage>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -171,10 +171,10 @@ where
         account_xprv: ExtendedPrivKey,
         config: AccountConfig,
         storage: Storage,
-    ) -> Result<Wallet<Storage>, Error> {
+    ) -> Result<BdkWallet<Storage>, Error> {
         let (external_descriptor, internal_descriptor) = build_account_descriptors(account_xprv, config)?;
 
-        Wallet::new(
+        BdkWallet::new(
             external_descriptor,
             Some(internal_descriptor),
             config.network.into(),
@@ -184,12 +184,12 @@ where
     }
 
     /// Returns a mutable reference to account's BdkWallet struct
-    pub fn get_mutable_wallet(&mut self) -> &mut Wallet<Storage> {
+    pub fn get_mutable_wallet(&mut self) -> &mut BdkWallet<Storage> {
         &mut self.wallet
     }
 
     /// Returns a reference to account's BdkWallet struct
-    pub fn get_wallet(&self) -> &Wallet<Storage> {
+    pub fn get_wallet(&self) -> &BdkWallet<Storage> {
         &self.wallet
     }
 

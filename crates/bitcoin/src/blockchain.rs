@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use bdk::{blockchain::EsploraBlockchain, database::BatchDatabase, SyncOptions, Wallet};
+use bdk::{blockchain::EsploraBlockchain, database::BatchDatabase, SyncOptions, Wallet as BdkWallet};
 use bitcoin::Transaction;
 
 use crate::error::Error;
@@ -21,7 +21,7 @@ impl Blockchain {
     }
 
     /// Perform a full sync for the account
-    pub async fn full_sync<D>(&self, wallet: &Wallet<D>) -> Result<(), Error>
+    pub async fn full_sync<D>(&self, wallet: &BdkWallet<D>) -> Result<(), Error>
     where
         D: BatchDatabase,
     {

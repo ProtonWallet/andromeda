@@ -5,6 +5,7 @@ pub enum Error {
     MuonError(MuonError),
     MuonSessionError(MuonSessionError),
     DeserializeError,
+    SerializeError,
     HttpError,
 }
 

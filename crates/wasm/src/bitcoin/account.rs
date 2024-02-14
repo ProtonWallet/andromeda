@@ -117,7 +117,7 @@ impl WasmAccountConfig {
 #[wasm_bindgen]
 impl WasmAccount {
     #[wasm_bindgen(js_name = getBitcoinUri)]
-    pub async fn get_bitcoin_uri(
+    pub fn get_bitcoin_uri(
         &mut self,
         index: Option<u32>,
         amount: Option<u64>,
@@ -137,7 +137,7 @@ impl WasmAccount {
     }
 
     #[wasm_bindgen]
-    pub async fn owns(&self, address: &WasmAddress) -> Result<bool, DetailledWasmError> {
+    pub fn owns(&self, address: &WasmAddress) -> Result<bool, DetailledWasmError> {
         let owns = self
             .inner
             .read()
@@ -149,7 +149,7 @@ impl WasmAccount {
     }
 
     #[wasm_bindgen(js_name = getBalance)]
-    pub async fn get_balance(&self) -> Result<WasmBalance, DetailledWasmError> {
+    pub fn get_balance(&self) -> Result<WasmBalance, DetailledWasmError> {
         let balance: WasmBalance = self
             .inner
             .read()
@@ -162,14 +162,14 @@ impl WasmAccount {
     }
 
     #[wasm_bindgen(js_name = getDerivationPath)]
-    pub async fn get_derivation_path(&self) -> Result<String, DetailledWasmError> {
+    pub fn get_derivation_path(&self) -> Result<String, DetailledWasmError> {
         let derivation_path = self.inner.read().expect("lock").get_derivation_path().to_string();
 
         Ok(derivation_path)
     }
 
     #[wasm_bindgen(js_name = getUtxos)]
-    pub async fn get_utxos(&self) -> Result<IWasmUtxoArray, DetailledWasmError> {
+    pub fn get_utxos(&self) -> Result<IWasmUtxoArray, DetailledWasmError> {
         let utxos = self
             .inner
             .read()
@@ -184,7 +184,7 @@ impl WasmAccount {
     }
 
     #[wasm_bindgen(js_name = getTransactions)]
-    pub async fn get_transactions(
+    pub fn get_transactions(
         &self,
         pagination: Option<WasmPagination>,
     ) -> Result<IWasmSimpleTransactionArray, DetailledWasmError> {
@@ -205,7 +205,7 @@ impl WasmAccount {
     }
 
     #[wasm_bindgen(js_name = getTransaction)]
-    pub async fn get_transaction(&self, txid: String) -> Result<WasmTransactionDetails, DetailledWasmError> {
+    pub fn get_transaction(&self, txid: String) -> Result<WasmTransactionDetails, DetailledWasmError> {
         let transaction = self
             .inner
             .read()

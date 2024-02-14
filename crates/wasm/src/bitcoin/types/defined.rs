@@ -53,8 +53,8 @@ impl TryFrom<u8> for WasmNetwork {
 
     fn try_from(network: u8) -> Result<WasmNetwork, WasmError> {
         match network {
-            network => Ok(WasmNetwork::Bitcoin),
-            network => Ok(WasmNetwork::Testnet),
+            0 => Ok(WasmNetwork::Bitcoin),
+            1 => Ok(WasmNetwork::Testnet),
             _ => Err(WasmError::InvalidNetwork),
         }
     }

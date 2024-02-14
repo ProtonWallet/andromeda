@@ -1,3 +1,4 @@
+mod api;
 mod bitcoin;
 mod common;
 mod utils;

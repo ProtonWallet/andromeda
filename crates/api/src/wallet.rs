@@ -2,10 +2,12 @@ use std::sync::Arc;
 
 use async_std::sync::RwLock;
 use muon::{
-    request::{Error as ReqError, Method, ProtonRequest, Response},
+    request::{Method, ProtonRequest, Response},
     session::Session,
 };
 use serde::{Deserialize, Serialize};
+
+use crate::error::Error;
 
 use super::BASE_WALLET_API_V1;
 
@@ -57,6 +59,7 @@ impl Into<String> for ScriptType {
     }
 }
 
+#[derive(Clone)]
 pub struct WalletClient {
     session: Arc<RwLock<Session>>,
 }
@@ -251,24 +254,44 @@ impl WalletClient {
         Self { session }
     }
 
-    pub async fn get_wallets(&self) -> Result<Vec<WalletData>, ReqError> {
+    pub async fn get_wallets(&self) -> Result<Vec<WalletData>, Error> {
         let request = ProtonRequest::new(Method::GET, format!("{}/wallets", BASE_WALLET_API_V1));
 
-        let response = self.session.read().await.bind(request)?.send().await?;
-        println!("response here: {:?}", response.to_json::<serde_json::Value>()?);
-        let parsed = response.to_json::<GetWalletsResponseBody>()?;
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+
+        let parsed = response
+            .to_json::<GetWalletsResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
 
         Ok(parsed.Wallets)
     }
 
-    pub async fn create_wallet(&self, payload: CreateWalletRequestBody) -> Result<WalletData, ReqError> {
+    pub async fn create_wallet(&self, payload: CreateWalletRequestBody) -> Result<WalletData, Error> {
         let request = ProtonRequest::new(Method::POST, format!("{}/wallets", BASE_WALLET_API_V1))
             .json_body(payload)
-            .unwrap();
+            .map_err(|_| Error::SerializeError)?;
 
-        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
-        println!("response here: {:?}", response.to_json::<serde_json::Value>().unwrap());
-        let parsed = response.to_json::<CreateWalletResponseBody>().unwrap();
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+
+        let parsed = response
+            .to_json::<CreateWalletResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
 
         Ok(WalletData {
             Wallet: parsed.Wallet,
@@ -277,33 +300,53 @@ impl WalletClient {
         })
     }
 
-    pub async fn get_wallet_accounts(&self, wallet_id: String) -> Result<Vec<Account>, ReqError> {
+    pub async fn get_wallet_accounts(&self, wallet_id: String) -> Result<Vec<Account>, Error> {
         let request = ProtonRequest::new(
             Method::GET,
             format!("{}/wallets/{}/accounts", BASE_WALLET_API_V1, wallet_id),
         );
 
-        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
-        let parsed = response.to_json::<GetWalletAccountsResponseBody>().unwrap();
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+        let parsed = response
+            .to_json::<GetWalletAccountsResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
 
         Ok(parsed.Accounts)
     }
 
-    pub async fn create_wallet_accounts(
+    pub async fn create_wallet_account(
         &self,
         wallet_id: String,
         payload: CreateWalletAccountRequestBody,
-    ) -> Result<Account, ReqError> {
+    ) -> Result<Account, Error> {
         let request = ProtonRequest::new(
             Method::POST,
             format!("{}/wallets/{}/accounts", BASE_WALLET_API_V1, wallet_id),
         )
         .json_body(payload)
-        .unwrap();
+        .map_err(|_| Error::SerializeError)?;
 
-        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
-        println!("response here: {:?}", response.to_json::<serde_json::Value>().unwrap());
-        let parsed = response.to_json::<CreateWalletAccountResponseBody>().unwrap();
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+
+        let parsed = response
+            .to_json::<CreateWalletAccountResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
 
         Ok(parsed.Account)
     }
@@ -313,7 +356,7 @@ impl WalletClient {
         wallet_id: String,
         wallet_account_id: String,
         label: String,
-    ) -> Result<Account, ReqError> {
+    ) -> Result<Account, Error> {
         let payload = UpdateWalletAccountLabelRequestBody { Label: label };
 
         let request = ProtonRequest::new(
@@ -324,15 +367,26 @@ impl WalletClient {
             ),
         )
         .json_body(payload)
-        .unwrap();
+        .map_err(|_| Error::SerializeError)?;
 
-        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
-        let parsed = response.to_json::<UpdateWalletAccountLabelResponseBody>().unwrap();
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+
+        let parsed = response
+            .to_json::<UpdateWalletAccountLabelResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
 
         Ok(parsed.Account)
     }
 
-    pub async fn delete_wallet_account(&self, wallet_id: String, wallet_account_id: String) -> Result<(), ReqError> {
+    pub async fn delete_wallet_account(&self, wallet_id: String, wallet_account_id: String) -> Result<(), Error> {
         let request = ProtonRequest::new(
             Method::DELETE,
             format!(
@@ -341,17 +395,39 @@ impl WalletClient {
             ),
         );
 
-        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
-        let _parsed = response.to_json::<DeleteWalletAccountResponseBody>().unwrap();
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+
+        let _parsed = response
+            .to_json::<DeleteWalletAccountResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
 
         Ok(())
     }
 
-    pub async fn get_wallet_transactions(&self, wallet_id: String) -> Result<Vec<WalletTransaction>, ReqError> {
+    pub async fn get_wallet_transactions(&self, wallet_id: String) -> Result<Vec<WalletTransaction>, Error> {
         let request = ProtonRequest::new(Method::GET, format!("{}/wallets/{}", BASE_WALLET_API_V1, wallet_id));
 
-        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
-        let parsed = response.to_json::<GetWalletTransactionsResponseBody>().unwrap();
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+
+        let parsed = response
+            .to_json::<GetWalletTransactionsResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
 
         Ok(parsed.WalletTransactions)
     }
@@ -360,16 +436,27 @@ impl WalletClient {
         &self,
         wallet_id: String,
         payload: CreateWalletTransactionRequestBody,
-    ) -> Result<WalletTransaction, ReqError> {
+    ) -> Result<WalletTransaction, Error> {
         let request = ProtonRequest::new(
             Method::POST,
             format!("{}/wallets/{}/transactions", BASE_WALLET_API_V1, wallet_id),
         )
         .json_body(payload)
-        .unwrap();
+        .map_err(|_| Error::SerializeError)?;
 
-        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
-        let parsed = response.to_json::<CreateWalletTransactionResponseBody>().unwrap();
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+
+        let parsed = response
+            .to_json::<CreateWalletTransactionResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
 
         Ok(parsed.WalletTransaction)
     }
@@ -379,7 +466,7 @@ impl WalletClient {
         wallet_id: String,
         wallet_transaction_id: String,
         label: String,
-    ) -> Result<WalletTransaction, ReqError> {
+    ) -> Result<WalletTransaction, Error> {
         let payload = UpdateWalletTransactionLabelRequestBody { Label: label };
 
         let request = ProtonRequest::new(
@@ -390,10 +477,21 @@ impl WalletClient {
             ),
         )
         .json_body(payload)
-        .unwrap();
+        .map_err(|_| Error::SerializeError)?;
 
-        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
-        let parsed = response.to_json::<UpdateWalletTransactionLabelResponseBody>().unwrap();
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+
+        let parsed = response
+            .to_json::<UpdateWalletTransactionLabelResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
 
         Ok(parsed.WalletTransaction)
     }
@@ -402,7 +500,7 @@ impl WalletClient {
         &self,
         wallet_id: String,
         wallet_transaction_id: String,
-    ) -> Result<(), ReqError> {
+    ) -> Result<(), Error> {
         let request = ProtonRequest::new(
             Method::DELETE,
             format!(
@@ -411,8 +509,19 @@ impl WalletClient {
             ),
         );
 
-        let response = self.session.read().await.bind(request).unwrap().send().await.unwrap();
-        let _parsed = response.to_json::<DeleteWalletTransactionResponseBody>().unwrap();
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+
+        let _parsed = response
+            .to_json::<DeleteWalletTransactionResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
 
         Ok(())
     }
@@ -470,7 +579,7 @@ mod tests {
         };
 
         let res = client
-            .create_wallet_accounts(
+            .create_wallet_account(
                 String::from(
                     "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
                 ),

@@ -2,13 +2,15 @@ use std::sync::Arc;
 
 use async_std::sync::RwLock;
 use block::BlockClient;
-use muon::{session::Session, AccessToken, AppSpec, AuthStore, Product, RefreshToken, Scopes, SimpleAuthStore, Uid};
 
 use error::Error;
+use muon::store::SimpleAuthStore;
 use network::NetworkClient;
 use settings::SettingsClient;
 use transaction::TransactionClient;
 use wallet::WalletClient;
+
+pub use muon::{session::Session, AccessToken, AppSpec, AuthStore, Product, RefreshToken, Scope, Uid};
 
 pub mod block;
 pub mod error;
@@ -68,7 +70,7 @@ pub struct AuthData {
     pub uid: Uid,
     pub access: AccessToken,
     pub refresh: RefreshToken,
-    pub scopes: Scopes,
+    pub scopes: Vec<Scope>,
 }
 
 /// An API client providing interfaces to send authenticated http requests to Wallet backend
@@ -81,7 +83,7 @@ pub struct AuthData {
 /// # let session = Session::new(auth_store, app_spec).unwrap();
 /// let mut api_client = ProtonWalletApiClient::default();
 /// api_client.login("pro", "pro").await.unwrap();
-/// 
+///
 /// let network = api_client.network.get_network().await.unwrap();
 /// println!("network fetch: {:?}", network);
 /// ```
@@ -143,7 +145,7 @@ impl ProtonWalletApiClient {
         let app_spec = WalletAppSpec::new().inner();
 
         let mut auth_store = SimpleAuthStore::new("atlas");
-        auth_store.provide_authentication(auth.uid, auth.access, auth.refresh, auth.scopes);
+        auth_store.set_auth(auth.uid, auth.refresh, auth.access, auth.scopes);
 
         let session = Session::new(auth_store, app_spec).map_err(|e| e.into())?;
 
