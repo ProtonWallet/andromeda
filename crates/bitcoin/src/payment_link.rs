@@ -1,15 +1,13 @@
+use core::fmt::Debug;
 use std::str::FromStr;
 
-use crate::bitcoin::{BitcoinUnit, Network};
-use crate::error::Error;
-use crate::utils::convert_amount;
-
-use super::account::Account;
-use core::fmt::Debug;
-
+use andromeda_common::BitcoinUnit;
 use bdk::database::BatchDatabase;
 use bitcoin::Address;
 use urlencoding::{decode, encode};
+
+use super::account::Account;
+use crate::{bitcoin::Network, error::Error, utils::convert_amount};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum PaymentLink {
@@ -78,8 +76,9 @@ impl PaymentLink {
         .join("&")
     }
 
-    /// This acts similarly to PaymentLink.to_string except that it also returns a URI for PaymentLink::BitcoinURI with no argument.
-    /// This is useful to create a deeplink
+    /// This acts similarly to PaymentLink.to_string except that it also returns
+    /// a URI for PaymentLink::BitcoinURI with no argument. This is useful
+    /// to create a deeplink
     pub fn to_uri(&self) -> String {
         match self {
             Self::BitcoinAddress(_) => self.to_string(),
@@ -191,8 +190,7 @@ mod tests {
     use miniscript::bitcoin::Address;
 
     use super::super::payment_link::PaymentLink;
-    use crate::bitcoin::Network;
-    use crate::error::Error;
+    use crate::{bitcoin::Network, error::Error};
 
     #[test]
     fn should_return_only_address() {

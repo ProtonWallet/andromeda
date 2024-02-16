@@ -1,20 +1,27 @@
-use super::account::{Account, AccountConfig, ScriptType};
-
-use super::transactions::Pagination;
-use super::utils::sort_and_paginate_txs;
-
-use crate::transactions::{SimpleTransaction, TransactionDetails};
-use crate::{bitcoin::Network, error::Error, mnemonic::Mnemonic};
-use bdk::database::BatchDatabase;
-use bdk::Balance;
-use futures::future;
-
 use core::fmt::Debug;
-use miniscript::bitcoin::bip32::{DerivationPath, ExtendedPrivKey};
-use miniscript::bitcoin::secp256k1::Secp256k1;
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use bdk::{database::BatchDatabase, Balance};
+use futures::future;
+use miniscript::bitcoin::{
+    bip32::{DerivationPath, ExtendedPrivKey},
+    secp256k1::Secp256k1,
+};
+
+use super::{
+    account::{Account, AccountConfig, ScriptType},
+    transactions::Pagination,
+    utils::sort_and_paginate_txs,
+};
+use crate::{
+    bitcoin::Network,
+    error::Error,
+    mnemonic::Mnemonic,
+    transactions::{SimpleTransaction, TransactionDetails},
+};
 
 #[derive(Debug)]
 pub struct Wallet<Storage>

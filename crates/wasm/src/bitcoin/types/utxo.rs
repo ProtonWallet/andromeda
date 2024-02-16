@@ -1,11 +1,9 @@
 use andromeda_bitcoin::LocalUtxo;
 use serde::Serialize;
-
-use super::{
-    defined::WasmKeychainKind,
-    transaction::{WasmOutPoint, WasmScript},
-};
 use wasm_bindgen::prelude::*;
+
+use super::transaction::{WasmOutPoint, WasmScript};
+use crate::common::types::WasmKeychainKind;
 
 #[wasm_bindgen(getter_with_clone)]
 #[derive(Serialize)]

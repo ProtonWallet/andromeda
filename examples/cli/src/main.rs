@@ -1,14 +1,15 @@
+use std::{
+    io::{self, Write},
+    str::SplitWhitespace,
+    sync::{Arc, Mutex, RwLock},
+};
+
 use andromeda_bitcoin::{
     account::{Account, ScriptType},
     bitcoin::Network,
     blockchain::Blockchain,
     wallet::Wallet,
     BdkMemoryDatabase, DerivationPath,
-};
-use std::{
-    io::{self, Write},
-    str::SplitWhitespace,
-    sync::{Arc, Mutex, RwLock},
 };
 use tokio;
 

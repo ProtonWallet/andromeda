@@ -1,9 +1,9 @@
 use std::time::Duration;
 
-use crate::transactions::SimpleTransaction;
+use andromeda_common::{BitcoinUnit, BITCOIN, MILLI_BITCOIN, SATOSHI};
 
-use super::bitcoin::{BitcoinUnit, BITCOIN, MILLI_BITCOIN, SATOSHI};
 use super::transactions::Pagination;
+use crate::transactions::SimpleTransaction;
 
 pub fn now() -> Duration {
     #[cfg(target_arch = "wasm32")]
@@ -55,7 +55,8 @@ pub fn convert_amount(value: f64, from: BitcoinUnit, to: BitcoinUnit) -> f64 {
 ///
 /// # Notes
 ///
-/// If either of the input values is NaN (Not a Number), the function returns 0.0.
+/// If either of the input values is NaN (Not a Number), the function returns
+/// 0.0.
 ///
 /// # Examples
 ///
@@ -81,7 +82,8 @@ pub fn max_f64(a: f64, b: f64) -> f64 {
 ///
 /// # Notes
 ///
-/// If either of the input values is NaN (Not a Number), the function returns 0.0.
+/// If either of the input values is NaN (Not a Number), the function returns
+/// 0.0.
 ///
 /// # Examples
 ///
@@ -124,10 +126,9 @@ pub fn sort_and_paginate_txs(
 
 #[cfg(test)]
 mod tests {
-    use super::super::{
-        bitcoin::BitcoinUnit,
-        utils::{convert_amount, max_f64, min_f64},
-    };
+    use andromeda_common::BitcoinUnit;
+
+    use super::super::utils::{convert_amount, max_f64, min_f64};
 
     #[test]
     fn should_return_max_value() {

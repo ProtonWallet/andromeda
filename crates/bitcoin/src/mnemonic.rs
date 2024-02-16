@@ -1,13 +1,13 @@
 use std::str::FromStr;
 
-use bdk::bitcoin::secp256k1::rand;
-use bdk::bitcoin::secp256k1::rand::Rng;
-use bdk::keys::bip39::Language;
-use bdk::keys::bip39::WordCount;
-use bdk::keys::{GeneratableKey, GeneratedKey};
-use bdk::miniscript::BareCtx;
-
-use bdk::keys::bip39::Mnemonic as BdkMnemonic;
+use bdk::{
+    bitcoin::secp256k1::{rand, rand::Rng},
+    keys::{
+        bip39::{Language, Mnemonic as BdkMnemonic, WordCount},
+        GeneratableKey, GeneratedKey,
+    },
+    miniscript::BareCtx,
+};
 
 use crate::error::Error;
 
@@ -16,22 +16,25 @@ pub struct Mnemonic {
     inner: BdkMnemonic,
 }
 
-/// Returns a vector of words from the English language word list that start with the given prefix.
+/// Returns a vector of words from the English language word list that start
+/// with the given prefix.
 ///
 /// # Arguments
 ///
-/// * `word_start` - A string representing the prefix for which autocomplete suggestions are generated.
+/// * `word_start` - A string representing the prefix for which autocomplete
+///   suggestions are generated.
 ///
 /// # Note
 ///
-/// This function relies on the `word_list` method of the `Language::English` enum to obtain the
-/// English language word list. Ensure that the necessary dependencies are available and properly
-/// configured.
+/// This function relies on the `word_list` method of the `Language::English`
+/// enum to obtain the English language word list. Ensure that the necessary
+/// dependencies are available and properly configured.
 ///
 /// # Panics
 ///
-/// This function should not panic under normal circumstances. If panics occur, they may indicate
-/// issues with the underlying word list or language enum implementation.
+/// This function should not panic under normal circumstances. If panics occur,
+/// they may indicate issues with the underlying word list or language enum
+/// implementation.
 ///
 /// # Returns
 ///
@@ -64,7 +67,8 @@ impl Mnemonic {
     ///
     /// # Note
     ///
-    /// This function isn't pure since it relies on `rand::thread_rng` to generate entropy.
+    /// This function isn't pure since it relies on `rand::thread_rng` to
+    /// generate entropy.
     ///
     /// # Returns
     ///
@@ -154,9 +158,8 @@ impl Mnemonic {
 mod tests {
     use bdk::keys::bip39::Language;
 
-    use crate::error::Error;
-
     use super::{get_words_autocomplete, Mnemonic};
+    use crate::error::Error;
 
     #[test]
     fn should_return_match_words_in_english() {

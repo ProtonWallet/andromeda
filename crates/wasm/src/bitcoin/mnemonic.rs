@@ -1,11 +1,11 @@
-use wasm_bindgen::prelude::*;
-
-use super::types::defined::WasmWordCount;
-use crate::common::error::DetailledWasmError;
 use andromeda_bitcoin::{
     mnemonic::{self, Mnemonic},
     BdkLanguage,
 };
+use wasm_bindgen::prelude::*;
+
+use super::types::defined::WasmWordCount;
+use crate::common::error::DetailledWasmError;
 
 #[wasm_bindgen]
 #[derive(Clone)]
@@ -36,7 +36,8 @@ pub struct WasmMnemonic {
 
 #[wasm_bindgen]
 impl WasmMnemonic {
-    /// Generates a Mnemonic with a random entropy based on the given word count.
+    /// Generates a Mnemonic with a random entropy based on the given word
+    /// count.
     #[wasm_bindgen(constructor)]
     pub fn new(word_count: WasmWordCount) -> Result<WasmMnemonic, DetailledWasmError> {
         let mnemonic = Mnemonic::new(word_count.into()).map_err(|e| e.into())?;

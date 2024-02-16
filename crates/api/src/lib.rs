@@ -2,15 +2,18 @@ use std::sync::Arc;
 
 use async_std::sync::RwLock;
 use block::BlockClient;
-
+use env::LocalEnv;
 use error::Error;
-use muon::store::SimpleAuthStore;
+pub use muon::{
+    environment::ApiEnv, session::Session, AccessToken, AppSpec, AuthStore, Product, RefreshToken, Scope, Uid,
+};
+use muon::{store::SimpleAuthStore, ReqwestTransportFactory};
 use network::NetworkClient;
 use settings::SettingsClient;
 use transaction::TransactionClient;
 use wallet::WalletClient;
 
-pub use muon::{session::Session, AccessToken, AppSpec, AuthStore, Product, RefreshToken, Scope, Uid};
+mod env;
 
 pub mod block;
 pub mod error;
@@ -22,6 +25,9 @@ pub mod wallet;
 // TODO: make this private
 pub mod utils;
 
+#[cfg(feature = "local")]
+pub const BASE_WALLET_API_V1: &str = "/api/wallet/v1";
+#[cfg(not(feature = "local"))]
 pub const BASE_WALLET_API_V1: &str = "/wallet/v1";
 
 struct WalletAppSpec(AppSpec);
@@ -65,7 +71,8 @@ impl ApiClients {
     }
 }
 
-/// Mirror from Muon's `AuthAccess` with public fields to be easily from outside of the crate
+/// Mirror from Muon's `AuthAccess` with public fields to be easily from outside
+/// of the crate
 pub struct AuthData {
     pub uid: Uid,
     pub access: AccessToken,
@@ -73,7 +80,8 @@ pub struct AuthData {
     pub scopes: Vec<Scope>,
 }
 
-/// An API client providing interfaces to send authenticated http requests to Wallet backend
+/// An API client providing interfaces to send authenticated http requests to
+/// Wallet backend
 ///
 /// ```no_run
 /// # use andromeda_api::ProtonWalletApiClient;
@@ -98,9 +106,22 @@ pub struct ProtonWalletApiClient {
 }
 
 impl ProtonWalletApiClient {
+    #[cfg(feature = "local")]
+    fn session(app_spec: AppSpec, auth_store: SimpleAuthStore) -> Session {
+        let transport = ReqwestTransportFactory::new();
+        let local_env = LocalEnv::new(None);
+        Session::new_dangerous(auth_store, app_spec, transport, local_env).unwrap()
+    }
+
+    #[cfg(not(feature = "local"))]
+    fn session(app_spec: AppSpec, auth_store: SimpleAuthStore) -> Session {
+        Session::new(auth_store, app_spec).unwrap()
+    }
+
     /// Builds a new api client from a session.
     ///
-    /// Session can be either authenticated or not, authentication can be later processed.
+    /// Session can be either authenticated or not, authentication can be later
+    /// processed.
     ///
     /// ```rust
     /// # use andromeda_api::ProtonWalletApiClient;
@@ -127,7 +148,8 @@ impl ProtonWalletApiClient {
         }
     }
 
-    /// Builds a new api client from user's access token, refresh token, uid and scope
+    /// Builds a new api client from user's access token, refresh token, uid and
+    /// scope
     ///
     /// ```rust
     /// # use andromeda_api::{ProtonWalletApiClient, AuthData};
@@ -144,15 +166,16 @@ impl ProtonWalletApiClient {
     pub fn from_auth(auth: AuthData) -> Result<Self, Error> {
         let app_spec = WalletAppSpec::new().inner();
 
-        let mut auth_store = SimpleAuthStore::new("atlas");
+        let mut auth_store = SimpleAuthStore::new("local");
         auth_store.set_auth(auth.uid, auth.refresh, auth.access, auth.scopes);
 
-        let session = Session::new(auth_store, app_spec).map_err(|e| e.into())?;
+        let session = Self::session(app_spec, auth_store);
 
         Ok(Self::from_session(session))
     }
 
-    /// Performs an http request to authenticate the session used in the api client. Mutates the underlying session.
+    /// Performs an http request to authenticate the session used in the api
+    /// client. Mutates the underlying session.
     ///
     /// ```rust
     /// # use andromeda_api::ProtonWalletApiClient;
@@ -185,7 +208,7 @@ impl Default for ProtonWalletApiClient {
 
         let auth_store = SimpleAuthStore::new("atlas");
 
-        let session = Session::new(auth_store, app_spec).unwrap();
+        let session = Self::session(app_spec, auth_store);
 
         Self::from_session(session)
     }

@@ -1,28 +1,31 @@
-use super::account::Account;
-use crate::bitcoin::BitcoinUnit;
-use crate::error::Error;
-use crate::utils::{convert_amount, max_f64, min_f64};
-use bdk::database::BatchDatabase;
-use bdk::Balance;
+use std::{
+    str::FromStr,
+    sync::{Arc, RwLock},
+};
+
+use andromeda_common::BitcoinUnit;
 use bdk::{
     bitcoin::ScriptBuf,
+    database::BatchDatabase,
     wallet::{
         coin_selection::{
             BranchAndBoundCoinSelection, CoinSelectionAlgorithm, LargestFirstCoinSelection, OldestFirstCoinSelection,
         },
         tx_builder::{ChangeSpendPolicy, CreateTx, TxBuilder as BdkTxBuilder},
     },
-    FeeRate,
+    Balance, FeeRate,
 };
 use hashbrown::HashSet;
 use miniscript::bitcoin::{
     absolute::LockTime, psbt::PartiallySignedTransaction, script::PushBytesBuf, Address, OutPoint,
 };
-use std::{
-    str::FromStr,
-    sync::{Arc, RwLock},
-};
 use uuid::Uuid;
+
+use super::account::Account;
+use crate::{
+    error::Error,
+    utils::{convert_amount, max_f64, min_f64},
+};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum CoinSelection {
@@ -35,13 +38,21 @@ pub enum CoinSelection {
 #[derive(Clone, Debug, PartialEq)]
 pub struct TmpRecipient(pub String, pub String, pub f64, pub BitcoinUnit);
 
-/// BDK's implementation of Transaction builder is quite complete, but we need a struct that enables stateful transaction creation, so we just added a layer on top of it.
+/// BDK's implementation of Transaction builder is quite complete, but we need a
+/// struct that enables stateful transaction creation, so we just added a layer
+/// on top of it.
 ///
-/// andromeda-bitcoin's Transaction Builder is simply an implementation expose setters and getters to tweak transaction options without mutating it but rather returning the updating version. This implementation fits better with ui-based wallets and can even later be used to provide versioning.
+/// andromeda-bitcoin's Transaction Builder is simply an implementation expose
+/// setters and getters to tweak transaction options without mutating it but
+/// rather returning the updating version. This implementation fits better with
+/// ui-based wallets and can even later be used to provide versioning.
 ///
-/// PWC's implementation support most of BDK's exposed options such as coin selection, RBF (enabled by default), Fee rate selection and many other
+/// PWC's implementation support most of BDK's exposed options such as coin
+/// selection, RBF (enabled by default), Fee rate selection and many other
 ///
-/// This transaction builder implementation aims at being used to enable both raw transaction building and bitcoin URI processing (bitcoin:tb1....?amount=x&label=y)
+/// This transaction builder implementation aims at being used to enable both
+/// raw transaction building and bitcoin URI processing
+/// (bitcoin:tb1....?amount=x&label=y)
 #[derive(Debug)]
 pub struct TxBuilder<D>
 where
@@ -93,8 +104,8 @@ struct AllocateBalanceAcc {
 }
 
 /// This functions allocates a given balance accross the provided recipients.
-/// If recipients total amount is greater than provided balance, the last recipients will be allocated less than initially.
-/// "First come, first served"
+/// If recipients total amount is greater than provided balance, the last
+/// recipients will be allocated less than initially. "First come, first served"
 fn allocate_recipients_balance(recipients: Vec<TmpRecipient>, balance: &Balance) -> Vec<TmpRecipient> {
     let acc_result: AllocateBalanceAcc = recipients.into_iter().fold(
         AllocateBalanceAcc {
@@ -125,7 +136,8 @@ fn allocate_recipients_balance(recipients: Vec<TmpRecipient>, balance: &Balance)
     acc_result.recipients
 }
 
-/// This function remove allocated amount from the last recipient to the first one and returns an array of updated recipients
+/// This function remove allocated amount from the last recipient to the first
+/// one and returns an array of updated recipients
 fn correct_recipients_amounts(recipients: Vec<TmpRecipient>, amount_to_remove: f64) -> Vec<TmpRecipient> {
     let mut cloned = recipients.clone();
     cloned.reverse(); // R3 R2 R1
@@ -182,7 +194,8 @@ where
         }
     }
 
-    /// Sets the account to be used to finalise the transaction. It is also used to constrain transaction outputs to not oversize balance
+    /// Sets the account to be used to finalise the transaction. It is also used
+    /// to constrain transaction outputs to not oversize balance
     ///
     /// ```rust, ignore
     /// let tx_builder = TxBuilder::new();
@@ -285,8 +298,8 @@ where
     ///
     /// # Notes
     ///
-    /// If amount is too high (higher than balance-expected fees), it will be constrained
-    ///     
+    /// If amount is too high (higher than balance-expected fees), it will be
+    /// constrained     
     /// ```rust, ignore
     /// let tx_builder = TxBuilder::new();
     /// ...
@@ -302,7 +315,8 @@ where
 
         // Regarding unit & amount change, 4 different cases can happen:
         // - no1: only amount change; reflected update => amount
-        // - no2: only unit change; reflected update => unit & amount (converted to new unit)
+        // - no2: only unit change; reflected update => unit & amount (converted to new
+        //   unit)
         // - no3: both unit and amount change; reflected update => unit & amount
         // - no4: none of unit and amount change; reflected update => nothing
         let (did_unit_changed, new_unit) = match update.2 {
@@ -339,7 +353,8 @@ where
         tx_builder.constrain_recipient_amounts().await
     }
 
-    /// Update one recipient's amount to max, meaning it sets remaining balance to him.
+    /// Update one recipient's amount to max, meaning it sets remaining balance
+    /// to him.
     pub async fn update_recipient_amount_to_max(&self, index: usize) -> Result<Self, Error> {
         let mut recipients = self.recipients.clone();
         let TmpRecipient(uuid, script, prev_amount, unit) = recipients[index].clone();
@@ -436,7 +451,8 @@ where
         }
     }
 
-    /// Do not spend change outputs. This effectively adds all the change outputs to the "unspendable" list. See TxBuilder.unspendable.
+    /// Do not spend change outputs. This effectively adds all the change
+    /// outputs to the "unspendable" list. See TxBuilder.unspendable.
     ///
     /// # Notes
     ///
@@ -559,13 +575,13 @@ where
 
 #[cfg(test)]
 mod tests {
-    use bdk::database::MemoryDatabase;
-    use bdk::{wallet::tx_builder::ChangeSpendPolicy, FeeRate};
+    use bdk::{database::MemoryDatabase, wallet::tx_builder::ChangeSpendPolicy, FeeRate};
     use miniscript::bitcoin::absolute::LockTime;
 
-    use super::super::transaction_builder::{BitcoinUnit, CoinSelection};
-
-    use super::{correct_recipients_amounts, TmpRecipient, TxBuilder};
+    use super::{
+        super::transaction_builder::{BitcoinUnit, CoinSelection},
+        correct_recipients_amounts, TmpRecipient, TxBuilder,
+    };
 
     #[test]
     fn should_remove_correct_amount() {

@@ -1,21 +1,22 @@
 use std::str::FromStr;
 
-use super::super::{account::WasmAccount, psbt::WasmPartiallySignedTransaction};
-
-use crate::common::error::{DetailledWasmError, WasmError};
-
 use andromeda_bitcoin::{
     transactions::{DetailledTxOutput, SimpleTransaction, TransactionDetails},
-    Address, OutPoint, PartiallySignedTransaction, ScriptBuf, Sequence, TxIn,
+    Address, BdkBlockTime, OutPoint, PartiallySignedTransaction, ScriptBuf, Sequence, TxIn,
 };
+use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
 use super::{
-    address::WasmAddress, defined::WasmNetwork, derivation_path::WasmDerivationPath,
+    super::{account::WasmAccount, psbt::WasmPartiallySignedTransaction},
+    address::WasmAddress,
+    derivation_path::WasmDerivationPath,
     typescript_interfaces::IWasmOutpoint,
 };
-use andromeda_bitcoin::BdkBlockTime;
-use serde::{Deserialize, Serialize};
+use crate::common::{
+    error::{DetailledWasmError, WasmError},
+    types::WasmNetwork,
+};
 
 #[wasm_bindgen(getter_with_clone)]
 #[derive(Clone, Serialize, Deserialize)]

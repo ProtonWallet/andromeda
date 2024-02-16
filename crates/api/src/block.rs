@@ -1,9 +1,5 @@
 use std::{str::FromStr, sync::Arc};
 
-use crate::error::Error;
-
-use super::BASE_WALLET_API_V1;
-
 use async_std::sync::RwLock;
 use bitcoin::{block::Header as BlockHeader, consensus::deserialize, hashes::hex::FromHex, Block, BlockHash};
 use muon::{
@@ -11,6 +7,9 @@ use muon::{
     session::Session,
 };
 use serde::Deserialize;
+
+use super::BASE_WALLET_API_V1;
+use crate::error::Error;
 
 pub struct BlockClient {
     session: Arc<RwLock<Session>>,
@@ -266,12 +265,12 @@ impl BlockClient {
 
 #[cfg(test)]
 mod tests {
-    use bitcoin::BlockHash;
     use std::str::FromStr;
 
-    use crate::utils::common_session;
+    use bitcoin::BlockHash;
 
     use super::BlockClient;
+    use crate::utils::common_session;
 
     #[tokio::test]
     #[ignore]

@@ -1,9 +1,10 @@
-use crate::common::error::WasmError;
 use andromeda_api::wallet::{
     Account, CreateWalletAccountRequestBody, CreateWalletRequestBody, CreateWalletTransactionRequestBody, WalletClient,
     WalletData, WalletTransaction,
 };
 use wasm_bindgen::prelude::*;
+
+use crate::common::error::WasmError;
 
 #[wasm_bindgen]
 pub struct WasmWalletClient(WalletClient);
@@ -167,7 +168,7 @@ pub struct WasmWalletTransactionArray(pub Vec<WasmWalletTransaction>);
 
 #[wasm_bindgen]
 impl WasmWalletClient {
-    #[wasm_bindgen(js_name="getWallets")]
+    #[wasm_bindgen(js_name = "getWallets")]
     pub async fn get_wallets(&self) -> Result<WasmWalletDataArray, WasmError> {
         let wallets = self
             .0
@@ -179,7 +180,7 @@ impl WasmWalletClient {
         Ok(WasmWalletDataArray(wallets))
     }
 
-    #[wasm_bindgen(js_name="createWallet")]
+    #[wasm_bindgen(js_name = "createWallet")]
     pub async fn create_wallet(&self, payload: WasmCreateWalletRequestBody) -> Result<WasmWalletData, WasmError> {
         let payload = CreateWalletRequestBody {
             Name: payload.Name,
@@ -199,7 +200,7 @@ impl WasmWalletClient {
             .map(|wallet| wallet.into())
     }
 
-    #[wasm_bindgen(js_name="getWalletAccounts")]
+    #[wasm_bindgen(js_name = "getWalletAccounts")]
     pub async fn get_wallet_accounts(&self, wallet_id: String) -> Result<WasmWalletAccountArray, WasmError> {
         let wallet_accounts = self
             .0
@@ -211,7 +212,7 @@ impl WasmWalletClient {
         Ok(WasmWalletAccountArray(wallet_accounts))
     }
 
-    #[wasm_bindgen(js_name="createWalletAccount")]
+    #[wasm_bindgen(js_name = "createWalletAccount")]
     pub async fn create_wallet_account(
         &self,
         wallet_id: String,
@@ -230,7 +231,7 @@ impl WasmWalletClient {
             .map(|account| account.into())
     }
 
-    #[wasm_bindgen(js_name="updateWalletAccountLabel")]
+    #[wasm_bindgen(js_name = "updateWalletAccountLabel")]
     pub async fn update_wallet_account_label(
         &self,
         wallet_id: String,
@@ -244,7 +245,7 @@ impl WasmWalletClient {
             .map(|account| account.into())
     }
 
-    #[wasm_bindgen(js_name="deleteWalletAccount")]
+    #[wasm_bindgen(js_name = "deleteWalletAccount")]
     pub async fn delete_wallet_account(&self, wallet_id: String, wallet_account_id: String) -> Result<(), WasmError> {
         self.0
             .delete_wallet_account(wallet_id, wallet_account_id)
@@ -252,7 +253,7 @@ impl WasmWalletClient {
             .map_err(|e| e.into())
     }
 
-    #[wasm_bindgen(js_name="getWalletTransactions")]
+    #[wasm_bindgen(js_name = "getWalletTransactions")]
     pub async fn get_wallet_transactions(&self, wallet_id: String) -> Result<WasmWalletTransactionArray, WasmError> {
         let wallet_transactions = self
             .0
@@ -269,7 +270,7 @@ impl WasmWalletClient {
         Ok(WasmWalletTransactionArray(wallet_transactions))
     }
 
-    #[wasm_bindgen(js_name="createWalletTransaction")]
+    #[wasm_bindgen(js_name = "createWalletTransaction")]
     pub async fn create_wallet_transaction(
         &self,
         wallet_id: String,
@@ -287,7 +288,7 @@ impl WasmWalletClient {
             .map(|t| t.into())
     }
 
-    #[wasm_bindgen(js_name="updateWalletTransactionLabel")]
+    #[wasm_bindgen(js_name = "updateWalletTransactionLabel")]
     pub async fn update_wallet_transaction_label(
         &self,
         wallet_id: String,
@@ -301,7 +302,7 @@ impl WasmWalletClient {
             .map(|t| t.into())
     }
 
-    #[wasm_bindgen(js_name="deleteWalletTransaction")]
+    #[wasm_bindgen(js_name = "deleteWalletTransaction")]
     pub async fn delete_wallet_transactions(
         &self,
         wallet_id: String,

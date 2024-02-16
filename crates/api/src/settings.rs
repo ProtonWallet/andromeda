@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use andromeda_common::BitcoinUnit;
 use async_std::sync::RwLock;
 use muon::{
     request::{Method, ProtonRequest, Response},
@@ -8,16 +9,6 @@ use muon::{
 use serde::{Deserialize, Serialize};
 
 use crate::{error::Error, BASE_WALLET_API_V1};
-
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
-pub enum BitcoinUnit {
-    /// 100,000,000 sats
-    BTC,
-    /// 100,000 sats
-    MBTC,
-    /// 1 sat
-    SAT,
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
 pub enum FiatCurrency {
@@ -194,9 +185,8 @@ impl SettingsClient {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::common_session;
-
     use super::SettingsClient;
+    use crate::utils::common_session;
 
     #[tokio::test]
     #[ignore]

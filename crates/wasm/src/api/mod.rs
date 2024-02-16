@@ -1,10 +1,11 @@
 use andromeda_api::{self, AccessToken, AuthData, ProtonWalletApiClient, RefreshToken, Scope, Uid};
-use wasm_bindgen::prelude::*;
-
-use crate::common::error::WasmError;
 use network::WasmNetworkClient;
 use settings::WasmSettingsClient;
 use wallet::WasmWalletClient;
+use wasm_bindgen::prelude::*;
+use web_sys::console::log_2;
+
+use crate::common::error::WasmError;
 
 mod network;
 mod settings;
@@ -18,13 +19,26 @@ pub struct WasmAuthData {
     pub scopes: Vec<String>,
 }
 
+#[wasm_bindgen]
+impl WasmAuthData {
+    #[wasm_bindgen(constructor)]
+    pub fn new(uid: String, access: String, refresh: String, scopes: Vec<String>) -> Self {
+        WasmAuthData {
+            uid,
+            access,
+            refresh,
+            scopes,
+        }
+    }
+}
+
 impl Into<AuthData> for WasmAuthData {
     fn into(self) -> AuthData {
         AuthData {
-            uid: serde_json::from_str::<Uid>(&self.uid).unwrap(),
-            access: serde_json::from_str::<AccessToken>(&self.access).unwrap(),
-            refresh: serde_json::from_str::<RefreshToken>(&self.refresh).unwrap(),
-            scopes: serde_json::from_str::<Vec<Scope>>(&self.uid).unwrap(),
+            uid: Uid::from(self.uid),
+            access: AccessToken::from(self.access),
+            refresh: RefreshToken::from(self.refresh),
+            scopes: self.scopes.into_iter().map(|s| Scope::from(s)).collect::<Vec<_>>(),
         }
     }
 }

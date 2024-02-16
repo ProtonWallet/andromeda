@@ -5,6 +5,7 @@ edition = "2021"
 
 
 [dependencies]
+andromeda-common = { path = "../common" }
 muon = { version = "0.1.0", path = "../../../../muon" }
 async-std = "1.10"
 
@@ -20,4 +21,6 @@ bitcoin = { version = "0.30.2", default-features = false, features = [
 
 [dev-dependencies]
 tokio = { features = ["macros", "rt"], version = "1.35" }
-wasm-bindgen-test = "0.3.0"
+
+[features]
+local = ["muon/dangerous"]

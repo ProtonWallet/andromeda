@@ -4,9 +4,8 @@ use andromeda_bitcoin::DerivationPath;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
-use crate::common::error::{DetailledWasmError, WasmError};
-
 use super::typescript_interfaces::IWasmDerivationPath;
+use crate::common::error::{DetailledWasmError, WasmError};
 
 #[wasm_bindgen]
 #[derive(Clone, Serialize, Deserialize)]

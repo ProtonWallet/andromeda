@@ -18,12 +18,13 @@ pub struct TransactionDetails {
     /// Sum of owned inputs of this transaction.
     pub sent: u64,
     /// Fee value (sats) if confirmed.
-    /// The availability of the fee depends on the backend. It's never `None` with an Electrum
-    /// Server backend, but it could be `None` with a Bitcoin RPC node without txindex that receive
-    /// funds while offline.
+    /// The availability of the fee depends on the backend. It's never `None`
+    /// with an Electrum Server backend, but it could be `None` with a
+    /// Bitcoin RPC node without txindex that receive funds while offline.
     pub fees: Option<u64>,
-    /// If the transaction is confirmed, contains height and Unix timestamp of the block containing the
-    /// transaction, unconfirmed transaction contains `None`.
+    /// If the transaction is confirmed, contains height and Unix timestamp of
+    /// the block containing the transaction, unconfirmed transaction
+    /// contains `None`.
     pub confirmation_time: Option<BlockTime>,
     /// List of transaction inputs.
     pub inputs: Vec<TxIn>,
@@ -92,12 +93,13 @@ pub struct SimpleTransaction {
     /// Sum of owned inputs of this transaction.
     pub sent: u64,
     /// Fee value (sats) if confirmed.
-    /// The availability of the fee depends on the backend. It's never `None` with an Electrum
-    /// Server backend, but it could be `None` with a Bitcoin RPC node without txindex that receive
-    /// funds while offline.
+    /// The availability of the fee depends on the backend. It's never `None`
+    /// with an Electrum Server backend, but it could be `None` with a
+    /// Bitcoin RPC node without txindex that receive funds while offline.
     pub fees: Option<u64>,
-    /// If the transaction is confirmed, contains height and Unix timestamp of the block containing the
-    /// transaction, unconfirmed transaction contains `None`.
+    /// If the transaction is confirmed, contains height and Unix timestamp of
+    /// the block containing the transaction, unconfirmed transaction
+    /// contains `None`.
     pub confirmation_time: Option<BlockTime>,
     /// Derivation of the account linked to the transaction
     pub account_key: Option<DerivationPath>,

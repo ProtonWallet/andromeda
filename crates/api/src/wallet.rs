@@ -7,9 +7,8 @@ use muon::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::error::Error;
-
 use super::BASE_WALLET_API_V1;
+use crate::error::Error;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum ScriptType {
@@ -76,13 +75,15 @@ pub struct Wallet {
     pub Priority: u8,
     /// 1 is onchain, 2 is lightning
     pub Type: u8,
-    /// 1 if the wallet has a passphrase. We don't store it but clients need to request on first wallet access.
+    /// 1 if the wallet has a passphrase. We don't store it but clients need to
+    /// request on first wallet access.
     pub HasPassphrase: u8,
     /// 1 means disabled
     pub Status: u8,
     /// Wallet mnemonic encrypted with the WalletKey, in base64 format
     pub Mnemonic: Option<String>,
-    /// Wallet master public key encrypted with the WalletKey, in base64 format. Only allows fetching coins owned by wallet, no spending allowed.
+    /// Wallet master public key encrypted with the WalletKey, in base64 format.
+    /// Only allows fetching coins owned by wallet, no spending allowed.
     pub PublicKey: Option<String>,
 }
 
@@ -95,7 +96,8 @@ pub struct CreateWalletRequestBody {
     pub IsImported: u8,
     /// 1 is onchain, 2 is lightning
     pub Type: u8,
-    /// 1 if the wallet has a passphrase. We don't store it but clients need to request on first wallet access.
+    /// 1 if the wallet has a passphrase. We don't store it but clients need to
+    /// request on first wallet access.
     pub HasPassphrase: u8,
     /// Encrypted user Id
     pub UserKeyId: String,
@@ -103,7 +105,8 @@ pub struct CreateWalletRequestBody {
     pub WalletKey: String,
     /// Wallet mnemonic encrypted with the WalletKey, in base64 format
     pub Mnemonic: Option<String>,
-    /// Wallet master public key encrypted with the WalletKey, in base64 format. Only allows fetching coins owned by wallet, no spending allowed.
+    /// Wallet master public key encrypted with the WalletKey, in base64 format.
+    /// Only allows fetching coins owned by wallet, no spending allowed.
     pub PublicKey: Option<String>,
 }
 
@@ -529,10 +532,12 @@ impl WalletClient {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
+    use bitcoin::bip32::DerivationPath;
+
     use super::{CreateWalletAccountRequestBody, CreateWalletRequestBody, ScriptType, WalletClient};
     use crate::utils::common_session;
-    use bitcoin::bip32::DerivationPath;
-    use std::str::FromStr;
 
     #[tokio::test]
     #[ignore]

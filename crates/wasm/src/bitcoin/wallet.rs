@@ -9,14 +9,16 @@ use super::{
     account::{WasmAccount, WasmScriptType},
     types::{
         balance::WasmBalance,
-        defined::WasmNetwork,
         derivation_path::WasmDerivationPath,
         pagination::WasmPagination,
         transaction::{WasmSimpleTransaction, WasmTransactionDetails},
         typescript_interfaces::IWasmSimpleTransactionArray,
     },
 };
-use crate::common::error::{DetailledWasmError, WasmError};
+use crate::common::{
+    error::{DetailledWasmError, WasmError},
+    types::WasmNetwork,
+};
 
 #[wasm_bindgen]
 pub struct WasmWallet {
@@ -69,7 +71,8 @@ impl WasmWallet {
         .map_err(|_| WasmError::InvalidDerivationPath.into())?
         .into();
 
-        // In a multi-wallet context, an account must be defined by the BIP32 masterkey (fingerprint), and its derivation path (unique)
+        // In a multi-wallet context, an account must be defined by the BIP32 masterkey
+        // (fingerprint), and its derivation path (unique)
         let account_id = format!("{}_{}", self.inner.get_fingerprint(), tmp_derivation_path.to_string());
         let storage = BdkMemoryDatabase::new();
 

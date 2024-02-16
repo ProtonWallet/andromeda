@@ -7,7 +7,6 @@ use andromeda_bitcoin::{
     account::{Account, AccountConfig, ScriptType},
     BdkMemoryDatabase,
 };
-
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
@@ -16,14 +15,13 @@ use super::{
     types::{
         address::WasmAddress,
         balance::WasmBalance,
-        defined::WasmNetwork,
         pagination::WasmPagination,
         transaction::{WasmSimpleTransaction, WasmTransactionDetails},
         typescript_interfaces::{IWasmSimpleTransactionArray, IWasmUtxoArray},
         utxo::WasmUtxo,
     },
 };
-use crate::common::error::DetailledWasmError;
+use crate::common::{error::DetailledWasmError, types::WasmNetwork};
 
 #[wasm_bindgen]
 #[derive(Clone, Copy, Deserialize, Serialize)]
