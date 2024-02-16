@@ -10,7 +10,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 andromeda-api = { path = "../api", features = ["local"] }
 andromeda-bitcoin = { path = "../bitcoin" }
-andromeda-common = { path = "../common" }
+andromeda-common = { version = "0.1.0", path = "../common" }
 
 serde = { version = "1.0.144", features = ["derive"] }
 serde-wasm-bindgen = "0.6.1"
