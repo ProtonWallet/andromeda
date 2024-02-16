@@ -1,10 +1,8 @@
 use andromeda_bitcoin::blockchain::Blockchain;
-
 use wasm_bindgen::prelude::*;
 
-use crate::common::error::WasmError;
-
 use super::{account::WasmAccount, psbt::WasmPartiallySignedTransaction};
+use crate::common::error::WasmError;
 
 #[wasm_bindgen(getter_with_clone)]
 pub struct WasmBlockchain(Blockchain);

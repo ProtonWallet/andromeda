@@ -1,6 +1,7 @@
+use core::fmt::Debug;
+
 use andromeda_api::error::Error as ApiError;
 use andromeda_bitcoin::error::Error;
-use core::fmt::Debug;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]

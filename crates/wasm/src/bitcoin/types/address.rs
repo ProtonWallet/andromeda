@@ -3,9 +3,8 @@ use std::str::FromStr;
 use andromeda_bitcoin::{Address, ScriptBuf};
 use wasm_bindgen::prelude::*;
 
-use crate::common::error::WasmError;
-
-use super::{defined::WasmNetwork, transaction::WasmScript};
+use super::transaction::WasmScript;
+use crate::common::{error::WasmError, types::WasmNetwork};
 
 #[wasm_bindgen]
 #[derive(Clone)]

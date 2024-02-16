@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use async_std::sync::RwLock;
 use bitcoin::{consensus::deserialize, Transaction};
 use muon::{
-    request::{Error as ReqError, Method, ProtonRequest, Response, ResponseExt},
+    request::{Error as ReqError, Method, ProtonRequest, Response},
     session::Session,
 };
 use serde::{Deserialize, Serialize};
@@ -200,9 +200,8 @@ impl TransactionClient {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::common_session;
-
     use super::TransactionClient;
+    use crate::utils::common_session;
 
     #[tokio::test]
     #[ignore]

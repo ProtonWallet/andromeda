@@ -1,8 +1,11 @@
 use andromeda_bitcoin::{bitcoin::Network, Address, PartiallySignedTransaction, SignOptions};
 use wasm_bindgen::prelude::*;
 
-use super::{account::WasmAccount, types::defined::WasmNetwork};
-use crate::common::error::{DetailledWasmError, WasmError};
+use super::account::WasmAccount;
+use crate::common::{
+    error::{DetailledWasmError, WasmError},
+    types::WasmNetwork,
+};
 
 #[wasm_bindgen(getter_with_clone)]
 #[derive(Clone)]

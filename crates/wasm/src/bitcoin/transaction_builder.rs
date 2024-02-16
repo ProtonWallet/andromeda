@@ -7,13 +7,12 @@ use wasm_bindgen::prelude::*;
 use super::{
     account::WasmAccount,
     psbt::WasmPartiallySignedTransaction,
-    types::{
-        defined::{WasmBitcoinUnit, WasmNetwork},
-        locktime::WasmLockTime,
-        transaction::WasmOutPoint,
-    },
+    types::{locktime::WasmLockTime, transaction::WasmOutPoint},
 };
-use crate::common::error::{DetailledWasmError, WasmError};
+use crate::common::{
+    error::{DetailledWasmError, WasmError},
+    types::{WasmBitcoinUnit, WasmNetwork},
+};
 
 #[wasm_bindgen]
 pub struct WasmTxBuilder {

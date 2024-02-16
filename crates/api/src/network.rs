@@ -48,9 +48,8 @@ impl NetworkClient {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::common_session;
-
     use super::NetworkClient;
+    use crate::utils::common_session;
 
     #[tokio::test]
     #[ignore]

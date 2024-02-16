@@ -2,20 +2,6 @@ use bdk::bitcoin::Network as BdkNetwork;
 
 use crate::error::Error;
 
-pub const SATOSHI: u64 = 1;
-pub const BITCOIN: u64 = 100_000_000 * SATOSHI;
-pub const MILLI_BITCOIN: u64 = BITCOIN / 1000;
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum BitcoinUnit {
-    /// 100,000,000 sats
-    BTC,
-    /// 100,000 sats
-    MBTC,
-    /// 1 sat
-    SAT,
-}
-
 /// Reimpl of BDK's Network enum to have exhaustive enum
 #[derive(Debug, Clone, Copy)]
 pub enum Network {

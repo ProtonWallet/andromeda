@@ -1,9 +1,12 @@
 use wasm_bindgen::prelude::*;
 
 /**
- * wasm-bindgen has some limitations that implies returning jsValue instead of rust type for async methods. We need to use these additional types to avoid completely breaking type system
+ * wasm-bindgen has some limitations that implies returning jsValue instead
+ * of rust type for async methods. We need to use these additional types to
+ * avoid completely breaking type system
  *
- * Ideally we want to get rid of the code below when wasm-bindgen completely supports async fns
+ * Ideally we want to get rid of the code below when wasm-bindgen completely
+ * supports async fns
  */
 
 // Transaction

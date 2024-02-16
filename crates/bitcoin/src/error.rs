@@ -1,8 +1,7 @@
-use bdk::descriptor::DescriptorError;
-use bdk::keys::bip39::Error as Bip39Error;
-use bdk::Error as BdkError;
-use bitcoin::bip32::Error as Bip32Error;
 use std::fmt::Debug;
+
+use bdk::{descriptor::DescriptorError, keys::bip39::Error as Bip39Error, Error as BdkError};
+use bitcoin::bip32::Error as Bip32Error;
 
 #[derive(Debug)]
 pub enum Error {

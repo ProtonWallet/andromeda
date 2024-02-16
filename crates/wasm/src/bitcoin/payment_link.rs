@@ -1,9 +1,7 @@
 use andromeda_bitcoin::payment_link::PaymentLink;
 use wasm_bindgen::prelude::*;
 
-use super::types::defined::WasmNetwork;
-
-use crate::common::error::DetailledWasmError;
+use crate::common::{error::DetailledWasmError, types::WasmNetwork};
 
 #[wasm_bindgen]
 pub enum WasmPaymentLinkKind {

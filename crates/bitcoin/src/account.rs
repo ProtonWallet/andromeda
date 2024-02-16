@@ -1,11 +1,9 @@
 use std::{
     collections::{HashMap, HashSet},
+    fmt::Debug,
     str::FromStr,
 };
 
-use super::{payment_link::PaymentLink, transactions::Pagination, utils::sort_and_paginate_txs};
-use crate::{bitcoin::Network, transactions::TransactionDetails};
-use crate::{error::Error, transactions::SimpleTransaction};
 use bdk::{
     bitcoin::{
         bip32::{ChildNumber, ExtendedPrivKey},
@@ -23,16 +21,35 @@ use miniscript::{
     descriptor::DescriptorSecretKey,
     Descriptor, DescriptorPublicKey,
 };
-use std::fmt::Debug;
 
-/// TLDR; A wallet is defined by its mnemonic + passphrase combo whereas a wallet account is defined by its derivation path from the wallet masterkey.
-/// In order to support wallet import from other major softwares, it has been decided to support the BIP44 standard from the very beginning. This BIP adds a granularity layer inside a wallet.
+use super::{payment_link::PaymentLink, transactions::Pagination, utils::sort_and_paginate_txs};
+use crate::{
+    bitcoin::Network,
+    error::Error,
+    transactions::{SimpleTransaction, TransactionDetails},
+};
+
+/// TLDR; A wallet is defined by its mnemonic + passphrase combo whereas a
+/// wallet account is defined by its derivation path from the wallet masterkey.
+/// In order to support wallet import from other major softwares, it has been
+/// decided to support the BIP44 standard from the very beginning. This BIP adds
+/// a granularity layer inside a wallet.
 ///
-/// Using BIP32, it is possible to derive new deterministic key pairs using a derivation path, creating kind of subwallets called accounts.
-/// Each accounts has it own extended private key, allowing them to spend bitcoins received on addresses generated with its associated extended public key, but preventing them from spending other wallet's accounts coins.
+/// Using BIP32, it is possible to derive new deterministic key pairs using a
+/// derivation path, creating kind of subwallets called accounts. Each accounts
+/// has it own extended private key, allowing them to spend bitcoins received on
+/// addresses generated with its associated extended public key, but preventing
+/// them from spending other wallet's accounts coins.
 ///
-/// This feature can be useful for privacy purpose (see Samourai usage of accounts) or for businesses that want to separate revenue channels, but this is mostly useful to avoid user complaints from not finding their accounts previously on other wallet providers.
-/// From a technical perspective, the code might be confusing as BDK use the "wallet" naming for whatever interacts with private keys, either master ones (wallet) or derived ones (accounts). Thus, in the codebase you might see this kind of interaction: A bitcoin Wallet generated from mnemonic, derived into an Account that instantiates a BDK Wallet.
+/// This feature can be useful for privacy purpose (see Samourai usage of
+/// accounts) or for businesses that want to separate revenue channels, but this
+/// is mostly useful to avoid user complaints from not finding their accounts
+/// previously on other wallet providers. From a technical perspective, the code
+/// might be confusing as BDK use the "wallet" naming for whatever interacts
+/// with private keys, either master ones (wallet) or derived ones (accounts).
+/// Thus, in the codebase you might see this kind of interaction: A bitcoin
+/// Wallet generated from mnemonic, derived into an Account that instantiates a
+/// BDK Wallet.
 #[derive(Debug)]
 pub struct Account<Storage>
 where
@@ -198,7 +215,8 @@ where
     /// # Arguments
     ///
     /// * master_secret_key : the master private key of the wallet
-    /// * config : config of the account, including script_type, network and index
+    /// * config : config of the account, including script_type, network and
+    ///   index
     /// * storage : storage to persist account wallet data
     ///
     /// ```rust
@@ -259,13 +277,15 @@ where
     ///
     /// # Note
     ///
-    /// If index is None, it will return last unused address of the account. So to avoid address reuse, we need to sync before calling this method.
+    /// If index is None, it will return last unused address of the account. So
+    /// to avoid address reuse, we need to sync before calling this method.
     pub fn get_address(&mut self, index: Option<u32>) -> Result<AddressInfo, Error> {
         let index = index.map_or(AddressIndex::LastUnused, |index| AddressIndex::Peek(index));
         self.wallet.get_address(index).map_err(|e| e.into())
     }
 
-    /// Returns a boolean indicating whether or not the account owns the provided address
+    /// Returns a boolean indicating whether or not the account owns the
+    /// provided address
     pub fn owns(&self, address: &Address) -> Result<bool, Error> {
         self.wallet.is_mine(&address.script_pubkey()).map_err(|e| e.into())
     }
@@ -281,11 +301,14 @@ where
         PaymentLink::new_bitcoin_uri(self, index, amount, label, message)
     }
 
-    /// Returns a list of transactions, optionnally paginated. Maybe later we might force the pagination if not provided.
+    /// Returns a list of transactions, optionnally paginated. Maybe later we
+    /// might force the pagination if not provided.
     ///
     /// # Notes
     ///
-    /// Returned transaction are simple ones with only amount value, txid, confirmation time and fees value. For more details, `get_transaction` can be called with txid
+    /// Returned transaction are simple ones with only amount value, txid,
+    /// confirmation time and fees value. For more details, `get_transaction`
+    /// can be called with txid
     pub fn get_transactions(
         &self,
         pagination: Option<Pagination>,
@@ -293,8 +316,9 @@ where
     ) -> Result<Vec<SimpleTransaction>, Error> {
         let pagination = pagination.unwrap_or_default();
 
-        // We first need to sort transactions by their time (last_seen for unconfirmed ones and confirmation_time for confirmed one)
-        // The collection that happen here might be consuming, maybe later we need to rework this part
+        // We first need to sort transactions by their time (last_seen for unconfirmed
+        // ones and confirmation_time for confirmed one) The collection that
+        // happen here might be consuming, maybe later we need to rework this part
         let simple_txs = self
             .wallet
             .list_transactions(true)
@@ -319,7 +343,8 @@ where
         TransactionDetails::from_bdk(tx, self.get_wallet())
     }
 
-    /// Given a mutable reference to a PSBT, and sign options, tries to sign inputs elligible
+    /// Given a mutable reference to a PSBT, and sign options, tries to sign
+    /// inputs elligible
     pub fn sign(
         &self,
         psbt: &mut PartiallySignedTransaction,
@@ -360,10 +385,8 @@ mod tests {
     use bdk::database::MemoryDatabase;
     use miniscript::bitcoin::{bip32::ExtendedPrivKey, Address};
 
-    use crate::bitcoin::Network;
-    use crate::mnemonic::Mnemonic;
-
     use super::{Account, AccountConfig, ScriptType};
+    use crate::{bitcoin::Network, mnemonic::Mnemonic};
 
     fn set_test_account(script_type: ScriptType) -> Account<MemoryDatabase> {
         let config = AccountConfig::new(script_type, Network::Testnet, 0, None);

@@ -1,6 +1,5 @@
-use wasm_bindgen::prelude::*;
-
 use andromeda_bitcoin::BdkBalance;
+use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
 pub struct WasmBalance {
     /// All coinbase outputs not yet matured
