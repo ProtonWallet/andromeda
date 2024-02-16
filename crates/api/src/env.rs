@@ -9,6 +9,7 @@ pub struct LocalEnv {
 
 const DEFAULT_LOCAL_PORT: u32 = 8080;
 
+#[cfg(feature = "local")]
 impl LocalEnv {
     const PINS: &'static [&'static str] = &[];
 
@@ -24,6 +25,7 @@ impl LocalEnv {
     }
 }
 
+#[cfg(feature = "local")]
 impl ApiEnv for LocalEnv {
     fn name(&self) -> &str {
         &self.name
