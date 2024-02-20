@@ -1,8 +1,4 @@
-use andromeda_bitcoin::{
-    account::{build_account_derivation_path, AccountConfig},
-    wallet::Wallet,
-    BdkMemoryDatabase, DerivationPath,
-};
+use andromeda_bitcoin::{wallet::Wallet, BdkMemoryDatabase, DerivationPath};
 use wasm_bindgen::prelude::*;
 
 use super::{
@@ -15,10 +11,7 @@ use super::{
         typescript_interfaces::IWasmSimpleTransactionArray,
     },
 };
-use crate::common::{
-    error::{DetailledWasmError, WasmError},
-    types::WasmNetwork,
-};
+use crate::common::{error::DetailledWasmError, types::WasmNetwork};
 
 #[wasm_bindgen]
 pub struct WasmWallet {
@@ -27,7 +20,7 @@ pub struct WasmWallet {
 
 #[wasm_bindgen]
 extern "C" {
-    #[wasm_bindgen(typescript_type = "[WasmScriptType, number]")]
+    #[wasm_bindgen(typescript_type = "[WasmScriptType, WasmDerivationPath]")]
     pub type AccountConfigTupple;
 }
 
@@ -44,8 +37,8 @@ impl WasmWallet {
             accounts
                 .into_iter()
                 .map(|acc| {
-                    let acc: (WasmScriptType, u32) = serde_wasm_bindgen::from_value(acc.into()).unwrap();
-                    (acc.0.into(), acc.1, BdkMemoryDatabase::new())
+                    let acc: (WasmScriptType, WasmDerivationPath) = serde_wasm_bindgen::from_value(acc.into()).unwrap();
+                    (acc.0.into(), (&acc.1).into(), BdkMemoryDatabase::new())
                 })
                 .collect::<Vec<_>>()
         });
@@ -60,25 +53,15 @@ impl WasmWallet {
     pub fn add_account(
         &mut self,
         script_type: WasmScriptType,
-        account_index: u32,
+        derivation_path: WasmDerivationPath,
     ) -> Result<WasmDerivationPath, DetailledWasmError> {
-        let tmp_derivation_path: DerivationPath = build_account_derivation_path(AccountConfig::new(
-            script_type.into(),
-            self.inner.get_network(),
-            account_index,
-            None,
-        ))
-        .map_err(|_| WasmError::InvalidDerivationPath.into())?
-        .into();
-
         // In a multi-wallet context, an account must be defined by the BIP32 masterkey
         // (fingerprint), and its derivation path (unique)
-        let account_id = format!("{}_{}", self.inner.get_fingerprint(), tmp_derivation_path.to_string());
         let storage = BdkMemoryDatabase::new();
 
         let derivation_path = self
             .inner
-            .add_account(script_type.into(), account_index, storage)
+            .add_account(script_type.into(), (&derivation_path).into(), storage)
             .map_err(|e| e.into())?;
 
         // assert_eq!(derivation_path, tmp_derivation_path);

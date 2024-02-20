@@ -13,7 +13,7 @@ use miniscript::bitcoin::{
 };
 
 use super::{
-    account::{Account, AccountConfig, ScriptType},
+    account::{Account, ScriptType},
     transactions::Pagination,
     utils::sort_and_paginate_txs,
 };
@@ -59,12 +59,12 @@ where
         network: Network,
         bip39_mnemonic: String,
         bip38_passphrase: Option<String>,
-        accounts: Vec<(ScriptType, u32, Storage)>,
+        accounts: Vec<(ScriptType, DerivationPath, Storage)>,
     ) -> Result<Self, Error> {
         let mut wallet = Self::new(network, bip39_mnemonic, bip38_passphrase)?;
 
-        for (script_type, account_index, storage) in accounts {
-            wallet.add_account(script_type, account_index, storage)?;
+        for (script_type, derivation_path, storage) in accounts {
+            wallet.add_account(script_type, derivation_path, storage)?;
         }
 
         Ok(wallet)
@@ -72,15 +72,11 @@ where
 
     pub fn add_account(
         &mut self,
-        script_type: ScriptType,
-        account_index: u32,
+        scrip_type: ScriptType,
+        derivation_path: DerivationPath,
         storage: Storage,
     ) -> Result<DerivationPath, Error> {
-        let account = Account::new(
-            self.mprv,
-            AccountConfig::new(script_type, self.network.into(), account_index, None),
-            storage,
-        )?;
+        let account = Account::new(self.mprv, self.network, scrip_type, derivation_path, storage)?;
 
         let derivation_path = account.get_derivation_path();
         self.accounts

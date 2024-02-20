@@ -46,18 +46,6 @@ pub enum WasmNetwork {
     Regtest,
 }
 
-impl TryFrom<u8> for WasmNetwork {
-    type Error = WasmError;
-
-    fn try_from(network: u8) -> Result<WasmNetwork, WasmError> {
-        match network {
-            0 => Ok(WasmNetwork::Bitcoin),
-            1 => Ok(WasmNetwork::Testnet),
-            _ => Err(WasmError::InvalidNetwork),
-        }
-    }
-}
-
 impl From<WasmNetwork> for Network {
     fn from(network: WasmNetwork) -> Self {
         match network {

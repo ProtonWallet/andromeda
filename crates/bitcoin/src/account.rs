@@ -7,7 +7,7 @@ use std::{
 use andromeda_common::Network;
 use bdk::{
     bitcoin::{
-        bip32::{ChildNumber, ExtendedPrivKey},
+        bip32::{ChildNumber, DerivationPath, ExtendedPrivKey},
         secp256k1::Secp256k1,
     },
     blockchain::esplora::EsploraBlockchain,
@@ -18,7 +18,7 @@ use bdk::{
 };
 use bitcoin::Transaction;
 use miniscript::{
-    bitcoin::{bip32::DerivationPath, psbt::PartiallySignedTransaction, Address, Network as BdkNetwork, Txid},
+    bitcoin::{psbt::PartiallySignedTransaction, Address, Network as BdkNetwork, Txid},
     descriptor::DescriptorSecretKey,
     Descriptor, DescriptorPublicKey,
 };
@@ -71,71 +71,16 @@ pub enum ScriptType {
     Taproot,
 }
 
-impl TryFrom<String> for ScriptType {
-    type Error = Error;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        if value == "legacy" {
-            return Ok(ScriptType::Legacy);
-        } else if value == "nested_segwit" {
-            return Ok(ScriptType::NestedSegwit);
-        } else if value == "native_segwit" {
-            return Ok(ScriptType::NativeSegwit);
-        } else if value == "taproot" {
-            return Ok(ScriptType::Taproot);
-        }
-
-        Err(Error::InvalidScriptType)
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct AccountConfig {
-    pub script_type: ScriptType,
-    pub network: Network,
-    pub account_index: u32,
-    pub multisig_threshold: Option<(u32, u32)>,
-}
-
-impl AccountConfig {
-    pub fn new(
-        script_type: ScriptType,
-        network: Network,
-        account_index: u32,
-        multisig_threshold: Option<(u32, u32)>,
-    ) -> Self {
-        Self {
-            script_type,
-            network,
-            account_index,
-            multisig_threshold,
+impl From<ScriptType> for ChildNumber {
+    /// Returns default purpose derivation index (level 1) for each script type
+    fn from(script_type: ScriptType) -> Self {
+        match script_type {
+            ScriptType::Legacy => ChildNumber::Hardened { index: 44 },
+            ScriptType::NestedSegwit => ChildNumber::Hardened { index: 49 },
+            ScriptType::NativeSegwit => ChildNumber::Hardened { index: 84 },
+            ScriptType::Taproot => ChildNumber::Hardened { index: 86 },
         }
     }
-}
-
-pub fn build_account_derivation_path(config: AccountConfig) -> Result<Vec<ChildNumber>, Error> {
-    let purpose = ChildNumber::from_hardened_idx(if config.multisig_threshold.is_some() {
-        // TODO maybe support legacy standard (45' + 48')
-        87 // https://bips.dev/87/
-    } else {
-        match config.script_type {
-            ScriptType::Legacy => 44,       // https://bips.dev/44/
-            ScriptType::NestedSegwit => 49, // https://bips.dev/49/
-            ScriptType::NativeSegwit => 84, // https://bips.dev/84/
-            ScriptType::Taproot => 86,      // https://bips.dev/86/
-        }
-    })
-    .unwrap_or_else(|_| unreachable!("an error occured while generating child number from bip"));
-
-    let coin_type = ChildNumber::from_hardened_idx(match config.network {
-        Network::Bitcoin => 0,
-        _ => 1,
-    })
-    .unwrap();
-
-    let account = ChildNumber::from_hardened_idx(config.account_index).map_err(|_| Error::InvalidAccountIndex)?;
-
-    Ok(vec![purpose, coin_type, account])
 }
 
 type ReturnedDescriptor = (
@@ -146,17 +91,13 @@ type ReturnedDescriptor = (
 
 fn build_account_descriptors(
     account_xprv: ExtendedPrivKey,
-    config: AccountConfig,
+    script_type: ScriptType,
 ) -> Result<(ReturnedDescriptor, ReturnedDescriptor), Error> {
-    let builder = if config.multisig_threshold.is_some() {
-        todo!()
-    } else {
-        match config.script_type {
-            ScriptType::Legacy => |xkey: (ExtendedPrivKey, DerivationPath)| descriptor!(pkh(xkey)),
-            ScriptType::NestedSegwit => |xkey: (ExtendedPrivKey, DerivationPath)| descriptor!(sh(wpkh(xkey))),
-            ScriptType::NativeSegwit => |xkey: (ExtendedPrivKey, DerivationPath)| descriptor!(wpkh(xkey)),
-            ScriptType::Taproot => |xkey: (ExtendedPrivKey, DerivationPath)| descriptor!(tr(xkey)),
-        }
+    let builder = match script_type {
+        ScriptType::Legacy => |xkey: (ExtendedPrivKey, DerivationPath)| descriptor!(pkh(xkey)),
+        ScriptType::NestedSegwit => |xkey: (ExtendedPrivKey, DerivationPath)| descriptor!(sh(wpkh(xkey))),
+        ScriptType::NativeSegwit => |xkey: (ExtendedPrivKey, DerivationPath)| descriptor!(wpkh(xkey)),
+        ScriptType::Taproot => |xkey: (ExtendedPrivKey, DerivationPath)| descriptor!(tr(xkey)),
     };
 
     let internal = builder((
@@ -186,18 +127,13 @@ where
 {
     fn build_wallet(
         account_xprv: ExtendedPrivKey,
-        config: AccountConfig,
+        network: Network,
+        script_type: ScriptType,
         storage: Storage,
     ) -> Result<BdkWallet<Storage>, Error> {
-        let (external_descriptor, internal_descriptor) = build_account_descriptors(account_xprv, config)?;
+        let (external_descriptor, internal_descriptor) = build_account_descriptors(account_xprv, script_type)?;
 
-        BdkWallet::new(
-            external_descriptor,
-            Some(internal_descriptor),
-            config.network.into(),
-            storage,
-        )
-        .map_err(|e| e.into())
+        BdkWallet::new(external_descriptor, Some(internal_descriptor), network.into(), storage).map_err(|e| e.into())
     }
 
     /// Returns a mutable reference to account's BdkWallet struct
@@ -220,31 +156,36 @@ where
     /// * storage : storage to persist account wallet data
     ///
     /// ```rust
-    /// # use bdk::bitcoin::bip32::ExtendedPrivKey;
+    /// # use std::str::FromStr;
+    /// # use bdk::bitcoin::bip32::{DerivationPath, ExtendedPrivKey};
     /// # use bdk::database::MemoryDatabase;
     /// #
-    /// # use andromeda_bitcoin::account::{Account, AccountConfig, ScriptType};
+    /// # use andromeda_bitcoin::account::{Account, ScriptType};
     /// # use andromeda_bitcoin::mnemonic::Mnemonic;
     /// # use andromeda_common::Network;
     /// # tokio_test::block_on(async {
     /// #
     /// let mnemonic = Mnemonic::from_string(String::from("desk prevent enhance husband hungry idle member vessel room moment simple behave")).unwrap();
     /// let mprv = ExtendedPrivKey::new_master(Network::Testnet.into(), &mnemonic.inner().to_seed("")).unwrap();
-    /// let config = AccountConfig::new(ScriptType::NativeSegwit, Network::Testnet, 0, None);
-    /// let account = Account::new(mprv, config, MemoryDatabase::new());
+    /// let account = Account::new(mprv, Network::Testnet, ScriptType::NativeSegwit, DerivationPath::from_str("m/86'/1'/0'").unwrap(), MemoryDatabase::new());
     /// # })
     /// ```
-    pub fn new(master_secret_key: ExtendedPrivKey, config: AccountConfig, storage: Storage) -> Result<Self, Error> {
+    pub fn new(
+        master_secret_key: ExtendedPrivKey,
+        network: Network,
+        script_type: ScriptType,
+        derivation_path: DerivationPath,
+        storage: Storage,
+    ) -> Result<Self, Error> {
         let secp = Secp256k1::new();
 
-        let derivation_path = build_account_derivation_path(config)?;
         let account_xprv = master_secret_key
             .derive_priv(&secp, &derivation_path)
             .map_err(|e| e.into())?;
 
         Ok(Self {
             derivation_path: derivation_path.into(),
-            wallet: Self::build_wallet(account_xprv, config, storage)?,
+            wallet: Self::build_wallet(account_xprv, network, script_type, storage)?,
         })
     }
 
@@ -386,48 +327,32 @@ mod tests {
 
     use andromeda_common::Network;
     use bdk::database::MemoryDatabase;
+    use bitcoin::bip32::DerivationPath;
     use miniscript::bitcoin::{bip32::ExtendedPrivKey, Address};
 
-    use super::{Account, AccountConfig, ScriptType};
+    use super::{Account, ScriptType};
     use crate::mnemonic::Mnemonic;
 
-    fn set_test_account(script_type: ScriptType) -> Account<MemoryDatabase> {
-        let config = AccountConfig::new(script_type, Network::Testnet, 0, None);
-
+    fn set_test_account(script_type: ScriptType, derivation_path: &str) -> Account<MemoryDatabase> {
+        let network = Network::Testnet;
         let mnemonic = Mnemonic::from_string("category law logic swear involve banner pink room diesel fragile sunset remove whale lounge captain code hobby lesson material current moment funny vast fade".to_string()).unwrap();
-        let master_secret_key =
-            ExtendedPrivKey::new_master(config.network.into(), &mnemonic.inner().to_seed("")).unwrap();
+        let master_secret_key = ExtendedPrivKey::new_master(network.into(), &mnemonic.inner().to_seed("")).unwrap();
 
-        Account::new(master_secret_key, config, MemoryDatabase::new()).unwrap()
-    }
+        let derivation_path = DerivationPath::from_str(derivation_path).unwrap();
 
-    #[test]
-    fn get_correct_derivation_legacy() {
-        let account = set_test_account(ScriptType::Legacy);
-        assert_eq!(account.get_derivation_path().to_string(), "m/44'/1'/0'".to_string());
-    }
-
-    #[test]
-    fn get_correct_derivation_native_segwit() {
-        let account = set_test_account(ScriptType::NativeSegwit);
-        assert_eq!(account.get_derivation_path().to_string(), "m/84'/1'/0'".to_string());
-    }
-
-    #[test]
-    fn get_correct_derivation_nested_segwit() {
-        let account = set_test_account(ScriptType::NestedSegwit);
-        assert_eq!(account.get_derivation_path().to_string(), "m/49'/1'/0'".to_string());
-    }
-
-    #[test]
-    fn get_correct_derivation_taproot() {
-        let account = set_test_account(ScriptType::Taproot);
-        assert_eq!(account.get_derivation_path().to_string(), "m/86'/1'/0'".to_string());
+        Account::new(
+            master_secret_key,
+            network,
+            script_type,
+            derivation_path,
+            MemoryDatabase::new(),
+        )
+        .unwrap()
     }
 
     #[test]
     fn get_address_by_index_legacy() {
-        let mut account = set_test_account(ScriptType::Legacy);
+        let mut account = set_test_account(ScriptType::Legacy, "m/44'/1'/0'");
         assert_eq!(
             account.get_address(Some(13)).unwrap().to_string(),
             "mvqqkX5UmaqPvzS4Aa1gMhj4NFntGmju2N".to_string()
@@ -436,7 +361,7 @@ mod tests {
 
     #[test]
     fn get_address_by_index_nested_segwit() {
-        let mut account = set_test_account(ScriptType::NestedSegwit);
+        let mut account = set_test_account(ScriptType::NestedSegwit, "m/49'/1'/0'");
         assert_eq!(
             account.get_address(Some(13)).unwrap().to_string(),
             "2MzYfE5Bt1g2A9zDBocPtcDjRqpFfdCeqe3".to_string()
@@ -445,7 +370,7 @@ mod tests {
 
     #[test]
     fn get_address_by_index_native_segwit() {
-        let mut account = set_test_account(ScriptType::NativeSegwit);
+        let mut account = set_test_account(ScriptType::NativeSegwit, "m/84'/1'/0'");
         assert_eq!(
             account.get_address(Some(13)).unwrap().to_string(),
             "tb1qre68v280t3t5mdy0hcu86fnx3h289h0arfe6lr".to_string()
@@ -454,7 +379,7 @@ mod tests {
 
     #[test]
     fn get_address_by_index_taproot() {
-        let mut account = set_test_account(ScriptType::Taproot);
+        let mut account = set_test_account(ScriptType::Taproot, "m/86'/1'/0'");
         assert_eq!(
             account.get_address(Some(13)).unwrap().to_string(),
             "tb1ppanhpmq38z6738s0mwnd9h0z2j5jv7q4x4pc2wxqu8jw0gwmf69qx3zpaf".to_string()
@@ -463,7 +388,7 @@ mod tests {
 
     #[test]
     fn get_last_unused_address() {
-        let mut account = set_test_account(ScriptType::Taproot);
+        let mut account = set_test_account(ScriptType::Taproot, "m/86'/1'/0'");
         assert_eq!(
             account.get_address(None).unwrap().to_string(),
             "tb1pvv0tcny86mz4lsx97p03fvkkc09cg5nx5nvnxc7c323jv5sr6wnshfu377".to_string()
@@ -472,7 +397,7 @@ mod tests {
 
     #[test]
     fn get_bitcoin_uri_with_params() {
-        let mut account = set_test_account(ScriptType::NativeSegwit);
+        let mut account = set_test_account(ScriptType::NativeSegwit, "m/84'/1'/0'");
         assert_eq!(
             account
                 .get_bitcoin_uri(Some(5), Some(788927), Some("Hello world".to_string()), None)
@@ -484,7 +409,7 @@ mod tests {
 
     #[test]
     fn get_is_address_owned_by_account() {
-        let mut account = set_test_account(ScriptType::Taproot);
+        let mut account = set_test_account(ScriptType::Taproot, "m/86'/1'/0'");
 
         let address = account.get_address(None).unwrap();
         assert!(account.owns(&address).unwrap());

@@ -4,7 +4,7 @@ use std::{
 };
 
 use andromeda_bitcoin::{
-    account::{Account, AccountConfig, ScriptType},
+    account::{Account, ScriptType},
     BdkMemoryDatabase,
 };
 use serde::{Deserialize, Serialize};
@@ -21,7 +21,7 @@ use super::{
         utxo::WasmUtxo,
     },
 };
-use crate::common::{error::DetailledWasmError, types::WasmNetwork};
+use crate::common::error::DetailledWasmError;
 
 #[wasm_bindgen]
 #[derive(Clone, Copy, Deserialize, Serialize)]
@@ -72,43 +72,6 @@ impl WasmAccount {
 impl Into<WasmAccount> for &Arc<RwLock<Account<BdkMemoryDatabase>>> {
     fn into(self) -> WasmAccount {
         WasmAccount { inner: self.clone() }
-    }
-}
-
-#[wasm_bindgen(getter_with_clone)]
-#[derive(Clone)]
-pub struct WasmAccountConfig {
-    pub script_type: WasmScriptType,
-    pub network: WasmNetwork,
-    pub account_index: u32,
-}
-
-impl Into<AccountConfig> for WasmAccountConfig {
-    fn into(self) -> AccountConfig {
-        AccountConfig {
-            script_type: self.script_type.into(),
-            account_index: self.account_index,
-            network: self.network.into(),
-            multisig_threshold: None,
-        }
-    }
-}
-
-#[wasm_bindgen]
-impl WasmAccountConfig {
-    #[wasm_bindgen(constructor)]
-    pub fn new(script_type: WasmScriptType, network: Option<WasmNetwork>, account_index: Option<u32>) -> Self {
-        Self {
-            script_type: script_type.into(),
-            network: match network {
-                Some(network) => network,
-                None => WasmNetwork::Bitcoin,
-            },
-            account_index: match account_index {
-                Some(account_index) => account_index,
-                None => 0,
-            },
-        }
     }
 }
 
