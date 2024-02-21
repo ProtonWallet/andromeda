@@ -48,6 +48,13 @@ impl WalletAppSpec {
     pub fn inner(&self) -> AppSpec {
         self.0.clone()
     }
+
+    pub fn from_version(app_version: String, user_agent: String) -> Self {
+        // TODO: change that to Wallet when added to Product enum above Product::Unspecified
+        let app_spec = AppSpec::new(Product::Unspecified, app_version, user_agent);
+        WalletAppSpec(app_spec)
+    }
+
 }
 
 /// Dummy struct to build all Wallet api clients from a single sessions
@@ -118,6 +125,22 @@ impl ProtonWalletApiClient {
     #[cfg(not(feature = "local"))]
     fn session(app_spec: AppSpec, auth_store: SimpleAuthStore) -> Session {
         Session::new(auth_store, app_spec).unwrap()
+    }
+
+    /// Builds a new api client from a wallet version and a user agent
+    ///
+    /// ```rust
+    /// # use andromeda_api::ProtonWalletApiClient;
+    /// let api_client = ProtonWalletApiClient::from_version("android-wallet/1.0.0".to_string(), "ProtonWallet/plus-agent-details".to_string());
+    /// ```
+    pub fn from_version(app_version: String, user_agent: String) -> Self {
+        let app_spec = WalletAppSpec::from_version(app_version, user_agent).inner();
+
+        let auth_store = SimpleAuthStore::new("atlas");
+
+        let session = Self::session(app_spec, auth_store);
+
+        Self::from_session(session)
     }
 
     /// Builds a new api client from a session.
