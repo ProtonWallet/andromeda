@@ -212,6 +212,12 @@ impl WasmWalletClient {
             .map(|wallet| wallet.into())
     }
 
+    #[wasm_bindgen(js_name = "deleteWallet")]
+    pub async fn delete_wallets(&self, wallet_id: String) -> Result<(), WasmError> {
+        self.0.delete_wallet(wallet_id).await.map_err(|e| e.into())?;
+        Ok(())
+    }
+
     #[wasm_bindgen(js_name = "getWalletAccounts")]
     pub async fn get_wallet_accounts(&self, wallet_id: String) -> Result<WasmWalletAccountArray, WasmError> {
         let wallet_accounts = self
