@@ -3,8 +3,6 @@ use andromeda_common::{BitcoinUnit, Network};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
-use crate::common::error::WasmError;
-
 #[wasm_bindgen]
 #[derive(Clone, Copy)]
 pub enum WasmBitcoinUnit {

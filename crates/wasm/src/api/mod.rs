@@ -3,7 +3,6 @@ use network::WasmNetworkClient;
 use settings::WasmSettingsClient;
 use wallet::WasmWalletClient;
 use wasm_bindgen::prelude::*;
-use web_sys::console::log_2;
 
 use crate::common::error::WasmError;
 
