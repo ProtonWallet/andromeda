@@ -44,20 +44,6 @@ pub enum ScriptType {
     Taproot = 4,
 }
 
-impl TryFrom<String> for ScriptType {
-    type Error = &'static str;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        match value.as_str() {
-            "legacy" => Ok(ScriptType::Legacy),
-            "nested_segwit" => Ok(ScriptType::NestedSegwit),
-            "native_segwit" => Ok(ScriptType::NativeSegwit),
-            "taproot" => Ok(ScriptType::Taproot),
-            _ => Err("InvalidScriptType"),
-        }
-    }
-}
-
 impl Into<u8> for ScriptType {
     fn into(self) -> u8 {
         match self {
