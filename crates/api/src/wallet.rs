@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
+use andromeda_common::Network;
 use async_std::sync::RwLock;
+use bitcoin::bip32::{ChildNumber, DerivationPath};
 use muon::{
     request::{Method, ProtonRequest, Response},
     session::Session,
@@ -9,6 +11,26 @@ use serde::{Deserialize, Serialize};
 
 use super::BASE_WALLET_API_V1;
 use crate::error::Error;
+
+pub trait FromParts {
+    fn from_parts(purpose: u32, network: Network, account_index: u32) -> Self;
+}
+
+impl FromParts for DerivationPath {
+    fn from_parts(purpose: u32, network: Network, account: u32) -> Self {
+        let purpose_level = ChildNumber::from_hardened_idx(purpose).unwrap();
+
+        let network_index = match network {
+            Network::Bitcoin => 0,
+            _ => 1,
+        };
+        let cointype_level = ChildNumber::from_hardened_idx(network_index).unwrap();
+
+        let account_level = ChildNumber::from_hardened_idx(account).unwrap();
+
+        DerivationPath::from(vec![purpose_level, cointype_level, account_level])
+    }
+}
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum ScriptType {

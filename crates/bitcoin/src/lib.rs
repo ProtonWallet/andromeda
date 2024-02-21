@@ -12,7 +12,7 @@ pub mod wallet;
 #[doc(hidden)]
 pub use bdk::{
     bitcoin::{
-        bip32::{DerivationPath, ExtendedPrivKey},
+        bip32::{ChildNumber, DerivationPath, ExtendedPrivKey},
         block::Header as BlockHeader,
         blockdata::locktime::absolute::{Height, LockTime, Time},
         psbt::PartiallySignedTransaction,
