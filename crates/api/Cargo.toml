@@ -21,6 +21,7 @@ bitcoin = { version = "0.30.2", default-features = false, features = [
 
 [dev-dependencies]
 tokio = { features = ["macros", "rt"], version = "1.35" }
+tokio-test = "0.4.3"
 
 [features]
 local = ["muon/dangerous"]

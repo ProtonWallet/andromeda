@@ -1,5 +1,5 @@
-use andromeda_bitcoin::{bitcoin::Network, BdkNetwork, KeychainKind};
-use andromeda_common::BitcoinUnit;
+use andromeda_bitcoin::{BdkNetwork, KeychainKind};
+use andromeda_common::{BitcoinUnit, Network};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 

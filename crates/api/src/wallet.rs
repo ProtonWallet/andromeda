@@ -104,6 +104,8 @@ pub struct Wallet {
     pub Status: u8,
     /// Wallet mnemonic encrypted with the WalletKey, in base64 format
     pub Mnemonic: Option<String>,
+    // Unique identifier of the mnemonic, using the first 4 bytes of the master public key hash
+    pub Fingerprint: Option<String>,
     /// Wallet master public key encrypted with the WalletKey, in base64 format.
     /// Only allows fetching coins owned by wallet, no spending allowed.
     pub PublicKey: Option<String>,
@@ -127,6 +129,8 @@ pub struct CreateWalletRequestBody {
     pub WalletKey: String,
     /// Wallet mnemonic encrypted with the WalletKey, in base64 format
     pub Mnemonic: Option<String>,
+    // Unique identifier of the mnemonic, using the first 4 bytes of the master public key hash, required if Mnemonic is provided
+    pub Fingerprint: Option<String>,
     /// Wallet master public key encrypted with the WalletKey, in base64 format.
     /// Only allows fetching coins owned by wallet, no spending allowed.
     pub PublicKey: Option<String>,
@@ -323,6 +327,24 @@ impl WalletClient {
             WalletKey: parsed.WalletKey,
             WalletSettings: parsed.WalletSettings,
         })
+    }
+
+    pub async fn delete_wallet(&self, wallet_id: String) -> Result<(), Error> {
+        let request = ProtonRequest::new(Method::DELETE, format!("{}/wallets/{}", BASE_WALLET_API_V1, wallet_id));
+
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+
+        println!("response {:?}", response.to_json::<serde_json::Value>());
+
+        Ok(())
     }
 
     pub async fn get_wallet_accounts(&self, wallet_id: String) -> Result<Vec<Account>, Error> {
@@ -583,6 +605,7 @@ mod tests {
             HasPassphrase: 0,
             IsImported: 0,
             Mnemonic: Some(String::from("")),
+            Fingerprint: Some(String::from("")),
             PublicKey: None,
 
             UserKeyId: String::from("A2MiMDdmh59RhGQ13iuZ27tc_vEn5GTf-v1LaCRP99q2rkMmPeuMh1QRdtIjR5UwGAowachcaiYYf8Pcf9tOoA=="),
@@ -591,6 +614,21 @@ mod tests {
 
         let blocks = client.create_wallet(payload).await;
         println!("request done: {:?}", blocks);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn should_delete_wallet() {
+        let session = common_session().await;
+        let client = WalletClient::new(session);
+
+        let wallet = client
+            .delete_wallet(String::from(
+                "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
+            ))
+            .await;
+
+        println!("request done: {:?}", wallet);
     }
 
     #[tokio::test]
