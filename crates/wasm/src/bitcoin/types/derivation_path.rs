@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
-use andromeda_api::wallet::FromParts;
 use andromeda_bitcoin::DerivationPath;
+use andromeda_common::FromParts;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
@@ -36,6 +36,19 @@ impl WasmDerivationPath {
         Self {
             inner: DerivationPath::from_parts(purpose, network.into(), account_index),
         }
+    }
+
+    #[wasm_bindgen(js_name = fromString)]
+    pub fn from_str(str: String) -> Result<WasmDerivationPath, WasmError> {
+        Ok(Self {
+            inner: DerivationPath::from_str(&str).map_err(|_| WasmError::Bip32Error)?,
+        })
+    }
+}
+
+impl WasmDerivationPath {
+    pub fn inner(&self) -> &DerivationPath {
+        &self.inner
     }
 }
 

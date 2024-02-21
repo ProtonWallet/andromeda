@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
-use andromeda_common::Network;
 use async_std::sync::RwLock;
-use bitcoin::bip32::{ChildNumber, DerivationPath};
 use muon::{
     request::{Method, ProtonRequest, Response},
     session::Session,
@@ -11,60 +9,6 @@ use serde::{Deserialize, Serialize};
 
 use super::BASE_WALLET_API_V1;
 use crate::error::Error;
-
-pub trait FromParts {
-    fn from_parts(purpose: u32, network: Network, account_index: u32) -> Self;
-}
-
-impl FromParts for DerivationPath {
-    fn from_parts(purpose: u32, network: Network, account: u32) -> Self {
-        let purpose_level = ChildNumber::from_hardened_idx(purpose).unwrap();
-
-        let network_index = match network {
-            Network::Bitcoin => 0,
-            _ => 1,
-        };
-        let cointype_level = ChildNumber::from_hardened_idx(network_index).unwrap();
-
-        let account_level = ChildNumber::from_hardened_idx(account).unwrap();
-
-        DerivationPath::from(vec![purpose_level, cointype_level, account_level])
-    }
-}
-
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-pub enum ScriptType {
-    /// Legacy scripts : https://bitcoinwiki.org/wiki/pay-to-pubkey-hash
-    Legacy = 1,
-    /// Nested segwit scrips : https://bitcoinwiki.org/wiki/pay-to-script-hash
-    NestedSegwit = 2,
-    /// Native segwit scripts : https://bips.dev/173/
-    NativeSegwit = 3,
-    /// Taproot scripts : https://bips.dev/341/
-    Taproot = 4,
-}
-
-impl Into<u8> for ScriptType {
-    fn into(self) -> u8 {
-        match self {
-            ScriptType::Legacy => 1u8,
-            ScriptType::NestedSegwit => 2u8,
-            ScriptType::NativeSegwit => 3u8,
-            ScriptType::Taproot => 4u8,
-        }
-    }
-}
-
-impl Into<String> for ScriptType {
-    fn into(self) -> String {
-        match self {
-            ScriptType::Legacy => String::from("legacy"),
-            ScriptType::NestedSegwit => String::from("nested_segwit"),
-            ScriptType::NativeSegwit => String::from("native_segwit"),
-            ScriptType::Taproot => String::from("taproot"),
-        }
-    }
-}
 
 #[derive(Clone)]
 pub struct WalletClient {
@@ -115,7 +59,8 @@ pub struct CreateWalletRequestBody {
     pub WalletKey: String,
     /// Wallet mnemonic encrypted with the WalletKey, in base64 format
     pub Mnemonic: Option<String>,
-    // Unique identifier of the mnemonic, using the first 4 bytes of the master public key hash, required if Mnemonic is provided
+    // Unique identifier of the mnemonic, using the first 4 bytes of the master public key hash, required if Mnemonic
+    // is provided
     pub Fingerprint: Option<String>,
     /// Wallet master public key encrypted with the WalletKey, in base64 format.
     /// Only allows fetching coins owned by wallet, no spending allowed.
@@ -564,9 +509,10 @@ impl WalletClient {
 mod tests {
     use std::str::FromStr;
 
+    use andromeda_common::ScriptType;
     use bitcoin::bip32::DerivationPath;
 
-    use super::{CreateWalletAccountRequestBody, CreateWalletRequestBody, ScriptType, WalletClient};
+    use super::{CreateWalletAccountRequestBody, CreateWalletRequestBody, WalletClient};
     use crate::utils::common_session;
 
     #[tokio::test]

@@ -4,7 +4,7 @@ use std::{
     str::FromStr,
 };
 
-use andromeda_common::Network;
+use andromeda_common::{Network, ScriptType};
 use bdk::{
     bitcoin::{
         bip32::{ChildNumber, DerivationPath, ExtendedPrivKey},
@@ -57,30 +57,6 @@ where
 {
     derivation_path: DerivationPath,
     wallet: BdkWallet<Storage>,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum ScriptType {
-    /// Legacy scripts : https://bitcoinwiki.org/wiki/pay-to-pubkey-hash
-    Legacy,
-    /// Nested segwit scrips : https://bitcoinwiki.org/wiki/pay-to-script-hash
-    NestedSegwit,
-    /// Native segwit scripts : https://bips.dev/173/
-    NativeSegwit,
-    /// Taproot scripts : https://bips.dev/341/
-    Taproot,
-}
-
-impl From<ScriptType> for ChildNumber {
-    /// Returns default purpose derivation index (level 1) for each script type
-    fn from(script_type: ScriptType) -> Self {
-        match script_type {
-            ScriptType::Legacy => ChildNumber::Hardened { index: 44 },
-            ScriptType::NestedSegwit => ChildNumber::Hardened { index: 49 },
-            ScriptType::NativeSegwit => ChildNumber::Hardened { index: 84 },
-            ScriptType::Taproot => ChildNumber::Hardened { index: 86 },
-        }
-    }
 }
 
 type ReturnedDescriptor = (
@@ -160,9 +136,9 @@ where
     /// # use bdk::bitcoin::bip32::{DerivationPath, ExtendedPrivKey};
     /// # use bdk::database::MemoryDatabase;
     /// #
-    /// # use andromeda_bitcoin::account::{Account, ScriptType};
+    /// # use andromeda_bitcoin::account::{Account};
     /// # use andromeda_bitcoin::mnemonic::Mnemonic;
-    /// # use andromeda_common::Network;
+    /// # use andromeda_common::{Network, ScriptType};
     /// # tokio_test::block_on(async {
     /// #
     /// let mnemonic = Mnemonic::from_string(String::from("desk prevent enhance husband hungry idle member vessel room moment simple behave")).unwrap();

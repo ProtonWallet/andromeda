@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
-use crate::common::error::WasmError;
+use crate::{bitcoin::types::derivation_path::WasmDerivationPath, common::error::WasmError};
 
 #[wasm_bindgen]
 pub struct WasmWalletClient(WalletClient);
@@ -101,14 +101,22 @@ impl WasmWalletData {
     }
 }
 
-#[wasm_bindgen(getter_with_clone)]
-#[derive(Clone)]
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
 #[allow(non_snake_case)]
 pub struct WasmWalletAccount {
     pub ID: String,
     pub DerivationPath: String,
     pub Label: String,
     pub ScriptType: u8,
+}
+
+// We need this wrapper because unfortunately, tsify doesn't support VectoIntoWasmAbi yet
+#[wasm_bindgen(getter_with_clone)]
+#[derive(Clone)]
+#[allow(non_snake_case)]
+pub struct WasmWalletAccountData {
+    pub Account: WasmWalletAccount,
 }
 
 impl From<Account> for WasmWalletAccount {
@@ -147,7 +155,7 @@ impl From<WalletTransaction> for WasmWalletTransaction {
 pub struct WasmWalletDataArray(pub Vec<WasmWalletData>);
 
 #[wasm_bindgen(getter_with_clone)]
-pub struct WasmWalletAccountArray(pub Vec<WasmWalletAccount>);
+pub struct WasmWalletAccountArray(pub Vec<WasmWalletAccountData>);
 
 #[wasm_bindgen(getter_with_clone)]
 pub struct WasmWalletTransactionArray(pub Vec<WasmWalletTransaction>);
@@ -211,7 +219,14 @@ impl WasmWalletClient {
             .get_wallet_accounts(wallet_id)
             .await
             .map_err(|e| e.into())
-            .map(|accounts| accounts.into_iter().map(|account| account.into()).collect::<Vec<_>>())?;
+            .map(|accounts| {
+                accounts
+                    .into_iter()
+                    .map(|account| WasmWalletAccountData {
+                        Account: account.into(),
+                    })
+                    .collect::<Vec<_>>()
+            })?;
 
         Ok(WasmWalletAccountArray(wallet_accounts))
     }
@@ -220,21 +235,24 @@ impl WasmWalletClient {
     pub async fn create_wallet_account(
         &self,
         wallet_id: String,
-        derivation_path: String,
+        derivation_path: WasmDerivationPath,
         label: String,
         script_type: u8,
-    ) -> Result<WasmWalletAccount, WasmError> {
+    ) -> Result<WasmWalletAccountData, WasmError> {
         let payload = CreateWalletAccountRequestBody {
-            DerivationPath: derivation_path,
+            DerivationPath: derivation_path.inner().to_string(),
             Label: label,
             ScriptType: script_type,
         };
 
-        self.0
+        let account = self
+            .0
             .create_wallet_account(wallet_id, payload)
             .await
             .map_err(|e| e.into())
-            .map(|account| account.into())
+            .map(|account| account.into())?;
+
+        Ok(WasmWalletAccountData { Account: account })
     }
 
     #[wasm_bindgen(js_name = "updateWalletAccountLabel")]
@@ -243,12 +261,15 @@ impl WasmWalletClient {
         wallet_id: String,
         wallet_account_id: String,
         label: String,
-    ) -> Result<WasmWalletAccount, WasmError> {
-        self.0
+    ) -> Result<WasmWalletAccountData, WasmError> {
+        let account = self
+            .0
             .update_wallet_account_label(wallet_id, wallet_account_id, label)
             .await
             .map_err(|e| e.into())
-            .map(|account| account.into())
+            .map(|account| account.into())?;
+
+        Ok(WasmWalletAccountData { Account: account })
     }
 
     #[wasm_bindgen(js_name = "deleteWalletAccount")]

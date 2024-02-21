@@ -3,10 +3,8 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use andromeda_bitcoin::{
-    account::{Account, ScriptType},
-    BdkMemoryDatabase,
-};
+use andromeda_bitcoin::{account::Account, BdkMemoryDatabase};
+use andromeda_common::ScriptType;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
