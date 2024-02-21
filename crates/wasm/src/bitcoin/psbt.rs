@@ -1,4 +1,5 @@
-use andromeda_bitcoin::{bitcoin::Network, Address, PartiallySignedTransaction, SignOptions};
+use andromeda_bitcoin::{Address, PartiallySignedTransaction, SignOptions};
+use andromeda_common::Network;
 use wasm_bindgen::prelude::*;
 
 use super::account::WasmAccount;

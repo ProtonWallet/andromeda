@@ -2,6 +2,8 @@ use andromeda_api::wallet::{
     Account, CreateWalletAccountRequestBody, CreateWalletRequestBody, CreateWalletTransactionRequestBody, WalletClient,
     WalletData, WalletTransaction,
 };
+use serde::{Deserialize, Serialize};
+use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
 use crate::common::error::WasmError;
@@ -15,8 +17,8 @@ impl From<WalletClient> for WasmWalletClient {
     }
 }
 
-#[wasm_bindgen(getter_with_clone)]
-#[derive(Clone)]
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
 #[allow(non_snake_case)]
 pub struct WasmApiWallet {
     pub ID: String,
@@ -27,32 +29,20 @@ pub struct WasmApiWallet {
     pub HasPassphrase: u8,
     pub Status: u8,
     pub Mnemonic: Option<String>,
+    pub Fingerprint: Option<String>,
     pub PublicKey: Option<String>,
 }
 
-#[wasm_bindgen(getter_with_clone)]
-#[allow(non_snake_case)]
-pub struct WasmCreateWalletRequestBody {
-    pub Name: String,
-    pub IsImported: u8,
-    pub Type: u8,
-    pub HasPassphrase: u8,
-    pub UserKeyId: String,
-    pub WalletKey: String,
-    pub Mnemonic: Option<String>,
-    pub PublicKey: Option<String>,
-}
-
-#[wasm_bindgen(getter_with_clone)]
-#[derive(Clone)]
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
 #[allow(non_snake_case)]
 pub struct WasmWalletKey {
     pub UserKeyID: String,
     pub WalletKey: String,
 }
 
-#[wasm_bindgen(getter_with_clone)]
-#[derive(Clone)]
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
 #[allow(non_snake_case)]
 pub struct WasmWalletSettings {
     pub HideAccounts: u8,
@@ -83,6 +73,7 @@ impl From<WalletData> for WasmWalletData {
                 Status: value.Wallet.Status,
                 Mnemonic: value.Wallet.Mnemonic,
                 PublicKey: value.Wallet.PublicKey,
+                Fingerprint: value.Wallet.Fingerprint,
             },
             WalletKey: WasmWalletKey {
                 UserKeyID: value.WalletKey.UserKeyID,
@@ -94,6 +85,18 @@ impl From<WalletData> for WasmWalletData {
                 InvoiceExpirationTime: value.WalletSettings.InvoiceExpirationTime,
                 MaxChannelOpeningFee: value.WalletSettings.MaxChannelOpeningFee,
             },
+        }
+    }
+}
+
+#[wasm_bindgen]
+impl WasmWalletData {
+    #[wasm_bindgen]
+    pub fn from_parts(wallet: WasmApiWallet, key: WasmWalletKey, settings: WasmWalletSettings) -> Self {
+        Self {
+            Wallet: wallet,
+            WalletKey: key,
+            WalletSettings: settings,
         }
     }
 }
@@ -120,14 +123,6 @@ impl From<Account> for WasmWalletAccount {
 }
 
 #[wasm_bindgen(getter_with_clone)]
-#[allow(non_snake_case)]
-pub struct WasmCreateWalletAccountRequestBody {
-    pub DerivationPath: String,
-    pub Label: String,
-    pub ScriptType: u8,
-}
-
-#[wasm_bindgen(getter_with_clone)]
 #[derive(Clone)]
 #[allow(non_snake_case)]
 pub struct WasmWalletTransaction {
@@ -146,15 +141,6 @@ impl From<WalletTransaction> for WasmWalletTransaction {
             TransactionID: value.TransactionID,
         }
     }
-}
-
-#[wasm_bindgen(getter_with_clone)]
-#[allow(non_snake_case)]
-pub struct WasmCreateWalletTransactionRequestBody {
-    /// encrypted Base64 encoded binary data
-    pub Label: String,
-    /// encrypted Base64 encoded binary data
-    pub TransactionID: String,
 }
 
 #[wasm_bindgen(getter_with_clone)]
@@ -181,16 +167,34 @@ impl WasmWalletClient {
     }
 
     #[wasm_bindgen(js_name = "createWallet")]
-    pub async fn create_wallet(&self, payload: WasmCreateWalletRequestBody) -> Result<WasmWalletData, WasmError> {
+    pub async fn create_wallet(
+        &self,
+        name: String,
+        is_imported: bool,
+        wallet_type: u8,
+        has_passphrase: bool,
+        user_key_id: String,
+        wallet_key: String,
+        mnemonic: Option<String>,
+        fingerprint: Option<String>,
+        public_key: Option<String>,
+    ) -> Result<WasmWalletData, WasmError> {
         let payload = CreateWalletRequestBody {
-            Name: payload.Name,
-            IsImported: payload.IsImported,
-            Type: payload.Type,
-            HasPassphrase: payload.HasPassphrase,
-            UserKeyId: payload.UserKeyId,
-            WalletKey: payload.WalletKey,
-            Mnemonic: payload.Mnemonic,
-            PublicKey: payload.PublicKey,
+            Name: name,
+            IsImported: match is_imported {
+                true => 1,
+                false => 0,
+            },
+            Type: wallet_type,
+            HasPassphrase: match has_passphrase {
+                true => 1,
+                false => 0,
+            },
+            UserKeyId: user_key_id,
+            WalletKey: wallet_key,
+            Mnemonic: mnemonic,
+            Fingerprint: fingerprint,
+            PublicKey: public_key,
         };
 
         self.0
@@ -216,12 +220,14 @@ impl WasmWalletClient {
     pub async fn create_wallet_account(
         &self,
         wallet_id: String,
-        payload: WasmCreateWalletAccountRequestBody,
+        derivation_path: String,
+        label: String,
+        script_type: u8,
     ) -> Result<WasmWalletAccount, WasmError> {
         let payload = CreateWalletAccountRequestBody {
-            DerivationPath: payload.DerivationPath,
-            Label: payload.Label,
-            ScriptType: payload.ScriptType,
+            DerivationPath: derivation_path,
+            Label: label,
+            ScriptType: script_type,
         };
 
         self.0
@@ -274,11 +280,12 @@ impl WasmWalletClient {
     pub async fn create_wallet_transaction(
         &self,
         wallet_id: String,
-        payload: WasmCreateWalletTransactionRequestBody,
+        label: String,
+        txid: String,
     ) -> Result<WasmWalletTransaction, WasmError> {
         let payload = CreateWalletTransactionRequestBody {
-            Label: payload.Label,
-            TransactionID: payload.TransactionID,
+            Label: label,
+            TransactionID: txid,
         };
 
         self.0

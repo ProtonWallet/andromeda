@@ -4,6 +4,7 @@ use std::{
     str::FromStr,
 };
 
+use andromeda_common::Network;
 use bdk::{
     bitcoin::{
         bip32::{ChildNumber, ExtendedPrivKey},
@@ -24,7 +25,6 @@ use miniscript::{
 
 use super::{payment_link::PaymentLink, transactions::Pagination, utils::sort_and_paginate_txs};
 use crate::{
-    bitcoin::Network,
     error::Error,
     transactions::{SimpleTransaction, TransactionDetails},
 };
@@ -222,15 +222,17 @@ where
     /// ```rust
     /// # use bdk::bitcoin::bip32::ExtendedPrivKey;
     /// # use bdk::database::MemoryDatabase;
-    ///
+    /// #
     /// # use andromeda_bitcoin::account::{Account, AccountConfig, ScriptType};
     /// # use andromeda_bitcoin::mnemonic::Mnemonic;
-    /// # use andromeda_bitcoin::bitcoin::Network;
-    ///
+    /// # use andromeda_common::Network;
+    /// # tokio_test::block_on(async {
+    /// #
     /// let mnemonic = Mnemonic::from_string(String::from("desk prevent enhance husband hungry idle member vessel room moment simple behave")).unwrap();
     /// let mprv = ExtendedPrivKey::new_master(Network::Testnet.into(), &mnemonic.inner().to_seed("")).unwrap();
     /// let config = AccountConfig::new(ScriptType::NativeSegwit, Network::Testnet, 0, None);
     /// let account = Account::new(mprv, config, MemoryDatabase::new());
+    /// # })
     /// ```
     pub fn new(master_secret_key: ExtendedPrivKey, config: AccountConfig, storage: Storage) -> Result<Self, Error> {
         let secp = Secp256k1::new();
@@ -382,11 +384,12 @@ where
 mod tests {
     use std::str::FromStr;
 
+    use andromeda_common::Network;
     use bdk::database::MemoryDatabase;
     use miniscript::bitcoin::{bip32::ExtendedPrivKey, Address};
 
     use super::{Account, AccountConfig, ScriptType};
-    use crate::{bitcoin::Network, mnemonic::Mnemonic};
+    use crate::mnemonic::Mnemonic;
 
     fn set_test_account(script_type: ScriptType) -> Account<MemoryDatabase> {
         let config = AccountConfig::new(script_type, Network::Testnet, 0, None);

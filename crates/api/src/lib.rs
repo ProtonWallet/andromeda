@@ -5,9 +5,9 @@ use block::BlockClient;
 use env::LocalEnv;
 use error::Error;
 pub use muon::{
-    environment::ApiEnv, session::Session, AccessToken, AppSpec, AuthStore, Product, RefreshToken, Scope, Uid,
+    environment::ApiEnv, session::Session, store::SimpleAuthStore, AccessToken, AppSpec, AuthStore, Product,
+    RefreshToken, ReqwestTransportFactory, Scope, Uid,
 };
-use muon::{store::SimpleAuthStore, ReqwestTransportFactory};
 use network::NetworkClient;
 use settings::SettingsClient;
 use transaction::TransactionClient;
@@ -85,15 +85,17 @@ pub struct AuthData {
 ///
 /// ```no_run
 /// # use andromeda_api::ProtonWalletApiClient;
-/// # use muon::{session::Session, AppSpec, SimpleAuthStore};
+/// # use muon::{session::Session, AppSpec, store::SimpleAuthStore};
 /// # let app_spec = AppSpec::default();
 /// # let auth_store = SimpleAuthStore::new("atlas");
 /// # let session = Session::new(auth_store, app_spec).unwrap();
+/// # tokio_test::block_on(async {
 /// let mut api_client = ProtonWalletApiClient::default();
 /// api_client.login("pro", "pro").await.unwrap();
 ///
 /// let network = api_client.network.get_network().await.unwrap();
 /// println!("network fetch: {:?}", network);
+/// # })
 /// ```
 pub struct ProtonWalletApiClient {
     session: Arc<RwLock<Session>>,
@@ -125,7 +127,7 @@ impl ProtonWalletApiClient {
     ///
     /// ```rust
     /// # use andromeda_api::ProtonWalletApiClient;
-    /// # use muon::{session::Session, AppSpec, SimpleAuthStore};
+    /// # use muon::{session::Session, AppSpec, store::SimpleAuthStore};
     /// # let app_spec = AppSpec::default();
     /// # let auth_store = SimpleAuthStore::new("atlas");
     /// let session = Session::new(auth_store, app_spec).unwrap();
@@ -153,12 +155,12 @@ impl ProtonWalletApiClient {
     ///
     /// ```rust
     /// # use andromeda_api::{ProtonWalletApiClient, AuthData};
-    /// # use muon::{AccessToken, RefreshToken, Scopes, Uid};
+    /// # use muon::{AccessToken, RefreshToken, Uid};
     /// let auth = AuthData {
     ///     uid: Uid::from("uid....".to_string()),
     ///     access: AccessToken::from("access....".to_string()),
     ///     refresh: RefreshToken::from("refresh....".to_string()),
-    ///     scopes: Scopes::from(Vec::<String>::new()),
+    ///     scopes: Vec::new(),
     /// };
     ///
     /// let api_client = ProtonWalletApiClient::from_auth(auth);
@@ -179,7 +181,7 @@ impl ProtonWalletApiClient {
     ///
     /// ```rust
     /// # use andromeda_api::ProtonWalletApiClient;
-    /// # use muon::{session::Session, AppSpec, SimpleAuthStore};
+    /// # use muon::{session::Session, AppSpec, store::SimpleAuthStore};
     /// # let app_spec = AppSpec::default();
     /// # let auth_store = SimpleAuthStore::new("atlas");
     /// # let session = Session::new(auth_store, app_spec).unwrap();

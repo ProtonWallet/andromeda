@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use andromeda_common::Network;
 use async_std::sync::RwLock;
 use muon::{
     request::{Method, ProtonRequest, Response},
@@ -26,7 +27,7 @@ impl NetworkClient {
         Self { session }
     }
 
-    pub async fn get_network(&self) -> Result<u8, Error> {
+    pub async fn get_network(&self) -> Result<Network, Error> {
         let request = ProtonRequest::new(Method::GET, format!("{}/network", BASE_WALLET_API_V1));
         let response = self
             .session
@@ -42,7 +43,12 @@ impl NetworkClient {
             .to_json::<GetNetworkResponseBody>()
             .map_err(|_| Error::DeserializeError)?;
 
-        Ok(parsed.Network)
+        let network = match parsed.Network {
+            0 => Network::Bitcoin,
+            _ => Network::Testnet,
+        };
+
+        Ok(network)
     }
 }
 
