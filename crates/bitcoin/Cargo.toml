@@ -5,7 +5,7 @@ edition = "2021"
 
 
 [dependencies]
-andromeda-common = { path = "../common" }
+andromeda-common = { version = "0.1.0", path = "../common" }
 
 serde = { version = "1.0.144", features = ["derive"] }
 uuid = { version = "1.6.1", features = ["v4", "fast-rng"] }
