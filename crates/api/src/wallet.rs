@@ -70,6 +70,7 @@ pub struct CreateWalletRequestBody {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 pub struct WalletKey {
+    pub WalletID: String,
     pub UserKeyID: String,
     pub WalletKey: String,
 }
@@ -77,6 +78,7 @@ pub struct WalletKey {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 pub struct WalletSettings {
+    pub WalletID: String,
     pub HideAccounts: u8,
     pub InvoiceDefaultDescription: Option<String>,
     pub InvoiceExpirationTime: u64,
@@ -111,6 +113,7 @@ pub struct CreateWalletResponseBody {
 #[allow(non_snake_case)]
 pub struct Account {
     pub ID: String,
+    pub WalletID: String,
     pub DerivationPath: String,
     pub Label: String,
     pub ScriptType: u8,
