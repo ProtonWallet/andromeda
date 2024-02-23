@@ -37,6 +37,7 @@ pub struct WasmApiWallet {
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[allow(non_snake_case)]
 pub struct WasmWalletKey {
+    pub WalletID: String,
     pub UserKeyID: String,
     pub WalletKey: String,
 }
@@ -45,6 +46,7 @@ pub struct WasmWalletKey {
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[allow(non_snake_case)]
 pub struct WasmWalletSettings {
+    pub WalletID: String,
     pub HideAccounts: u8,
     pub InvoiceDefaultDescription: Option<String>,
     pub InvoiceExpirationTime: u64,
@@ -76,10 +78,12 @@ impl From<WalletData> for WasmWalletData {
                 Fingerprint: value.Wallet.Fingerprint,
             },
             WalletKey: WasmWalletKey {
+                WalletID: value.WalletKey.WalletID,
                 UserKeyID: value.WalletKey.UserKeyID,
                 WalletKey: value.WalletKey.WalletKey,
             },
             WalletSettings: WasmWalletSettings {
+                WalletID: value.WalletSettings.WalletID,
                 HideAccounts: value.WalletSettings.HideAccounts,
                 InvoiceDefaultDescription: value.WalletSettings.InvoiceDefaultDescription,
                 InvoiceExpirationTime: value.WalletSettings.InvoiceExpirationTime,
@@ -105,6 +109,7 @@ impl WasmWalletData {
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[allow(non_snake_case)]
 pub struct WasmWalletAccount {
+    pub WalletID: String,
     pub ID: String,
     pub DerivationPath: String,
     pub Label: String,
@@ -122,6 +127,7 @@ pub struct WasmWalletAccountData {
 impl From<Account> for WasmWalletAccount {
     fn from(value: Account) -> Self {
         WasmWalletAccount {
+            WalletID: value.WalletID,
             ID: value.ID,
             DerivationPath: value.DerivationPath,
             Label: value.Label,
