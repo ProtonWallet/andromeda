@@ -5,4 +5,10 @@ edition = "2021"
 
 [dependencies]
 serde = { version = "1.0.144", features = ["derive"] }
-bdk = { version = "0.29.0", default-features = false }
+bdk = { version = "0.29.0", default-features = false, features = [
+  "std",
+  "keys-bip39",
+  "use-esplora-reqwest",
+  "reqwest-default-tls",
+  "async-interface",
+] }
