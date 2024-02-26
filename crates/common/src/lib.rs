@@ -1,4 +1,4 @@
-use bdk::bitcoin::{
+use bitcoin::{
     bip32::{ChildNumber, DerivationPath},
     Network as BdkNetwork,
 };
@@ -75,7 +75,7 @@ impl FromParts for DerivationPath {
     /// cointype for second index and finally account index for account-level
     /// derivation at third index ```rust
     /// # use std::str::FromStr;
-    /// # use bdk::bitcoin::bip32::DerivationPath;
+    /// # use bitcoin::bip32::DerivationPath;
     /// # use andromeda_common::{FromParts, Network};
     /// #
     /// let derivation_path = DerivationPath::from_parts(84, Network::Bitcoin, 0);
@@ -122,7 +122,7 @@ impl Into<u8> for ScriptType {
 impl From<ScriptType> for ChildNumber {
     /// Returns default purpose derivation index (level 1) for each script type
     /// ```
-    /// # use bdk::bitcoin::bip32::ChildNumber;
+    /// # use bitcoin::bip32::ChildNumber;
     /// # use andromeda_common::ScriptType;
     /// #
     /// let purpose: ChildNumber = ScriptType::NestedSegwit.into();
