@@ -1,12 +1,14 @@
 use std::sync::Arc;
 
+use address::AddressClient;
 use async_std::sync::RwLock;
 use block::BlockClient;
+#[cfg(feature = "local")]
 use env::LocalEnv;
 use error::Error;
 pub use muon::{
-    environment::ApiEnv, session::Session, store::SimpleAuthStore, AccessToken, AppSpec, AuthStore, Product,
-    RefreshToken, ReqwestTransportFactory, Scope, Uid,
+    environment::ApiEnv, request::Error as MuonError, session::Session, store::SimpleAuthStore, AccessToken, AppSpec,
+    AuthStore, Product, RefreshToken, ReqwestTransportFactory, Scope, Uid,
 };
 use network::NetworkClient;
 use settings::SettingsClient;
@@ -35,14 +37,15 @@ struct WalletAppSpec(AppSpec);
 
 impl WalletAppSpec {
     pub fn new() -> Self {
-        let app_spec = AppSpec::new(
-            // TODO: change that to Wallet when added to `Product` enum
-            Product::Unspecified,
-            // TODO: change that when Wallet has a version (or provide it through args)
-            "Other".to_owned(),
-            // TODO: change that by provide user agent when building pw api client
-            "None".to_owned(),
-        );
+        let app_spec =
+            AppSpec::new(
+                // TODO: change that to Wallet when added to `Product` enum
+                Product::Unspecified,
+                // TODO: change that when Wallet has a version (or provide it through args)
+                "Other".to_owned(),
+                // TODO: change that by provide user agent when building pw api client
+                "None".to_owned(),
+            );
         WalletAppSpec(app_spec)
     }
 
@@ -51,11 +54,11 @@ impl WalletAppSpec {
     }
 
     pub fn from_version(app_version: String, user_agent: String) -> Self {
-        // TODO: change that to Wallet when added to Product enum above Product::Unspecified
+        // TODO: change that to Wallet when added to Product enum above
+        // Product::Unspecified
         let app_spec = AppSpec::new(Product::Unspecified, app_version, user_agent);
         WalletAppSpec(app_spec)
     }
-
 }
 
 /// Dummy struct to build all Wallet api clients from a single sessions
@@ -65,6 +68,7 @@ struct ApiClients(
     SettingsClient,
     TransactionClient,
     WalletClient,
+    AddressClient,
 );
 
 impl ApiClients {
@@ -75,6 +79,7 @@ impl ApiClients {
             SettingsClient::new(session.clone()),
             TransactionClient::new(session.clone()),
             WalletClient::new(session.clone()),
+            AddressClient::new(session.clone()),
         )
     }
 }
@@ -113,6 +118,7 @@ pub struct ProtonWalletApiClient {
     pub settings: SettingsClient,
     pub transaction: TransactionClient,
     pub wallet: WalletClient,
+    pub address: AddressClient,
 }
 
 impl ProtonWalletApiClient {
@@ -161,7 +167,8 @@ impl ProtonWalletApiClient {
     pub fn from_session(session: Session) -> Self {
         let session = Arc::new(RwLock::new(session));
 
-        let ApiClients(block, network, settings, transaction, wallet) = ApiClients::from_session(session.clone());
+        let ApiClients(block, network, settings, transaction, wallet, address) =
+            ApiClients::from_session(session.clone());
 
         Self {
             session,
@@ -171,6 +178,7 @@ impl ProtonWalletApiClient {
             settings,
             transaction,
             wallet,
+            address,
         }
     }
 
