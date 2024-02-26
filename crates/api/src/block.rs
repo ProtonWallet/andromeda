@@ -19,7 +19,7 @@ pub struct BlockClient {
 #[allow(non_snake_case)]
 pub struct ApiBlock {
     pub ID: String,
-    pub BlockHeight: u64,
+    pub BlockHeight: u32,
     pub Version: u64,
     pub Timestamp: u64,
     pub TxCount: u32,

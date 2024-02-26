@@ -52,7 +52,7 @@ pub struct ApiVin {
     pub Witness: Vec<String>,
     pub InnerWitnessScriptAsm: Option<String>,
     pub IsCoinbase: u8,
-    pub Sequence: u64,
+    pub Sequence: u32,
     pub InnerRedeemScriptAsm: Option<String>,
 }
 
@@ -69,13 +69,13 @@ pub struct ApiTransactionStatus {
 #[allow(non_snake_case)]
 pub struct ApiTx {
     pub TransactionId: String,
-    pub Version: u8,
+    pub Version: i32,
     pub Locktime: u32,
     pub Vin: Option<Vec<ApiVin>>,
     pub Vout: Option<Vec<ApiVout>>,
     pub Size: u32,
     pub Weight: u32,
-    pub Fee: u32,
+    pub Fee: u64,
     pub TransactionStatus: ApiTransactionStatus,
 }
 
