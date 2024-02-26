@@ -109,6 +109,19 @@ pub struct CreateWalletResponseBody {
     pub WalletSettings: WalletSettings,
 }
 
+#[derive(Debug, Serialize)]
+#[allow(non_snake_case)]
+pub struct UpdateWalletNameRequestBody {
+    pub Name: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+struct UpdateWalletNameResponseBody {
+    pub Code: u16,
+    pub Wallet: Wallet,
+}
+
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 pub struct Account {
@@ -261,6 +274,33 @@ impl WalletClient {
             WalletKey: parsed.WalletKey,
             WalletSettings: parsed.WalletSettings,
         })
+    }
+
+    pub async fn update_wallet_name(&self, wallet_id: String, name: String) -> Result<Wallet, Error> {
+        let payload = UpdateWalletNameRequestBody { Name: name };
+
+        let request = ProtonRequest::new(
+            Method::PUT,
+            format!("{}/wallets/{}/name", BASE_WALLET_API_V1, wallet_id),
+        )
+        .json_body(payload)
+        .map_err(|_| Error::SerializeError)?;
+
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+
+        let parsed = response
+            .to_json::<UpdateWalletNameResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
+
+        Ok(parsed.Wallet)
     }
 
     pub async fn delete_wallet(&self, wallet_id: String) -> Result<(), Error> {
@@ -549,6 +589,24 @@ mod tests {
 
         let blocks = client.create_wallet(payload).await;
         println!("request done: {:?}", blocks);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn should_update_wallet_name() {
+        let session = common_session().await;
+        let client = WalletClient::new(session);
+
+        let res = client
+            .update_wallet_name(
+                String::from(
+                    "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
+                ),
+                String::from("My updated wallet"),
+            )
+            .await;
+
+        println!("request done: {:?}", res);
     }
 
     #[tokio::test]
