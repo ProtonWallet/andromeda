@@ -17,9 +17,27 @@ pub struct BlockClient {
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
+pub struct ApiBlock {
+    pub ID: String,
+    pub BlockHeight: u64,
+    pub Version: u64,
+    pub Timestamp: u64,
+    pub TxCount: u32,
+    pub Size: u64,
+    pub Weight: u64,
+    pub MerkleRoot: String,
+    pub PreviousBlockHash: Option<String>,
+    pub MedianTime: u64,
+    pub Nonce: u64,
+    pub Bits: u64,
+    pub Difficulty: u32,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
 struct GetBlocksResponseBody {
     pub Code: u16,
-    pub Blocks: Vec<Block>,
+    pub Blocks: Vec<ApiBlock>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -54,8 +72,8 @@ struct GetBlockStatusResponseBody {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct GetBlockByHashResponseBody {
-    Code: u16,
-    Details: Block,
+    pub Code: u16,
+    pub Details: Block,
 }
 
 #[derive(Debug, Deserialize)]
@@ -85,7 +103,7 @@ impl BlockClient {
     }
 
     /// Get recent block summaries, starting at tip or height if provided
-    pub async fn get_blocks(&self, height: Option<u32>) -> Result<Vec<Block>, Error> {
+    pub async fn get_blocks(&self, height: Option<u32>) -> Result<Vec<ApiBlock>, Error> {
         let url = match height {
             Some(height) => format!("{}/blocks/{}", BASE_WALLET_API_V1, height),
             None => format!("{}/blocks", BASE_WALLET_API_V1),
@@ -102,12 +120,10 @@ impl BlockClient {
             .await
             .map_err(|e| e.into())?;
 
-        println!("{:?}", response.to_json::<serde_json::Value>().unwrap());
-
-        let parsed = response
+        Ok(response
             .to_json::<GetBlocksResponseBody>()
-            .map_err(|_| Error::DeserializeError)?;
-        Ok(parsed.Blocks)
+            .map_err(|_| Error::DeserializeError)?
+            .Blocks)
     }
 
     /// Get a [`BlockHeader`] given a particular block hash.
