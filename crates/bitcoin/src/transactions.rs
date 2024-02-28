@@ -1,11 +1,10 @@
+use andromeda_common::error::Error;
 use bdk::{
     database::BatchDatabase, psbt::PsbtUtils, BlockTime, TransactionDetails as BdkTransactionDetails,
     Wallet as BdkWallet,
 };
 use bitcoin::{bip32::DerivationPath, psbt::PartiallySignedTransaction, TxIn, TxOut, Txid};
 use miniscript::bitcoin::{Address, ScriptBuf};
-
-use crate::error::Error;
 
 #[derive(Clone, Debug)]
 pub struct TransactionDetails {

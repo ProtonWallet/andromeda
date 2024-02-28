@@ -1,8 +1,10 @@
 use andromeda_bitcoin::{BdkNetwork, KeychainKind};
-use andromeda_common::{BitcoinUnit, Network};
+use andromeda_common::{BitcoinUnit, Network, ScriptType};
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
+
+use super::error::WasmError;
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
@@ -113,5 +115,32 @@ impl Into<WasmKeychainKind> for KeychainKind {
             KeychainKind::External => WasmKeychainKind::External,
             KeychainKind::Internal => WasmKeychainKind::Internal,
         }
+    }
+}
+
+#[wasm_bindgen]
+#[derive(Clone, Copy, Deserialize, Serialize)]
+pub enum WasmScriptType {
+    Legacy = 0,
+    NestedSegwit = 1,
+    NativeSegwit = 2,
+    Taproot = 3,
+}
+
+impl Into<ScriptType> for WasmScriptType {
+    fn into(self) -> ScriptType {
+        match self {
+            WasmScriptType::Legacy => ScriptType::Legacy,
+            WasmScriptType::NestedSegwit => ScriptType::NestedSegwit,
+            WasmScriptType::NativeSegwit => ScriptType::NativeSegwit,
+            WasmScriptType::Taproot => ScriptType::Taproot,
+        }
+    }
+}
+
+impl Into<u8> for WasmScriptType {
+    fn into(self) -> u8 {
+        let script_type: ScriptType = self.into();
+        script_type.into()
     }
 }

@@ -1,12 +1,15 @@
 use andromeda_api::wallet::{
-    ApiWalletAccount, CreateWalletAccountRequestBody, CreateWalletRequestBody, CreateWalletTransactionRequestBody, WalletClient,
-    ApiWalletData, ApiWalletTransaction,
+    ApiWalletAccount, ApiWalletData, ApiWalletTransaction, CreateWalletAccountRequestBody, CreateWalletRequestBody,
+    CreateWalletTransactionRequestBody, WalletClient,
 };
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
-use crate::{bitcoin::types::derivation_path::WasmDerivationPath, common::error::WasmError};
+use crate::{
+    bitcoin::types::derivation_path::WasmDerivationPath,
+    common::{error::WasmError, types::WasmScriptType},
+};
 
 #[wasm_bindgen]
 pub struct WasmWalletClient(WalletClient);
@@ -124,15 +127,17 @@ pub struct WasmWalletAccountData {
     pub Account: WasmApiWalletAccount,
 }
 
-impl From<ApiWalletAccount> for WasmApiWalletAccount {
-    fn from(value: ApiWalletAccount) -> Self {
-        WasmApiWalletAccount {
+impl TryFrom<ApiWalletAccount> for WasmApiWalletAccount {
+    type Error = WasmError;
+
+    fn try_from(value: ApiWalletAccount) -> Result<Self, Self::Error> {
+        Ok(WasmApiWalletAccount {
             WalletID: value.WalletID,
             ID: value.ID,
-            DerivationPath: value.DerivationPath,
             Label: value.Label,
+            DerivationPath: value.DerivationPath,
             ScriptType: value.ScriptType,
-        }
+        })
     }
 }
 
@@ -226,21 +231,18 @@ impl WasmWalletClient {
 
     #[wasm_bindgen(js_name = "getWalletAccounts")]
     pub async fn get_wallet_accounts(&self, wallet_id: String) -> Result<WasmApiWalletAccounts, WasmError> {
-        let wallet_accounts = self
-            .0
-            .get_wallet_accounts(wallet_id)
-            .await
-            .map_err(|e| e.into())
-            .map(|accounts| {
-                accounts
-                    .into_iter()
-                    .map(|account| WasmWalletAccountData {
-                        Account: account.into(),
-                    })
-                    .collect::<Vec<_>>()
-            })?;
+        let wallet_accounts = self.0.get_wallet_accounts(wallet_id).await.map_err(|e| e.into())?;
 
-        Ok(WasmApiWalletAccounts(wallet_accounts))
+        let wallet_accounts: Result<Vec<WasmWalletAccountData>, WasmError> = wallet_accounts
+            .into_iter()
+            .map(|account| {
+                Ok(WasmWalletAccountData {
+                    Account: account.try_into()?,
+                })
+            })
+            .collect();
+
+        Ok(WasmApiWalletAccounts(wallet_accounts?))
     }
 
     #[wasm_bindgen(js_name = "createWalletAccount")]
@@ -249,22 +251,23 @@ impl WasmWalletClient {
         wallet_id: String,
         derivation_path: WasmDerivationPath,
         label: String,
-        script_type: u8,
+        script_type: WasmScriptType,
     ) -> Result<WasmWalletAccountData, WasmError> {
         let payload = CreateWalletAccountRequestBody {
             DerivationPath: derivation_path.inner().to_string(),
             Label: label,
-            ScriptType: script_type,
+            ScriptType: script_type.into(),
         };
 
         let account = self
             .0
             .create_wallet_account(wallet_id, payload)
             .await
-            .map_err(|e| e.into())
-            .map(|account| account.into())?;
+            .map_err(|e| e.into())?;
 
-        Ok(WasmWalletAccountData { Account: account })
+        Ok(WasmWalletAccountData {
+            Account: account.try_into()?,
+        })
     }
 
     #[wasm_bindgen(js_name = "updateWalletAccountLabel")]
@@ -278,10 +281,11 @@ impl WasmWalletClient {
             .0
             .update_wallet_account_label(wallet_id, wallet_account_id, label)
             .await
-            .map_err(|e| e.into())
-            .map(|account| account.into())?;
+            .map_err(|e| e.into())?;
 
-        Ok(WasmWalletAccountData { Account: account })
+        Ok(WasmWalletAccountData {
+            Account: account.try_into()?,
+        })
     }
 
     #[wasm_bindgen(js_name = "deleteWalletAccount")]

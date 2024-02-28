@@ -2,6 +2,7 @@ use bitcoin::{
     bip32::{ChildNumber, DerivationPath},
     Network as BdkNetwork,
 };
+use error::Error;
 use serde::{Deserialize, Serialize};
 
 use std::fmt;
@@ -9,6 +10,8 @@ use std::fmt;
 pub const SATOSHI: u64 = 1;
 pub const BITCOIN: u64 = 100_000_000 * SATOSHI;
 pub const MILLI_BITCOIN: u64 = BITCOIN / 1000;
+
+pub mod error;
 
 /// Reimpl of BDK's Network enum to have exhaustive enum
 #[derive(Debug, Clone, Copy)]
@@ -111,22 +114,36 @@ impl FromParts for DerivationPath {
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum ScriptType {
     /// Legacy scripts : https://bitcoinwiki.org/wiki/pay-to-pubkey-hash
-    Legacy = 1,
+    Legacy = 0,
     /// Nested segwit scrips : https://bitcoinwiki.org/wiki/pay-to-script-hash
-    NestedSegwit = 2,
+    NestedSegwit = 1,
     /// Native segwit scripts : https://bips.dev/173/
-    NativeSegwit = 3,
+    NativeSegwit = 2,
     /// Taproot scripts : https://bips.dev/341/
-    Taproot = 4,
+    Taproot = 3,
 }
 
 impl Into<u8> for ScriptType {
     fn into(self) -> u8 {
         match self {
-            ScriptType::Legacy => 1u8,
-            ScriptType::NestedSegwit => 2u8,
-            ScriptType::NativeSegwit => 3u8,
-            ScriptType::Taproot => 4u8,
+            ScriptType::Legacy => 0u8,
+            ScriptType::NestedSegwit => 1u8,
+            ScriptType::NativeSegwit => 2u8,
+            ScriptType::Taproot => 3u8,
+        }
+    }
+}
+
+impl TryFrom<u8> for ScriptType {
+    type Error = Error;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(ScriptType::Legacy),
+            1 => Ok(ScriptType::NestedSegwit),
+            2 => Ok(ScriptType::NativeSegwit),
+            3 => Ok(ScriptType::Taproot),
+            _ => Err(Error::InvalidScriptType),
         }
     }
 }
