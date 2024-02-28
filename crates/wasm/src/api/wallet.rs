@@ -1,6 +1,6 @@
 use andromeda_api::wallet::{
-    Account, CreateWalletAccountRequestBody, CreateWalletRequestBody, CreateWalletTransactionRequestBody, WalletClient,
-    WalletData, WalletTransaction,
+    ApiWalletAccount, CreateWalletAccountRequestBody, CreateWalletRequestBody, CreateWalletTransactionRequestBody, WalletClient,
+    ApiWalletData, ApiWalletTransaction,
 };
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
@@ -36,7 +36,7 @@ pub struct WasmApiWallet {
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[allow(non_snake_case)]
-pub struct WasmWalletKey {
+pub struct WasmApiWalletKey {
     pub WalletID: String,
     pub UserKeyID: String,
     pub WalletKey: String,
@@ -45,7 +45,7 @@ pub struct WasmWalletKey {
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[allow(non_snake_case)]
-pub struct WasmWalletSettings {
+pub struct WasmApiWalletSettings {
     pub WalletID: String,
     pub HideAccounts: u8,
     pub InvoiceDefaultDescription: Option<String>,
@@ -56,15 +56,15 @@ pub struct WasmWalletSettings {
 #[wasm_bindgen(getter_with_clone)]
 #[derive(Clone)]
 #[allow(non_snake_case)]
-pub struct WasmWalletData {
+pub struct WasmApiWalletData {
     pub Wallet: WasmApiWallet,
-    pub WalletKey: WasmWalletKey,
-    pub WalletSettings: WasmWalletSettings,
+    pub WalletKey: WasmApiWalletKey,
+    pub WalletSettings: WasmApiWalletSettings,
 }
 
-impl From<WalletData> for WasmWalletData {
-    fn from(value: WalletData) -> Self {
-        WasmWalletData {
+impl From<ApiWalletData> for WasmApiWalletData {
+    fn from(value: ApiWalletData) -> Self {
+        WasmApiWalletData {
             Wallet: WasmApiWallet {
                 ID: value.Wallet.ID,
                 Name: value.Wallet.Name,
@@ -77,12 +77,12 @@ impl From<WalletData> for WasmWalletData {
                 PublicKey: value.Wallet.PublicKey,
                 Fingerprint: value.Wallet.Fingerprint,
             },
-            WalletKey: WasmWalletKey {
+            WalletKey: WasmApiWalletKey {
                 WalletID: value.WalletKey.WalletID,
                 UserKeyID: value.WalletKey.UserKeyID,
                 WalletKey: value.WalletKey.WalletKey,
             },
-            WalletSettings: WasmWalletSettings {
+            WalletSettings: WasmApiWalletSettings {
                 WalletID: value.WalletSettings.WalletID,
                 HideAccounts: value.WalletSettings.HideAccounts,
                 InvoiceDefaultDescription: value.WalletSettings.InvoiceDefaultDescription,
@@ -94,9 +94,9 @@ impl From<WalletData> for WasmWalletData {
 }
 
 #[wasm_bindgen]
-impl WasmWalletData {
+impl WasmApiWalletData {
     #[wasm_bindgen]
-    pub fn from_parts(wallet: WasmApiWallet, key: WasmWalletKey, settings: WasmWalletSettings) -> Self {
+    pub fn from_parts(wallet: WasmApiWallet, key: WasmApiWalletKey, settings: WasmApiWalletSettings) -> Self {
         Self {
             Wallet: wallet,
             WalletKey: key,
@@ -108,7 +108,7 @@ impl WasmWalletData {
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[allow(non_snake_case)]
-pub struct WasmWalletAccount {
+pub struct WasmApiWalletAccount {
     pub WalletID: String,
     pub ID: String,
     pub DerivationPath: String,
@@ -121,12 +121,12 @@ pub struct WasmWalletAccount {
 #[derive(Clone)]
 #[allow(non_snake_case)]
 pub struct WasmWalletAccountData {
-    pub Account: WasmWalletAccount,
+    pub Account: WasmApiWalletAccount,
 }
 
-impl From<Account> for WasmWalletAccount {
-    fn from(value: Account) -> Self {
-        WasmWalletAccount {
+impl From<ApiWalletAccount> for WasmApiWalletAccount {
+    fn from(value: ApiWalletAccount) -> Self {
+        WasmApiWalletAccount {
             WalletID: value.WalletID,
             ID: value.ID,
             DerivationPath: value.DerivationPath,
@@ -139,16 +139,16 @@ impl From<Account> for WasmWalletAccount {
 #[wasm_bindgen(getter_with_clone)]
 #[derive(Clone)]
 #[allow(non_snake_case)]
-pub struct WasmWalletTransaction {
+pub struct WasmApiWalletTransaction {
     pub ID: String,
     pub WalletID: String,
     pub Label: String,
     pub TransactionID: String,
 }
 
-impl From<WalletTransaction> for WasmWalletTransaction {
-    fn from(value: WalletTransaction) -> Self {
-        WasmWalletTransaction {
+impl From<ApiWalletTransaction> for WasmApiWalletTransaction {
+    fn from(value: ApiWalletTransaction) -> Self {
+        WasmApiWalletTransaction {
             ID: value.ID,
             WalletID: value.WalletID,
             Label: value.Label,
@@ -158,18 +158,18 @@ impl From<WalletTransaction> for WasmWalletTransaction {
 }
 
 #[wasm_bindgen(getter_with_clone)]
-pub struct WasmWalletDataArray(pub Vec<WasmWalletData>);
+pub struct WasmApiWalletsData(pub Vec<WasmApiWalletData>);
 
 #[wasm_bindgen(getter_with_clone)]
-pub struct WasmWalletAccountArray(pub Vec<WasmWalletAccountData>);
+pub struct WasmApiWalletAccounts(pub Vec<WasmWalletAccountData>);
 
 #[wasm_bindgen(getter_with_clone)]
-pub struct WasmWalletTransactionArray(pub Vec<WasmWalletTransaction>);
+pub struct WasmApiWalletTransactions(pub Vec<WasmApiWalletTransaction>);
 
 #[wasm_bindgen]
 impl WasmWalletClient {
     #[wasm_bindgen(js_name = "getWallets")]
-    pub async fn get_wallets(&self) -> Result<WasmWalletDataArray, WasmError> {
+    pub async fn get_wallets(&self) -> Result<WasmApiWalletsData, WasmError> {
         let wallets = self
             .0
             .get_wallets()
@@ -177,7 +177,7 @@ impl WasmWalletClient {
             .map_err(|e| e.into())
             .map(|wallets| wallets.into_iter().map(|wallet| wallet.into()).collect::<Vec<_>>())?;
 
-        Ok(WasmWalletDataArray(wallets))
+        Ok(WasmApiWalletsData(wallets))
     }
 
     #[wasm_bindgen(js_name = "createWallet")]
@@ -192,7 +192,7 @@ impl WasmWalletClient {
         mnemonic: Option<String>,
         fingerprint: Option<String>,
         public_key: Option<String>,
-    ) -> Result<WasmWalletData, WasmError> {
+    ) -> Result<WasmApiWalletData, WasmError> {
         let payload = CreateWalletRequestBody {
             Name: name,
             IsImported: match is_imported {
@@ -225,7 +225,7 @@ impl WasmWalletClient {
     }
 
     #[wasm_bindgen(js_name = "getWalletAccounts")]
-    pub async fn get_wallet_accounts(&self, wallet_id: String) -> Result<WasmWalletAccountArray, WasmError> {
+    pub async fn get_wallet_accounts(&self, wallet_id: String) -> Result<WasmApiWalletAccounts, WasmError> {
         let wallet_accounts = self
             .0
             .get_wallet_accounts(wallet_id)
@@ -240,7 +240,7 @@ impl WasmWalletClient {
                     .collect::<Vec<_>>()
             })?;
 
-        Ok(WasmWalletAccountArray(wallet_accounts))
+        Ok(WasmApiWalletAccounts(wallet_accounts))
     }
 
     #[wasm_bindgen(js_name = "createWalletAccount")]
@@ -293,7 +293,7 @@ impl WasmWalletClient {
     }
 
     #[wasm_bindgen(js_name = "getWalletTransactions")]
-    pub async fn get_wallet_transactions(&self, wallet_id: String) -> Result<WasmWalletTransactionArray, WasmError> {
+    pub async fn get_wallet_transactions(&self, wallet_id: String) -> Result<WasmApiWalletTransactions, WasmError> {
         let wallet_transactions = self
             .0
             .get_wallet_transactions(wallet_id)
@@ -306,7 +306,7 @@ impl WasmWalletClient {
                     .collect::<Vec<_>>()
             })?;
 
-        Ok(WasmWalletTransactionArray(wallet_transactions))
+        Ok(WasmApiWalletTransactions(wallet_transactions))
     }
 
     #[wasm_bindgen(js_name = "createWalletTransaction")]
@@ -315,7 +315,7 @@ impl WasmWalletClient {
         wallet_id: String,
         label: String,
         txid: String,
-    ) -> Result<WasmWalletTransaction, WasmError> {
+    ) -> Result<WasmApiWalletTransaction, WasmError> {
         let payload = CreateWalletTransactionRequestBody {
             Label: label,
             TransactionID: txid,
@@ -334,7 +334,7 @@ impl WasmWalletClient {
         wallet_id: String,
         wallet_transaction_id: String,
         label: String,
-    ) -> Result<WasmWalletTransaction, WasmError> {
+    ) -> Result<WasmApiWalletTransaction, WasmError> {
         self.0
             .update_wallet_transaction_label(wallet_id, wallet_transaction_id, label)
             .await
