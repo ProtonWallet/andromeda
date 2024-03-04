@@ -178,7 +178,7 @@ struct DeleteWalletAccountResponseBody {
 pub struct WalletTransaction {
     pub ID: String,
     pub WalletID: String,
-    pub Label: String,
+    pub Label: Option<String>,
     pub TransactionID: String,
 }
 
