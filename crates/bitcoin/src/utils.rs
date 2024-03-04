@@ -36,17 +36,17 @@ pub fn convert_amount(value: f64, from: BitcoinUnit, to: BitcoinUnit) -> f64 {
         BitcoinUnit::BTC => match to {
             BitcoinUnit::BTC => value,
             BitcoinUnit::MBTC => value * (BITCOIN / MILLI_BITCOIN) as f64,
-            BitcoinUnit::SAT => value * (BITCOIN / SATOSHI) as f64,
+            BitcoinUnit::SATS => value * (BITCOIN / SATOSHI) as f64,
         },
         BitcoinUnit::MBTC => match to {
             BitcoinUnit::BTC => value / (BITCOIN / MILLI_BITCOIN) as f64,
             BitcoinUnit::MBTC => value,
-            BitcoinUnit::SAT => value * (MILLI_BITCOIN / SATOSHI) as f64,
+            BitcoinUnit::SATS => value * (MILLI_BITCOIN / SATOSHI) as f64,
         },
-        BitcoinUnit::SAT => match to {
+        BitcoinUnit::SATS => match to {
             BitcoinUnit::BTC => value / (BITCOIN / SATOSHI) as f64,
             BitcoinUnit::MBTC => value / (MILLI_BITCOIN / SATOSHI) as f64,
-            BitcoinUnit::SAT => value,
+            BitcoinUnit::SATS => value,
         },
     }
 }
@@ -162,7 +162,10 @@ mod tests {
 
     #[test]
     fn should_convert_btc_to_sat() {
-        assert_eq!(convert_amount(0.00089377, BitcoinUnit::BTC, BitcoinUnit::SAT), 89377f64)
+        assert_eq!(
+            convert_amount(0.00089377, BitcoinUnit::BTC, BitcoinUnit::SATS),
+            89377f64
+        )
     }
 
     #[test]
@@ -177,13 +180,13 @@ mod tests {
 
     #[test]
     fn should_convert_mbtc_to_sat() {
-        assert_eq!(convert_amount(97.897, BitcoinUnit::MBTC, BitcoinUnit::SAT), 9789700.0)
+        assert_eq!(convert_amount(97.897, BitcoinUnit::MBTC, BitcoinUnit::SATS), 9789700.0)
     }
 
     #[test]
     fn should_convert_sat_to_btc() {
         assert_eq!(
-            convert_amount(1527463f64, BitcoinUnit::SAT, BitcoinUnit::BTC),
+            convert_amount(1527463f64, BitcoinUnit::SATS, BitcoinUnit::BTC),
             0.01527463
         )
     }
@@ -191,7 +194,7 @@ mod tests {
     #[test]
     fn should_convert_sat_to_mbtc() {
         assert_eq!(
-            convert_amount(8867354f64, BitcoinUnit::SAT, BitcoinUnit::MBTC),
+            convert_amount(8867354f64, BitcoinUnit::SATS, BitcoinUnit::MBTC),
             88.67354
         )
     }
@@ -199,7 +202,7 @@ mod tests {
     #[test]
     fn should_do_nothing_sat_to_sat() {
         assert_eq!(
-            convert_amount(9928764f64, BitcoinUnit::SAT, BitcoinUnit::SAT),
+            convert_amount(9928764f64, BitcoinUnit::SATS, BitcoinUnit::SATS),
             9928764f64
         )
     }

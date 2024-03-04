@@ -16,7 +16,7 @@ impl Into<WasmBitcoinUnit> for BitcoinUnit {
         match self {
             BitcoinUnit::BTC => WasmBitcoinUnit::BTC,
             BitcoinUnit::MBTC => WasmBitcoinUnit::MBTC,
-            BitcoinUnit::SAT => WasmBitcoinUnit::SAT,
+            BitcoinUnit::SATS => WasmBitcoinUnit::SAT,
         }
     }
 }
@@ -26,7 +26,7 @@ impl Into<BitcoinUnit> for WasmBitcoinUnit {
         match self {
             WasmBitcoinUnit::BTC => BitcoinUnit::BTC,
             WasmBitcoinUnit::MBTC => BitcoinUnit::MBTC,
-            WasmBitcoinUnit::SAT => BitcoinUnit::SAT,
+            WasmBitcoinUnit::SAT => BitcoinUnit::SATS,
         }
     }
 }

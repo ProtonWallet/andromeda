@@ -63,7 +63,7 @@ fn get_query_params(query_params: &Vec<(&str, &str)>, key: &str) -> Option<Strin
 
 impl PaymentLink {
     fn get_querystring(amount: &Option<u64>, label: &Option<String>, message: &Option<String>) -> String {
-        let str_amount = amount.map(|am| convert_amount(am as f64, BitcoinUnit::SAT, BitcoinUnit::BTC).to_string());
+        let str_amount = amount.map(|am| convert_amount(am as f64, BitcoinUnit::SATS, BitcoinUnit::BTC).to_string());
 
         vec![
             (AMOUNT_KEY, str_amount),
@@ -134,7 +134,7 @@ impl PaymentLink {
 
             let amount = get_query_params(&query_params, AMOUNT_KEY)
                 .and_then(|amount_str| amount_str.parse::<f64>().ok())
-                .map(|amount| convert_amount(amount, BitcoinUnit::BTC, BitcoinUnit::SAT).round() as u64);
+                .map(|amount| convert_amount(amount, BitcoinUnit::BTC, BitcoinUnit::SATS).round() as u64);
 
             let label = get_query_params(&query_params, LABEL_KEY);
             let message = get_query_params(&query_params, MESSAGE_KEY);

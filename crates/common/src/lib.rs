@@ -62,7 +62,7 @@ pub enum BitcoinUnit {
     /// 100,000 sats
     MBTC,
     /// 1 sat
-    SAT,
+    SATS,
 }
 
 pub trait FromParts {
