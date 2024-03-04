@@ -17,7 +17,7 @@ pub struct WalletClient {
 
 #[derive(Debug, Deserialize, Serialize)]
 #[allow(non_snake_case)]
-pub struct Wallet {
+pub struct ApiWallet {
     pub ID: String,
     /// Name of the wallet
     pub Name: String,
@@ -69,7 +69,7 @@ pub struct CreateWalletRequestBody {
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
-pub struct WalletKey {
+pub struct ApiWalletKey {
     pub WalletID: String,
     pub UserKeyID: String,
     pub WalletKey: String,
@@ -77,7 +77,7 @@ pub struct WalletKey {
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
-pub struct WalletSettings {
+pub struct ApiWalletSettings {
     pub WalletID: String,
     pub HideAccounts: u8,
     pub InvoiceDefaultDescription: Option<String>,
@@ -87,26 +87,26 @@ pub struct WalletSettings {
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
-pub struct WalletData {
-    pub Wallet: Wallet,
-    pub WalletKey: WalletKey,
-    pub WalletSettings: WalletSettings,
+pub struct ApiWalletData {
+    pub Wallet: ApiWallet,
+    pub WalletKey: ApiWalletKey,
+    pub WalletSettings: ApiWalletSettings,
 }
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 pub struct GetWalletsResponseBody {
     pub Code: u16,
-    pub Wallets: Vec<WalletData>,
+    pub Wallets: Vec<ApiWalletData>,
 }
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 pub struct CreateWalletResponseBody {
     pub Code: u16,
-    pub Wallet: Wallet,
-    pub WalletKey: WalletKey,
-    pub WalletSettings: WalletSettings,
+    pub Wallet: ApiWallet,
+    pub WalletKey: ApiWalletKey,
+    pub WalletSettings: ApiWalletSettings,
 }
 
 #[derive(Debug, Serialize)]
@@ -119,12 +119,12 @@ pub struct UpdateWalletNameRequestBody {
 #[allow(non_snake_case)]
 struct UpdateWalletNameResponseBody {
     pub Code: u16,
-    pub Wallet: Wallet,
+    pub Wallet: ApiWallet,
 }
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
-pub struct Account {
+pub struct ApiWalletAccount {
     pub ID: String,
     pub WalletID: String,
     pub DerivationPath: String,
@@ -136,7 +136,7 @@ pub struct Account {
 #[allow(non_snake_case)]
 struct GetWalletAccountsResponseBody {
     pub Code: u16,
-    pub Accounts: Vec<Account>,
+    pub Accounts: Vec<ApiWalletAccount>,
 }
 
 #[derive(Debug, Serialize)]
@@ -151,7 +151,7 @@ pub struct CreateWalletAccountRequestBody {
 #[allow(non_snake_case)]
 struct CreateWalletAccountResponseBody {
     pub Code: u16,
-    pub Account: Account,
+    pub Account: ApiWalletAccount,
 }
 
 #[derive(Debug, Serialize)]
@@ -164,7 +164,7 @@ pub struct UpdateWalletAccountLabelRequestBody {
 #[allow(non_snake_case)]
 struct UpdateWalletAccountLabelResponseBody {
     pub Code: u16,
-    pub Account: Account,
+    pub Account: ApiWalletAccount,
 }
 
 #[derive(Debug, Deserialize)]
@@ -175,7 +175,7 @@ struct DeleteWalletAccountResponseBody {
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
-pub struct WalletTransaction {
+pub struct ApiWalletTransaction {
     pub ID: String,
     pub WalletID: String,
     pub Label: String,
@@ -186,7 +186,7 @@ pub struct WalletTransaction {
 #[allow(non_snake_case)]
 struct GetWalletTransactionsResponseBody {
     pub Code: u16,
-    pub WalletTransactions: Vec<WalletTransaction>,
+    pub WalletTransactions: Vec<ApiWalletTransaction>,
 }
 
 #[derive(Debug, Serialize)]
@@ -202,7 +202,7 @@ pub struct CreateWalletTransactionRequestBody {
 #[allow(non_snake_case)]
 struct CreateWalletTransactionResponseBody {
     pub Code: u16,
-    pub WalletTransaction: WalletTransaction,
+    pub WalletTransaction: ApiWalletTransaction,
 }
 
 #[derive(Debug, Serialize)]
@@ -216,7 +216,7 @@ pub struct UpdateWalletTransactionLabelRequestBody {
 #[allow(non_snake_case)]
 struct UpdateWalletTransactionLabelResponseBody {
     pub Code: u16,
-    pub WalletTransaction: WalletTransaction,
+    pub WalletTransaction: ApiWalletTransaction,
 }
 
 #[derive(Debug, Deserialize)]
@@ -230,7 +230,7 @@ impl WalletClient {
         Self { session }
     }
 
-    pub async fn get_wallets(&self) -> Result<Vec<WalletData>, Error> {
+    pub async fn get_wallets(&self) -> Result<Vec<ApiWalletData>, Error> {
         let request = ProtonRequest::new(Method::GET, format!("{}/wallets", BASE_WALLET_API_V1));
 
         let response = self
@@ -250,7 +250,7 @@ impl WalletClient {
         Ok(parsed.Wallets)
     }
 
-    pub async fn create_wallet(&self, payload: CreateWalletRequestBody) -> Result<WalletData, Error> {
+    pub async fn create_wallet(&self, payload: CreateWalletRequestBody) -> Result<ApiWalletData, Error> {
         let request = ProtonRequest::new(Method::POST, format!("{}/wallets", BASE_WALLET_API_V1))
             .json_body(payload)
             .map_err(|_| Error::SerializeError)?;
@@ -269,14 +269,14 @@ impl WalletClient {
             .to_json::<CreateWalletResponseBody>()
             .map_err(|_| Error::DeserializeError)?;
 
-        Ok(WalletData {
+        Ok(ApiWalletData {
             Wallet: parsed.Wallet,
             WalletKey: parsed.WalletKey,
             WalletSettings: parsed.WalletSettings,
         })
     }
 
-    pub async fn update_wallet_name(&self, wallet_id: String, name: String) -> Result<Wallet, Error> {
+    pub async fn update_wallet_name(&self, wallet_id: String, name: String) -> Result<ApiWallet, Error> {
         let payload = UpdateWalletNameRequestBody { Name: name };
 
         let request = ProtonRequest::new(
@@ -321,7 +321,7 @@ impl WalletClient {
         Ok(())
     }
 
-    pub async fn get_wallet_accounts(&self, wallet_id: String) -> Result<Vec<Account>, Error> {
+    pub async fn get_wallet_accounts(&self, wallet_id: String) -> Result<Vec<ApiWalletAccount>, Error> {
         let request = ProtonRequest::new(
             Method::GET,
             format!("{}/wallets/{}/accounts", BASE_WALLET_API_V1, wallet_id),
@@ -347,7 +347,7 @@ impl WalletClient {
         &self,
         wallet_id: String,
         payload: CreateWalletAccountRequestBody,
-    ) -> Result<Account, Error> {
+    ) -> Result<ApiWalletAccount, Error> {
         let request = ProtonRequest::new(
             Method::POST,
             format!("{}/wallets/{}/accounts", BASE_WALLET_API_V1, wallet_id),
@@ -377,7 +377,7 @@ impl WalletClient {
         wallet_id: String,
         wallet_account_id: String,
         label: String,
-    ) -> Result<Account, Error> {
+    ) -> Result<ApiWalletAccount, Error> {
         let payload = UpdateWalletAccountLabelRequestBody { Label: label };
 
         let request = ProtonRequest::new(
@@ -433,7 +433,7 @@ impl WalletClient {
         Ok(())
     }
 
-    pub async fn get_wallet_transactions(&self, wallet_id: String) -> Result<Vec<WalletTransaction>, Error> {
+    pub async fn get_wallet_transactions(&self, wallet_id: String) -> Result<Vec<ApiWalletTransaction>, Error> {
         let request = ProtonRequest::new(Method::GET, format!("{}/wallets/{}", BASE_WALLET_API_V1, wallet_id));
 
         let response = self
@@ -457,7 +457,7 @@ impl WalletClient {
         &self,
         wallet_id: String,
         payload: CreateWalletTransactionRequestBody,
-    ) -> Result<WalletTransaction, Error> {
+    ) -> Result<ApiWalletTransaction, Error> {
         let request = ProtonRequest::new(
             Method::POST,
             format!("{}/wallets/{}/transactions", BASE_WALLET_API_V1, wallet_id),
@@ -487,7 +487,7 @@ impl WalletClient {
         wallet_id: String,
         wallet_transaction_id: String,
         label: String,
-    ) -> Result<WalletTransaction, Error> {
+    ) -> Result<ApiWalletTransaction, Error> {
         let payload = UpdateWalletTransactionLabelRequestBody { Label: label };
 
         let request = ProtonRequest::new(
