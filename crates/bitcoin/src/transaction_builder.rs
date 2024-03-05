@@ -113,7 +113,7 @@ fn allocate_recipients_balance(recipients: Vec<TmpRecipient>, balance: &Balance)
             recipients: Vec::new(),
         },
         |acc, current| {
-            let amount_in_sats = convert_amount(current.2, current.3, BitcoinUnit::SAT).round();
+            let amount_in_sats = convert_amount(current.2, current.3, BitcoinUnit::SATS).round();
 
             // If remainingAmount = 123 and recipient's amount is 100, we'll allocate 100
             // If remainingAmount = 73 and recipient's amount is 100, we'll allocate only 73
@@ -123,7 +123,7 @@ fn allocate_recipients_balance(recipients: Vec<TmpRecipient>, balance: &Balance)
             let mut next_recipients = acc.recipients.clone();
 
             // balance is always in satoshis, so we need to convert it
-            let converted_balance = convert_amount(amount_to_allocate as f64, BitcoinUnit::SAT, current.3);
+            let converted_balance = convert_amount(amount_to_allocate as f64, BitcoinUnit::SATS, current.3);
             next_recipients.extend(vec![TmpRecipient(current.0, current.1, converted_balance, current.3)]);
 
             AllocateBalanceAcc {
@@ -148,13 +148,13 @@ fn correct_recipients_amounts(recipients: Vec<TmpRecipient>, amount_to_remove: f
             recipients: Vec::new(),
         },
         |acc, current| {
-            let amount_in_sats = convert_amount(current.2, current.3, BitcoinUnit::SAT);
+            let amount_in_sats = convert_amount(current.2, current.3, BitcoinUnit::SATS);
             let new_amount = amount_in_sats - acc.remaining as f64;
 
             // If new_amount is null or negative, we have unallocated all necessary balance
             let new_remaining_to_remove = if new_amount > 0.0 { 0.0 } else { -new_amount };
 
-            let new_amount = convert_amount(max_f64(new_amount, 0.0), BitcoinUnit::SAT, current.3);
+            let new_amount = convert_amount(max_f64(new_amount, 0.0), BitcoinUnit::SATS, current.3);
             let mut next_recipients = vec![TmpRecipient(current.0, current.1, new_amount, current.3)];
 
             next_recipients.extend(acc.recipients.clone());
@@ -180,7 +180,7 @@ where
                 Uuid::new_v4().to_string(),
                 String::new(),
                 0.0,
-                BitcoinUnit::SAT,
+                BitcoinUnit::SATS,
             )],
             utxos_to_spend: HashSet::new(),
             change_policy: ChangeSpendPolicy::ChangeAllowed,
@@ -242,7 +242,7 @@ where
             Uuid::new_v4().to_string(),
             String::new(),
             0.0,
-            BitcoinUnit::SAT,
+            BitcoinUnit::SATS,
         )]);
 
         TxBuilder {
@@ -303,7 +303,7 @@ where
     /// ```rust, ignore
     /// let tx_builder = TxBuilder::new();
     /// ...
-    /// let updated = tx_builder.update_recipient(1usize, Some("bc1..."), Some(18788.0), Some(BitcoinUnit::SAT)).unwrap();
+    /// let updated = tx_builder.update_recipient(1usize, Some("bc1..."), Some(18788.0), Some(BitcoinUnit::SATS)).unwrap();
     /// ```
     pub async fn update_recipient(
         &self,
@@ -363,7 +363,7 @@ where
         let converted_max_amount = match self.account.clone() {
             Some(account) => convert_amount(
                 account.read().unwrap().get_balance()?.confirmed as f64,
-                BitcoinUnit::SAT,
+                BitcoinUnit::SATS,
                 unit,
             ),
             _ => prev_amount,
@@ -498,7 +498,7 @@ where
     ) -> Result<PartiallySignedTransaction, Error> {
         for TmpRecipient(_uuid, address, amount, unit) in &self.recipients {
             // We need to convert tmp amount in sats to create psbt
-            let sats_amount = convert_amount(*amount, *unit, BitcoinUnit::SAT).round() as u64;
+            let sats_amount = convert_amount(*amount, *unit, BitcoinUnit::SATS).round() as u64;
 
             // TODO: here convert amount in sats
             tx_builder.add_recipient(
@@ -586,18 +586,18 @@ mod tests {
     #[test]
     fn should_remove_correct_amount() {
         let recipients: Vec<TmpRecipient> = vec![
-            TmpRecipient("1".to_string(), "addr1".to_string(), 3500.0, BitcoinUnit::SAT),
-            TmpRecipient("2".to_string(), "addr2".to_string(), 2100.0, BitcoinUnit::SAT),
-            TmpRecipient("3".to_string(), "addr3".to_string(), 3000.0, BitcoinUnit::SAT),
+            TmpRecipient("1".to_string(), "addr1".to_string(), 3500.0, BitcoinUnit::SATS),
+            TmpRecipient("2".to_string(), "addr2".to_string(), 2100.0, BitcoinUnit::SATS),
+            TmpRecipient("3".to_string(), "addr3".to_string(), 3000.0, BitcoinUnit::SATS),
         ];
         let updated = correct_recipients_amounts(recipients, 3400.0);
 
         assert_eq!(
             updated,
             vec![
-                TmpRecipient("1".to_string(), "addr1".to_string(), 3500.0, BitcoinUnit::SAT),
-                TmpRecipient("2".to_string(), "addr2".to_string(), 1700.0, BitcoinUnit::SAT),
-                TmpRecipient("3".to_string(), "addr3".to_string(), 0.0, BitcoinUnit::SAT)
+                TmpRecipient("1".to_string(), "addr1".to_string(), 3500.0, BitcoinUnit::SATS),
+                TmpRecipient("2".to_string(), "addr2".to_string(), 1700.0, BitcoinUnit::SATS),
+                TmpRecipient("3".to_string(), "addr3".to_string(), 0.0, BitcoinUnit::SATS)
             ]
         );
     }
@@ -605,18 +605,18 @@ mod tests {
     #[test]
     fn should_not_create_negative_amounts() {
         let recipients: Vec<TmpRecipient> = vec![
-            TmpRecipient("1".to_string(), "addr1".to_string(), 3500.0, BitcoinUnit::SAT),
-            TmpRecipient("2".to_string(), "addr2".to_string(), 2100.0, BitcoinUnit::SAT),
-            TmpRecipient("3".to_string(), "addr3".to_string(), 3000.0, BitcoinUnit::SAT),
+            TmpRecipient("1".to_string(), "addr1".to_string(), 3500.0, BitcoinUnit::SATS),
+            TmpRecipient("2".to_string(), "addr2".to_string(), 2100.0, BitcoinUnit::SATS),
+            TmpRecipient("3".to_string(), "addr3".to_string(), 3000.0, BitcoinUnit::SATS),
         ];
         let updated = correct_recipients_amounts(recipients, 9000.0);
 
         assert_eq!(
             updated,
             vec![
-                TmpRecipient("1".to_string(), "addr1".to_string(), 0.0, BitcoinUnit::SAT),
-                TmpRecipient("2".to_string(), "addr2".to_string(), 0.0, BitcoinUnit::SAT),
-                TmpRecipient("3".to_string(), "addr3".to_string(), 0.0, BitcoinUnit::SAT)
+                TmpRecipient("1".to_string(), "addr1".to_string(), 0.0, BitcoinUnit::SATS),
+                TmpRecipient("2".to_string(), "addr2".to_string(), 0.0, BitcoinUnit::SATS),
+                TmpRecipient("3".to_string(), "addr3".to_string(), 0.0, BitcoinUnit::SATS)
             ]
         );
     }
@@ -624,9 +624,9 @@ mod tests {
     #[test]
     fn should_not_remove_anything() {
         let recipients: Vec<TmpRecipient> = vec![
-            TmpRecipient("1".to_string(), "addr1".to_string(), 3500.0, BitcoinUnit::SAT),
-            TmpRecipient("2".to_string(), "addr2".to_string(), 2100.0, BitcoinUnit::SAT),
-            TmpRecipient("3".to_string(), "addr3".to_string(), 3000.0, BitcoinUnit::SAT),
+            TmpRecipient("1".to_string(), "addr1".to_string(), 3500.0, BitcoinUnit::SATS),
+            TmpRecipient("2".to_string(), "addr2".to_string(), 2100.0, BitcoinUnit::SATS),
+            TmpRecipient("3".to_string(), "addr3".to_string(), 3000.0, BitcoinUnit::SATS),
         ];
         let updated = correct_recipients_amounts(recipients.clone(), 0.0);
 

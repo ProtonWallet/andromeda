@@ -8,7 +8,7 @@ use wasm_bindgen::prelude::*;
 pub enum WasmBitcoinUnit {
     BTC,
     MBTC,
-    SAT,
+    SATS,
 }
 
 impl Into<WasmBitcoinUnit> for BitcoinUnit {
@@ -16,7 +16,7 @@ impl Into<WasmBitcoinUnit> for BitcoinUnit {
         match self {
             BitcoinUnit::BTC => WasmBitcoinUnit::BTC,
             BitcoinUnit::MBTC => WasmBitcoinUnit::MBTC,
-            BitcoinUnit::SAT => WasmBitcoinUnit::SAT,
+            BitcoinUnit::SATS => WasmBitcoinUnit::SATS,
         }
     }
 }
@@ -26,7 +26,7 @@ impl Into<BitcoinUnit> for WasmBitcoinUnit {
         match self {
             WasmBitcoinUnit::BTC => BitcoinUnit::BTC,
             WasmBitcoinUnit::MBTC => BitcoinUnit::MBTC,
-            WasmBitcoinUnit::SAT => BitcoinUnit::SAT,
+            WasmBitcoinUnit::SATS => BitcoinUnit::SATS,
         }
     }
 }
