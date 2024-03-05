@@ -142,7 +142,7 @@ impl From<ApiWalletAccount> for WasmApiWalletAccount {
 pub struct WasmApiWalletTransaction {
     pub ID: String,
     pub WalletID: String,
-    pub Label: String,
+    pub Label: Option<String>,
     pub TransactionID: String,
 }
 
