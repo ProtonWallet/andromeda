@@ -14,6 +14,7 @@ use network::NetworkClient;
 use settings::SettingsClient;
 use transaction::TransactionClient;
 use wallet::WalletClient;
+use exchange_rate::ExchangeRateClient;
 
 mod env;
 
@@ -24,6 +25,7 @@ pub mod network;
 pub mod settings;
 pub mod transaction;
 pub mod wallet;
+pub mod exchange_rate;
 
 // TODO: make this private
 pub mod utils;
@@ -69,6 +71,7 @@ struct ApiClients(
     TransactionClient,
     WalletClient,
     AddressClient,
+    ExchangeRateClient,
 );
 
 impl ApiClients {
@@ -80,6 +83,7 @@ impl ApiClients {
             TransactionClient::new(session.clone()),
             WalletClient::new(session.clone()),
             AddressClient::new(session.clone()),
+            ExchangeRateClient::new(session.clone()),
         )
     }
 }
@@ -119,6 +123,7 @@ pub struct ProtonWalletApiClient {
     pub transaction: TransactionClient,
     pub wallet: WalletClient,
     pub address: AddressClient,
+    pub exchange_rate: ExchangeRateClient,
 }
 
 impl ProtonWalletApiClient {
@@ -167,7 +172,7 @@ impl ProtonWalletApiClient {
     pub fn from_session(session: Session) -> Self {
         let session = Arc::new(RwLock::new(session));
 
-        let ApiClients(block, network, settings, transaction, wallet, address) =
+        let ApiClients(block, network, settings, transaction, wallet, address, exchange_rate) =
             ApiClients::from_session(session.clone());
 
         Self {
@@ -179,6 +184,7 @@ impl ProtonWalletApiClient {
             transaction,
             wallet,
             address,
+            exchange_rate,
         }
     }
 

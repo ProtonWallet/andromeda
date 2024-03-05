@@ -4,6 +4,8 @@ use bitcoin::{
 };
 use serde::{Deserialize, Serialize};
 
+use std::fmt;
+
 pub const SATOSHI: u64 = 1;
 pub const BITCOIN: u64 = 100_000_000 * SATOSHI;
 pub const MILLI_BITCOIN: u64 = BITCOIN / 1000;
@@ -63,6 +65,16 @@ pub enum BitcoinUnit {
     MBTC,
     /// 1 sat
     SATS,
+}
+
+impl fmt::Display for BitcoinUnit {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            BitcoinUnit::BTC => write!(f, "BTC"),
+            BitcoinUnit::MBTC => write!(f, "MBTC"),
+            BitcoinUnit::SATS => write!(f, "SATS"),
+        }
+    }
 }
 
 pub trait FromParts {

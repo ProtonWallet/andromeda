@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::fmt;
 
 use andromeda_common::BitcoinUnit;
 use async_std::sync::RwLock;
@@ -15,6 +16,16 @@ pub enum FiatCurrency {
     USD,
     EUR,
     CHF,
+}
+
+impl fmt::Display for FiatCurrency {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            FiatCurrency::USD => write!(f, "USD"),
+            FiatCurrency::EUR => write!(f, "EUR"),
+            FiatCurrency::CHF => write!(f, "CHF"),
+        }
+    }
 }
 
 #[derive(Clone)]
