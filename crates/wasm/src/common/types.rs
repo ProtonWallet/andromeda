@@ -1,10 +1,11 @@
 use andromeda_bitcoin::{BdkNetwork, KeychainKind};
 use andromeda_common::{BitcoinUnit, Network};
 use serde::{Deserialize, Serialize};
+use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
-#[wasm_bindgen]
-#[derive(Clone, Copy)]
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
 pub enum WasmBitcoinUnit {
     BTC,
     MBTC,
