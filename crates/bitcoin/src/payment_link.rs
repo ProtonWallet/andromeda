@@ -1,13 +1,13 @@
 use core::fmt::Debug;
 use std::str::FromStr;
 
-use andromeda_common::{BitcoinUnit, Network};
+use andromeda_common::{error::Error, BitcoinUnit, Network};
 use bdk::database::BatchDatabase;
 use bitcoin::Address;
 use urlencoding::{decode, encode};
 
 use super::account::Account;
-use crate::{error::Error, utils::convert_amount};
+use crate::utils::convert_amount;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum PaymentLink {
@@ -187,11 +187,10 @@ impl PaymentLink {
 mod tests {
     use std::str::FromStr;
 
-    use andromeda_common::Network;
+    use andromeda_common::{error::Error, Network};
     use miniscript::bitcoin::Address;
 
     use super::super::payment_link::PaymentLink;
-    use crate::error::Error;
 
     #[test]
     fn should_return_only_address() {

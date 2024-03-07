@@ -4,7 +4,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use andromeda_common::{Network, ScriptType};
+use andromeda_common::{error::Error, Network, ScriptType};
 use bdk::{database::BatchDatabase, Balance};
 use futures::future;
 use miniscript::bitcoin::{
@@ -14,7 +14,6 @@ use miniscript::bitcoin::{
 
 use super::{account::Account, transactions::Pagination, utils::sort_and_paginate_txs};
 use crate::{
-    error::Error,
     mnemonic::Mnemonic,
     transactions::{SimpleTransaction, TransactionDetails},
 };

@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use andromeda_common::BitcoinUnit;
+use andromeda_common::{error::Error, BitcoinUnit};
 use bdk::{
     bitcoin::ScriptBuf,
     database::BatchDatabase,
@@ -22,10 +22,7 @@ use miniscript::bitcoin::{
 use uuid::Uuid;
 
 use super::account::Account;
-use crate::{
-    error::Error,
-    utils::{convert_amount, max_f64, min_f64},
-};
+use crate::utils::{convert_amount, max_f64, min_f64};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum CoinSelection {

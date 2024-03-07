@@ -1,8 +1,11 @@
+use std::str::FromStr;
+
 use andromeda_bitcoin::{wallet::Wallet, BdkMemoryDatabase, DerivationPath};
+use andromeda_common::{error::Error, ScriptType};
 use wasm_bindgen::prelude::*;
 
 use super::{
-    account::{WasmAccount, WasmScriptType},
+    account::WasmAccount,
     types::{
         balance::WasmBalance,
         derivation_path::WasmDerivationPath,
@@ -11,7 +14,10 @@ use super::{
         typescript_interfaces::IWasmSimpleTransactionArray,
     },
 };
-use crate::common::{error::DetailledWasmError, types::WasmNetwork};
+use crate::common::{
+    error::{DetailledWasmError, WasmError},
+    types::WasmNetwork,
+};
 
 #[wasm_bindgen]
 pub struct WasmWallet {
@@ -20,7 +26,7 @@ pub struct WasmWallet {
 
 #[wasm_bindgen]
 extern "C" {
-    #[wasm_bindgen(typescript_type = "[WasmScriptType, WasmDerivationPath]")]
+    #[wasm_bindgen(typescript_type = "[u8, String]")]
     pub type AccountConfigTupple;
 }
 
@@ -36,10 +42,19 @@ impl WasmWallet {
         let accounts = accounts.map_or(Vec::new(), |accounts| {
             accounts
                 .into_iter()
-                .map(|acc| {
-                    let acc: (WasmScriptType, WasmDerivationPath) = serde_wasm_bindgen::from_value(acc.into()).unwrap();
-                    (acc.0.into(), (&acc.1).into(), BdkMemoryDatabase::new())
+                .map(|acc| -> Result<(ScriptType, DerivationPath, BdkMemoryDatabase), _> {
+                    let (script_type, derivation_path): (u8, String) =
+                        serde_wasm_bindgen::from_value(acc.into()).map_err(|_| WasmError::InvalidData)?;
+
+                    let derivation_path =
+                        DerivationPath::from_str(&derivation_path).map_err(|_| WasmError::InvalidDerivationPath)?;
+                    let script_type = script_type.try_into().map_err(|_| WasmError::InvalidScriptType)?;
+
+                    let config = (script_type, derivation_path, BdkMemoryDatabase::new());
+
+                    Ok::<(ScriptType, DerivationPath, BdkMemoryDatabase), WasmError>(config)
                 })
+                .filter_map(Result::ok)
                 .collect::<Vec<_>>()
         });
 
@@ -52,28 +67,36 @@ impl WasmWallet {
     #[wasm_bindgen(js_name = addAccount)]
     pub fn add_account(
         &mut self,
-        script_type: WasmScriptType,
-        derivation_path: WasmDerivationPath,
+        script_type: u8,
+        derivation_path: String,
     ) -> Result<WasmDerivationPath, DetailledWasmError> {
         // In a multi-wallet context, an account must be defined by the BIP32 masterkey
         // (fingerprint), and its derivation path (unique)
         let storage = BdkMemoryDatabase::new();
 
-        let derivation_path = self
-            .inner
-            .add_account(script_type.into(), (&derivation_path).into(), storage)
+        let derivation_path =
+            DerivationPath::from_str(&derivation_path).map_err(|_| WasmError::InvalidDerivationPath.into())?;
+
+        let script_type = script_type.try_into().map_err(|e: Error| e.into())?;
+
+        self.inner
+            .add_account(script_type, derivation_path.clone(), storage)
             .map_err(|e| e.into())?;
 
-        // assert_eq!(derivation_path, tmp_derivation_path);
         Ok(derivation_path.into())
     }
 
     #[wasm_bindgen(js_name = getAccount)]
-    pub fn get_account(&mut self, account_key: &WasmDerivationPath) -> Option<WasmAccount> {
-        let account_key: DerivationPath = account_key.into();
-        let account = self.inner.get_account(&account_key);
+    pub fn get_account(&mut self, derivation_path: String) -> Option<WasmAccount> {
+        let derivation_path = DerivationPath::from_str(&derivation_path).ok();
 
-        account.map(|account| account.into())
+        if derivation_path.is_none() {
+            return None;
+        }
+
+        self.inner
+            .get_account(&derivation_path.unwrap())
+            .map(|account| account.into())
     }
 
     #[wasm_bindgen(js_name = getBalance)]

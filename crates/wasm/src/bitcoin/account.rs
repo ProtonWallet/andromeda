@@ -22,41 +22,6 @@ use super::{
 use crate::common::error::DetailledWasmError;
 
 #[wasm_bindgen]
-#[derive(Clone, Copy, Deserialize, Serialize)]
-pub enum WasmScriptType {
-    Legacy,
-    NestedSegwit,
-    NativeSegwit,
-    Taproot,
-}
-
-impl Display for WasmScriptType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                WasmScriptType::Legacy => "Legacy",
-                WasmScriptType::NestedSegwit => "NestedSegwit",
-                WasmScriptType::NativeSegwit => "NativeSegwit",
-                WasmScriptType::Taproot => "Taproot",
-            }
-        )
-    }
-}
-
-impl Into<ScriptType> for WasmScriptType {
-    fn into(self) -> ScriptType {
-        match self {
-            WasmScriptType::Legacy => ScriptType::Legacy,
-            WasmScriptType::NestedSegwit => ScriptType::NestedSegwit,
-            WasmScriptType::NativeSegwit => ScriptType::NativeSegwit,
-            WasmScriptType::Taproot => ScriptType::Taproot,
-        }
-    }
-}
-
-#[wasm_bindgen]
 pub struct WasmAccount {
     inner: Arc<RwLock<Account<BdkMemoryDatabase>>>,
 }

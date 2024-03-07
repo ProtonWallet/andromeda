@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 
+use andromeda_common::error::Error;
 use bdk::{blockchain::EsploraBlockchain, database::BatchDatabase, SyncOptions, Wallet as BdkWallet};
 use bitcoin::Transaction;
-
-use crate::error::Error;
 
 const DEFAULT_URL: &'static str = "https://mempool.space/testnet/api";
 const DEFAULT_STOP_GAP: usize = 10;
