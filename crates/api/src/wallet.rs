@@ -54,7 +54,7 @@ pub struct CreateWalletRequestBody {
     /// request on first wallet access.
     pub HasPassphrase: u8,
     /// Encrypted user Id
-    pub UserKeyId: String,
+    pub UserKeyID: String,
     /// Base64 encoded binary data
     pub WalletKey: String,
     /// Wallet mnemonic encrypted with the WalletKey, in base64 format
@@ -583,7 +583,7 @@ mod tests {
             Fingerprint: Some(String::from("")),
             PublicKey: None,
 
-            UserKeyId: String::from("A2MiMDdmh59RhGQ13iuZ27tc_vEn5GTf-v1LaCRP99q2rkMmPeuMh1QRdtIjR5UwGAowachcaiYYf8Pcf9tOoA=="),
+            UserKeyID: String::from("A2MiMDdmh59RhGQ13iuZ27tc_vEn5GTf-v1LaCRP99q2rkMmPeuMh1QRdtIjR5UwGAowachcaiYYf8Pcf9tOoA=="),
             WalletKey: String::from("Yituc2t2WS9paWRrTEVLTWRmMW15S3c0b3JoZis0aDA4L3d3SDdzbUJBd3BaaWxzakpNV0xHUmtRQ0wxbEJ2SjlTMHV3N2RIUUd2eWtVdm5ySzJLTmVzclBXVEpwRjVCY1hQOWJaU0ROVTFsa1luR3lZQmFoYXRFMzRwdWM1R0VDUDJTYU5wV0h3PT0="),
         };
 
