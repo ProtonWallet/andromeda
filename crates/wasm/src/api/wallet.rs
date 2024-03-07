@@ -204,7 +204,7 @@ impl WasmWalletClient {
                 true => 1,
                 false => 0,
             },
-            UserKeyId: user_key_id,
+            UserKeyID: user_key_id,
             WalletKey: wallet_key,
             Mnemonic: mnemonic,
             Fingerprint: fingerprint,
