@@ -76,7 +76,7 @@ mod tests {
         let session = common_session().await;
         let client = ExchangeRateClient::new(session);
 
-        let blocks = client.get_exchange_rate().await;
-        println!("request done: {:?}", blocks);
+        let exchange_rate = client.get_exchange_rate(BitcoinUnit.SATS, FiatCurrency.EUR, 1707287982).await;
+        println!("request done: {:?}", exchange_rate);
     }
 }
