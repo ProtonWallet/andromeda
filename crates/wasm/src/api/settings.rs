@@ -1,11 +1,12 @@
 use andromeda_api::settings::{FiatCurrency, SettingsClient, UserSettings};
 use serde::{Deserialize, Serialize};
+use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
 use crate::common::{error::WasmError, types::WasmBitcoinUnit};
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
-#[wasm_bindgen]
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
 pub enum WasmFiatCurrency {
     USD,
     EUR,
@@ -32,7 +33,8 @@ impl From<WasmFiatCurrency> for FiatCurrency {
     }
 }
 
-#[wasm_bindgen]
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
 #[allow(non_snake_case)]
 pub struct WasmUserSettings {
     pub BitcoinUnit: WasmBitcoinUnit,
@@ -54,6 +56,10 @@ impl From<UserSettings> for WasmUserSettings {
     }
 }
 
+// We need this wrapper because, tsify doesn't support intoJs in async fns
+#[wasm_bindgen(getter_with_clone)]
+pub struct WasmUserSettingsData(pub WasmUserSettings);
+
 #[wasm_bindgen]
 pub struct WasmSettingsClient(SettingsClient);
 
@@ -66,50 +72,50 @@ impl From<SettingsClient> for WasmSettingsClient {
 #[wasm_bindgen]
 impl WasmSettingsClient {
     #[wasm_bindgen(js_name = "getUserSettings")]
-    pub async fn get_user_settings(&self) -> Result<WasmUserSettings, WasmError> {
+    pub async fn get_user_settings(&self) -> Result<WasmUserSettingsData, WasmError> {
         self.0
             .get_user_settings()
             .await
             .map_err(|e| e.into())
-            .map(|settings| settings.into())
+            .map(|settings| WasmUserSettingsData(settings.into()))
     }
 
     #[wasm_bindgen(js_name = "setBitcoinUnit")]
-    pub async fn bitcoin_unit(&self, symbol: WasmBitcoinUnit) -> Result<WasmUserSettings, WasmError> {
+    pub async fn bitcoin_unit(&self, symbol: WasmBitcoinUnit) -> Result<WasmUserSettingsData, WasmError> {
         self.0
             .bitcoin_unit(symbol.into())
             .await
             .map_err(|e| e.into())
-            .map(|settings| settings.into())
+            .map(|settings| WasmUserSettingsData(settings.into()))
     }
 
     #[wasm_bindgen(js_name = "setFiatCurrency")]
-    pub async fn fiat_currency(&self, symbol: WasmFiatCurrency) -> Result<WasmUserSettings, WasmError> {
+    pub async fn fiat_currency(&self, symbol: WasmFiatCurrency) -> Result<WasmUserSettingsData, WasmError> {
         self.0
             .fiat_currency(symbol.into())
             .await
             .map_err(|e| e.into())
-            .map(|settings| settings.into())
+            .map(|settings| WasmUserSettingsData(settings.into()))
     }
 
     #[wasm_bindgen(js_name = "setTwoFaThreshold")]
-    pub async fn two_fa_threshold(&self, amount: u64) -> Result<WasmUserSettings, WasmError> {
+    pub async fn two_fa_threshold(&self, amount: u64) -> Result<WasmUserSettingsData, WasmError> {
         self.0
             .two_fa_threshold(amount)
             .await
             .map_err(|e| e.into())
-            .map(|settings| settings.into())
+            .map(|settings| WasmUserSettingsData(settings.into()))
     }
 
     #[wasm_bindgen(js_name = "setHideEmptyUsedAddresses")]
     pub async fn hide_empty_used_addresses(
         &self,
         hide_empty_used_addresses: bool,
-    ) -> Result<WasmUserSettings, WasmError> {
+    ) -> Result<WasmUserSettingsData, WasmError> {
         self.0
             .hide_empty_used_addresses(hide_empty_used_addresses)
             .await
             .map_err(|e| e.into())
-            .map(|settings| settings.into())
+            .map(|settings| WasmUserSettingsData(settings.into()))
     }
 }
