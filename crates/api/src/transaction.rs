@@ -150,8 +150,18 @@ impl TransactionClient {
             format!("{}/transactions/{}/status", BASE_WALLET_API_V1, txid),
         );
 
-        let response = self.session.read().await.bind(request).map_err(|e| e.into())?.send().await.map_err(|e| e.into())?;
-        let parsed = response.to_json::<GetTransactionStatusResponseBody>().map_err(|e| e.into())?;
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+        let parsed = response
+            .to_json::<GetTransactionStatusResponseBody>()
+            .map_err(|e| e.into())?;
 
         Ok(parsed.TransactionStatus)
     }
@@ -244,12 +254,11 @@ mod tests {
         let session = common_session().await;
         let client = TransactionClient::new(session);
 
-        let transaction_merkle_proof =
-            client
-                .get_transaction_merkle_proof(
-                    "72a2f1d87b412c8db06b39a5027e98644150fd8ab41a54b0be762383e4283407".to_string(),
-                )
-                .await;
+        let transaction_merkle_proof = client
+            .get_transaction_merkle_proof(
+                "72a2f1d87b412c8db06b39a5027e98644150fd8ab41a54b0be762383e4283407".to_string(),
+            )
+            .await;
 
         println!("request done: {:?}", transaction_merkle_proof);
     }
@@ -260,12 +269,11 @@ mod tests {
         let session = common_session().await;
         let client = TransactionClient::new(session);
 
-        let transaction_merkle_block_proof =
-            client
-                .get_transaction_merkle_block_proof(
-                    "72a2f1d87b412c8db06b39a5027e98644150fd8ab41a54b0be762383e4283407".to_string(),
-                )
-                .await;
+        let transaction_merkle_block_proof = client
+            .get_transaction_merkle_block_proof(
+                "72a2f1d87b412c8db06b39a5027e98644150fd8ab41a54b0be762383e4283407".to_string(),
+            )
+            .await;
 
         println!("request done: {:?}", transaction_merkle_block_proof);
     }

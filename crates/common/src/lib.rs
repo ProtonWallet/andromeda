@@ -1,11 +1,11 @@
+use std::fmt;
+
 use bitcoin::{
     bip32::{ChildNumber, DerivationPath},
     Network as BdkNetwork,
 };
 use error::Error;
 use serde::{Deserialize, Serialize};
-
-use std::fmt;
 
 pub const SATOSHI: u64 = 1;
 pub const BITCOIN: u64 = 100_000_000 * SATOSHI;
@@ -93,9 +93,9 @@ impl FromParts for DerivationPath {
     /// # use bitcoin::bip32::DerivationPath;
     /// # use andromeda_common::{FromParts, Network};
     /// #
-    /// let derivation_path = DerivationPath::from_parts(84, Network::Bitcoin, 0);
-    /// assert_eq!(derivation_path, DerivationPath::from_str("m/84'/0'/0'").unwrap());
-    /// ```
+    /// let derivation_path = DerivationPath::from_parts(84, Network::Bitcoin,
+    /// 0); assert_eq!(derivation_path,
+    /// DerivationPath::from_str("m/84'/0'/0'").unwrap()); ```
     fn from_parts(purpose: u32, network: Network, account: u32) -> Self {
         let purpose_level = ChildNumber::from_hardened_idx(purpose).unwrap();
 

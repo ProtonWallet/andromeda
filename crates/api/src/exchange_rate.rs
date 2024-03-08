@@ -1,15 +1,14 @@
 use std::sync::Arc;
 
 use andromeda_common::BitcoinUnit;
-use crate::settings::FiatCurrency;
 use async_std::sync::RwLock;
 use muon::{
     request::{Method, ProtonRequest, Response},
     session::Session,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
-use crate::{error::Error, BASE_WALLET_API_V1};
+use crate::{error::Error, settings::FiatCurrency, BASE_WALLET_API_V1};
 
 #[derive(Clone)]
 pub struct ExchangeRateClient {
@@ -45,8 +44,23 @@ impl ExchangeRateClient {
         Self { session }
     }
 
-    pub async fn get_exchange_rate(&self, bitcoin_unit: BitcoinUnit, fiat_currency: FiatCurrency, time: u64) -> Result<ApiExchangeRate, Error> {
-        let request = ProtonRequest::new(Method::GET, format!("{}/rates?BitcoinUnit={}&FiatCurrency={}&Time={}", BASE_WALLET_API_V1, bitcoin_unit.to_string(), fiat_currency.to_string(), time.to_string()));
+    pub async fn get_exchange_rate(
+        &self,
+        bitcoin_unit: BitcoinUnit,
+        fiat_currency: FiatCurrency,
+        time: u64,
+    ) -> Result<ApiExchangeRate, Error> {
+        let request = ProtonRequest::new(
+            Method::GET,
+            format!(
+                "{}/rates?BitcoinUnit={}&FiatCurrency={}&Time={}",
+                BASE_WALLET_API_V1,
+                bitcoin_unit.to_string(),
+                fiat_currency.to_string(),
+                time.to_string()
+            ),
+        );
+
         let response = self
             .session
             .read()
@@ -67,8 +81,10 @@ impl ExchangeRateClient {
 
 #[cfg(test)]
 mod tests {
+    use andromeda_common::BitcoinUnit;
+
     use super::ExchangeRateClient;
-    use crate::utils::common_session;
+    use crate::{settings::FiatCurrency, utils::common_session};
 
     #[tokio::test]
     #[ignore]
@@ -76,7 +92,10 @@ mod tests {
         let session = common_session().await;
         let client = ExchangeRateClient::new(session);
 
-        let exchange_rate = client.get_exchange_rate(BitcoinUnit.SATS, FiatCurrency.EUR, 1707287982).await;
+        let exchange_rate = client
+            .get_exchange_rate(BitcoinUnit::BTC, FiatCurrency::EUR, 1707287982)
+            .await;
+
         println!("request done: {:?}", exchange_rate);
     }
 }
