@@ -119,7 +119,8 @@ pub struct WasmApiWalletAccount {
     pub ScriptType: u8,
 }
 
-// We need this wrapper because unfortunately, tsify doesn't support VectoIntoWasmAbi yet
+// We need this wrapper because unfortunately, tsify doesn't support
+// VectoIntoWasmAbi yet
 #[wasm_bindgen(getter_with_clone)]
 #[derive(Clone)]
 #[allow(non_snake_case)]

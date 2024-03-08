@@ -1,5 +1,4 @@
-use std::sync::Arc;
-use std::fmt;
+use std::{fmt, sync::Arc};
 
 use andromeda_common::BitcoinUnit;
 use async_std::sync::RwLock;

@@ -6,6 +6,7 @@ use block::BlockClient;
 #[cfg(feature = "local")]
 use env::LocalEnv;
 use error::Error;
+use exchange_rate::ExchangeRateClient;
 pub use muon::{
     environment::ApiEnv, request::Error as MuonError, session::Session, store::SimpleAuthStore, AccessToken, AppSpec,
     AuthStore, Product, RefreshToken, ReqwestTransportFactory, Scope, Uid,
@@ -14,18 +15,17 @@ use network::NetworkClient;
 use settings::SettingsClient;
 use transaction::TransactionClient;
 use wallet::WalletClient;
-use exchange_rate::ExchangeRateClient;
 
 mod env;
 
 pub mod address;
 pub mod block;
 pub mod error;
+pub mod exchange_rate;
 pub mod network;
 pub mod settings;
 pub mod transaction;
 pub mod wallet;
-pub mod exchange_rate;
 
 // TODO: make this private
 pub mod utils;
@@ -39,15 +39,14 @@ struct WalletAppSpec(AppSpec);
 
 impl WalletAppSpec {
     pub fn new() -> Self {
-        let app_spec =
-            AppSpec::new(
-                // TODO: change that to Wallet when added to `Product` enum
-                Product::Unspecified,
-                // TODO: change that when Wallet has a version (or provide it through args)
-                "Other".to_owned(),
-                // TODO: change that by provide user agent when building pw api client
-                "None".to_owned(),
-            );
+        let app_spec = AppSpec::new(
+            // TODO: change that to Wallet when added to `Product` enum
+            Product::Unspecified,
+            // TODO: change that when Wallet has a version (or provide it through args)
+            "Other".to_owned(),
+            // TODO: change that by provide user agent when building pw api client
+            "None".to_owned(),
+        );
         WalletAppSpec(app_spec)
     }
 
