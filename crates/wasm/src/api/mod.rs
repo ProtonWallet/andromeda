@@ -1,4 +1,5 @@
 use andromeda_api::{self, AccessToken, AuthData, ProtonWalletApiClient, RefreshToken, Scope, Uid};
+use exchange_rate::WasmExchangeRateClient;
 use network::WasmNetworkClient;
 use settings::WasmSettingsClient;
 use wallet::WasmWalletClient;
@@ -6,6 +7,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::common::error::WasmError;
 
+mod exchange_rate;
 mod network;
 mod settings;
 mod wallet;
@@ -58,9 +60,10 @@ impl WasmProtonWalletApiClient {
         Ok(WasmProtonWalletApiClient(client))
     }
 
+    /// Returns a client to use exchange rate API
     #[wasm_bindgen]
-    pub async fn login(&mut self) -> Result<(), WasmError> {
-        self.0.login("pro", "pro").await.map_err(|e| e.into())
+    pub fn exchange_rate(&self) -> WasmExchangeRateClient {
+        WasmExchangeRateClient::from(self.0.exchange_rate.clone())
     }
 
     /// Returns a client to use settings API
