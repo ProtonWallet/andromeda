@@ -7,9 +7,10 @@ use block::BlockClient;
 use env::LocalEnv;
 use error::Error;
 use exchange_rate::ExchangeRateClient;
+
 pub use muon::{
     environment::ApiEnv, request::Error as MuonError, session::Session, store::SimpleAuthStore, AccessToken, AppSpec,
-    AuthStore, Product, RefreshToken, ReqwestTransportFactory, Scope, Uid,
+    AuthData, AuthStore, Product, RefreshToken, ReqwestTransportFactory, Scope, Uid,
 };
 use network::NetworkClient;
 use settings::SettingsClient;
@@ -87,15 +88,6 @@ impl ApiClients {
     }
 }
 
-/// Mirror from Muon's `AuthAccess` with public fields to be easily from outside
-/// of the crate
-pub struct AuthData {
-    pub uid: Uid,
-    pub access: AccessToken,
-    pub refresh: RefreshToken,
-    pub scopes: Vec<Scope>,
-}
-
 /// An API client providing interfaces to send authenticated http requests to
 /// Wallet backend
 ///
@@ -125,17 +117,65 @@ pub struct ProtonWalletApiClient {
     pub exchange_rate: ExchangeRateClient,
 }
 
-impl ProtonWalletApiClient {
-    #[cfg(feature = "local")]
-    fn session(app_spec: AppSpec, auth_store: SimpleAuthStore) -> Session {
-        let transport = ReqwestTransportFactory::new();
-        let local_env = LocalEnv::new(None);
-        Session::new_dangerous(auth_store, app_spec, transport, local_env).unwrap()
-    }
+#[derive(Debug)]
+pub struct ApiConfig<E>
+where
+    E: ApiEnv,
+{
+    /// A tupple composed of `app_version` and `user_agent`
+    pub spec: Option<(String, String)>,
+    /// The api client initial auth data
+    pub auth: Option<AuthData>,
+    /// The env for the api client
+    pub env: Option<E>,
+}
 
-    #[cfg(not(feature = "local"))]
-    fn session(app_spec: AppSpec, auth_store: SimpleAuthStore) -> Session {
-        Session::new(auth_store, app_spec).unwrap()
+impl ProtonWalletApiClient {
+    /// Builds a new api client from a config struct
+    ///
+    /// ```rust
+    /// # use andromeda_api::ProtonWalletApiClient;
+    /// let api_client = ProtonWalletApiClient::from_config("android-wallet/1.0.0".to_string(), "ProtonWallet/plus-agent-details".to_string());
+    /// ```
+    pub fn from_config<E>(config: ApiConfig<E>) -> Self
+    where
+        E: ApiEnv,
+    {
+        // TODO: this needs to be fixed -> 'atlas' should not be hardcoded
+        let mut auth_store = SimpleAuthStore::new("atlas");
+
+        if config.auth.is_some() {
+            match config.auth.unwrap() {
+                AuthData::Uid(uid) => {
+                    auth_store.set_uid_auth(uid);
+                }
+                AuthData::Access(uid, refresh, access, scopes) => {
+                    auth_store.set_access_auth(uid, refresh, access, scopes);
+                }
+                _ => {}
+            }
+        }
+
+        let app_spec = if let Some((app_version, user_agent)) = config.spec {
+            WalletAppSpec::from_version(app_version, user_agent)
+        } else {
+            WalletAppSpec::new()
+        };
+
+        #[cfg(feature = "local")]
+        let session = {
+            if config.env.is_some() {
+                let transport = ReqwestTransportFactory::new();
+                Session::new_dangerous(auth_store, app_spec.inner(), transport, config.env.unwrap()).unwrap()
+            } else {
+                Session::new(auth_store, app_spec.inner()).unwrap()
+            }
+        };
+
+        #[cfg(not(feature = "local"))]
+        let session = Session::new(auth_store, app_spec.inner()).unwrap();
+
+        Self::from_session(session)
     }
 
     /// Builds a new api client from a wallet version and a user agent
@@ -146,10 +186,9 @@ impl ProtonWalletApiClient {
     /// ```
     pub fn from_version(app_version: String, user_agent: String) -> Self {
         let app_spec = WalletAppSpec::from_version(app_version, user_agent).inner();
-
         let auth_store = SimpleAuthStore::new("atlas");
 
-        let session = Self::session(app_spec, auth_store);
+        let session = Session::new(auth_store, app_spec).unwrap();
 
         Self::from_session(session)
     }
@@ -205,10 +244,19 @@ impl ProtonWalletApiClient {
     pub fn from_auth(auth: AuthData) -> Result<Self, Error> {
         let app_spec = WalletAppSpec::new().inner();
 
-        let mut auth_store = SimpleAuthStore::new("local");
-        auth_store.set_auth(auth.uid, auth.refresh, auth.access, auth.scopes);
+        let mut auth_store = SimpleAuthStore::new("atlas");
 
-        let session = Self::session(app_spec, auth_store);
+        match auth {
+            AuthData::Uid(uid) => {
+                auth_store.set_uid_auth(uid);
+            }
+            AuthData::Access(uid, refresh, access, scopes) => {
+                auth_store.set_access_auth(uid, refresh, access, scopes);
+            }
+            _ => {}
+        }
+
+        let session = Session::new(auth_store, app_spec).unwrap();
 
         Ok(Self::from_session(session))
     }
@@ -244,10 +292,9 @@ impl ProtonWalletApiClient {
 impl Default for ProtonWalletApiClient {
     fn default() -> Self {
         let app_spec = WalletAppSpec::new().inner();
-
         let auth_store = SimpleAuthStore::new("atlas");
 
-        let session = Self::session(app_spec, auth_store);
+        let session = Session::new(auth_store, app_spec).unwrap();
 
         Self::from_session(session)
     }

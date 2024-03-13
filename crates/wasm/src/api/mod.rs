@@ -5,8 +5,10 @@ use settings::WasmSettingsClient;
 use wallet::WasmWalletClient;
 use wasm_bindgen::prelude::*;
 
+use crate::api::env::BrowserOriginEnv;
 use crate::common::error::WasmError;
 
+mod env;
 mod exchange_rate;
 mod network;
 mod settings;
@@ -21,41 +23,20 @@ pub struct WasmAuthData {
 }
 
 #[wasm_bindgen]
-impl WasmAuthData {
-    #[wasm_bindgen(constructor)]
-    pub fn new(uid: String, access: String, refresh: String, scopes: Vec<String>) -> Self {
-        WasmAuthData {
-            uid,
-            access,
-            refresh,
-            scopes,
-        }
-    }
-}
-
-impl Into<AuthData> for WasmAuthData {
-    fn into(self) -> AuthData {
-        AuthData {
-            uid: Uid::from(self.uid),
-            access: AccessToken::from(self.access),
-            refresh: RefreshToken::from(self.refresh),
-            scopes: self.scopes.into_iter().map(|s| Scope::from(s)).collect::<Vec<_>>(),
-        }
-    }
-}
-
-#[wasm_bindgen]
 pub struct WasmProtonWalletApiClient(ProtonWalletApiClient);
 
 #[wasm_bindgen]
 impl WasmProtonWalletApiClient {
     #[wasm_bindgen(constructor)]
-    pub fn new(auth: Option<WasmAuthData>) -> Result<WasmProtonWalletApiClient, WasmError> {
-        let client = if let Some(auth) = auth {
-            ProtonWalletApiClient::from_auth(auth.into()).map_err(|e| e.into())?
-        } else {
-            ProtonWalletApiClient::default()
+    pub fn new(uid_str: Option<String>, origin: Option<String>) -> Result<WasmProtonWalletApiClient, WasmError> {
+        let config = ApiConfig {
+            // TODO: add clients specs here
+            spec: None,
+            auth: uid_str.map(|u| AuthData::Uid(Uid::from(u))),
+            env: origin.map(|o| BrowserOriginEnv::new(o)),
         };
+
+        let client = ProtonWalletApiClient::from_config(config);
 
         Ok(WasmProtonWalletApiClient(client))
     }
@@ -94,7 +75,7 @@ mod tests {
     #[wasm_bindgen_test]
     #[ignore]
     async fn should_create_pw_api_client() {
-        let mut client = WasmProtonWalletApiClient::new(None).unwrap();
+        let mut client = WasmProtonWalletApiClient::new(None, None).unwrap();
         client.0.login("pro", "pro").await.unwrap();
     }
 }
