@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::exchange_rate::ApiExchangeRate;
 use async_std::sync::RwLock;
 use muon::{
     request::{Method, ProtonRequest, Response},
@@ -180,6 +181,8 @@ pub struct ApiWalletTransaction {
     pub WalletID: String,
     pub Label: Option<String>,
     pub TransactionID: String,
+    pub TransactionTime: String,
+    pub ExchangeRate: Option<ApiExchangeRate>,
 }
 
 #[derive(Debug, Deserialize)]

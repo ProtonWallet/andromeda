@@ -136,11 +136,9 @@ impl EventClient {
             .send()
             .await
             .map_err(|e| e.into())?;
-        println!("get_event() start!");
         let parsed = response
             .to_json::<ApiProtonEvent>()
             .map_err(|_| Error::DeserializeError)?;
-        println!("get_event() end!");
         Ok(parsed)
     }
 
@@ -186,7 +184,7 @@ mod tests {
 
         let events = client
             .collect_events(String::from(
-                "tgJ40Rrne0mzreQaIFc8ar-KXko0W0CDxXF-aSRQTf_zCSdA_D1wVD5WgDH3Wi3uTHuAAMbBeMuTJ1qpWC1_EA==",
+                "1EiQQQkUiKGtEZ4rE57KQcDXumDqEwXb0YNXziO3cY7kD-M9PsNhWF3zPCQ_boOx15GkqPHG3fO65UsEC-mr6w==",
             ))
             .await;
         println!("request done: {:?}", events);
