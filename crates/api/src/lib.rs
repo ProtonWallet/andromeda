@@ -32,18 +32,19 @@ pub mod wallet;
 // TODO: make this private
 pub mod utils;
 
-#[cfg(feature = "local")]
-pub const BASE_WALLET_API_V1: &str = "/api/wallet/v1";
-#[cfg(feature = "local")]
-pub const BASE_CORE_API_V4: &str = "/api/core/v4";
-#[cfg(not(feature = "local"))]
-pub const BASE_WALLET_API_V1: &str = "/wallet/v1";
-#[cfg(not(feature = "local"))]
-pub const BASE_CORE_API_V4: &str = "/core/v4";
-#[cfg(feature = "local")]
-pub const BASE_CORE_API_V5: &str = "/api/core/v5";
-#[cfg(not(feature = "local"))]
-pub const BASE_CORE_API_V5: &str = "/core/v5";
+#[macro_use]
+extern crate cfg_if;
+cfg_if! {
+    if #[cfg(feature = "local")] {
+        pub const BASE_WALLET_API_V1: &str = "/api/wallet/v1";
+        pub const BASE_CORE_API_V4: &str = "/api/core/v4";
+        pub const BASE_CORE_API_V5: &str = "/api/core/v5";
+    } else {
+        pub const BASE_WALLET_API_V1: &str = "/wallet/v1";
+        pub const BASE_CORE_API_V4: &str = "/core/v4";
+        pub const BASE_CORE_API_V5: &str = "/core/v5";
+    }
+}
 
 struct WalletAppSpec(AppSpec);
 
