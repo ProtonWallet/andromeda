@@ -1,12 +1,11 @@
-use andromeda_api::{self, AccessToken, AuthData, ProtonWalletApiClient, RefreshToken, Scope, Uid};
+use andromeda_api::{self, ApiConfig, AuthData, ProtonWalletApiClient, Uid};
 use exchange_rate::WasmExchangeRateClient;
 use network::WasmNetworkClient;
 use settings::WasmSettingsClient;
 use wallet::WasmWalletClient;
 use wasm_bindgen::prelude::*;
 
-use crate::api::env::BrowserOriginEnv;
-use crate::common::error::WasmError;
+use crate::{api::env::BrowserOriginEnv, common::error::WasmError};
 
 mod env;
 mod exchange_rate;
