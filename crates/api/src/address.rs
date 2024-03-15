@@ -1,10 +1,7 @@
 use std::sync::Arc;
 
 use async_std::sync::RwLock;
-use muon::{
-    request::{Method, ProtonRequest, Response},
-    session::Session,
-};
+use muon::{http::Method, ProtonRequest, Response, Session};
 use serde::Deserialize;
 
 use super::BASE_WALLET_API_V1;
