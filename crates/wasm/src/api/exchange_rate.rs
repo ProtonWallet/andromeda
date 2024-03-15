@@ -4,9 +4,8 @@ use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
-use crate::common::{error::WasmError, types::WasmBitcoinUnit};
-
 use super::settings::WasmFiatCurrency;
+use crate::common::{error::WasmError, types::WasmBitcoinUnit};
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi, from_wasm_abi)]

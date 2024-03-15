@@ -8,7 +8,6 @@ use env::LocalEnv;
 use error::Error;
 use event::EventClient;
 use exchange_rate::ExchangeRateClient;
-
 pub use muon::{
     environment::ApiEnv, request::Error as MuonError, session::Session, store::SimpleAuthStore, AccessToken, AppSpec,
     AuthData, AuthStore, Product, RefreshToken, ReqwestTransportFactory, Scope, Uid,

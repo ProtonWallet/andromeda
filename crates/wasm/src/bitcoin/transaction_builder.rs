@@ -11,7 +11,7 @@ use super::{
 };
 use crate::common::{
     error::{DetailledWasmError, WasmError},
-    types::{WasmBitcoinUnit, WasmNetwork},
+    types::WasmNetwork,
 };
 
 #[wasm_bindgen]
@@ -79,7 +79,7 @@ impl Into<WasmChangeSpendPolicy> for ChangeSpendPolicy {
 }
 
 #[wasm_bindgen(getter_with_clone)]
-pub struct WasmRecipient(pub String, pub String, pub f64, pub WasmBitcoinUnit);
+pub struct WasmRecipient(pub String, pub String, pub u64);
 
 #[wasm_bindgen]
 impl WasmTxBuilder {
@@ -124,13 +124,9 @@ impl WasmTxBuilder {
         &self,
         index: usize,
         address_str: Option<String>,
-        amount: Option<f64>,
-        unit: Option<WasmBitcoinUnit>,
+        amount: Option<u64>,
     ) -> Result<WasmTxBuilder, WasmError> {
-        let inner = self
-            .inner
-            .update_recipient(index, (address_str, amount, unit.map(|u| u.into())))
-            .await;
+        let inner = self.inner.update_recipient(index, (address_str, amount)).await;
 
         Ok(WasmTxBuilder { inner })
     }
@@ -154,9 +150,8 @@ impl WasmTxBuilder {
             .clone()
             .into_iter()
             .map(|recipient| {
-                let TmpRecipient(uuid, address, amount, unit) = recipient;
-                let wasm_recipient: WasmRecipient = WasmRecipient(uuid, address, amount, unit.into());
-                wasm_recipient
+                let TmpRecipient(uuid, address, amount) = recipient;
+                WasmRecipient(uuid, address, amount)
             })
             .collect();
 

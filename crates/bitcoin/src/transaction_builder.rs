@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use andromeda_common::{error::Error, BitcoinUnit};
+use andromeda_common::error::Error;
 use bdk::{
     bitcoin::ScriptBuf,
     database::BatchDatabase,
@@ -22,7 +22,6 @@ use miniscript::bitcoin::{
 use uuid::Uuid;
 
 use super::account::Account;
-use crate::utils::{convert_amount, max_f64, min_f64};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum CoinSelection {
@@ -33,7 +32,7 @@ pub enum CoinSelection {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct TmpRecipient(pub String, pub String, pub f64, pub BitcoinUnit);
+pub struct TmpRecipient(pub String, pub String, pub u64);
 
 /// BDK's implementation of Transaction builder is quite complete, but we need a
 /// struct that enables stateful transaction creation, so we just added a layer
@@ -96,32 +95,28 @@ pub struct ScriptAmount {
 }
 
 struct AllocateBalanceAcc {
-    remaining: f64,
+    remaining: u64,
     recipients: Vec<TmpRecipient>,
 }
 
 /// This functions allocates a given balance accross the provided recipients.
 /// If recipients total amount is greater than provided balance, the last
 /// recipients will be allocated less than initially. "First come, first served"
-fn allocate_recipients_balance(recipients: Vec<TmpRecipient>, balance: &Balance) -> Vec<TmpRecipient> {
+fn allocate_amount_to_recipients(recipients: Vec<TmpRecipient>, amount: u64) -> Vec<TmpRecipient> {
     let acc_result: AllocateBalanceAcc = recipients.into_iter().fold(
         AllocateBalanceAcc {
-            remaining: balance.confirmed as f64,
+            remaining: amount,
             recipients: Vec::new(),
         },
         |acc, current| {
-            let amount_in_sats = convert_amount(current.2, current.3, BitcoinUnit::SATS).round();
-
             // If remainingAmount = 123 and recipient's amount is 100, we'll allocate 100
             // If remainingAmount = 73 and recipient's amount is 100, we'll allocate only 73
-            let amount_to_allocate = min_f64(acc.remaining, amount_in_sats);
+            let amount_to_allocate = acc.remaining.min(current.2);
             let next_remaining = acc.remaining - amount_to_allocate;
 
             let mut next_recipients = acc.recipients.clone();
 
-            // balance is always in satoshis, so we need to convert it
-            let converted_balance = convert_amount(amount_to_allocate as f64, BitcoinUnit::SATS, current.3);
-            next_recipients.extend(vec![TmpRecipient(current.0, current.1, converted_balance, current.3)]);
+            next_recipients.extend(vec![TmpRecipient(current.0, current.1, amount_to_allocate)]);
 
             AllocateBalanceAcc {
                 remaining: next_remaining,
@@ -135,7 +130,7 @@ fn allocate_recipients_balance(recipients: Vec<TmpRecipient>, balance: &Balance)
 
 /// This function remove allocated amount from the last recipient to the first
 /// one and returns an array of updated recipients
-fn correct_recipients_amounts(recipients: Vec<TmpRecipient>, amount_to_remove: f64) -> Vec<TmpRecipient> {
+fn correct_recipients_amounts(recipients: Vec<TmpRecipient>, amount_to_remove: u64) -> Vec<TmpRecipient> {
     let mut cloned = recipients.clone();
     cloned.reverse(); // R3 R2 R1
 
@@ -145,19 +140,17 @@ fn correct_recipients_amounts(recipients: Vec<TmpRecipient>, amount_to_remove: f
             recipients: Vec::new(),
         },
         |acc, current| {
-            let amount_in_sats = convert_amount(current.2, current.3, BitcoinUnit::SATS);
-            let new_amount = amount_in_sats - acc.remaining as f64;
+            let amount_to_remove = acc.remaining.min(current.2);
 
-            // If new_amount is null or negative, we have unallocated all necessary balance
-            let new_remaining_to_remove = if new_amount > 0.0 { 0.0 } else { -new_amount };
+            let new_remaining = acc.remaining - amount_to_remove;
+            let new_amount = current.2 - amount_to_remove;
 
-            let new_amount = convert_amount(max_f64(new_amount, 0.0), BitcoinUnit::SATS, current.3);
-            let mut next_recipients = vec![TmpRecipient(current.0, current.1, new_amount, current.3)];
+            let mut next_recipients = vec![TmpRecipient(current.0, current.1, new_amount)];
 
             next_recipients.extend(acc.recipients.clone());
 
             AllocateBalanceAcc {
-                remaining: new_remaining_to_remove,
+                remaining: new_remaining,
                 recipients: next_recipients,
             }
         },
@@ -173,12 +166,7 @@ where
     pub fn new() -> Self {
         TxBuilder {
             account: None,
-            recipients: vec![TmpRecipient(
-                Uuid::new_v4().to_string(),
-                String::new(),
-                0.0,
-                BitcoinUnit::SATS,
-            )],
+            recipients: vec![TmpRecipient(Uuid::new_v4().to_string(), String::new(), 0)],
             utxos_to_spend: HashSet::new(),
             change_policy: ChangeSpendPolicy::ChangeAllowed,
             fee_rate: None,
@@ -205,7 +193,7 @@ where
 
         let tx_builder = TxBuilder {
             account: Some(account.clone()),
-            recipients: allocate_recipients_balance(self.recipients.clone(), balance),
+            recipients: allocate_amount_to_recipients(self.recipients.clone(), balance.confirmed),
             ..self.clone()
         };
 
@@ -235,12 +223,7 @@ where
     /// ```
     pub fn add_recipient(&self) -> Self {
         let mut recipients = self.recipients.clone();
-        recipients.append(&mut vec![TmpRecipient(
-            Uuid::new_v4().to_string(),
-            String::new(),
-            0.0,
-            BitcoinUnit::SATS,
-        )]);
+        recipients.append(&mut vec![TmpRecipient(Uuid::new_v4().to_string(), String::new(), 0)]);
 
         TxBuilder {
             recipients,
@@ -280,7 +263,7 @@ where
                         let amount_to_remove = needed - available;
 
                         TxBuilder {
-                            recipients: correct_recipients_amounts(self.recipients.clone(), amount_to_remove as f64),
+                            recipients: correct_recipients_amounts(self.recipients.clone(), amount_to_remove),
                             ..self.clone()
                         }
                     }
@@ -302,44 +285,14 @@ where
     /// ...
     /// let updated = tx_builder.update_recipient(1usize, Some("bc1..."), Some(18788.0), Some(BitcoinUnit::SATS)).unwrap();
     /// ```
-    pub async fn update_recipient(
-        &self,
-        index: usize,
-        update: (Option<String>, Option<f64>, Option<BitcoinUnit>),
-    ) -> Self {
+    pub async fn update_recipient(&self, index: usize, update: (Option<String>, Option<u64>)) -> Self {
         let mut recipients = self.recipients.clone();
-        let TmpRecipient(uuid, current_script, current_amount, current_unit) = recipients[index].clone();
-
-        // Regarding unit & amount change, 4 different cases can happen:
-        // - no1: only amount change; reflected update => amount
-        // - no2: only unit change; reflected update => unit & amount (converted to new
-        //   unit)
-        // - no3: both unit and amount change; reflected update => unit & amount
-        // - no4: none of unit and amount change; reflected update => nothing
-        let (did_unit_changed, new_unit) = match update.2 {
-            Some(unit) => (unit != current_unit, unit),
-            _ => (false, current_unit),
-        };
-
-        let new_amount = match update.1 {
-            // no1 & no3
-            Some(amount) => amount,
-            _ => {
-                // no2
-                if did_unit_changed {
-                    convert_amount(current_amount, current_unit, new_unit)
-                    // no4
-                } else {
-                    current_amount
-                }
-            }
-        };
+        let TmpRecipient(uuid, prev_script, prev_amount) = recipients[index].clone();
 
         recipients[index] = TmpRecipient(
             uuid,
-            update.0.map_or(current_script, |update| update),
-            new_amount,
-            new_unit,
+            update.0.map_or(prev_script, |update| update),
+            update.1.map_or(prev_amount, |update| update),
         );
 
         let tx_builder = TxBuilder {
@@ -354,19 +307,15 @@ where
     /// to him.
     pub async fn update_recipient_amount_to_max(&self, index: usize) -> Result<Self, Error> {
         let mut recipients = self.recipients.clone();
-        let TmpRecipient(uuid, script, prev_amount, unit) = recipients[index].clone();
+        let TmpRecipient(uuid, script, prev_amount) = recipients[index].clone();
 
         // account is always in sats so we need to convert it to chosen unit
-        let converted_max_amount = match self.account.clone() {
-            Some(account) => convert_amount(
-                account.read().unwrap().get_balance()?.confirmed as f64,
-                BitcoinUnit::SATS,
-                unit,
-            ),
+        let max_amount = match self.account.clone() {
+            Some(account) => account.read().unwrap().get_balance()?.confirmed,
             _ => prev_amount,
         };
 
-        recipients[index] = TmpRecipient(uuid, script, converted_max_amount, unit);
+        recipients[index] = TmpRecipient(uuid, script, max_amount);
 
         let tx_builder = TxBuilder {
             recipients,
@@ -493,17 +442,14 @@ where
         mut tx_builder: BdkTxBuilder<'a, D, Cs, CreateTx>,
         allow_dust: bool,
     ) -> Result<PartiallySignedTransaction, Error> {
-        for TmpRecipient(_uuid, address, amount, unit) in &self.recipients {
-            // We need to convert tmp amount in sats to create psbt
-            let sats_amount = convert_amount(*amount, *unit, BitcoinUnit::SATS).round() as u64;
-
+        for TmpRecipient(_uuid, address, amount) in &self.recipients {
             // TODO: here convert amount in sats
             tx_builder.add_recipient(
                 Address::from_str(&address)
                     .map_err(|_| Error::InvalidAddress)?
                     .assume_checked()
                     .script_pubkey(),
-                sats_amount,
+                *amount,
             );
         }
 
@@ -575,26 +521,52 @@ mod tests {
     use bdk::{database::MemoryDatabase, wallet::tx_builder::ChangeSpendPolicy, FeeRate};
     use miniscript::bitcoin::absolute::LockTime;
 
-    use super::{
-        super::transaction_builder::{BitcoinUnit, CoinSelection},
-        correct_recipients_amounts, TmpRecipient, TxBuilder,
-    };
+    use crate::transaction_builder::allocate_amount_to_recipients;
+
+    use super::{super::transaction_builder::CoinSelection, correct_recipients_amounts, TmpRecipient, TxBuilder};
 
     #[test]
-    fn should_remove_correct_amount() {
+    fn should_allocate_amount_when_no_amount_is_set() {
+        let recipients: Vec<TmpRecipient> = vec![TmpRecipient("1".to_string(), "addr1".to_string(), 0)];
+        let updated = allocate_amount_to_recipients(recipients, 3400);
+
+        assert_eq!(updated, vec![TmpRecipient("1".to_string(), "addr1".to_string(), 0),]);
+    }
+
+    #[test]
+    fn should_allocate_amount() {
         let recipients: Vec<TmpRecipient> = vec![
-            TmpRecipient("1".to_string(), "addr1".to_string(), 3500.0, BitcoinUnit::SATS),
-            TmpRecipient("2".to_string(), "addr2".to_string(), 2100.0, BitcoinUnit::SATS),
-            TmpRecipient("3".to_string(), "addr3".to_string(), 3000.0, BitcoinUnit::SATS),
+            TmpRecipient("1".to_string(), "addr1".to_string(), 3500),
+            TmpRecipient("2".to_string(), "addr2".to_string(), 2100),
+            TmpRecipient("3".to_string(), "addr3".to_string(), 3000),
         ];
-        let updated = correct_recipients_amounts(recipients, 3400.0);
+        let updated = allocate_amount_to_recipients(recipients, 4800);
 
         assert_eq!(
             updated,
             vec![
-                TmpRecipient("1".to_string(), "addr1".to_string(), 3500.0, BitcoinUnit::SATS),
-                TmpRecipient("2".to_string(), "addr2".to_string(), 1700.0, BitcoinUnit::SATS),
-                TmpRecipient("3".to_string(), "addr3".to_string(), 0.0, BitcoinUnit::SATS)
+                TmpRecipient("1".to_string(), "addr1".to_string(), 3500),
+                TmpRecipient("2".to_string(), "addr2".to_string(), 1300),
+                TmpRecipient("3".to_string(), "addr3".to_string(), 0)
+            ]
+        );
+    }
+
+    #[test]
+    fn should_remove_correct_amount() {
+        let recipients: Vec<TmpRecipient> = vec![
+            TmpRecipient("1".to_string(), "addr1".to_string(), 3500),
+            TmpRecipient("2".to_string(), "addr2".to_string(), 2100),
+            TmpRecipient("3".to_string(), "addr3".to_string(), 3000),
+        ];
+        let updated = correct_recipients_amounts(recipients, 3400);
+
+        assert_eq!(
+            updated,
+            vec![
+                TmpRecipient("1".to_string(), "addr1".to_string(), 3500),
+                TmpRecipient("2".to_string(), "addr2".to_string(), 1700),
+                TmpRecipient("3".to_string(), "addr3".to_string(), 0)
             ]
         );
     }
@@ -602,18 +574,18 @@ mod tests {
     #[test]
     fn should_not_create_negative_amounts() {
         let recipients: Vec<TmpRecipient> = vec![
-            TmpRecipient("1".to_string(), "addr1".to_string(), 3500.0, BitcoinUnit::SATS),
-            TmpRecipient("2".to_string(), "addr2".to_string(), 2100.0, BitcoinUnit::SATS),
-            TmpRecipient("3".to_string(), "addr3".to_string(), 3000.0, BitcoinUnit::SATS),
+            TmpRecipient("1".to_string(), "addr1".to_string(), 3500),
+            TmpRecipient("2".to_string(), "addr2".to_string(), 2100),
+            TmpRecipient("3".to_string(), "addr3".to_string(), 3000),
         ];
-        let updated = correct_recipients_amounts(recipients, 9000.0);
+        let updated = correct_recipients_amounts(recipients, 9000);
 
         assert_eq!(
             updated,
             vec![
-                TmpRecipient("1".to_string(), "addr1".to_string(), 0.0, BitcoinUnit::SATS),
-                TmpRecipient("2".to_string(), "addr2".to_string(), 0.0, BitcoinUnit::SATS),
-                TmpRecipient("3".to_string(), "addr3".to_string(), 0.0, BitcoinUnit::SATS)
+                TmpRecipient("1".to_string(), "addr1".to_string(), 0),
+                TmpRecipient("2".to_string(), "addr2".to_string(), 0),
+                TmpRecipient("3".to_string(), "addr3".to_string(), 0)
             ]
         );
     }
@@ -621,11 +593,11 @@ mod tests {
     #[test]
     fn should_not_remove_anything() {
         let recipients: Vec<TmpRecipient> = vec![
-            TmpRecipient("1".to_string(), "addr1".to_string(), 3500.0, BitcoinUnit::SATS),
-            TmpRecipient("2".to_string(), "addr2".to_string(), 2100.0, BitcoinUnit::SATS),
-            TmpRecipient("3".to_string(), "addr3".to_string(), 3000.0, BitcoinUnit::SATS),
+            TmpRecipient("1".to_string(), "addr1".to_string(), 3500),
+            TmpRecipient("2".to_string(), "addr2".to_string(), 2100),
+            TmpRecipient("3".to_string(), "addr3".to_string(), 3000),
         ];
-        let updated = correct_recipients_amounts(recipients.clone(), 0.0);
+        let updated = correct_recipients_amounts(recipients.clone(), 0);
 
         assert_eq!(updated, recipients);
     }
@@ -695,18 +667,13 @@ mod tests {
         let tx_builder = TxBuilder::<MemoryDatabase>::new();
 
         let updated = tx_builder
-            .update_recipient(0, (Some("tb1...xyz".to_string()), Some(15837.0), None))
+            .update_recipient(0, (Some("tb1...xyz".to_string()), Some(15837)))
             .await;
 
         assert_eq!(updated.recipients[0].1, "tb1...xyz".to_string());
-        assert_eq!(updated.recipients[0].2, 15837.0);
+        assert_eq!(updated.recipients[0].2, 15837);
 
-        let updated = tx_builder.update_recipient(0, (None, Some(668932.0), None)).await;
-        assert_eq!(updated.recipients[0].2, 668932.0);
-
-        let updated = tx_builder
-            .update_recipient(0, (None, Some(668932.0), Some(BitcoinUnit::MBTC)))
-            .await;
-        assert_eq!(updated.recipients[0].3, BitcoinUnit::MBTC);
+        let updated = tx_builder.update_recipient(0, (None, Some(668932))).await;
+        assert_eq!(updated.recipients[0].2, 668932);
     }
 }
