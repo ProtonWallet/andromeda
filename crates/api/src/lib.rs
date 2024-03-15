@@ -6,6 +6,7 @@ use block::BlockClient;
 #[cfg(feature = "local")]
 use env::LocalEnv;
 use error::Error;
+use event::EventClient;
 use exchange_rate::ExchangeRateClient;
 
 pub use muon::{
@@ -22,6 +23,7 @@ mod env;
 pub mod address;
 pub mod block;
 pub mod error;
+pub mod event;
 pub mod exchange_rate;
 pub mod network;
 pub mod settings;
@@ -31,10 +33,19 @@ pub mod wallet;
 // TODO: make this private
 pub mod utils;
 
-#[cfg(feature = "local")]
-pub const BASE_WALLET_API_V1: &str = "/api/wallet/v1";
-#[cfg(not(feature = "local"))]
-pub const BASE_WALLET_API_V1: &str = "/wallet/v1";
+#[macro_use]
+extern crate cfg_if;
+cfg_if! {
+    if #[cfg(feature = "local")] {
+        pub const BASE_WALLET_API_V1: &str = "/api/wallet/v1";
+        pub const BASE_CORE_API_V4: &str = "/api/core/v4";
+        pub const BASE_CORE_API_V5: &str = "/api/core/v5";
+    } else {
+        pub const BASE_WALLET_API_V1: &str = "/wallet/v1";
+        pub const BASE_CORE_API_V4: &str = "/core/v4";
+        pub const BASE_CORE_API_V5: &str = "/core/v5";
+    }
+}
 
 struct WalletAppSpec(AppSpec);
 
@@ -72,6 +83,7 @@ struct ApiClients(
     WalletClient,
     AddressClient,
     ExchangeRateClient,
+    EventClient,
 );
 
 impl ApiClients {
@@ -84,6 +96,7 @@ impl ApiClients {
             WalletClient::new(session.clone()),
             AddressClient::new(session.clone()),
             ExchangeRateClient::new(session.clone()),
+            EventClient::new(session.clone()),
         )
     }
 }
@@ -115,6 +128,7 @@ pub struct ProtonWalletApiClient {
     pub wallet: WalletClient,
     pub address: AddressClient,
     pub exchange_rate: ExchangeRateClient,
+    pub event: EventClient,
 }
 
 #[derive(Debug)]
@@ -210,7 +224,7 @@ impl ProtonWalletApiClient {
     pub fn from_session(session: Session) -> Self {
         let session = Arc::new(RwLock::new(session));
 
-        let ApiClients(block, network, settings, transaction, wallet, address, exchange_rate) =
+        let ApiClients(block, network, settings, transaction, wallet, address, exchange_rate, event) =
             ApiClients::from_session(session.clone());
 
         Self {
@@ -223,6 +237,7 @@ impl ProtonWalletApiClient {
             wallet,
             address,
             exchange_rate,
+            event,
         }
     }
 
