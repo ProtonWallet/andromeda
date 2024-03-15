@@ -2,10 +2,7 @@ use std::{fmt, sync::Arc};
 
 use andromeda_common::BitcoinUnit;
 use async_std::sync::RwLock;
-use muon::{
-    request::{Method, ProtonRequest, Response},
-    session::Session,
-};
+use muon::{http::Method, ProtonRequest, Response, Session};
 use serde::{Deserialize, Serialize};
 
 use crate::{error::Error, BASE_WALLET_API_V1};

@@ -2,10 +2,7 @@ use std::sync::Arc;
 
 use andromeda_common::Network;
 use async_std::sync::RwLock;
-use muon::{
-    request::{Method, ProtonRequest, Response},
-    session::Session,
-};
+use muon::{http::Method, ProtonRequest, Response, Session};
 use serde::Deserialize;
 
 use crate::{error::Error, BASE_WALLET_API_V1};
@@ -37,7 +34,7 @@ impl NetworkClient {
             .map_err(|e| e.into())?
             .send()
             .await
-            .map_err(|e| Error::MuonError(e))?;
+            .map_err(|e| e.into())?;
 
         let parsed = response
             .to_json::<GetNetworkResponseBody>()

@@ -2,10 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use async_std::sync::RwLock;
 use bitcoin::{consensus::deserialize, Transaction};
-use muon::{
-    request::{Error as ReqError, Method, ProtonRequest, Response},
-    session::Session,
-};
+use muon::{http::Method, ProtonRequest, Response, Session};
 use serde::{Deserialize, Serialize};
 
 use super::{error::Error, BASE_WALLET_API_V1};
@@ -166,26 +163,48 @@ impl TransactionClient {
         Ok(parsed.TransactionStatus)
     }
 
-    pub async fn get_transaction_merkle_proof(&self, txid: String) -> Result<TransactionMerkleProof, ReqError> {
+    pub async fn get_transaction_merkle_proof(&self, txid: String) -> Result<TransactionMerkleProof, Error> {
         let request = ProtonRequest::new(
             Method::GET,
             format!("{}/transactions/{}/merkle-proof", BASE_WALLET_API_V1, txid),
         );
 
-        let response = self.session.read().await.bind(request)?.send().await?;
-        let parsed = response.to_json::<GetTransactionMerkleProofResponseBody>()?;
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+
+        let parsed = response
+            .to_json::<GetTransactionMerkleProofResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
 
         Ok(parsed.Proof)
     }
 
-    pub async fn get_transaction_merkle_block_proof(&self, txid: String) -> Result<String, ReqError> {
+    pub async fn get_transaction_merkle_block_proof(&self, txid: String) -> Result<String, Error> {
         let request = ProtonRequest::new(
             Method::GET,
             format!("{}/transactions/{}/merkleblock-proof", BASE_WALLET_API_V1, txid),
         );
 
-        let response = self.session.read().await.bind(request)?.send().await?;
-        let parsed = response.to_json::<GetTransactionMerkleBlockProofResponseBody>()?;
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+
+        let parsed = response
+            .to_json::<GetTransactionMerkleBlockProofResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
 
         Ok(parsed.PartialMerkleTree)
     }
@@ -194,26 +213,48 @@ impl TransactionClient {
         &self,
         txid: String,
         index: u64,
-    ) -> Result<OutpointSpendingStatus, ReqError> {
+    ) -> Result<OutpointSpendingStatus, Error> {
         let request = ProtonRequest::new(
             Method::GET,
             format!("{}/transactions/{}/outspend/{}", BASE_WALLET_API_V1, txid, index),
         );
 
-        let response = self.session.read().await.bind(request)?.send().await?;
-        let parsed = response.to_json::<GetOutpointSpendingStatusResponseBody>()?;
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+
+        let parsed = response
+            .to_json::<GetOutpointSpendingStatusResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
 
         Ok(parsed.Outspend)
     }
 
-    pub async fn get_fee_estimates(&self) -> Result<HashMap<String, f64>, ReqError> {
+    pub async fn get_fee_estimates(&self) -> Result<HashMap<String, f64>, Error> {
         let request = ProtonRequest::new(
             Method::GET,
             format!("{}/transactions/fee-estimates", BASE_WALLET_API_V1),
         );
 
-        let response = self.session.read().await.bind(request)?.send().await?;
-        let parsed = response.to_json::<GetFeeEstimateResponseBody>()?;
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+
+        let parsed = response
+            .to_json::<GetFeeEstimateResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
 
         Ok(parsed.FeeEstimates)
     }

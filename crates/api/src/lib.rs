@@ -3,14 +3,12 @@ use std::sync::Arc;
 use address::AddressClient;
 use async_std::sync::RwLock;
 use block::BlockClient;
-#[cfg(feature = "local")]
-use env::LocalEnv;
 use error::Error;
 use exchange_rate::ExchangeRateClient;
 
 pub use muon::{
-    environment::ApiEnv, request::Error as MuonError, session::Session, store::SimpleAuthStore, AccessToken, AppSpec,
-    AuthData, AuthStore, Product, RefreshToken, ReqwestTransportFactory, Scope, Uid,
+    environment::ApiEnv, store::SimpleAuthStore, transports::ReqwestTransportFactory, AccessToken, AppSpec, AuthData,
+    AuthStore, Error as MuonError, Product, RefreshToken, Scope, Session, Uid,
 };
 use network::NetworkClient;
 use settings::SettingsClient;
@@ -279,7 +277,7 @@ impl ProtonWalletApiClient {
             .await
             .authenticate(username, password)
             .await
-            .map_err(|e| e.into())?;
+            .map_err(|_| Error::MuonSessionError)?;
 
         Ok(())
     }
