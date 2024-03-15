@@ -2,10 +2,7 @@ use crate::settings::UserSettings;
 use crate::wallet::{ApiWallet, ApiWalletAccount, ApiWalletKey, ApiWalletSettings, ApiWalletTransaction};
 use crate::{error::Error, BASE_CORE_API_V4, BASE_CORE_API_V5};
 use async_std::sync::RwLock;
-use muon::{
-    request::{Method, ProtonRequest, Response},
-    session::Session,
-};
+use muon::{http::Method, ProtonRequest, Response, Session};
 use serde::Deserialize;
 use std::sync::Arc;
 
