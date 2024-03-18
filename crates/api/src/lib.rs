@@ -3,6 +3,7 @@ use std::sync::Arc;
 use address::AddressClient;
 use async_std::sync::RwLock;
 use block::BlockClient;
+use contacts::ContactsClient;
 use error::Error;
 use event::EventClient;
 use exchange_rate::ExchangeRateClient;
@@ -19,6 +20,7 @@ mod env;
 
 pub mod address;
 pub mod block;
+pub mod contacts;
 pub mod error;
 pub mod event;
 pub mod exchange_rate;
@@ -37,10 +39,12 @@ cfg_if! {
         pub const BASE_WALLET_API_V1: &str = "/api/wallet/v1";
         pub const BASE_CORE_API_V4: &str = "/api/core/v4";
         pub const BASE_CORE_API_V5: &str = "/api/core/v5";
+        pub const BASE_CONTACTS_API_V4: &str = "/api/contacts/v4";
     } else {
         pub const BASE_WALLET_API_V1: &str = "/wallet/v1";
         pub const BASE_CORE_API_V4: &str = "/core/v4";
         pub const BASE_CORE_API_V5: &str = "/core/v5";
+        pub const BASE_CONTACTS_API_V4: &str = "/contacts/v4";
     }
 }
 
@@ -81,6 +85,7 @@ struct ApiClients(
     AddressClient,
     ExchangeRateClient,
     EventClient,
+    ContactsClient,
 );
 
 impl ApiClients {
@@ -94,6 +99,7 @@ impl ApiClients {
             AddressClient::new(session.clone()),
             ExchangeRateClient::new(session.clone()),
             EventClient::new(session.clone()),
+            ContactsClient::new(session.clone()),
         )
     }
 }
@@ -126,6 +132,7 @@ pub struct ProtonWalletApiClient {
     pub address: AddressClient,
     pub exchange_rate: ExchangeRateClient,
     pub event: EventClient,
+    pub contacts: ContactsClient,
 }
 
 #[derive(Debug)]
@@ -221,7 +228,7 @@ impl ProtonWalletApiClient {
     pub fn from_session(session: Session) -> Self {
         let session = Arc::new(RwLock::new(session));
 
-        let ApiClients(block, network, settings, transaction, wallet, address, exchange_rate, event) =
+        let ApiClients(block, network, settings, transaction, wallet, address, exchange_rate, event, contacts) =
             ApiClients::from_session(session.clone());
 
         Self {
@@ -235,6 +242,7 @@ impl ProtonWalletApiClient {
             address,
             exchange_rate,
             event,
+            contacts,
         }
     }
 
