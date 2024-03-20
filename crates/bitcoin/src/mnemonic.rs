@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use andromeda_common::error::Error;
 use bdk::{
     bitcoin::secp256k1::{rand, rand::Rng},
     keys::{
@@ -9,6 +8,8 @@ use bdk::{
     },
     miniscript::BareCtx,
 };
+
+use crate::error::Error;
 
 #[derive(Debug)]
 pub struct Mnemonic {
@@ -155,10 +156,10 @@ impl Mnemonic {
 
 #[cfg(test)]
 mod tests {
-    use andromeda_common::error::Error;
     use bdk::keys::bip39::Language;
 
     use super::{get_words_autocomplete, Mnemonic};
+    use crate::error::Error;
 
     #[test]
     fn should_return_match_words_in_english() {

@@ -15,6 +15,8 @@ pub struct NetworkClient {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct GetNetworkResponseBody {
+    //TODO:: code need to be used. remove all #[allow(dead_code)]
+    #[allow(dead_code)]
     pub Code: u16,
     pub Network: u8,
 }

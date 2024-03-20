@@ -8,6 +8,8 @@ use serde::{Deserialize, Serialize};
 use super::BASE_WALLET_API_V1;
 use crate::error::Error;
 
+//TODO:: code need to be used. remove all #[allow(dead_code)]
+
 #[derive(Clone)]
 pub struct WalletClient {
     session: Arc<RwLock<Session>>,
@@ -116,6 +118,7 @@ pub struct UpdateWalletNameRequestBody {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct UpdateWalletNameResponseBody {
+    #[allow(dead_code)]
     pub Code: u16,
     pub Wallet: ApiWallet,
 }
@@ -133,6 +136,7 @@ pub struct ApiWalletAccount {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct GetWalletAccountsResponseBody {
+    #[allow(dead_code)]
     pub Code: u16,
     pub Accounts: Vec<ApiWalletAccount>,
 }
@@ -148,6 +152,7 @@ pub struct CreateWalletAccountRequestBody {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct CreateWalletAccountResponseBody {
+    #[allow(dead_code)]
     pub Code: u16,
     pub Account: ApiWalletAccount,
 }
@@ -161,6 +166,7 @@ pub struct UpdateWalletAccountLabelRequestBody {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct UpdateWalletAccountLabelResponseBody {
+    #[allow(dead_code)]
     pub Code: u16,
     pub Account: ApiWalletAccount,
 }
@@ -168,6 +174,7 @@ struct UpdateWalletAccountLabelResponseBody {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct DeleteWalletAccountResponseBody {
+    #[allow(dead_code)]
     pub Code: u16,
 }
 
@@ -185,6 +192,7 @@ pub struct ApiWalletTransaction {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct GetWalletTransactionsResponseBody {
+    #[allow(dead_code)]
     pub Code: u16,
     pub WalletTransactions: Vec<ApiWalletTransaction>,
 }
@@ -201,6 +209,7 @@ pub struct CreateWalletTransactionRequestBody {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct CreateWalletTransactionResponseBody {
+    #[allow(dead_code)]
     pub Code: u16,
     pub WalletTransaction: ApiWalletTransaction,
 }
@@ -215,6 +224,7 @@ pub struct UpdateWalletTransactionLabelRequestBody {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct UpdateWalletTransactionLabelResponseBody {
+    #[allow(dead_code)]
     pub Code: u16,
     pub WalletTransaction: ApiWalletTransaction,
 }
@@ -222,6 +232,7 @@ struct UpdateWalletTransactionLabelResponseBody {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct DeleteWalletTransactionResponseBody {
+    #[allow(dead_code)]
     pub Code: u16,
 }
 

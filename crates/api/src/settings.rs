@@ -42,6 +42,8 @@ pub struct UserSettings {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct GetUserSettingsResponseBody {
+    //TODO:: code need to be used. remove all #[allow(dead_code)]
+    #[allow(dead_code)]
     pub Code: u16,
     pub WalletUserSettings: UserSettings,
 }

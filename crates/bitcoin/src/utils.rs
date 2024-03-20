@@ -17,18 +17,21 @@ pub fn now() -> Duration {
         .unwrap();
 }
 
+#[cfg(target_arch = "wasm32")]
 pub fn spawn<F>(future: F)
 where
     F: core::future::Future<Output = ()> + 'static,
 {
-    #[cfg(target_arch = "wasm32")]
-    {
-        wasm_bindgen_futures::spawn_local(future);
-    }
-    // #[cfg(not(target_arch = "wasm32"))]
-    // {
-    //     tokio::task::LocalSet::new().spawn_local(future);
-    // }
+    wasm_bindgen_futures::spawn_local(future);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn spawn<F>(_future: F)
+where
+    F: core::future::Future<Output = ()> + 'static,
+{
+    //TODO:: why this is commented out?
+    // tokio::task::LocalSet::new().spawn_local(future);
 }
 
 pub fn convert_amount(value: f64, from: BitcoinUnit, to: BitcoinUnit) -> f64 {

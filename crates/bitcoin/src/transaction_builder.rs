@@ -3,7 +3,6 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use andromeda_common::error::Error;
 use bdk::{
     bitcoin::ScriptBuf,
     database::BatchDatabase,
@@ -13,7 +12,7 @@ use bdk::{
         },
         tx_builder::{ChangeSpendPolicy, CreateTx, TxBuilder as BdkTxBuilder},
     },
-    Balance, FeeRate,
+    FeeRate,
 };
 use hashbrown::HashSet;
 use miniscript::bitcoin::{
@@ -22,6 +21,7 @@ use miniscript::bitcoin::{
 use uuid::Uuid;
 
 use super::account::Account;
+use crate::error::Error;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum CoinSelection {
@@ -200,7 +200,7 @@ where
         Ok(tx_builder.constrain_recipient_amounts().await)
     }
 
-    /// Clears internal recipient list.    
+    /// Clears internal recipient list
     ///
     /// ```rust, ignore
     /// let tx_builder = TxBuilder::new();
@@ -214,7 +214,7 @@ where
         }
     }
 
-    /// Add a recipient to the internal list.    
+    /// Add a recipient to the internal list
     ///
     /// ```rust, ignore
     /// let tx_builder = TxBuilder::new();
@@ -521,9 +521,8 @@ mod tests {
     use bdk::{database::MemoryDatabase, wallet::tx_builder::ChangeSpendPolicy, FeeRate};
     use miniscript::bitcoin::absolute::LockTime;
 
-    use crate::transaction_builder::allocate_amount_to_recipients;
-
     use super::{super::transaction_builder::CoinSelection, correct_recipients_amounts, TmpRecipient, TxBuilder};
+    use crate::transaction_builder::allocate_amount_to_recipients;
 
     #[test]
     fn should_allocate_amount_when_no_amount_is_set() {
