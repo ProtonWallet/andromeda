@@ -1,5 +1,6 @@
 pub mod account;
 pub mod blockchain;
+pub mod error;
 pub mod mnemonic;
 pub mod payment_link;
 pub mod transaction_builder;

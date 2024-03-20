@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 
 use super::{error::Error, BASE_WALLET_API_V1};
 
+//TODO:: code need to be used. remove all #[allow(dead_code)]
+
 #[derive(Clone)]
 pub struct TransactionClient {
     session: Arc<RwLock<Session>>,
@@ -21,12 +23,13 @@ struct BroadcastRawTransactionRequestBody {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct BroadcastRawTransactionResponseBody {
+    #[allow(dead_code)]
     pub Code: u16,
     pub TransactionId: String,
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(non_snake_case)]
+#[allow(non_snake_case, dead_code)]
 struct GetRawTransactionResponseBody {
     pub Code: u16,
     pub Details: (),
@@ -44,6 +47,7 @@ pub struct TransactionStatus {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct GetTransactionStatusResponseBody {
+    #[allow(dead_code)]
     pub Code: u16,
     pub TransactionStatus: TransactionStatus,
 }
@@ -59,6 +63,7 @@ pub struct TransactionMerkleProof {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct GetTransactionMerkleProofResponseBody {
+    #[allow(dead_code)]
     pub Code: u16,
     pub Proof: TransactionMerkleProof,
 }
@@ -66,6 +71,7 @@ struct GetTransactionMerkleProofResponseBody {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct GetTransactionMerkleBlockProofResponseBody {
+    #[allow(dead_code)]
     pub Code: u16,
     pub PartialMerkleTree: String,
 }
@@ -82,6 +88,7 @@ pub struct OutpointSpendingStatus {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct GetOutpointSpendingStatusResponseBody {
+    #[allow(dead_code)]
     pub Code: u16,
     pub Outspend: OutpointSpendingStatus,
 }
@@ -89,6 +96,7 @@ struct GetOutpointSpendingStatusResponseBody {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct GetFeeEstimateResponseBody {
+    #[allow(dead_code)]
     pub Code: u16,
     pub FeeEstimates: HashMap<String, f64>,
 }

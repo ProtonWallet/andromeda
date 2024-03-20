@@ -32,6 +32,8 @@ pub struct ApiExchangeRate {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct GetExchangeRateResponseBody {
+    //TODO:: code need to be used. remove all #[allow(dead_code)]
+    #[allow(dead_code)]
     pub Code: u16,
     pub ExchangeRate: ApiExchangeRate,
 }

@@ -30,9 +30,12 @@ pub struct ApiBlock {
     pub Difficulty: u32,
 }
 
+//TODO:: code need to be used. remove all #[allow(dead_code)]
+
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct GetBlocksResponseBody {
+    #[allow(dead_code)]
     pub Code: u16,
     pub Blocks: Vec<ApiBlock>,
 }
@@ -40,6 +43,7 @@ struct GetBlocksResponseBody {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct GetHeaderByHashResponseBody {
+    #[allow(dead_code)]
     pub Code: u16,
     pub BlockHeader: String,
 }
@@ -47,6 +51,7 @@ struct GetHeaderByHashResponseBody {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct GetBlockHashByBlockHeightResponseBody {
+    #[allow(dead_code)]
     pub Code: u16,
     pub BlockHash: String,
 }
@@ -62,12 +67,13 @@ pub struct BlockStatus {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct GetBlockStatusResponseBody {
+    #[allow(dead_code)]
     pub Code: u16,
     pub BlockStatus: BlockStatus,
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(non_snake_case)]
+#[allow(non_snake_case, dead_code)]
 struct GetBlockByHashResponseBody {
     pub Code: u16,
     pub Details: Block,
@@ -76,6 +82,7 @@ struct GetBlockByHashResponseBody {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct GetTxIdAtBlockIndexResponseBody {
+    #[allow(dead_code)]
     pub Code: u16,
     pub TransactionId: String,
 }
@@ -83,6 +90,7 @@ struct GetTxIdAtBlockIndexResponseBody {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct GetTipHeightResponseBody {
+    #[allow(dead_code)]
     pub Code: u16,
     pub Height: u32,
 }
@@ -90,6 +98,7 @@ struct GetTipHeightResponseBody {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct GetTipHashResponseBody {
+    #[allow(dead_code)]
     pub Code: u16,
     pub BlockHash: String,
 }

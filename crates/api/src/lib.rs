@@ -16,6 +16,7 @@ use settings::SettingsClient;
 use transaction::TransactionClient;
 use wallet::WalletClient;
 
+#[cfg(feature = "local")]
 mod env;
 
 pub mod address;

@@ -4,7 +4,7 @@ use std::{
     str::FromStr,
 };
 
-use andromeda_common::{error::Error, Network, ScriptType};
+use andromeda_common::{Network, ScriptType};
 use bdk::{
     bitcoin::{
         bip32::{ChildNumber, DerivationPath, ExtendedPrivKey},
@@ -24,7 +24,10 @@ use miniscript::{
 };
 
 use super::{payment_link::PaymentLink, transactions::Pagination, utils::sort_and_paginate_txs};
-use crate::transactions::{SimpleTransaction, TransactionDetails};
+use crate::{
+    error::Error,
+    transactions::{SimpleTransaction, TransactionDetails},
+};
 
 /// TLDR; A wallet is defined by its mnemonic + passphrase combo whereas a
 /// wallet account is defined by its derivation path from the wallet masterkey.
