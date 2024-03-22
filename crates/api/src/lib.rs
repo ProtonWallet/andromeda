@@ -282,6 +282,40 @@ impl ProtonWalletApiClient {
         Ok(Self::from_session(session))
     }
 
+    /// Builds a new api client from user's access token, refresh token, uid,
+    /// scope, wallet version and a user agent
+    ///
+    /// ```rust
+    /// # use andromeda_api::{ProtonWalletApiClient, AuthData};
+    /// # use muon::{AccessToken, RefreshToken, Uid};
+    /// let auth = AuthData {
+    ///     uid: Uid::from("uid....".to_string()),
+    ///     access: AccessToken::from("access....".to_string()),
+    ///     refresh: RefreshToken::from("refresh....".to_string()),
+    ///     scopes: Vec::new(),
+    /// };
+    ///
+    /// let api_client = ProtonWalletApiClient::from_auth_with_version(auth, "Other".to_owned(), "None".to_owned());
+    /// ```
+    pub fn from_auth_with_version(auth: AuthData, app_version: String, user_agent: String) -> Result<Self, Error> {
+        let app_spec = WalletAppSpec::from_version(app_version, user_agent).inner();
+        let mut auth_store = SimpleAuthStore::new("atlas");
+
+        match auth {
+            AuthData::Uid(uid) => {
+                auth_store.set_uid_auth(uid);
+            }
+            AuthData::Access(uid, refresh, access, scopes) => {
+                auth_store.set_access_auth(uid, refresh, access, scopes);
+            }
+            _ => {}
+        }
+
+        let session = Session::new(auth_store, app_spec).unwrap();
+
+        Ok(Self::from_session(session))
+    }
+
     /// Performs an http request to authenticate the session used in the api
     /// client. Mutates the underlying session.
     ///
