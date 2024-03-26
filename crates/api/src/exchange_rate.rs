@@ -45,20 +45,23 @@ impl ExchangeRateClient {
 
     pub async fn get_exchange_rate(
         &self,
-        bitcoin_unit: BitcoinUnit,
         fiat_currency: FiatCurrency,
-        time: u64,
+        time: Option<u64>,
     ) -> Result<ApiExchangeRate, Error> {
-        let request = ProtonRequest::new(
-            Method::GET,
-            format!(
-                "{}/rates?BitcoinUnit={}&FiatCurrency={}&Time={}",
+        let path = match time {
+            Some(t) => format!(
+                "{}/rates?FiatCurrency={}&Time={}",
                 BASE_WALLET_API_V1,
-                bitcoin_unit.to_string(),
                 fiat_currency.to_string(),
-                time.to_string()
+                t.to_string(),
             ),
-        );
+            None => format!(
+                "{}/rates?FiatCurrency={}",
+                BASE_WALLET_API_V1,
+                fiat_currency.to_string(),
+            ),
+        };
+        let request = ProtonRequest::new(Method::GET, path);
 
         let response = self
             .session
@@ -80,8 +83,6 @@ impl ExchangeRateClient {
 
 #[cfg(test)]
 mod tests {
-    use andromeda_common::BitcoinUnit;
-
     use super::ExchangeRateClient;
     use crate::{settings::FiatCurrency, utils::common_session};
 
@@ -92,7 +93,7 @@ mod tests {
         let client = ExchangeRateClient::new(session);
 
         let exchange_rate = client
-            .get_exchange_rate(BitcoinUnit::BTC, FiatCurrency::EUR, 1707287982)
+            .get_exchange_rate(FiatCurrency::EUR, Some(1707287982))
             .await;
 
         println!("request done: {:?}", exchange_rate);
