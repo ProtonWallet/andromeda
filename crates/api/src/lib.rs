@@ -25,6 +25,7 @@ pub mod utils_test;
 pub mod address;
 pub mod block;
 pub mod contacts;
+pub mod email_integration;
 pub mod error;
 pub mod event;
 pub mod exchange_rate;
