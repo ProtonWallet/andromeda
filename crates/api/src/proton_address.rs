@@ -43,7 +43,7 @@ pub struct ApiProtonAddressKey {
 struct GetApiProtonAddressesResponseBody {
     #[allow(dead_code)]
     pub Code: u16,
-    pub Addresses: Option<Vec<ApiProtonAddress>>,
+    pub Addresses: Vec<ApiProtonAddress>,
 }
 
 impl ProtonAddressClient {
@@ -51,7 +51,7 @@ impl ProtonAddressClient {
         Self { session }
     }
 
-    pub async fn get_proton_addresses(&self) -> Result<Option<Vec<ApiProtonAddress>>, Error> {
+    pub async fn get_proton_addresses(&self) -> Result<Vec<ApiProtonAddress>, Error> {
         let request = ProtonRequest::new(Method::GET, format!("{}/addresses", BASE_CORE_API_V4));
 
         let response = self
