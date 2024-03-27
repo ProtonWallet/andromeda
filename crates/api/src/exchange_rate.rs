@@ -92,9 +92,7 @@ mod tests {
         let session = common_session().await;
         let client = ExchangeRateClient::new(session);
 
-        let exchange_rate = client
-            .get_exchange_rate(FiatCurrency::EUR, Some(1707287982))
-            .await;
+        let exchange_rate = client.get_exchange_rate(FiatCurrency::EUR, Some(1707287982)).await;
 
         println!("request done: {:?}", exchange_rate);
     }
