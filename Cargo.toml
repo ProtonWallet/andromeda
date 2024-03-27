@@ -1,8 +1,8 @@
 [workspace]
 resolver = "2"
 members = [
-    # "crates/api", # Muon is not ready yet
-    "crates/common", # Muon is not ready yet
+    "crates/api",
+    "crates/common",
     "crates/bitcoin",
     # "crates/wasm", # Muon wasm depends on Muon
     # "examples/cli",

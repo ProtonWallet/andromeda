@@ -49,7 +49,7 @@ cfg_if! {
     }
 }
 
-struct WalletAppSpec(AppSpec);
+pub struct WalletAppSpec(AppSpec);
 
 impl WalletAppSpec {
     pub fn new() -> Self {
@@ -110,7 +110,7 @@ impl ApiClients {
 ///
 /// ```no_run
 /// # use andromeda_api::ProtonWalletApiClient;
-/// # use muon::{session::Session, AppSpec, store::SimpleAuthStore};
+/// # use muon::{Session, AppSpec, store::SimpleAuthStore};
 /// # let app_spec = AppSpec::default();
 /// # let auth_store = SimpleAuthStore::new("atlas");
 /// # let session = Session::new(auth_store, app_spec).unwrap();
@@ -153,8 +153,15 @@ impl ProtonWalletApiClient {
     /// Builds a new api client from a config struct
     ///
     /// ```rust
-    /// # use andromeda_api::ProtonWalletApiClient;
-    /// let api_client = ProtonWalletApiClient::from_config("android-wallet/1.0.0".to_string(), "ProtonWallet/plus-agent-details".to_string());
+    /// # use andromeda_api::{ProtonWalletApiClient, AuthData, ApiConfig};
+    /// # use muon::{store::SimpleAuthStore, AccessToken, RefreshToken, Uid, environment::AtlasEnv};
+    /// let auth = AuthData::Access(Uid::from("uid....".to_string()), RefreshToken::from("refresh....".to_string()), AccessToken::from("access....".to_string()), Vec::new());
+    /// let config = ApiConfig {
+    ///     spec: Some((String::from("android-wallet/1.0.0"), String::from("ProtonWallet/plus-agent-details"))),
+    ///     auth: Some(auth),
+    ///     env: Some(AtlasEnv::new(None)),
+    /// };
+    /// let api_client = ProtonWalletApiClient::from_config(config);
     /// ```
     pub fn from_config<E>(config: ApiConfig<E>) -> Self
     where
@@ -219,7 +226,7 @@ impl ProtonWalletApiClient {
     ///
     /// ```rust
     /// # use andromeda_api::ProtonWalletApiClient;
-    /// # use muon::{session::Session, AppSpec, store::SimpleAuthStore};
+    /// # use muon::{Session, AppSpec, store::SimpleAuthStore};
     /// # let app_spec = AppSpec::default();
     /// # let auth_store = SimpleAuthStore::new("atlas");
     /// let session = Session::new(auth_store, app_spec).unwrap();
@@ -251,15 +258,9 @@ impl ProtonWalletApiClient {
     /// scope
     ///
     /// ```rust
-    /// # use andromeda_api::{ProtonWalletApiClient, AuthData};
     /// # use muon::{AccessToken, RefreshToken, Uid};
-    /// let auth = AuthData {
-    ///     uid: Uid::from("uid....".to_string()),
-    ///     access: AccessToken::from("access....".to_string()),
-    ///     refresh: RefreshToken::from("refresh....".to_string()),
-    ///     scopes: Vec::new(),
-    /// };
-    ///
+    /// # use andromeda_api::{ProtonWalletApiClient, AuthData};
+    /// let auth = AuthData::Access(Uid::from("uid....".to_string()), RefreshToken::from("refresh....".to_string()), AccessToken::from("access....".to_string()), Vec::new());
     /// let api_client = ProtonWalletApiClient::from_auth(auth);
     /// ```
     pub fn from_auth(auth: AuthData) -> Result<Self, Error> {
@@ -286,15 +287,9 @@ impl ProtonWalletApiClient {
     /// scope, wallet version and a user agent
     ///
     /// ```rust
-    /// # use andromeda_api::{ProtonWalletApiClient, AuthData};
     /// # use muon::{AccessToken, RefreshToken, Uid};
-    /// let auth = AuthData {
-    ///     uid: Uid::from("uid....".to_string()),
-    ///     access: AccessToken::from("access....".to_string()),
-    ///     refresh: RefreshToken::from("refresh....".to_string()),
-    ///     scopes: Vec::new(),
-    /// };
-    ///
+    /// # use andromeda_api::{ProtonWalletApiClient, AuthData};
+    /// let auth = AuthData::Access(Uid::from("uid....".to_string()), RefreshToken::from("refresh....".to_string()), AccessToken::from("access....".to_string()), Vec::new());
     /// let api_client = ProtonWalletApiClient::from_auth_with_version(auth, "Other".to_owned(), "None".to_owned());
     /// ```
     pub fn from_auth_with_version(auth: AuthData, app_version: String, user_agent: String) -> Result<Self, Error> {
@@ -321,7 +316,7 @@ impl ProtonWalletApiClient {
     ///
     /// ```rust
     /// # use andromeda_api::ProtonWalletApiClient;
-    /// # use muon::{session::Session, AppSpec, store::SimpleAuthStore};
+    /// # use muon::{Session, AppSpec, store::SimpleAuthStore};
     /// # let app_spec = AppSpec::default();
     /// # let auth_store = SimpleAuthStore::new("atlas");
     /// # let session = Session::new(auth_store, app_spec).unwrap();
