@@ -12,6 +12,7 @@ pub use muon::{
     AuthStore, Error as MuonError, Product, RefreshToken, Scope, Session, Uid,
 };
 use network::NetworkClient;
+use proton_address::ProtonAddressClient;
 use settings::SettingsClient;
 use transaction::TransactionClient;
 use wallet::WalletClient;
@@ -30,6 +31,7 @@ pub mod error;
 pub mod event;
 pub mod exchange_rate;
 pub mod network;
+pub mod proton_address;
 pub mod settings;
 pub mod transaction;
 pub mod wallet;
@@ -98,6 +100,7 @@ struct ApiClients(
     ExchangeRateClient,
     EventClient,
     ContactsClient,
+    ProtonAddressClient,
 );
 
 impl ApiClients {
@@ -112,6 +115,7 @@ impl ApiClients {
             ExchangeRateClient::new(session.clone()),
             EventClient::new(session.clone()),
             ContactsClient::new(session.clone()),
+            ProtonAddressClient::new(session.clone()),
         )
     }
 }
@@ -145,6 +149,7 @@ pub struct ProtonWalletApiClient {
     pub exchange_rate: ExchangeRateClient,
     pub event: EventClient,
     pub contacts: ContactsClient,
+    pub proton_address: ProtonAddressClient,
 }
 
 #[derive(Debug)]
@@ -247,8 +252,18 @@ impl ProtonWalletApiClient {
     pub fn from_session(session: Session) -> Self {
         let session = Arc::new(RwLock::new(session));
 
-        let ApiClients(block, network, settings, transaction, wallet, address, exchange_rate, event, contacts) =
-            ApiClients::from_session(session.clone());
+        let ApiClients(
+            block,
+            network,
+            settings,
+            transaction,
+            wallet,
+            address,
+            exchange_rate,
+            event,
+            contacts,
+            proton_address,
+        ) = ApiClients::from_session(session.clone());
 
         Self {
             session,
@@ -262,6 +277,7 @@ impl ProtonWalletApiClient {
             exchange_rate,
             event,
             contacts,
+            proton_address,
         }
     }
 

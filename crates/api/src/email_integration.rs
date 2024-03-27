@@ -1,11 +1,9 @@
-use std::sync::Arc;
-
-use andromeda_common::BitcoinUnit;
 use async_std::sync::RwLock;
 use muon::{http::Method, ProtonRequest, Response, Session};
 use serde::Deserialize;
+use std::sync::Arc;
 
-use crate::{error::Error, settings::FiatCurrency, BASE_WALLET_API_V1};
+use crate::{error::Error, BASE_WALLET_API_V1};
 
 #[derive(Clone)]
 pub struct EmailIntegrationClient {
@@ -72,9 +70,7 @@ mod tests {
         let session = common_session().await;
         let client = EmailIntegrationClient::new(session);
 
-        let bitcoin_address = client
-            .get_bitcoin_address(String::from("pro@perkin.proton.black"))
-            .await;
+        let bitcoin_address = client.get_bitcoin_address(String::from("pro@perey.proton.black")).await;
 
         println!("request done: {:?}", bitcoin_address);
     }

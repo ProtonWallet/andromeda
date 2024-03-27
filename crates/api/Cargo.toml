@@ -5,7 +5,11 @@ edition = "2021"
 
 [dependencies]
 andromeda-common = { version = "0.1.0", path = "../common" }
+<<<<<<< HEAD
 muon = { version = "0.1.1", registry = "proton_internal" }
+=======
+muon = { version = "0.1.0", path = "../../../muon"}
+>>>>>>> 7b9d068 (test mail integration (still lots api to do..))
 async-std = "1.10"
 base64 = "0.13"
 cfg-if = "1"
