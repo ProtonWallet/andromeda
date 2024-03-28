@@ -1,12 +1,14 @@
 use std::sync::Arc;
 
-use crate::exchange_rate::ApiExchangeRate;
 use async_std::sync::RwLock;
 use muon::{http::Method, ProtonRequest, Response, Session};
 use serde::{Deserialize, Serialize};
 
 use super::BASE_WALLET_API_V1;
-use crate::error::Error;
+use crate::{
+    error::{Error, ResponseError},
+    exchange_rate::ApiExchangeRate,
+};
 
 //TODO:: code need to be used. remove all #[allow(dead_code)]
 
@@ -376,11 +378,19 @@ impl WalletClient {
             .await
             .map_err(|e| e.into())?;
 
-        let parsed = response
-            .to_json::<CreateWalletAccountResponseBody>()
-            .map_err(|_| Error::DeserializeError)?;
-
-        Ok(parsed.Account)
+        // at this monment, response.status() is alwasy 200. we need to try parse body
+        // to get error if there any
+        let parsed = response.to_json::<CreateWalletAccountResponseBody>();
+        match parsed {
+            Ok(res) => Ok(res.Account),
+            Err(_) => {
+                let parsed_error = response.to_json::<ResponseError>();
+                match parsed_error {
+                    Ok(res) => Err(Error::ErrorCode(res)),
+                    Err(err) => Err(err.into()),
+                }
+            }
+        }
     }
 
     pub async fn update_wallet_account_label(
@@ -565,9 +575,13 @@ mod tests {
 
     use andromeda_common::ScriptType;
     use bitcoin::bip32::DerivationPath;
+    use wiremock::{
+        matchers::{method, path},
+        Mock, MockServer, ResponseTemplate,
+    };
 
     use super::{CreateWalletAccountRequestBody, CreateWalletRequestBody, WalletClient};
-    use crate::utils::common_session;
+    use crate::{error::Error, utils::common_session, utils_test::setup_test_connection, BASE_WALLET_API_V1};
 
     #[tokio::test]
     #[ignore]
@@ -713,5 +727,84 @@ mod tests {
             .await;
 
         println!("request done: {:?}", res);
+    }
+
+    /// Unit tests with mock
+    #[tokio::test]
+    async fn test_create_wallet_account_2002() {
+        let mock_server = MockServer::start().await;
+        let response_body = serde_json::json!(
+            {
+                "Code": 2002,
+                "Details": { },
+                "Error": "Attribute DerivationPath is invalid: The data should be a valid BIP 44, 49, 84 or 86 derivation path.",
+            }
+        );
+        let wallet_id = String::from("test_wallet_id");
+        let req_path = format!("{}/wallets/{}/accounts", BASE_WALLET_API_V1, wallet_id);
+        let response = ResponseTemplate::new(400).set_body_json(response_body);
+        Mock::given(method("POST"))
+            .and(path(req_path))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let session = setup_test_connection(mock_server.uri());
+        let client = WalletClient::new(session);
+        let payload = CreateWalletAccountRequestBody {
+            DerivationPath: DerivationPath::from_str("m/44'/1'/0'").unwrap().to_string(),
+            Label: String::from("test_label_id"),
+            ScriptType: ScriptType::NativeSegwit.into(),
+        };
+        let res = client.create_wallet_account(wallet_id, payload).await;
+        assert!(res.is_err());
+        match res.unwrap_err() {
+            Error::ErrorCode(code) => {
+                assert!(code.code == 2002);
+                assert!(code.message == "Attribute DerivationPath is invalid: The data should be a valid BIP 44, 49, 84 or 86 derivation path.");
+            }
+            _ => {
+                panic!("Expected Ok variant but got Err.")
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_create_wallet_account_1000() {
+        let mock_server = MockServer::start().await;
+        let response_body = serde_json::json!(
+            {
+                "Code": 1000,
+                "Account": {
+                    "ID": "string",
+                    "WalletID": "string",
+                    "DerivationPath": "m/44'/0'/0'",
+                    "Label": "string",
+                    "ScriptType": 1
+                }
+            }
+        );
+        let wallet_id = String::from("test_wallet_id");
+        let req_path = format!("{}/wallets/{}/accounts", BASE_WALLET_API_V1, wallet_id);
+        let response = ResponseTemplate::new(400).set_body_json(response_body);
+        Mock::given(method("POST"))
+            .and(path(req_path))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let session = setup_test_connection(mock_server.uri());
+        let client = WalletClient::new(session);
+        let payload = CreateWalletAccountRequestBody {
+            DerivationPath: DerivationPath::from_str("m/44'/1'/0'").unwrap().to_string(),
+            Label: String::from("test_label_id"),
+            ScriptType: ScriptType::NativeSegwit.into(),
+        };
+        let res = client.create_wallet_account(wallet_id, payload).await;
+        assert!(res.is_ok());
+        let walle_account = res.unwrap();
+        assert!(walle_account.DerivationPath == "m/44'/0'/0'");
+        assert!(walle_account.Label == "string");
+        assert!(walle_account.ScriptType == 1);
+        assert!(walle_account.WalletID == "string");
+        assert!(walle_account.ID == "string");
     }
 }

@@ -3,7 +3,6 @@ name = "andromeda-api"
 version = "0.1.0"
 edition = "2021"
 
-
 [dependencies]
 andromeda-common = { version = "0.1.0", path = "../common" }
 muon = { version = "0.1.0", registry = "protonvpn" }
@@ -21,8 +20,11 @@ bitcoin = { version = "0.30.2", default-features = false, features = [
 ] }
 
 [dev-dependencies]
+wiremock = "0.6.0"
 tokio = { features = ["macros", "rt"], version = "1.35" }
 tokio-test = "0.4.3"
+muon = { version = "0.1.0", registry = "protonvpn", features = ["dangerous"] }
 
 [features]
 local = ["muon/dangerous"]
+test = ["muon/dangerous"]
