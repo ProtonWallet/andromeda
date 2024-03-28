@@ -64,8 +64,6 @@ impl ProtonAddressClient {
             .await
             .map_err(|e| e.into())?;
 
-        let utf8_str = std::str::from_utf8(response.body()).unwrap();
-        println!("{}", utf8_str);
         let parsed = response
             .to_json::<GetApiProtonAddressesResponseBody>()
             .map_err(|_| Error::DeserializeError)?;
