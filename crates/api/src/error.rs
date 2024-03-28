@@ -1,4 +1,5 @@
 use muon::{Error as MuonError, RequestError as MuonRequestError};
+use serde::Deserialize;
 
 #[derive(Debug)]
 pub enum Error {
@@ -9,6 +10,17 @@ pub enum Error {
     DeserializeError,
     SerializeError,
     HttpError,
+    ErrorCode(ResponseError),
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ResponseError {
+    #[serde(rename = "Code")]
+    pub code: u16,
+    #[serde(rename = "Error")]
+    pub message: String,
+    #[serde(rename = "Details")]
+    pub details: serde_json::Value,
 }
 
 impl Into<Error> for MuonError {

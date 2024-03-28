@@ -49,17 +49,8 @@ impl ExchangeRateClient {
         time: Option<u64>,
     ) -> Result<ApiExchangeRate, Error> {
         let path = match time {
-            Some(t) => format!(
-                "{}/rates?FiatCurrency={}&Time={}",
-                BASE_WALLET_API_V1,
-                fiat_currency.to_string(),
-                t.to_string(),
-            ),
-            None => format!(
-                "{}/rates?FiatCurrency={}",
-                BASE_WALLET_API_V1,
-                fiat_currency.to_string(),
-            ),
+            Some(t) => format!("{}/rates?FiatCurrency={}&Time={}", BASE_WALLET_API_V1, fiat_currency, t,),
+            None => format!("{}/rates?FiatCurrency={}", BASE_WALLET_API_V1, fiat_currency,),
         };
         let request = ProtonRequest::new(Method::GET, path);
 

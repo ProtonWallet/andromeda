@@ -19,6 +19,9 @@ use wallet::WalletClient;
 #[cfg(feature = "local")]
 mod env;
 
+#[cfg(test)]
+pub mod utils_test;
+
 pub mod address;
 pub mod block;
 pub mod contacts;
@@ -73,6 +76,13 @@ impl WalletAppSpec {
         // Product::Unspecified
         let app_spec = AppSpec::new(Product::Unspecified, app_version, user_agent);
         WalletAppSpec(app_spec)
+    }
+}
+
+// Default wallet app spec
+impl Default for WalletAppSpec {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

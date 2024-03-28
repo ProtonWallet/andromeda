@@ -1,10 +1,15 @@
-use crate::settings::UserSettings;
-use crate::wallet::{ApiWallet, ApiWalletAccount, ApiWalletKey, ApiWalletSettings, ApiWalletTransaction};
-use crate::{error::Error, BASE_CORE_API_V4, BASE_CORE_API_V5};
+use std::sync::Arc;
+
 use async_std::sync::RwLock;
 use muon::{http::Method, ProtonRequest, Response, Session};
 use serde::Deserialize;
-use std::sync::Arc;
+
+use crate::{
+    error::Error,
+    settings::UserSettings,
+    wallet::{ApiWallet, ApiWalletAccount, ApiWalletKey, ApiWalletSettings, ApiWalletTransaction},
+    BASE_CORE_API_V4, BASE_CORE_API_V5,
+};
 
 const MAX_EVENTS_PER_POLL: usize = 50;
 
