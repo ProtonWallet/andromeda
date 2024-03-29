@@ -692,9 +692,9 @@ impl WalletClient {
         wallet_id: String,
         wallet_account_id: String,
         payload: AddBitcoinAddressesRequestBody,
-    ) -> Result<ApiWalletTransaction, Error> {
+    ) -> Result<Vec<ApiWalletBitcoinAddress>, Error> {
         let request = ProtonRequest::new(
-            Method::PUT,
+            Method::POST,
             format!(
                 "{}/wallets/{}/accounts/{}/addresses/bitcoin",
                 BASE_WALLET_API_V1, wallet_id, wallet_account_id
@@ -714,10 +714,10 @@ impl WalletClient {
             .map_err(|e| e.into())?;
 
         let parsed = response
-            .to_json::<CreateWalletTransactionResponseBody>()
+            .to_json::<GetBitcoinAddressesResponseBody>()
             .map_err(|_| Error::DeserializeError)?;
 
-        Ok(parsed.WalletTransaction)
+        Ok(parsed.WalletBitcoinAddresses)
     }
 
     pub async fn create_wallet_transaction(
