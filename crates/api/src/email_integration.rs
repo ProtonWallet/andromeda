@@ -1,6 +1,6 @@
 use async_std::sync::RwLock;
 use muon::{http::Method, ProtonRequest, Response, Session};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 use crate::{error::Error, BASE_WALLET_API_V1};
@@ -19,12 +19,25 @@ pub struct ApiWalletBitcoinAddress {
     pub BitcoinAddressSignature: Option<String>,
 }
 
+#[derive(Debug, Serialize)]
+#[allow(non_snake_case)]
+pub struct CreateBitcoinAddressRequestBody {
+    pub Email: String,
+}
+
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct GetLookupBitcoinAddressResponseBody {
     #[allow(dead_code)]
     pub Code: u16,
     pub WalletBitcoinAddress: ApiWalletBitcoinAddress,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+struct CreateBitcoinAddressRequestResponseBody {
+    #[allow(dead_code)]
+    pub Code: u16,
 }
 
 impl EmailIntegrationClient {
@@ -55,6 +68,28 @@ impl EmailIntegrationClient {
             .map_err(|_| Error::DeserializeError)?;
 
         Ok(parsed.WalletBitcoinAddress)
+    }
+
+    pub async fn create_bitcoin_addresses_request(&self, email: String) -> Result<(), Error> {
+        let payload = CreateBitcoinAddressRequestBody { Email: email };
+        let request = ProtonRequest::new(Method::POST, format!("{}/emails/requests", BASE_WALLET_API_V1))
+            .json_body(payload)
+            .map_err(|_| Error::SerializeError)?;
+
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+
+        let parsed = response
+            .to_json::<CreateBitcoinAddressRequestResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
+        Ok(())
     }
 }
 
