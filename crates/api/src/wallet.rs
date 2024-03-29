@@ -133,6 +133,7 @@ pub struct ApiWalletAccount {
     pub DerivationPath: String,
     pub Label: String,
     pub ScriptType: u8,
+    pub Addresses: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -165,9 +166,15 @@ pub struct UpdateWalletAccountLabelRequestBody {
     pub Label: String,
 }
 
+#[derive(Debug, Serialize)]
+#[allow(non_snake_case)]
+pub struct AddEmailAddressRequestBody {
+    pub AddressID: String,
+}
+
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
-struct UpdateWalletAccountLabelResponseBody {
+struct UpdateWalletAccountResponseBody {
     #[allow(dead_code)]
     pub Code: u16,
     pub Account: ApiWalletAccount,
@@ -197,10 +204,43 @@ const HASHED_TRANSACTION_ID_KEY: &str = "HashedTransactionIDs[]";
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
+pub struct ApiWalletBitcoinAddress {
+    pub ID: String,
+    pub WalletID: String,
+    pub WalletAccountID: String,
+    pub BitcoinAddress: Option<String>,
+    pub BitcoinAddressSignature: Option<String>,
+    pub BitcoinAddressIndex: Option<u64>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[allow(non_snake_case)]
+pub struct AddBitcoinAddressesRequestBody {
+    pub BitcoinAddresses: Vec<ApiWalletBitcoinAddressRequestBody>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[allow(non_snake_case)]
+pub struct ApiWalletBitcoinAddressRequestBody {
+    pub BitcoinAddress: String,
+    pub BitcoinAddressSignature: String,
+    pub BitcoinAddressIndex: u64,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
 struct GetWalletTransactionsResponseBody {
     #[allow(dead_code)]
     pub Code: u16,
     pub WalletTransactions: Vec<ApiWalletTransaction>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+struct GetBitcoinAddressesResponseBody {
+    #[allow(dead_code)]
+    pub Code: u16,
+    pub WalletBitcoinAddresses: Vec<ApiWalletBitcoinAddress>,
 }
 
 #[derive(Debug, Serialize)]
@@ -446,7 +486,73 @@ impl WalletClient {
             .map_err(|e| e.into())?;
 
         let parsed = response
-            .to_json::<UpdateWalletAccountLabelResponseBody>()
+            .to_json::<UpdateWalletAccountResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
+
+        Ok(parsed.Account)
+    }
+
+    pub async fn add_email_address(
+        &self,
+        wallet_id: String,
+        wallet_account_id: String,
+        address_id: String,
+    ) -> Result<ApiWalletAccount, Error> {
+        let payload = AddEmailAddressRequestBody { AddressID: address_id };
+
+        let request = ProtonRequest::new(
+            Method::PUT,
+            format!(
+                "{}/wallets/{}/accounts/{}/addresses/email",
+                BASE_WALLET_API_V1, wallet_id, wallet_account_id
+            ),
+        )
+        .json_body(payload)
+        .map_err(|_| Error::SerializeError)?;
+
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+
+        let parsed = response
+            .to_json::<UpdateWalletAccountResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
+
+        Ok(parsed.Account)
+    }
+
+    pub async fn remove_email_address(
+        &self,
+        wallet_id: String,
+        wallet_account_id: String,
+        address_id: String,
+    ) -> Result<ApiWalletAccount, Error> {
+        let request = ProtonRequest::new(
+            Method::DELETE,
+            format!(
+                "{}/wallets/{}/accounts/{}/addresses/email/{}",
+                BASE_WALLET_API_V1, wallet_id, wallet_account_id, address_id
+            ),
+        );
+
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+
+        let parsed = response
+            .to_json::<UpdateWalletAccountResponseBody>()
             .map_err(|_| Error::DeserializeError)?;
 
         Ok(parsed.Account)
@@ -549,6 +655,69 @@ impl WalletClient {
             .map_err(|_| Error::DeserializeError)?;
 
         Ok(parsed.WalletTransactions)
+    }
+
+    pub async fn get_bitcoin_addresses(
+        &self,
+        wallet_id: String,
+        wallet_account_id: String,
+    ) -> Result<Vec<ApiWalletBitcoinAddress>, Error> {
+        let request = ProtonRequest::new(
+            Method::PUT,
+            format!(
+                "{}/wallets/{}/accounts/{}/addresses/bitcoin",
+                BASE_WALLET_API_V1, wallet_id, wallet_account_id
+            ),
+        );
+
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+
+        let parsed = response
+            .to_json::<GetBitcoinAddressesResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
+
+        Ok(parsed.WalletBitcoinAddresses)
+    }
+
+    pub async fn add_bitcoin_addresses(
+        &self,
+        wallet_id: String,
+        wallet_account_id: String,
+        payload: AddBitcoinAddressesRequestBody,
+    ) -> Result<ApiWalletTransaction, Error> {
+        let request = ProtonRequest::new(
+            Method::PUT,
+            format!(
+                "{}/wallets/{}/accounts/{}/addresses/bitcoin",
+                BASE_WALLET_API_V1, wallet_id, wallet_account_id
+            ),
+        )
+        .json_body(payload)
+        .map_err(|_| Error::SerializeError)?;
+
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+
+        let parsed = response
+            .to_json::<CreateWalletTransactionResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
+
+        Ok(parsed.WalletTransaction)
     }
 
     pub async fn create_wallet_transaction(
