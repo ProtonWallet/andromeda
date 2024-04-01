@@ -16,6 +16,7 @@ use proton_address::ProtonAddressClient;
 use settings::SettingsClient;
 use transaction::TransactionClient;
 use wallet::WalletClient;
+use email_integration::EmailIntegrationClient;
 
 #[cfg(feature = "local")]
 mod env;
@@ -101,6 +102,7 @@ struct ApiClients(
     EventClient,
     ContactsClient,
     ProtonAddressClient,
+    EmailIntegrationClient,
 );
 
 impl ApiClients {
@@ -116,6 +118,7 @@ impl ApiClients {
             EventClient::new(session.clone()),
             ContactsClient::new(session.clone()),
             ProtonAddressClient::new(session.clone()),
+            EmailIntegrationClient::new(session.clone()),
         )
     }
 }
@@ -150,6 +153,7 @@ pub struct ProtonWalletApiClient {
     pub event: EventClient,
     pub contacts: ContactsClient,
     pub proton_address: ProtonAddressClient,
+    pub email_integration: EmailIntegrationClient,
 }
 
 #[derive(Debug)]
@@ -263,6 +267,7 @@ impl ProtonWalletApiClient {
             event,
             contacts,
             proton_address,
+            email_integration,
         ) = ApiClients::from_session(session.clone());
 
         Self {
@@ -278,6 +283,7 @@ impl ProtonWalletApiClient {
             event,
             contacts,
             proton_address,
+            email_integration,
         }
     }
 

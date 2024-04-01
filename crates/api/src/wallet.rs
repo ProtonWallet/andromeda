@@ -216,12 +216,12 @@ pub struct ApiWalletBitcoinAddress {
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(non_snake_case)]
 pub struct AddBitcoinAddressesRequestBody {
-    pub BitcoinAddresses: Vec<ApiWalletBitcoinAddressRequestBody>,
+    pub BitcoinAddresses: Vec<ApiBitcoinAddress>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(non_snake_case)]
-pub struct ApiWalletBitcoinAddressRequestBody {
+pub struct ApiBitcoinAddress {
     pub BitcoinAddress: String,
     pub BitcoinAddressSignature: String,
     pub BitcoinAddressIndex: u64,
@@ -519,7 +519,8 @@ impl WalletClient {
             .send()
             .await
             .map_err(|e| e.into())?;
-
+        let utf8_str = std::str::from_utf8(response.body()).unwrap();
+        println!("{}", utf8_str);
         let parsed = response
             .to_json::<UpdateWalletAccountResponseBody>()
             .map_err(|_| Error::DeserializeError)?;
@@ -680,6 +681,10 @@ impl WalletClient {
             .await
             .map_err(|e| e.into())?;
 
+
+        let utf8_str = std::str::from_utf8(response.body()).unwrap();
+        println!("{}", utf8_str);
+
         let parsed = response
             .to_json::<GetBitcoinAddressesResponseBody>()
             .map_err(|_| Error::DeserializeError)?;
@@ -691,8 +696,11 @@ impl WalletClient {
         &self,
         wallet_id: String,
         wallet_account_id: String,
-        payload: AddBitcoinAddressesRequestBody,
+        bitcoin_addresses: Vec<ApiBitcoinAddress>,
     ) -> Result<Vec<ApiWalletBitcoinAddress>, Error> {
+        let payload = AddBitcoinAddressesRequestBody {
+            BitcoinAddresses: bitcoin_addresses,
+        };
         let request = ProtonRequest::new(
             Method::POST,
             format!(
@@ -712,6 +720,10 @@ impl WalletClient {
             .send()
             .await
             .map_err(|e| e.into())?;
+
+
+        let utf8_str = std::str::from_utf8(response.body()).unwrap();
+        println!("{}", utf8_str);
 
         let parsed = response
             .to_json::<GetBitcoinAddressesResponseBody>()
