@@ -298,10 +298,14 @@ impl WasmWalletClient {
     }
 
     #[wasm_bindgen(js_name = "getWalletTransactions")]
-    pub async fn get_wallet_transactions(&self, wallet_id: String) -> Result<WasmApiWalletTransactions, WasmError> {
+    pub async fn get_wallet_transactions(
+        &self,
+        wallet_id: String,
+        hashed_txids: Option<Vec<String>>,
+    ) -> Result<WasmApiWalletTransactions, WasmError> {
         let wallet_transactions = self
             .0
-            .get_wallet_transactions(wallet_id)
+            .get_wallet_transactions(wallet_id, hashed_txids)
             .await
             .map_err(|e| e.into())
             .map(|transactions| {
@@ -318,12 +322,18 @@ impl WasmWalletClient {
     pub async fn create_wallet_transaction(
         &self,
         wallet_id: String,
-        label: String,
         txid: String,
+        hashed_txid: String,
+        label: Option<String>,
+        exchange_rate_id: Option<String>,
+        transaction_time: Option<String>,
     ) -> Result<WasmApiWalletTransaction, WasmError> {
         let payload = CreateWalletTransactionRequestBody {
             Label: label,
+            HashedTransactionID: hashed_txid,
             TransactionID: txid,
+            TransactionTime: transaction_time,
+            ExchangeRateID: exchange_rate_id,
         };
 
         self.0

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use async_std::sync::RwLock;
-use muon::{http::Method, ProtonRequest, Response, Session};
+use muon::{http::Method, ProtonRequest, Request, Response, Session};
 use serde::{Deserialize, Serialize};
 
 use super::BASE_WALLET_API_V1;
@@ -189,7 +189,10 @@ pub struct ApiWalletTransaction {
     pub TransactionID: String,
     pub TransactionTime: String,
     pub ExchangeRate: Option<ApiExchangeRate>,
+    pub HashedTransactionID: Option<String>,
 }
+
+const HASHED_TRANSACTION_ID_KEY: &str = "HashedTransactionIDs";
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
@@ -202,10 +205,16 @@ struct GetWalletTransactionsResponseBody {
 #[derive(Debug, Serialize)]
 #[allow(non_snake_case)]
 pub struct CreateWalletTransactionRequestBody {
-    /// encrypted Base64 encoded binary data
-    pub Label: String,
-    /// encrypted Base64 encoded binary data
+    /// Encrypted with user key
     pub TransactionID: String,
+    /// Hmac(walletKey, txid) and base64 encoded
+    pub HashedTransactionID: String,
+    /// Encrypted with wallet key and base64 encoded
+    pub Label: Option<String>,
+    /// Id of the exchange rate to use with this transaction
+    pub ExchangeRateID: Option<String>,
+    /// Unix timestamp of when the transaction got created in Proton Wallet or confirmed in blockchain for incoming ones
+    pub TransactionTime: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -227,6 +236,20 @@ pub struct UpdateWalletTransactionLabelRequestBody {
 #[allow(non_snake_case)]
 struct UpdateWalletTransactionLabelResponseBody {
     #[allow(dead_code)]
+    pub Code: u16,
+    pub WalletTransaction: ApiWalletTransaction,
+}
+
+#[derive(Debug, Serialize)]
+#[allow(non_snake_case)]
+pub struct UpdateWalletTransactionHashedTxidRequestBody {
+    /// Hmac(walletKey, txid) and base64 encoded
+    pub HashedTransactionID: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+struct UpdateWalletTransactionHashedTxidResponseBody {
     pub Code: u16,
     pub WalletTransaction: ApiWalletTransaction,
 }
@@ -454,8 +477,42 @@ impl WalletClient {
         Ok(())
     }
 
-    pub async fn get_wallet_transactions(&self, wallet_id: String) -> Result<Vec<ApiWalletTransaction>, Error> {
-        let request = ProtonRequest::new(Method::GET, format!("{}/wallets/{}", BASE_WALLET_API_V1, wallet_id));
+    pub async fn get_wallet_transactions(
+        &self,
+        wallet_id: String,
+        hashed_txids: Option<Vec<String>>,
+    ) -> Result<Vec<ApiWalletTransaction>, Error> {
+        let mut request = ProtonRequest::new(
+            Method::GET,
+            format!("{}/wallets/{}/transactions", BASE_WALLET_API_V1, wallet_id),
+        );
+
+        for txid in hashed_txids.unwrap_or(Vec::new()) {
+            request = request.param(HASHED_TRANSACTION_ID_KEY, Some(txid));
+        }
+
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+
+        let parsed = response
+            .to_json::<GetWalletTransactionsResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
+
+        Ok(parsed.WalletTransactions)
+    }
+
+    pub async fn get_wallet_transactions_to_hash(&self, wallet_id: String) -> Result<Vec<ApiWalletTransaction>, Error> {
+        let request = ProtonRequest::new(
+            Method::GET,
+            format!("{}/wallets/{}/transactions/to-hash", BASE_WALLET_API_V1, wallet_id),
+        );
 
         let response = self
             .session
@@ -538,6 +595,43 @@ impl WalletClient {
         Ok(parsed.WalletTransaction)
     }
 
+    pub async fn update_wallet_transaction_hashed_txid(
+        &self,
+        wallet_id: String,
+        wallet_transaction_id: String,
+        hash_txid: String,
+    ) -> Result<ApiWalletTransaction, Error> {
+        let payload = UpdateWalletTransactionHashedTxidRequestBody {
+            HashedTransactionID: hash_txid,
+        };
+
+        let request = ProtonRequest::new(
+            Method::PUT,
+            format!(
+                "{}/wallets/{}/transactions/{}/hash",
+                BASE_WALLET_API_V1, wallet_id, wallet_transaction_id
+            ),
+        )
+        .json_body(payload)
+        .map_err(|_| Error::SerializeError)?;
+
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+
+        let parsed = response
+            .to_json::<UpdateWalletTransactionHashedTxidResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
+
+        Ok(parsed.WalletTransaction)
+    }
+
     pub async fn delete_wallet_transactions(
         &self,
         wallet_id: String,
@@ -580,7 +674,9 @@ mod tests {
         Mock, MockServer, ResponseTemplate,
     };
 
-    use super::{CreateWalletAccountRequestBody, CreateWalletRequestBody, WalletClient};
+    use super::{
+        CreateWalletAccountRequestBody, CreateWalletRequestBody, CreateWalletTransactionRequestBody, WalletClient,
+    };
     use crate::{error::Error, utils::common_session, utils_test::setup_test_connection, BASE_WALLET_API_V1};
 
     #[tokio::test]
@@ -723,6 +819,145 @@ mod tests {
                     "Ac3lBksHTrTEFUJ-LYUVg7Cx2xVLwjw_ZWMyVfYUKo7YFgTTWOj7uINQAGkjzM1HiadZfLDM9J6dJ_r3kJQZ5A==",
                 ),
                 String::from("QW5vdGhlciB0ZXN0IHdhbGxldCBhY2NvdW50IFhZWg=="),
+            )
+            .await;
+
+        println!("request done: {:?}", res);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn should_get_wallet_transactions() {
+        let session = common_session().await;
+        let client = WalletClient::new(session);
+
+        let res = client
+            .get_wallet_transactions(
+                String::from(
+                    "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
+                ),
+                None,
+            )
+            .await;
+
+        println!("request done: {:?}", res);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn should_get_wallet_transactions_with_query_param() {
+        let session = common_session().await;
+        let client = WalletClient::new(session);
+
+        let res = client
+            .get_wallet_transactions(
+                String::from(
+                    "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
+                ),
+                Some(vec![String::from("HPA++i93LfT3nncUc249RSTFJp8J+A5DVf3W1ZISlJ8=")]),
+            )
+            .await;
+
+        println!("request done: {:?}", res);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn should_get_wallet_transactions_to_hash() {
+        let session = common_session().await;
+        let client = WalletClient::new(session);
+
+        let res = client
+            .get_wallet_transactions_to_hash(String::from(
+                "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
+            ))
+            .await;
+
+        println!("request done: {:?}", res);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn should_create_wallet_transaction() {
+        let session = common_session().await;
+        let client = WalletClient::new(session);
+
+        let payload = CreateWalletTransactionRequestBody {
+            TransactionID: String::from("xyz"),
+            HashedTransactionID: String::from("xyz"),
+            Label: Some(String::from("xyz")),
+            ExchangeRateID: None,
+            TransactionTime: None,
+        };
+
+        let res = client
+            .create_wallet_transaction(
+                String::from(
+                    "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
+                ),
+                payload,
+            )
+            .await;
+
+        println!("request done: {:?}", res);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn should_update_wallet_transaction_label() {
+        let session = common_session().await;
+        let client = WalletClient::new(session);
+
+        let res = client
+            .update_wallet_transaction_label(
+                String::from(
+                    "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
+                ),
+                String::from(
+                    "l8vWAXHBQmv0u7OVtPbcqMa4iwQaBqowINSQjPrxAr-Da8fVPKUkUcqAq30_BCxj1X0nW70HQRmAa-rIvzmKUA==",
+                ),
+                String::from("xyz"),
+            )
+            .await;
+
+        println!("request done: {:?}", res);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn should_update_wallet_transaction_hashed_txid() {
+        let session = common_session().await;
+        let client = WalletClient::new(session);
+
+        let res = client
+            .update_wallet_transaction_hashed_txid(
+                String::from(
+                    "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
+                ),
+                String::from(
+                    "l8vWAXHBQmv0u7OVtPbcqMa4iwQaBqowINSQjPrxAr-Da8fVPKUkUcqAq30_BCxj1X0nW70HQRmAa-rIvzmKUA==",
+                ),
+                String::from("xyz"),
+            )
+            .await;
+
+        println!("request done: {:?}", res);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn should_delete_wallet_transaction() {
+        let session = common_session().await;
+        let client = WalletClient::new(session);
+
+        let res = client
+            .delete_wallet_transactions(
+                String::from(
+                    "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
+                ),
+                String::from(
+                    "l8vWAXHBQmv0u7OVtPbcqMa4iwQaBqowINSQjPrxAr-Da8fVPKUkUcqAq30_BCxj1X0nW70HQRmAa-rIvzmKUA==",
+                ),
             )
             .await;
 
