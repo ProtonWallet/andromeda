@@ -133,7 +133,14 @@ pub struct ApiWalletAccount {
     pub DerivationPath: String,
     pub Label: String,
     pub ScriptType: u8,
-    pub Addresses: Vec<String>,
+    pub Addresses: Vec<ApiEmailAddress>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+pub struct ApiEmailAddress {
+    pub ID: String,
+    pub Email: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -208,6 +215,8 @@ pub struct ApiWalletBitcoinAddress {
     pub ID: String,
     pub WalletID: String,
     pub WalletAccountID: String,
+    pub Fetched: u32,
+    pub Used: u32,
     pub BitcoinAddress: Option<String>,
     pub BitcoinAddressSignature: Option<String>,
     pub BitcoinAddressIndex: Option<u64>,
@@ -241,6 +250,14 @@ struct GetBitcoinAddressesResponseBody {
     #[allow(dead_code)]
     pub Code: u16,
     pub WalletBitcoinAddresses: Vec<ApiWalletBitcoinAddress>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+struct GetBitcoinAddressResponseBody {
+    #[allow(dead_code)]
+    pub Code: u16,
+    pub WalletBitcoinAddress: ApiWalletBitcoinAddress,
 }
 
 #[derive(Debug, Serialize)]
@@ -342,6 +359,9 @@ impl WalletClient {
             .await
             .map_err(|e| e.into())?;
 
+        let utf8_str = std::str::from_utf8(response.body()).unwrap();
+        println!("create_wallet response: {}", utf8_str);
+
         let parsed = response
             .to_json::<CreateWalletResponseBody>()
             .map_err(|_| Error::DeserializeError)?;
@@ -441,6 +461,9 @@ impl WalletClient {
             .send()
             .await
             .map_err(|e| e.into())?;
+
+        let utf8_str = std::str::from_utf8(response.body()).unwrap();
+        println!("create_wallet_account response: {}", utf8_str);
 
         // at this monment, response.status() is alwasy 200. we need to try parse body
         // to get error if there any
@@ -662,12 +685,13 @@ impl WalletClient {
         &self,
         wallet_id: String,
         wallet_account_id: String,
+        only_request: u8,
     ) -> Result<Vec<ApiWalletBitcoinAddress>, Error> {
         let request = ProtonRequest::new(
-            Method::PUT,
+            Method::GET,
             format!(
-                "{}/wallets/{}/accounts/{}/addresses/bitcoin",
-                BASE_WALLET_API_V1, wallet_id, wallet_account_id
+                "{}/wallets/{}/accounts/{}/addresses/bitcoin?OnlyRequest={}",
+                BASE_WALLET_API_V1, wallet_id, wallet_account_id, only_request
             ),
         );
 
@@ -680,7 +704,6 @@ impl WalletClient {
             .send()
             .await
             .map_err(|e| e.into())?;
-
 
         let utf8_str = std::str::from_utf8(response.body()).unwrap();
         println!("{}", utf8_str);
@@ -721,7 +744,6 @@ impl WalletClient {
             .await
             .map_err(|e| e.into())?;
 
-
         let utf8_str = std::str::from_utf8(response.body()).unwrap();
         println!("{}", utf8_str);
 
@@ -730,6 +752,43 @@ impl WalletClient {
             .map_err(|_| Error::DeserializeError)?;
 
         Ok(parsed.WalletBitcoinAddresses)
+    }
+
+    pub async fn update_bitcoin_addresses(
+        &self,
+        wallet_id: String,
+        wallet_account_id: String,
+        wallet_account_bitcoin_address_id: String,
+        bitcoin_addresses: ApiBitcoinAddress,
+    ) -> Result<ApiWalletBitcoinAddress, Error> {
+        let request = ProtonRequest::new(
+            Method::PUT,
+            format!(
+                "{}/wallets/{}/accounts/{}/addresses/bitcoin/{}",
+                BASE_WALLET_API_V1, wallet_id, wallet_account_id, wallet_account_bitcoin_address_id
+            ),
+        )
+        .json_body(bitcoin_addresses)
+        .map_err(|_| Error::SerializeError)?;
+
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+
+        let utf8_str = std::str::from_utf8(response.body()).unwrap();
+        println!("{}", utf8_str);
+
+        let parsed = response
+            .to_json::<GetBitcoinAddressResponseBody>()
+            .map_err(|_| Error::DeserializeError)?;
+
+        Ok(parsed.WalletBitcoinAddress)
     }
 
     pub async fn create_wallet_transaction(

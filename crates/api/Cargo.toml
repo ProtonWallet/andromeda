@@ -7,8 +7,9 @@ edition = "2021"
 andromeda-common = { version = "0.1.0", path = "../common" }
 muon = { version = "0.1.1", registry = "proton_internal" }
 async-std = "1.10"
-base64 = "0.13"
+base64 = "0.21"
 cfg-if = "1"
+
 
 serde = { version = "1.0.144", features = ["derive"] }
 serde_json = "1.0"

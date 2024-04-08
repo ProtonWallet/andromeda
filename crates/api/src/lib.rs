@@ -4,6 +4,7 @@ use address::AddressClient;
 use async_std::sync::RwLock;
 use block::BlockClient;
 use contacts::ContactsClient;
+use email_integration::EmailIntegrationClient;
 use error::Error;
 use event::EventClient;
 use exchange_rate::ExchangeRateClient;
@@ -15,8 +16,8 @@ use network::NetworkClient;
 use proton_address::ProtonAddressClient;
 use settings::SettingsClient;
 use transaction::TransactionClient;
+use two_factor_auth::TwoFactorAuthClient;
 use wallet::WalletClient;
-use email_integration::EmailIntegrationClient;
 
 #[cfg(feature = "local")]
 mod env;
@@ -35,6 +36,8 @@ pub mod network;
 pub mod proton_address;
 pub mod settings;
 pub mod transaction;
+pub mod two_factor_auth;
+pub mod user_settings;
 pub mod wallet;
 
 // TODO: make this private
@@ -103,6 +106,7 @@ struct ApiClients(
     ContactsClient,
     ProtonAddressClient,
     EmailIntegrationClient,
+    TwoFactorAuthClient,
 );
 
 impl ApiClients {
@@ -119,6 +123,7 @@ impl ApiClients {
             ContactsClient::new(session.clone()),
             ProtonAddressClient::new(session.clone()),
             EmailIntegrationClient::new(session.clone()),
+            TwoFactorAuthClient::new(session.clone()),
         )
     }
 }
@@ -154,6 +159,7 @@ pub struct ProtonWalletApiClient {
     pub contacts: ContactsClient,
     pub proton_address: ProtonAddressClient,
     pub email_integration: EmailIntegrationClient,
+    pub two_factor_auth: TwoFactorAuthClient,
 }
 
 #[derive(Debug)]
@@ -268,6 +274,7 @@ impl ProtonWalletApiClient {
             contacts,
             proton_address,
             email_integration,
+            two_factor_auth,
         ) = ApiClients::from_session(session.clone());
 
         Self {
@@ -284,6 +291,7 @@ impl ProtonWalletApiClient {
             contacts,
             proton_address,
             email_integration,
+            two_factor_auth,
         }
     }
 
@@ -362,7 +370,7 @@ impl ProtonWalletApiClient {
             .await
             .authenticate(username, password)
             .await
-            .map_err(|_| Error::MuonSessionError)?;
+            .map_err(|error| error.into())?;
 
         Ok(())
     }

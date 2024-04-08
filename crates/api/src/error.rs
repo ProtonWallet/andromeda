@@ -1,11 +1,11 @@
-use muon::{Error as MuonError, RequestError as MuonRequestError};
+use muon::{Error as MuonError, RequestError as MuonRequestError, SessionError as MuonSessionError};
 use serde::Deserialize;
 
 #[derive(Debug)]
 pub enum Error {
     MuonError(MuonError),
     // Cannot provide more details because session mod is private for now
-    MuonSessionError,
+    MuonSessionError(MuonSessionError),
     MuonRequestError(MuonRequestError),
     DeserializeError,
     SerializeError,
@@ -32,5 +32,11 @@ impl Into<Error> for MuonError {
 impl Into<Error> for MuonRequestError {
     fn into(self) -> Error {
         Error::MuonRequestError(self)
+    }
+}
+
+impl Into<Error> for MuonSessionError {
+    fn into(self) -> Error {
+        Error::MuonSessionError(self)
     }
 }
