@@ -359,9 +359,6 @@ impl WalletClient {
             .await
             .map_err(|e| e.into())?;
 
-        let utf8_str = std::str::from_utf8(response.body()).unwrap();
-        println!("create_wallet response: {}", utf8_str);
-
         let parsed = response
             .to_json::<CreateWalletResponseBody>()
             .map_err(|_| Error::DeserializeError)?;
@@ -462,9 +459,6 @@ impl WalletClient {
             .await
             .map_err(|e| e.into())?;
 
-        let utf8_str = std::str::from_utf8(response.body()).unwrap();
-        println!("create_wallet_account response: {}", utf8_str);
-
         // at this monment, response.status() is alwasy 200. we need to try parse body
         // to get error if there any
         let parsed = response.to_json::<CreateWalletAccountResponseBody>();
@@ -542,8 +536,7 @@ impl WalletClient {
             .send()
             .await
             .map_err(|e| e.into())?;
-        let utf8_str = std::str::from_utf8(response.body()).unwrap();
-        println!("{}", utf8_str);
+
         let parsed = response
             .to_json::<UpdateWalletAccountResponseBody>()
             .map_err(|_| Error::DeserializeError)?;
@@ -705,9 +698,6 @@ impl WalletClient {
             .await
             .map_err(|e| e.into())?;
 
-        let utf8_str = std::str::from_utf8(response.body()).unwrap();
-        println!("{}", utf8_str);
-
         let parsed = response
             .to_json::<GetBitcoinAddressesResponseBody>()
             .map_err(|_| Error::DeserializeError)?;
@@ -744,9 +734,6 @@ impl WalletClient {
             .await
             .map_err(|e| e.into())?;
 
-        let utf8_str = std::str::from_utf8(response.body()).unwrap();
-        println!("{}", utf8_str);
-
         let parsed = response
             .to_json::<GetBitcoinAddressesResponseBody>()
             .map_err(|_| Error::DeserializeError)?;
@@ -780,9 +767,6 @@ impl WalletClient {
             .send()
             .await
             .map_err(|e| e.into())?;
-
-        let utf8_str = std::str::from_utf8(response.body()).unwrap();
-        println!("{}", utf8_str);
 
         let parsed = response
             .to_json::<GetBitcoinAddressResponseBody>()

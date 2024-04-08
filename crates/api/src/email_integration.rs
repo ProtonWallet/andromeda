@@ -13,8 +13,6 @@ pub struct EmailIntegrationClient {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 pub struct ApiEmailIntegrationBitcoinAddress {
-    pub ID: String,
-    pub Email: String,
     pub BitcoinAddress: Option<String>,
     pub BitcoinAddressSignature: Option<String>,
 }
@@ -61,8 +59,6 @@ impl EmailIntegrationClient {
             .await
             .map_err(|e| e.into())?;
 
-        let utf8_str = std::str::from_utf8(response.body()).unwrap();
-        println!("{}", utf8_str);
         let parsed = response
             .to_json::<GetLookupBitcoinAddressResponseBody>()
             .map_err(|_| Error::DeserializeError)?;
