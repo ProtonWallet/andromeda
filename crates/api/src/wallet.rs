@@ -246,6 +246,14 @@ struct GetWalletTransactionsResponseBody {
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
+struct GetBitcoinAddressLatestIndex {
+    #[allow(dead_code)]
+    pub Code: u16,
+    pub HighestIndex: u64,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
 struct GetBitcoinAddressesResponseBody {
     #[allow(dead_code)]
     pub Code: u16,
@@ -254,7 +262,7 @@ struct GetBitcoinAddressesResponseBody {
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
-struct GetBitcoinAddressResponseBody {
+struct UpdateBitcoinAddressResponseBody {
     #[allow(dead_code)]
     pub Code: u16,
     pub WalletBitcoinAddress: ApiWalletBitcoinAddress,
@@ -705,6 +713,36 @@ impl WalletClient {
         Ok(parsed.WalletBitcoinAddresses)
     }
 
+    pub async fn get_bitcoin_address_latest_index(
+        &self,
+        wallet_id: String,
+        wallet_account_id: String,
+    ) -> Result<u64, Error> {
+        let request = ProtonRequest::new(
+            Method::GET,
+            format!(
+                "{}/wallets/{}/accounts/{}/addresses/bitcoin/index",
+                BASE_WALLET_API_V1, wallet_id, wallet_account_id
+            ),
+        );
+
+        let response = self
+            .session
+            .read()
+            .await
+            .bind(request)
+            .map_err(|e| e.into())?
+            .send()
+            .await
+            .map_err(|e| e.into())?;
+
+        let parsed = response
+            .to_json::<GetBitcoinAddressLatestIndex>()
+            .map_err(|_| Error::DeserializeError)?;
+
+        Ok(parsed.HighestIndex)
+    }
+
     pub async fn add_bitcoin_addresses(
         &self,
         wallet_id: String,
@@ -769,7 +807,7 @@ impl WalletClient {
             .map_err(|e| e.into())?;
 
         let parsed = response
-            .to_json::<GetBitcoinAddressResponseBody>()
+            .to_json::<UpdateBitcoinAddressResponseBody>()
             .map_err(|_| Error::DeserializeError)?;
 
         Ok(parsed.WalletBitcoinAddress)

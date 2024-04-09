@@ -97,11 +97,11 @@ mod tests {
 
     #[tokio::test]
     #[ignore]
-    async fn should_get_bitcoin_address() {
+    async fn should_lookup_bitcoin_address() {
         let session = common_session().await;
         let client = EmailIntegrationClient::new(session);
 
-        let bitcoin_address = client.get_bitcoin_address(String::from("pro@proton.black")).await;
+        let bitcoin_address = client.lookup_bitcoin_address(String::from("pro@proton.black")).await;
 
         println!("request done: {:?}", bitcoin_address);
     }
