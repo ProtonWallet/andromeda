@@ -246,7 +246,7 @@ struct GetWalletTransactionsResponseBody {
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
-struct GetBitcoinAddressLatestIndex {
+struct GetBitcoinAddressLatestIndexResponseBody {
     #[allow(dead_code)]
     pub Code: u16,
     pub HighestIndex: u64,
@@ -737,7 +737,7 @@ impl WalletClient {
             .map_err(|e| e.into())?;
 
         let parsed = response
-            .to_json::<GetBitcoinAddressLatestIndex>()
+            .to_json::<GetBitcoinAddressLatestIndexResponseBody>()
             .map_err(|_| Error::DeserializeError)?;
 
         Ok(parsed.HighestIndex)
