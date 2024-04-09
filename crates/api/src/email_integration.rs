@@ -25,7 +25,7 @@ pub struct CreateBitcoinAddressRequestBody {
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
-struct GetLookupBitcoinAddressResponseBody {
+struct LookupBitcoinAddressResponseBody {
     #[allow(dead_code)]
     pub Code: u16,
     pub WalletBitcoinAddress: ApiEmailIntegrationBitcoinAddress,
@@ -43,7 +43,7 @@ impl EmailIntegrationClient {
         Self { session }
     }
 
-    pub async fn get_bitcoin_address(&self, email: String) -> Result<ApiEmailIntegrationBitcoinAddress, Error> {
+    pub async fn lookup_bitcoin_address(&self, email: String) -> Result<ApiEmailIntegrationBitcoinAddress, Error> {
         let request = ProtonRequest::new(
             Method::GET,
             format!("{}/emails/lookup?Email={}", BASE_WALLET_API_V1, email),
@@ -60,7 +60,7 @@ impl EmailIntegrationClient {
             .map_err(|e| e.into())?;
 
         let parsed = response
-            .to_json::<GetLookupBitcoinAddressResponseBody>()
+            .to_json::<LookupBitcoinAddressResponseBody>()
             .map_err(|_| Error::DeserializeError)?;
 
         Ok(parsed.WalletBitcoinAddress)
@@ -101,7 +101,7 @@ mod tests {
         let session = common_session().await;
         let client = EmailIntegrationClient::new(session);
 
-        let bitcoin_address = client.get_bitcoin_address(String::from("pro@perey.proton.black")).await;
+        let bitcoin_address = client.get_bitcoin_address(String::from("pro@proton.black")).await;
 
         println!("request done: {:?}", bitcoin_address);
     }

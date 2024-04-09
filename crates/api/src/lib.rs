@@ -13,7 +13,7 @@ pub use muon::{
     AuthStore, Error as MuonError, Product, RefreshToken, Scope, Session, Uid,
 };
 use network::NetworkClient;
-use proton_address::ProtonAddressClient;
+use proton_email_address::ProtonAddressClient;
 use settings::SettingsClient;
 use transaction::TransactionClient;
 use wallet::WalletClient;
@@ -32,7 +32,7 @@ pub mod error;
 pub mod event;
 pub mod exchange_rate;
 pub mod network;
-pub mod proton_address;
+pub mod proton_email_address;
 pub mod settings;
 pub mod transaction;
 pub mod user_settings;
@@ -153,7 +153,7 @@ pub struct ProtonWalletApiClient {
     pub exchange_rate: ExchangeRateClient,
     pub event: EventClient,
     pub contacts: ContactsClient,
-    pub proton_address: ProtonAddressClient,
+    pub proton_email_address: ProtonAddressClient,
     pub email_integration: EmailIntegrationClient,
 }
 
@@ -267,7 +267,7 @@ impl ProtonWalletApiClient {
             exchange_rate,
             event,
             contacts,
-            proton_address,
+            proton_email_address,
             email_integration,
         ) = ApiClients::from_session(session.clone());
 
@@ -283,7 +283,7 @@ impl ProtonWalletApiClient {
             exchange_rate,
             event,
             contacts,
-            proton_address,
+            proton_email_address,
             email_integration,
         }
     }

@@ -51,7 +51,7 @@ impl ProtonAddressClient {
         Self { session }
     }
 
-    pub async fn get_proton_addresses(&self) -> Result<Vec<ApiProtonAddress>, Error> {
+    pub async fn get_proton_email_addresses(&self) -> Result<Vec<ApiProtonAddress>, Error> {
         let request = ProtonRequest::new(Method::GET, format!("{}/addresses", BASE_CORE_API_V4));
 
         let response = self
@@ -80,12 +80,12 @@ mod tests {
 
     #[tokio::test]
     #[ignore]
-    async fn should_get_proton_addresses() {
+    async fn should_get_proton_email_addresses() {
         let session = common_session().await;
         let client = ProtonAddressClient::new(session);
 
-        let proton_addresses = client.get_proton_addresses().await;
+        let proton_email_addresses = client.get_proton_email_addresses().await;
 
-        println!("request done: {:?}", proton_addresses);
+        println!("request done: {:?}", proton_email_addresses);
     }
 }

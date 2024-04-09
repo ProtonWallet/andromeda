@@ -215,8 +215,8 @@ pub struct ApiWalletBitcoinAddress {
     pub ID: String,
     pub WalletID: String,
     pub WalletAccountID: String,
-    pub Fetched: u32,
-    pub Used: u32,
+    pub Fetched: u8,
+    pub Used: u8,
     pub BitcoinAddress: Option<String>,
     pub BitcoinAddressSignature: Option<String>,
     pub BitcoinAddressIndex: Option<u64>,
@@ -225,12 +225,12 @@ pub struct ApiWalletBitcoinAddress {
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(non_snake_case)]
 pub struct AddBitcoinAddressesRequestBody {
-    pub BitcoinAddresses: Vec<ApiBitcoinAddress>,
+    pub BitcoinAddresses: Vec<ApiBitcoinAddressCreationPayload>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(non_snake_case)]
-pub struct ApiBitcoinAddress {
+pub struct ApiBitcoinAddressCreationPayload {
     pub BitcoinAddress: String,
     pub BitcoinAddressSignature: String,
     pub BitcoinAddressIndex: u64,
@@ -678,13 +678,13 @@ impl WalletClient {
         &self,
         wallet_id: String,
         wallet_account_id: String,
-        only_request: u8,
+        only_without_bitcoin_addresses: u8,
     ) -> Result<Vec<ApiWalletBitcoinAddress>, Error> {
         let request = ProtonRequest::new(
             Method::GET,
             format!(
-                "{}/wallets/{}/accounts/{}/addresses/bitcoin?OnlyRequest={}",
-                BASE_WALLET_API_V1, wallet_id, wallet_account_id, only_request
+                "{}/wallets/{}/accounts/{}/addresses/bitcoin?OnlyWithoutBitcoinAddresses={}",
+                BASE_WALLET_API_V1, wallet_id, wallet_account_id, only_without_bitcoin_addresses
             ),
         );
 
@@ -709,7 +709,7 @@ impl WalletClient {
         &self,
         wallet_id: String,
         wallet_account_id: String,
-        bitcoin_addresses: Vec<ApiBitcoinAddress>,
+        bitcoin_addresses: Vec<ApiBitcoinAddressCreationPayload>,
     ) -> Result<Vec<ApiWalletBitcoinAddress>, Error> {
         let payload = AddBitcoinAddressesRequestBody {
             BitcoinAddresses: bitcoin_addresses,
@@ -741,12 +741,12 @@ impl WalletClient {
         Ok(parsed.WalletBitcoinAddresses)
     }
 
-    pub async fn update_bitcoin_addresses(
+    pub async fn update_bitcoin_address(
         &self,
         wallet_id: String,
         wallet_account_id: String,
         wallet_account_bitcoin_address_id: String,
-        bitcoin_addresses: ApiBitcoinAddress,
+        bitcoin_address: ApiBitcoinAddressCreationPayload,
     ) -> Result<ApiWalletBitcoinAddress, Error> {
         let request = ProtonRequest::new(
             Method::PUT,
@@ -755,7 +755,7 @@ impl WalletClient {
                 BASE_WALLET_API_V1, wallet_id, wallet_account_id, wallet_account_bitcoin_address_id
             ),
         )
-        .json_body(bitcoin_addresses)
+        .json_body(bitcoin_address)
         .map_err(|_| Error::SerializeError)?;
 
         let response = self
