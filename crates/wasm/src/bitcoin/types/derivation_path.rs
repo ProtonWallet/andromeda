@@ -12,7 +12,7 @@ use crate::common::{
 };
 
 #[wasm_bindgen]
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct WasmDerivationPath {
     inner: DerivationPath,
 }

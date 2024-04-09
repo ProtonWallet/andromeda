@@ -11,6 +11,8 @@ use crate::{
     common::{error::WasmError, types::WasmScriptType},
 };
 
+use super::exchange_rate::WasmApiExchangeRate;
+
 #[wasm_bindgen]
 pub struct WasmWalletClient(WalletClient);
 
@@ -125,7 +127,7 @@ pub struct WasmApiWalletAccount {
 #[derive(Clone)]
 #[allow(non_snake_case)]
 pub struct WasmWalletAccountData {
-    pub Account: WasmApiWalletAccount,
+    pub Data: WasmApiWalletAccount,
 }
 
 impl TryFrom<ApiWalletAccount> for WasmApiWalletAccount {
@@ -142,14 +144,18 @@ impl TryFrom<ApiWalletAccount> for WasmApiWalletAccount {
     }
 }
 
-#[wasm_bindgen(getter_with_clone)]
-#[derive(Clone)]
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
 #[allow(non_snake_case)]
 pub struct WasmApiWalletTransaction {
     pub ID: String,
     pub WalletID: String,
-    pub Label: Option<String>,
+    pub WalletAccountID: Option<String>,
     pub TransactionID: String,
+    pub TransactionTime: String,
+    pub HashedTransactionID: Option<String>,
+    pub Label: Option<String>,
+    pub ExchangeRate: Option<WasmApiExchangeRate>,
 }
 
 impl From<ApiWalletTransaction> for WasmApiWalletTransaction {
@@ -157,10 +163,46 @@ impl From<ApiWalletTransaction> for WasmApiWalletTransaction {
         WasmApiWalletTransaction {
             ID: value.ID,
             WalletID: value.WalletID,
-            Label: value.Label,
+            WalletAccountID: value.WalletAccountID,
             TransactionID: value.TransactionID,
+            TransactionTime: value.TransactionTime,
+            HashedTransactionID: value.HashedTransactionID,
+            Label: value.Label,
+            ExchangeRate: value.ExchangeRate.map(|r| r.into()),
         }
     }
+}
+
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+#[allow(non_snake_case)]
+pub struct WasmCreateWalletTransactionPayload {
+    pub txid: String,
+    pub hashed_txid: String,
+    pub label: Option<String>,
+    pub exchange_rate_id: Option<String>,
+    pub transaction_time: Option<String>,
+}
+
+impl From<WasmCreateWalletTransactionPayload> for CreateWalletTransactionRequestBody {
+    fn from(value: WasmCreateWalletTransactionPayload) -> Self {
+        CreateWalletTransactionRequestBody {
+            Label: value.label,
+            HashedTransactionID: value.hashed_txid,
+            TransactionID: value.txid,
+            TransactionTime: value.transaction_time,
+            ExchangeRateID: value.exchange_rate_id,
+        }
+    }
+}
+
+// We need this wrapper because unfortunately, tsify doesn't support
+// VectoIntoWasmAbi yet
+#[wasm_bindgen(getter_with_clone)]
+#[derive(Clone)]
+#[allow(non_snake_case)]
+pub struct WasmApiWalletTransactionData {
+    pub Data: WasmApiWalletTransaction,
 }
 
 #[wasm_bindgen(getter_with_clone)]
@@ -170,7 +212,7 @@ pub struct WasmApiWalletsData(pub Vec<WasmApiWalletData>);
 pub struct WasmApiWalletAccounts(pub Vec<WasmWalletAccountData>);
 
 #[wasm_bindgen(getter_with_clone)]
-pub struct WasmApiWalletTransactions(pub Vec<WasmApiWalletTransaction>);
+pub struct WasmApiWalletTransactions(pub Vec<WasmApiWalletTransactionData>);
 
 #[wasm_bindgen]
 impl WasmWalletClient {
@@ -238,7 +280,7 @@ impl WasmWalletClient {
             .into_iter()
             .map(|account| {
                 Ok(WasmWalletAccountData {
-                    Account: account.try_into()?,
+                    Data: account.try_into()?,
                 })
             })
             .collect();
@@ -267,7 +309,7 @@ impl WasmWalletClient {
             .map_err(|e| e.into())?;
 
         Ok(WasmWalletAccountData {
-            Account: account.try_into()?,
+            Data: account.try_into()?,
         })
     }
 
@@ -285,7 +327,7 @@ impl WasmWalletClient {
             .map_err(|e| e.into())?;
 
         Ok(WasmWalletAccountData {
-            Account: account.try_into()?,
+            Data: account.try_into()?,
         })
     }
 
@@ -301,17 +343,39 @@ impl WasmWalletClient {
     pub async fn get_wallet_transactions(
         &self,
         wallet_id: String,
+        wallet_account_id: Option<String>,
         hashed_txids: Option<Vec<String>>,
     ) -> Result<WasmApiWalletTransactions, WasmError> {
         let wallet_transactions = self
             .0
-            .get_wallet_transactions(wallet_id, hashed_txids)
+            .get_wallet_transactions(wallet_id, wallet_account_id, hashed_txids)
             .await
             .map_err(|e| e.into())
             .map(|transactions| {
                 transactions
                     .into_iter()
-                    .map(|transaction| transaction.into())
+                    .map(|t| WasmApiWalletTransactionData { Data: t.into() })
+                    .collect::<Vec<_>>()
+            })?;
+
+        Ok(WasmApiWalletTransactions(wallet_transactions))
+    }
+
+    #[wasm_bindgen(js_name = "getWalletTransactionsToHash")]
+    pub async fn get_wallet_transactions_to_hash(
+        &self,
+        wallet_id: String,
+        wallet_account_id: Option<String>,
+    ) -> Result<WasmApiWalletTransactions, WasmError> {
+        let wallet_transactions = self
+            .0
+            .get_wallet_transactions_to_hash(wallet_id, wallet_account_id)
+            .await
+            .map_err(|e| e.into())
+            .map(|transactions| {
+                transactions
+                    .into_iter()
+                    .map(|t| WasmApiWalletTransactionData { Data: t.into() })
                     .collect::<Vec<_>>()
             })?;
 
@@ -322,49 +386,55 @@ impl WasmWalletClient {
     pub async fn create_wallet_transaction(
         &self,
         wallet_id: String,
-        txid: String,
-        hashed_txid: String,
-        label: Option<String>,
-        exchange_rate_id: Option<String>,
-        transaction_time: Option<String>,
-    ) -> Result<WasmApiWalletTransaction, WasmError> {
-        let payload = CreateWalletTransactionRequestBody {
-            Label: label,
-            HashedTransactionID: hashed_txid,
-            TransactionID: txid,
-            TransactionTime: transaction_time,
-            ExchangeRateID: exchange_rate_id,
-        };
-
+        wallet_account_id: String,
+        payload: WasmCreateWalletTransactionPayload,
+    ) -> Result<WasmApiWalletTransactionData, WasmError> {
         self.0
-            .create_wallet_transaction(wallet_id, payload)
+            .create_wallet_transaction(wallet_id, wallet_account_id, payload.into())
             .await
             .map_err(|e| e.into())
-            .map(|t| t.into())
+            .map(|t| WasmApiWalletTransactionData { Data: t.into() })
     }
 
     #[wasm_bindgen(js_name = "updateWalletTransactionLabel")]
     pub async fn update_wallet_transaction_label(
         &self,
         wallet_id: String,
+        wallet_account_id: String,
         wallet_transaction_id: String,
         label: String,
-    ) -> Result<WasmApiWalletTransaction, WasmError> {
+    ) -> Result<WasmApiWalletTransactionData, WasmError> {
         self.0
-            .update_wallet_transaction_label(wallet_id, wallet_transaction_id, label)
+            .update_wallet_transaction_label(wallet_id, wallet_account_id, wallet_transaction_id, label)
             .await
             .map_err(|e| e.into())
-            .map(|t| t.into())
+            .map(|t| WasmApiWalletTransactionData { Data: t.into() })
+    }
+
+    #[wasm_bindgen(js_name = "updateWalletTransactionHashedTxId")]
+    pub async fn update_wallet_transaction_hashed_txid(
+        &self,
+        wallet_id: String,
+        wallet_account_id: String,
+        wallet_transaction_id: String,
+        hash_txid: String,
+    ) -> Result<WasmApiWalletTransactionData, WasmError> {
+        self.0
+            .update_wallet_transaction_hashed_txid(wallet_id, wallet_account_id, wallet_transaction_id, hash_txid)
+            .await
+            .map_err(|e| e.into())
+            .map(|t| WasmApiWalletTransactionData { Data: t.into() })
     }
 
     #[wasm_bindgen(js_name = "deleteWalletTransaction")]
     pub async fn delete_wallet_transactions(
         &self,
         wallet_id: String,
+        wallet_account_id: String,
         wallet_transaction_id: String,
     ) -> Result<(), WasmError> {
         self.0
-            .delete_wallet_transactions(wallet_id, wallet_transaction_id)
+            .delete_wallet_transactions(wallet_id, wallet_account_id, wallet_transaction_id)
             .await
             .map_err(|e| e.into())
     }

@@ -185,6 +185,7 @@ struct DeleteWalletAccountResponseBody {
 pub struct ApiWalletTransaction {
     pub ID: String,
     pub WalletID: String,
+    pub WalletAccountID: Option<String>,
     pub Label: Option<String>,
     pub TransactionID: String,
     pub TransactionTime: String,
@@ -192,7 +193,7 @@ pub struct ApiWalletTransaction {
     pub HashedTransactionID: Option<String>,
 }
 
-const HASHED_TRANSACTION_ID_KEY: &str = "HashedTransactionIDs";
+const HASHED_TRANSACTION_ID_KEY: &str = "HashedTransactionIDs[]";
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
@@ -480,12 +481,20 @@ impl WalletClient {
     pub async fn get_wallet_transactions(
         &self,
         wallet_id: String,
+        wallet_account_id: Option<String>,
         hashed_txids: Option<Vec<String>>,
     ) -> Result<Vec<ApiWalletTransaction>, Error> {
-        let mut request = ProtonRequest::new(
-            Method::GET,
-            format!("{}/wallets/{}/transactions", BASE_WALLET_API_V1, wallet_id),
-        );
+        let url = match wallet_account_id {
+            Some(wallet_account_id) => format!(
+                "{}/wallets/{}/accounts/{}/transactions",
+                BASE_WALLET_API_V1, wallet_id, wallet_account_id
+            ),
+            None => format!("{}/wallets/{}/transactions", BASE_WALLET_API_V1, wallet_id),
+        };
+
+        println!("{:?}", url);
+
+        let mut request = ProtonRequest::new(Method::GET, url);
 
         for txid in hashed_txids.unwrap_or(Vec::new()) {
             request = request.param(HASHED_TRANSACTION_ID_KEY, Some(txid));
@@ -501,6 +510,8 @@ impl WalletClient {
             .await
             .map_err(|e| e.into())?;
 
+        println!("{:?}", response.to_json::<serde_json::Value>());
+
         let parsed = response
             .to_json::<GetWalletTransactionsResponseBody>()
             .map_err(|_| Error::DeserializeError)?;
@@ -508,11 +519,20 @@ impl WalletClient {
         Ok(parsed.WalletTransactions)
     }
 
-    pub async fn get_wallet_transactions_to_hash(&self, wallet_id: String) -> Result<Vec<ApiWalletTransaction>, Error> {
-        let request = ProtonRequest::new(
-            Method::GET,
-            format!("{}/wallets/{}/transactions/to-hash", BASE_WALLET_API_V1, wallet_id),
-        );
+    pub async fn get_wallet_transactions_to_hash(
+        &self,
+        wallet_id: String,
+        wallet_account_id: Option<String>,
+    ) -> Result<Vec<ApiWalletTransaction>, Error> {
+        let url = match wallet_account_id {
+            Some(wallet_account_id) => format!(
+                "{}/wallets/{}/accounts/{}/transactions/to-hash",
+                BASE_WALLET_API_V1, wallet_id, wallet_account_id
+            ),
+            None => format!("{}/wallets/{}/transactions/to-hash", BASE_WALLET_API_V1, wallet_id),
+        };
+
+        let request = ProtonRequest::new(Method::GET, url);
 
         let response = self
             .session
@@ -534,11 +554,15 @@ impl WalletClient {
     pub async fn create_wallet_transaction(
         &self,
         wallet_id: String,
+        wallet_account_id: String,
         payload: CreateWalletTransactionRequestBody,
     ) -> Result<ApiWalletTransaction, Error> {
         let request = ProtonRequest::new(
             Method::POST,
-            format!("{}/wallets/{}/transactions", BASE_WALLET_API_V1, wallet_id),
+            format!(
+                "{}/wallets/{}/accounts/{}/transactions",
+                BASE_WALLET_API_V1, wallet_id, wallet_account_id
+            ),
         )
         .json_body(payload)
         .map_err(|_| Error::SerializeError)?;
@@ -563,6 +587,7 @@ impl WalletClient {
     pub async fn update_wallet_transaction_label(
         &self,
         wallet_id: String,
+        wallet_account_id: String,
         wallet_transaction_id: String,
         label: String,
     ) -> Result<ApiWalletTransaction, Error> {
@@ -571,8 +596,8 @@ impl WalletClient {
         let request = ProtonRequest::new(
             Method::PUT,
             format!(
-                "{}/wallets/{}/transactions/{}/label",
-                BASE_WALLET_API_V1, wallet_id, wallet_transaction_id
+                "{}/wallets/{}/accounts/{}/transactions/{}/label",
+                BASE_WALLET_API_V1, wallet_id, wallet_account_id, wallet_transaction_id
             ),
         )
         .json_body(payload)
@@ -598,6 +623,7 @@ impl WalletClient {
     pub async fn update_wallet_transaction_hashed_txid(
         &self,
         wallet_id: String,
+        wallet_account_id: String,
         wallet_transaction_id: String,
         hash_txid: String,
     ) -> Result<ApiWalletTransaction, Error> {
@@ -608,8 +634,8 @@ impl WalletClient {
         let request = ProtonRequest::new(
             Method::PUT,
             format!(
-                "{}/wallets/{}/transactions/{}/hash",
-                BASE_WALLET_API_V1, wallet_id, wallet_transaction_id
+                "{}/wallets/{}/accounts/{}/transactions/{}/hash",
+                BASE_WALLET_API_V1, wallet_id, wallet_account_id, wallet_transaction_id
             ),
         )
         .json_body(payload)
@@ -635,13 +661,14 @@ impl WalletClient {
     pub async fn delete_wallet_transactions(
         &self,
         wallet_id: String,
+        wallet_account_id: String,
         wallet_transaction_id: String,
     ) -> Result<(), Error> {
         let request = ProtonRequest::new(
             Method::DELETE,
             format!(
-                "{}/wallets/{}/transactions/{}",
-                BASE_WALLET_API_V1, wallet_id, wallet_transaction_id
+                "{}/wallets/{}/accounts/{}/transactions/{}",
+                BASE_WALLET_API_V1, wallet_id, wallet_account_id, wallet_transaction_id
             ),
         );
 
@@ -827,7 +854,7 @@ mod tests {
 
     #[tokio::test]
     #[ignore]
-    async fn should_get_wallet_transactions() {
+    async fn should_get_wallet_transactions_by_wallet() {
         let session = common_session().await;
         let client = WalletClient::new(session);
 
@@ -836,6 +863,28 @@ mod tests {
                 String::from(
                     "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
                 ),
+                None,
+                None,
+            )
+            .await;
+
+        println!("request done: {:?}", res);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn should_get_wallet_transactions_by_wallet_account() {
+        let session = common_session().await;
+        let client = WalletClient::new(session);
+
+        let res = client
+            .get_wallet_transactions(
+                String::from(
+                    "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
+                ),
+                Some(String::from(
+                    "nt3NEGgRyn4jA0X-pn0W1b5kBGCdvCLAy4lBMMpIrnedkW38TbMus_mM_2bb4UhIn9I3-EU7mPzQG_nc90SPiQ==",
+                )),
                 None,
             )
             .await;
@@ -852,9 +901,13 @@ mod tests {
         let res = client
             .get_wallet_transactions(
                 String::from(
-                    "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
+                    "DGnqE6AlZV0bFUNlqjHCEAdmucxmuId02-zjI4xnI6FfWI1NwCsR2JofDXhoVSmLzHvTcqwWJg-4e79vycc_nA==",
                 ),
-                Some(vec![String::from("HPA++i93LfT3nncUc249RSTFJp8J+A5DVf3W1ZISlJ8=")]),
+                None,
+                Some(vec![
+                    String::from("fi9YAgAsh59I7tRLIdYzI5T8Mb21qBFkAmCR9ve2QBk="),
+                    String::from("ZxIeKb4btZCywLEMmbF5MPZNednC2y/7jf/CUGZ9ivM="),
+                ]),
             )
             .await;
 
@@ -863,14 +916,37 @@ mod tests {
 
     #[tokio::test]
     #[ignore]
-    async fn should_get_wallet_transactions_to_hash() {
+    async fn should_get_wallet_transactions_to_hash_by_wallet() {
         let session = common_session().await;
         let client = WalletClient::new(session);
 
         let res = client
-            .get_wallet_transactions_to_hash(String::from(
-                "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
-            ))
+            .get_wallet_transactions_to_hash(
+                String::from(
+                    "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
+                ),
+                None,
+            )
+            .await;
+
+        println!("request done: {:?}", res);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn should_get_wallet_transactions_to_hash_by_wallet_account() {
+        let session = common_session().await;
+        let client = WalletClient::new(session);
+
+        let res = client
+            .get_wallet_transactions_to_hash(
+                String::from(
+                    "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
+                ),
+                Some(String::from(
+                    "nt3NEGgRyn4jA0X-pn0W1b5kBGCdvCLAy4lBMMpIrnedkW38TbMus_mM_2bb4UhIn9I3-EU7mPzQG_nc90SPiQ==",
+                )),
+            )
             .await;
 
         println!("request done: {:?}", res);
@@ -895,6 +971,9 @@ mod tests {
                 String::from(
                     "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
                 ),
+                String::from(
+                    "nt3NEGgRyn4jA0X-pn0W1b5kBGCdvCLAy4lBMMpIrnedkW38TbMus_mM_2bb4UhIn9I3-EU7mPzQG_nc90SPiQ==",
+                ),
                 payload,
             )
             .await;
@@ -912,6 +991,9 @@ mod tests {
             .update_wallet_transaction_label(
                 String::from(
                     "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
+                ),
+                String::from(
+                    "nt3NEGgRyn4jA0X-pn0W1b5kBGCdvCLAy4lBMMpIrnedkW38TbMus_mM_2bb4UhIn9I3-EU7mPzQG_nc90SPiQ==",
                 ),
                 String::from(
                     "l8vWAXHBQmv0u7OVtPbcqMa4iwQaBqowINSQjPrxAr-Da8fVPKUkUcqAq30_BCxj1X0nW70HQRmAa-rIvzmKUA==",
@@ -935,6 +1017,9 @@ mod tests {
                     "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
                 ),
                 String::from(
+                    "nt3NEGgRyn4jA0X-pn0W1b5kBGCdvCLAy4lBMMpIrnedkW38TbMus_mM_2bb4UhIn9I3-EU7mPzQG_nc90SPiQ==",
+                ),
+                String::from(
                     "l8vWAXHBQmv0u7OVtPbcqMa4iwQaBqowINSQjPrxAr-Da8fVPKUkUcqAq30_BCxj1X0nW70HQRmAa-rIvzmKUA==",
                 ),
                 String::from("xyz"),
@@ -954,6 +1039,9 @@ mod tests {
             .delete_wallet_transactions(
                 String::from(
                     "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
+                ),
+                String::from(
+                    "nt3NEGgRyn4jA0X-pn0W1b5kBGCdvCLAy4lBMMpIrnedkW38TbMus_mM_2bb4UhIn9I3-EU7mPzQG_nc90SPiQ==",
                 ),
                 String::from(
                     "l8vWAXHBQmv0u7OVtPbcqMa4iwQaBqowINSQjPrxAr-Da8fVPKUkUcqAq30_BCxj1X0nW70HQRmAa-rIvzmKUA==",

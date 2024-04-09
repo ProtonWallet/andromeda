@@ -5,6 +5,7 @@ use andromeda_bitcoin::{
     Address, BdkBlockTime, OutPoint, PartiallySignedTransaction, ScriptBuf, Sequence, TxIn,
 };
 use serde::{Deserialize, Serialize};
+use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
 use super::{
@@ -109,12 +110,12 @@ impl Into<WasmTxIn> for TxIn {
 }
 
 #[wasm_bindgen(getter_with_clone)]
-#[derive(Clone)]
+#[derive(Tsify, Clone, Serialize, Deserialize)]
 pub struct WasmTxOut {
     pub value: u64,
     pub script_pubkey: WasmScript,
-    pub address: WasmAddress,
     pub is_mine: bool,
+    pub address: String,
 }
 
 impl Into<WasmTxOut> for DetailledTxOutput {
@@ -122,13 +123,15 @@ impl Into<WasmTxOut> for DetailledTxOutput {
         WasmTxOut {
             value: self.value,
             script_pubkey: self.script_pubkey.into(),
-            address: self.address.into(),
+            address: self.address.to_string(),
             is_mine: self.is_mine,
         }
     }
 }
 
-#[wasm_bindgen(getter_with_clone)]
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+#[allow(non_snake_case)]
 pub struct WasmTransactionDetails {
     pub txid: String,
     pub received: u64,
@@ -137,7 +140,20 @@ pub struct WasmTransactionDetails {
     pub confirmation_time: Option<WasmBlockTime>,
     pub inputs: Vec<WasmTxIn>,
     pub outputs: Vec<WasmTxOut>,
+    pub account_derivation_path: String,
 }
+
+// We need this wrapper because unfortunately, tsify doesn't support
+// VectoIntoWasmAbi yet
+#[wasm_bindgen(getter_with_clone)]
+#[derive(Clone)]
+#[allow(non_snake_case)]
+pub struct WasmTransactionDetailsData {
+    pub Data: WasmTransactionDetails,
+}
+
+#[wasm_bindgen(getter_with_clone)]
+pub struct WasmTransactionDetailsArray(pub Vec<WasmTransactionDetailsData>);
 
 impl Into<WasmTransactionDetails> for TransactionDetails {
     fn into(self) -> WasmTransactionDetails {
@@ -149,25 +165,20 @@ impl Into<WasmTransactionDetails> for TransactionDetails {
             confirmation_time: self.confirmation_time.map(|t| t.into()),
             inputs: self.inputs.into_iter().map(|input| input.into()).collect::<Vec<_>>(),
             outputs: self.outputs.into_iter().map(|output| output.into()).collect::<Vec<_>>(),
+            account_derivation_path: self.account_derivation_path.to_string(),
         }
     }
 }
 
-#[wasm_bindgen]
-impl WasmTransactionDetails {
-    #[wasm_bindgen(js_name = fromPsbt)]
-    pub async fn from_psbt(
-        psbt: &WasmPartiallySignedTransaction,
-        account: &WasmAccount,
-    ) -> Result<WasmTransactionDetails, DetailledWasmError> {
-        let psbt: PartiallySignedTransaction = psbt.into();
-        let inner = account.get_inner();
-        let account = inner.read().expect("lock");
-        let wallet = account.get_wallet();
+#[wasm_bindgen(js_name = createTransactionFromPsbt)]
+pub async fn create_transaction_from_psbt(
+    psbt: &WasmPartiallySignedTransaction,
+    account: &WasmAccount,
+) -> Result<WasmTransactionDetailsData, DetailledWasmError> {
+    let psbt: PartiallySignedTransaction = psbt.into();
 
-        let tx = TransactionDetails::from_psbt(&psbt, wallet).map_err(|e| e.into())?;
-        Ok(tx.into())
-    }
+    let tx = TransactionDetails::from_psbt(&psbt, account.get_inner()).map_err(|e| e.into())?;
+    Ok(WasmTransactionDetailsData { Data: tx.into() })
 }
 
 #[wasm_bindgen(getter_with_clone)]

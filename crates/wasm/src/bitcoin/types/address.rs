@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use andromeda_bitcoin::{Address, ScriptBuf};
+use serde::{Deserialize, Deserializer, Serialize};
 use wasm_bindgen::prelude::*;
 
 use super::transaction::WasmScript;
@@ -10,6 +11,21 @@ use crate::common::{error::WasmError, types::WasmNetwork};
 #[derive(Clone)]
 pub struct WasmAddress {
     inner: Address,
+}
+
+impl<'de> Deserialize<'de> for WasmAddress {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        // Deserialize the inner address as String
+        let inner_str: String = Deserialize::deserialize(deserializer)?;
+
+        // Convert the String to Address using From<String> implementation
+        let inner_address = Address::from_str(&inner_str).unwrap().assume_checked();
+
+        Ok(WasmAddress { inner: inner_address })
+    }
 }
 
 impl Into<Address> for &WasmAddress {

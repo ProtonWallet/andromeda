@@ -119,17 +119,14 @@ impl WasmAccount {
             .get_transactions(pagination.map(|pa| pa.into()), true)
             .map_err(|e| e.into())?
             .into_iter()
-            .map(|tx| {
-                let wasm_tx: WasmSimpleTransaction = tx.into();
-                wasm_tx
-            })
+            .map(|tx| tx.into())
             .collect::<Vec<_>>();
 
         Ok(serde_wasm_bindgen::to_value(&transactions).unwrap().into())
     }
 
     #[wasm_bindgen(js_name = getTransaction)]
-    pub fn get_transaction(&self, txid: String) -> Result<WasmTransactionDetails, DetailledWasmError> {
+    pub fn get_transaction(&self, txid: String) -> Result<WasmTransactionDetailsData, DetailledWasmError> {
         let transaction = self
             .inner
             .read()
@@ -137,6 +134,8 @@ impl WasmAccount {
             .get_transaction(txid)
             .map_err(|e| e.into())?;
 
-        Ok(transaction.into())
+        Ok(WasmTransactionDetailsData {
+            Data: transaction.into(),
+        })
     }
 }
