@@ -4,6 +4,7 @@ use address::AddressClient;
 use async_std::sync::RwLock;
 use block::BlockClient;
 use contacts::ContactsClient;
+use email_integration::EmailIntegrationClient;
 use error::Error;
 use event::EventClient;
 use exchange_rate::ExchangeRateClient;
@@ -12,6 +13,7 @@ pub use muon::{
     AuthStore, Error as MuonError, Product, RefreshToken, Scope, Session, Uid,
 };
 use network::NetworkClient;
+use proton_email_address::ProtonEmailAddressClient;
 use settings::SettingsClient;
 use transaction::TransactionClient;
 use wallet::WalletClient;
@@ -25,10 +27,12 @@ pub mod utils_test;
 pub mod address;
 pub mod block;
 pub mod contacts;
+pub mod email_integration;
 pub mod error;
 pub mod event;
 pub mod exchange_rate;
 pub mod network;
+pub mod proton_email_address;
 pub mod settings;
 pub mod transaction;
 pub mod wallet;
@@ -97,6 +101,8 @@ struct ApiClients(
     ExchangeRateClient,
     EventClient,
     ContactsClient,
+    ProtonEmailAddressClient,
+    EmailIntegrationClient,
 );
 
 impl ApiClients {
@@ -111,6 +117,8 @@ impl ApiClients {
             ExchangeRateClient::new(session.clone()),
             EventClient::new(session.clone()),
             ContactsClient::new(session.clone()),
+            ProtonEmailAddressClient::new(session.clone()),
+            EmailIntegrationClient::new(session.clone()),
         )
     }
 }
@@ -144,6 +152,8 @@ pub struct ProtonWalletApiClient {
     pub exchange_rate: ExchangeRateClient,
     pub event: EventClient,
     pub contacts: ContactsClient,
+    pub proton_email_address: ProtonEmailAddressClient,
+    pub email_integration: EmailIntegrationClient,
 }
 
 #[derive(Debug)]
@@ -246,8 +256,19 @@ impl ProtonWalletApiClient {
     pub fn from_session(session: Session) -> Self {
         let session = Arc::new(RwLock::new(session));
 
-        let ApiClients(block, network, settings, transaction, wallet, address, exchange_rate, event, contacts) =
-            ApiClients::from_session(session.clone());
+        let ApiClients(
+            block,
+            network,
+            settings,
+            transaction,
+            wallet,
+            address,
+            exchange_rate,
+            event,
+            contacts,
+            proton_email_address,
+            email_integration,
+        ) = ApiClients::from_session(session.clone());
 
         Self {
             session,
@@ -261,6 +282,8 @@ impl ProtonWalletApiClient {
             exchange_rate,
             event,
             contacts,
+            proton_email_address,
+            email_integration,
         }
     }
 
@@ -339,7 +362,7 @@ impl ProtonWalletApiClient {
             .await
             .authenticate(username, password)
             .await
-            .map_err(|_| Error::MuonSessionError)?;
+            .map_err(|error| error.into())?;
 
         Ok(())
     }

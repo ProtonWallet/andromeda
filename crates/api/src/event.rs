@@ -138,6 +138,7 @@ impl EventClient {
             .send()
             .await
             .map_err(|e| e.into())?;
+
         let parsed = response
             .to_json::<ApiProtonEvent>()
             .map_err(|_| Error::DeserializeError)?;
