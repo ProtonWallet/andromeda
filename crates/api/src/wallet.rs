@@ -1364,7 +1364,8 @@ mod tests {
                     "WalletID": "string",
                     "DerivationPath": "m/44'/0'/0'",
                     "Label": "string",
-                    "ScriptType": 1
+                    "ScriptType": 1,
+                    "Addresses": [],
                 }
             }
         );
