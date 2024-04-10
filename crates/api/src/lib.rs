@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use address::AddressClient;
 use async_std::sync::RwLock;
+use bitcoin_address::BitcoinAddressClient;
 use block::BlockClient;
 use contacts::ContactsClient;
 use email_integration::EmailIntegrationClient;
@@ -25,6 +26,7 @@ mod env;
 pub mod utils_test;
 
 pub mod address;
+pub mod bitcoin_address;
 pub mod block;
 pub mod contacts;
 pub mod email_integration;
@@ -103,6 +105,7 @@ struct ApiClients(
     ContactsClient,
     ProtonEmailAddressClient,
     EmailIntegrationClient,
+    BitcoinAddressClient,
 );
 
 impl ApiClients {
@@ -119,6 +122,7 @@ impl ApiClients {
             ContactsClient::new(session.clone()),
             ProtonEmailAddressClient::new(session.clone()),
             EmailIntegrationClient::new(session.clone()),
+            BitcoinAddressClient::new(session.clone()),
         )
     }
 }
@@ -154,6 +158,7 @@ pub struct ProtonWalletApiClient {
     pub contacts: ContactsClient,
     pub proton_email_address: ProtonEmailAddressClient,
     pub email_integration: EmailIntegrationClient,
+    pub bitcoin_address: BitcoinAddressClient,
 }
 
 #[derive(Debug)]
@@ -268,6 +273,7 @@ impl ProtonWalletApiClient {
             contacts,
             proton_email_address,
             email_integration,
+            bitcoin_address,
         ) = ApiClients::from_session(session.clone());
 
         Self {
@@ -284,6 +290,7 @@ impl ProtonWalletApiClient {
             contacts,
             proton_email_address,
             email_integration,
+            bitcoin_address,
         }
     }
 

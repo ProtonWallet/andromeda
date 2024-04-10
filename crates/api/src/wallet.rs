@@ -211,61 +211,10 @@ const HASHED_TRANSACTION_ID_KEY: &str = "HashedTransactionIDs[]";
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
-pub struct ApiWalletBitcoinAddress {
-    pub ID: String,
-    pub WalletID: String,
-    pub WalletAccountID: String,
-    pub Fetched: u8,
-    pub Used: u8,
-    pub BitcoinAddress: Option<String>,
-    pub BitcoinAddressSignature: Option<String>,
-    pub BitcoinAddressIndex: Option<u64>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[allow(non_snake_case)]
-pub struct AddBitcoinAddressesRequestBody {
-    pub BitcoinAddresses: Vec<ApiBitcoinAddressCreationPayload>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[allow(non_snake_case)]
-pub struct ApiBitcoinAddressCreationPayload {
-    pub BitcoinAddress: String,
-    pub BitcoinAddressSignature: String,
-    pub BitcoinAddressIndex: u64,
-}
-
-#[derive(Debug, Deserialize)]
-#[allow(non_snake_case)]
 struct GetWalletTransactionsResponseBody {
     #[allow(dead_code)]
     pub Code: u16,
     pub WalletTransactions: Vec<ApiWalletTransaction>,
-}
-
-#[derive(Debug, Deserialize)]
-#[allow(non_snake_case)]
-struct GetBitcoinAddressLatestIndexResponseBody {
-    #[allow(dead_code)]
-    pub Code: u16,
-    pub HighestIndex: u64,
-}
-
-#[derive(Debug, Deserialize)]
-#[allow(non_snake_case)]
-struct GetBitcoinAddressesResponseBody {
-    #[allow(dead_code)]
-    pub Code: u16,
-    pub WalletBitcoinAddresses: Vec<ApiWalletBitcoinAddress>,
-}
-
-#[derive(Debug, Deserialize)]
-#[allow(non_snake_case)]
-struct UpdateBitcoinAddressResponseBody {
-    #[allow(dead_code)]
-    pub Code: u16,
-    pub WalletBitcoinAddress: ApiWalletBitcoinAddress,
 }
 
 #[derive(Debug, Serialize)]
@@ -279,7 +228,8 @@ pub struct CreateWalletTransactionRequestBody {
     pub Label: Option<String>,
     /// Id of the exchange rate to use with this transaction
     pub ExchangeRateID: Option<String>,
-    /// Unix timestamp of when the transaction got created in Proton Wallet or confirmed in blockchain for incoming ones
+    /// Unix timestamp of when the transaction got created in Proton Wallet or
+    /// confirmed in blockchain for incoming ones
     pub TransactionTime: Option<String>,
 }
 
@@ -680,137 +630,6 @@ impl WalletClient {
             .map_err(|_| Error::DeserializeError)?;
 
         Ok(parsed.WalletTransactions)
-    }
-
-    pub async fn get_bitcoin_addresses(
-        &self,
-        wallet_id: String,
-        wallet_account_id: String,
-        only_without_bitcoin_addresses: u8,
-    ) -> Result<Vec<ApiWalletBitcoinAddress>, Error> {
-        let request = ProtonRequest::new(
-            Method::GET,
-            format!(
-                "{}/wallets/{}/accounts/{}/addresses/bitcoin?OnlyWithoutBitcoinAddresses={}",
-                BASE_WALLET_API_V1, wallet_id, wallet_account_id, only_without_bitcoin_addresses
-            ),
-        );
-
-        let response = self
-            .session
-            .read()
-            .await
-            .bind(request)
-            .map_err(|e| e.into())?
-            .send()
-            .await
-            .map_err(|e| e.into())?;
-
-        let parsed = response
-            .to_json::<GetBitcoinAddressesResponseBody>()
-            .map_err(|_| Error::DeserializeError)?;
-
-        Ok(parsed.WalletBitcoinAddresses)
-    }
-
-    pub async fn get_bitcoin_address_latest_index(
-        &self,
-        wallet_id: String,
-        wallet_account_id: String,
-    ) -> Result<u64, Error> {
-        let request = ProtonRequest::new(
-            Method::GET,
-            format!(
-                "{}/wallets/{}/accounts/{}/addresses/bitcoin/index",
-                BASE_WALLET_API_V1, wallet_id, wallet_account_id
-            ),
-        );
-
-        let response = self
-            .session
-            .read()
-            .await
-            .bind(request)
-            .map_err(|e| e.into())?
-            .send()
-            .await
-            .map_err(|e| e.into())?;
-
-        let parsed = response
-            .to_json::<GetBitcoinAddressLatestIndexResponseBody>()
-            .map_err(|_| Error::DeserializeError)?;
-
-        Ok(parsed.HighestIndex)
-    }
-
-    pub async fn add_bitcoin_addresses(
-        &self,
-        wallet_id: String,
-        wallet_account_id: String,
-        bitcoin_addresses: Vec<ApiBitcoinAddressCreationPayload>,
-    ) -> Result<Vec<ApiWalletBitcoinAddress>, Error> {
-        let payload = AddBitcoinAddressesRequestBody {
-            BitcoinAddresses: bitcoin_addresses,
-        };
-        let request = ProtonRequest::new(
-            Method::POST,
-            format!(
-                "{}/wallets/{}/accounts/{}/addresses/bitcoin",
-                BASE_WALLET_API_V1, wallet_id, wallet_account_id
-            ),
-        )
-        .json_body(payload)
-        .map_err(|_| Error::SerializeError)?;
-
-        let response = self
-            .session
-            .read()
-            .await
-            .bind(request)
-            .map_err(|e| e.into())?
-            .send()
-            .await
-            .map_err(|e| e.into())?;
-
-        let parsed = response
-            .to_json::<GetBitcoinAddressesResponseBody>()
-            .map_err(|_| Error::DeserializeError)?;
-
-        Ok(parsed.WalletBitcoinAddresses)
-    }
-
-    pub async fn update_bitcoin_address(
-        &self,
-        wallet_id: String,
-        wallet_account_id: String,
-        wallet_account_bitcoin_address_id: String,
-        bitcoin_address: ApiBitcoinAddressCreationPayload,
-    ) -> Result<ApiWalletBitcoinAddress, Error> {
-        let request = ProtonRequest::new(
-            Method::PUT,
-            format!(
-                "{}/wallets/{}/accounts/{}/addresses/bitcoin/{}",
-                BASE_WALLET_API_V1, wallet_id, wallet_account_id, wallet_account_bitcoin_address_id
-            ),
-        )
-        .json_body(bitcoin_address)
-        .map_err(|_| Error::SerializeError)?;
-
-        let response = self
-            .session
-            .read()
-            .await
-            .bind(request)
-            .map_err(|e| e.into())?
-            .send()
-            .await
-            .map_err(|e| e.into())?;
-
-        let parsed = response
-            .to_json::<UpdateBitcoinAddressResponseBody>()
-            .map_err(|_| Error::DeserializeError)?;
-
-        Ok(parsed.WalletBitcoinAddress)
     }
 
     pub async fn create_wallet_transaction(
