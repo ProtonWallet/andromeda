@@ -13,7 +13,7 @@ pub use muon::{
     AuthStore, Error as MuonError, Product, RefreshToken, Scope, Session, Uid,
 };
 use network::NetworkClient;
-use proton_email_address::ProtonAddressClient;
+use proton_email_address::ProtonEmailAddressClient;
 use settings::SettingsClient;
 use transaction::TransactionClient;
 use wallet::WalletClient;
@@ -35,7 +35,6 @@ pub mod network;
 pub mod proton_email_address;
 pub mod settings;
 pub mod transaction;
-pub mod user_settings;
 pub mod wallet;
 
 // TODO: make this private
@@ -102,7 +101,7 @@ struct ApiClients(
     ExchangeRateClient,
     EventClient,
     ContactsClient,
-    ProtonAddressClient,
+    ProtonEmailAddressClient,
     EmailIntegrationClient,
 );
 
@@ -118,7 +117,7 @@ impl ApiClients {
             ExchangeRateClient::new(session.clone()),
             EventClient::new(session.clone()),
             ContactsClient::new(session.clone()),
-            ProtonAddressClient::new(session.clone()),
+            ProtonEmailAddressClient::new(session.clone()),
             EmailIntegrationClient::new(session.clone()),
         )
     }
@@ -153,7 +152,7 @@ pub struct ProtonWalletApiClient {
     pub exchange_rate: ExchangeRateClient,
     pub event: EventClient,
     pub contacts: ContactsClient,
-    pub proton_email_address: ProtonAddressClient,
+    pub proton_email_address: ProtonEmailAddressClient,
     pub email_integration: EmailIntegrationClient,
 }
 

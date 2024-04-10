@@ -12,7 +12,7 @@ pub struct EmailIntegrationClient {
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
-pub struct ApiEmailIntegrationBitcoinAddress {
+pub struct ApiWalletBitcoinAddressLookup {
     pub BitcoinAddress: Option<String>,
     pub BitcoinAddressSignature: Option<String>,
 }
@@ -28,7 +28,7 @@ pub struct CreateBitcoinAddressRequestBody {
 struct LookupBitcoinAddressResponseBody {
     #[allow(dead_code)]
     pub Code: u16,
-    pub WalletBitcoinAddress: ApiEmailIntegrationBitcoinAddress,
+    pub WalletBitcoinAddress: ApiWalletBitcoinAddressLookup,
 }
 
 #[derive(Debug, Deserialize)]
@@ -43,7 +43,7 @@ impl EmailIntegrationClient {
         Self { session }
     }
 
-    pub async fn lookup_bitcoin_address(&self, email: String) -> Result<ApiEmailIntegrationBitcoinAddress, Error> {
+    pub async fn lookup_bitcoin_address(&self, email: String) -> Result<ApiWalletBitcoinAddressLookup, Error> {
         let request = ProtonRequest::new(
             Method::GET,
             format!("{}/emails/lookup?Email={}", BASE_WALLET_API_V1, email),

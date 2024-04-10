@@ -6,7 +6,7 @@ use std::sync::Arc;
 use crate::{error::Error, BASE_CORE_API_V4};
 
 #[derive(Clone)]
-pub struct ProtonAddressClient {
+pub struct ProtonEmailAddressClient {
     session: Arc<RwLock<Session>>,
 }
 
@@ -46,7 +46,7 @@ struct GetApiProtonAddressesResponseBody {
     pub Addresses: Vec<ApiProtonAddress>,
 }
 
-impl ProtonAddressClient {
+impl ProtonEmailAddressClient {
     pub fn new(session: Arc<RwLock<Session>>) -> Self {
         Self { session }
     }
@@ -75,14 +75,14 @@ impl ProtonAddressClient {
 #[cfg(test)]
 mod tests {
 
-    use super::ProtonAddressClient;
+    use super::ProtonEmailAddressClient;
     use crate::utils::common_session;
 
     #[tokio::test]
     #[ignore]
     async fn should_get_proton_email_addresses() {
         let session = common_session().await;
-        let client = ProtonAddressClient::new(session);
+        let client = ProtonEmailAddressClient::new(session);
 
         let proton_email_addresses = client.get_proton_email_addresses().await;
 
