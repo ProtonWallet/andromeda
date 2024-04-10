@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 andromeda-common = { version = "0.1.0", path = "../common" }
-muon = { version = "0.1.0", registry = "protonvpn" }
+muon = { version = "0.1.1", registry = "proton_internal" }
 async-std = "1.10"
 cfg-if = "1"
 
@@ -22,8 +22,8 @@ bitcoin = { version = "0.30.2", default-features = false, features = [
 [dev-dependencies]
 wiremock = "0.6.0"
 tokio = { features = ["macros", "rt"], version = "1.35" }
+muon = { version = "0.1.1", registry = "proton_internal", features = ["dangerous"] }
 tokio-test = "0.4.3"
-muon = { version = "0.1.0", registry = "protonvpn", features = ["dangerous"] }
 
 [features]
 local = ["muon/dangerous"]

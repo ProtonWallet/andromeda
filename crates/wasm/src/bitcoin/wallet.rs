@@ -116,10 +116,7 @@ impl WasmWallet {
             .await
             .map_err(|e| e.into())?
             .into_iter()
-            .map(|tx| {
-                let wasm_tx: WasmSimpleTransaction = tx.into();
-                wasm_tx
-            })
+            .map(|tx| tx.into())
             .collect::<Vec<_>>();
 
         Ok(serde_wasm_bindgen::to_value(&transaction).unwrap().into())
@@ -130,7 +127,7 @@ impl WasmWallet {
         &self,
         account_key: &WasmDerivationPath,
         txid: String,
-    ) -> Result<WasmTransactionDetails, DetailledWasmError> {
+    ) -> Result<WasmTransactionDetailsData, DetailledWasmError> {
         let account_key: DerivationPath = account_key.into();
 
         let transaction = self
@@ -139,7 +136,9 @@ impl WasmWallet {
             .await
             .map_err(|e| e.into())?;
 
-        Ok(transaction.into())
+        Ok(WasmTransactionDetailsData {
+            Data: transaction.into(),
+        })
     }
 
     #[wasm_bindgen(js_name = getFingerprint)]

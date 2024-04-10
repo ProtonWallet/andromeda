@@ -9,6 +9,6 @@ pub async fn common_session() -> Arc<RwLock<Session>> {
 
     let transport = ReqwestTransportFactory::new();
     let mut session = Session::new_with_transport(auth, app, transport).unwrap();
-    session.authenticate("bart", "bart").await.unwrap();
+    session.authenticate("pro", "pro").await.unwrap();
     Arc::new(RwLock::new(session))
 }
