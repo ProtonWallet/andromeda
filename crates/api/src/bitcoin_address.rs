@@ -82,7 +82,10 @@ impl BitcoinAddressClient {
                 BASE_WALLET_API_V1, wallet_id, wallet_account_id,
             ),
         )
-        .param(ONLY_WITHOUT_BITCOIN_ADDRESS_KEY, only_without_bitcoin_addresses.map(|o| o.to_string()));
+        .param(
+            ONLY_WITHOUT_BITCOIN_ADDRESS_KEY,
+            only_without_bitcoin_addresses.map(|o| o.to_string()),
+        );
 
         let response = self
             .session
