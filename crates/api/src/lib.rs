@@ -330,11 +330,17 @@ impl ProtonWalletApiClient {
     /// # use muon::{AccessToken, RefreshToken, Uid};
     /// # use andromeda_api::{ProtonWalletApiClient, AuthData};
     /// let auth = AuthData::Access(Uid::from("uid....".to_string()), RefreshToken::from("refresh....".to_string()), AccessToken::from("access....".to_string()), Vec::new());
-    /// let api_client = ProtonWalletApiClient::from_auth_with_version(auth, "Other".to_owned(), "None".to_owned());
+    /// let api_client = ProtonWalletApiClient::from_auth_with_version(auth, "Other".to_owned(), "None".to_owned(), None);
     /// ```
-    pub fn from_auth_with_version(auth: AuthData, app_version: String, user_agent: String) -> Result<Self, Error> {
+    pub fn from_auth_with_version(
+        auth: AuthData,
+        app_version: String,
+        user_agent: String,
+        env: Option<String>,
+    ) -> Result<Self, Error> {
         let app_spec = WalletAppSpec::from_version(app_version, user_agent).inner();
-        let mut auth_store = SimpleAuthStore::new("atlas");
+        let auth_store_env = env.unwrap_or("atlas".to_string());
+        let mut auth_store = SimpleAuthStore::new(auth_store_env);
 
         match auth {
             AuthData::Uid(uid) => {
@@ -380,6 +386,7 @@ impl ProtonWalletApiClient {
 }
 
 impl Default for ProtonWalletApiClient {
+    /// default Proton Wallet api client. It uses `atlas` env
     fn default() -> Self {
         let app_spec = WalletAppSpec::new().inner();
         let auth_store = SimpleAuthStore::new("atlas");
