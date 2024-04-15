@@ -83,7 +83,7 @@ impl EmailIntegrationClient {
             .await
             .map_err(|e| e.into())?;
 
-        let parsed = response
+        let _ = response
             .to_json::<CreateBitcoinAddressRequestResponseBody>()
             .map_err(|_| Error::DeserializeError)?;
         Ok(())

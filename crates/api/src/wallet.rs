@@ -266,6 +266,7 @@ pub struct UpdateWalletTransactionHashedTxidRequestBody {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct UpdateWalletTransactionHashedTxidResponseBody {
+    #[allow(dead_code)]
     pub Code: u16,
     pub WalletTransaction: ApiWalletTransaction,
 }
