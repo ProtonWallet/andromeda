@@ -18,6 +18,14 @@ pub struct TransactionClient {
 #[allow(non_snake_case)]
 struct BroadcastRawTransactionRequestBody {
     SignedTransactionHex: String,
+    WalletID: String,
+    WalletAccountID: String,
+    Label: Option<String>,
+    ExchangeRateID: Option<String>,
+    AddressID: Option<String>,
+    TransactionTime: Option<String>,
+    Subject: Option<String>,
+    Body: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -106,9 +114,30 @@ impl TransactionClient {
         Self { session }
     }
 
-    pub async fn broadcast_raw_transaction(&self, signed_transaction_hex: String) -> Result<String, Error> {
+    pub async fn broadcast_raw_transaction(
+        &self,
+        signed_transaction_hex: String,
+        wallet_id: String,
+        wallet_account_id: String,
+        label: Option<String>,
+        exchange_rate_id: Option<String>,
+        transaction_time: Option<String>,
+        address_id: Option<String>,
+        subject: Option<String>,
+        body: Option<String>,
+    ) -> Result<String, Error> {
+        // need to pass at least transaction_time or exchange_rate_id
+        // backend will check ts from them
         let body = BroadcastRawTransactionRequestBody {
             SignedTransactionHex: signed_transaction_hex,
+            WalletID: wallet_id,
+            WalletAccountID: wallet_account_id,
+            Label: label,
+            ExchangeRateID: exchange_rate_id,
+            TransactionTime: transaction_time,
+            AddressID: address_id,
+            Subject: subject,
+            Body: body,
         };
 
         let request = ProtonRequest::new(Method::POST, format!("{}/transactions", BASE_WALLET_API_V1))
@@ -124,6 +153,10 @@ impl TransactionClient {
             .send()
             .await
             .map_err(|e| e.into())?;
+
+        let utf8_str = std::str::from_utf8(response.body()).unwrap();
+        println!("broadcast_raw_transaction() response: {}", utf8_str);
+
         let parsed = response
             .to_json::<BroadcastRawTransactionResponseBody>()
             .map_err(|_| Error::DeserializeError)?;
