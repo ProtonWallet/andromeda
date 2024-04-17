@@ -6,6 +6,7 @@ use muon::{http::Method, ProtonRequest, Response, Session};
 use serde::{Deserialize, Serialize};
 
 use super::{error::Error, BASE_WALLET_API_V1};
+use crate::exchange_rate;
 
 //TODO:: code need to be used. remove all #[allow(dead_code)]
 
@@ -109,6 +110,11 @@ struct GetFeeEstimateResponseBody {
     pub FeeEstimates: HashMap<String, f64>,
 }
 
+pub enum ExchangeRateOrTransactionTime {
+    ExchangeRate(String),
+    TransactionTime(String),
+}
+
 impl TransactionClient {
     pub fn new(session: Arc<RwLock<Session>>) -> Self {
         Self { session }
@@ -120,14 +126,16 @@ impl TransactionClient {
         wallet_id: String,
         wallet_account_id: String,
         label: Option<String>,
-        exchange_rate_id: Option<String>,
-        transaction_time: Option<String>,
+        exchange_rate_or_transaction_time: ExchangeRateOrTransactionTime,
         address_id: Option<String>,
         subject: Option<String>,
         body: Option<String>,
     ) -> Result<String, Error> {
-        // need to pass at least transaction_time or exchange_rate_id
-        // backend will check ts from them
+        let (exchange_rate_id, transaction_time) = match exchange_rate_or_transaction_time {
+            ExchangeRateOrTransactionTime::ExchangeRate(exchange_rate) => (Some(exchange_rate), None),
+            ExchangeRateOrTransactionTime::TransactionTime(transaction_time) => (None, Some(transaction_time)),
+        };
+
         let body = BroadcastRawTransactionRequestBody {
             SignedTransactionHex: signed_transaction_hex,
             WalletID: wallet_id,
