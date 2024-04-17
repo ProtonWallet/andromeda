@@ -27,7 +27,7 @@ pub struct ApiBlock {
     pub MedianTime: u64,
     pub Nonce: u64,
     pub Bits: u64,
-    pub Difficulty: u32,
+    pub Difficulty: f32,
 }
 
 //TODO:: code need to be used. remove all #[allow(dead_code)]

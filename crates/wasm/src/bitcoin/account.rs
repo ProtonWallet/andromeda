@@ -111,12 +111,13 @@ impl WasmAccount {
     pub fn get_transactions(
         &self,
         pagination: Option<WasmPagination>,
+        sort: Option<WasmSortOrder>,
     ) -> Result<IWasmSimpleTransactionArray, DetailledWasmError> {
         let transactions = self
             .inner
             .read()
             .expect("lock")
-            .get_transactions(pagination.map(|pa| pa.into()), true)
+            .get_transactions(pagination.map(|pa| pa.into()), sort.map(|s| s.into()))
             .map_err(|e| e.into())?
             .into_iter()
             .map(|tx| tx.into())

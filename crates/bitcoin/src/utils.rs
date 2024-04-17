@@ -5,6 +5,12 @@ use andromeda_common::{BitcoinUnit, BITCOIN, MILLI_BITCOIN, SATOSHI};
 use super::transactions::Pagination;
 use crate::transactions::SimpleTransaction;
 
+#[derive(PartialEq, PartialOrd)]
+pub enum SortOrder {
+    Asc,
+    Desc,
+}
+
 pub fn now() -> Duration {
     #[cfg(target_arch = "wasm32")]
     return instant::SystemTime::now()
@@ -111,10 +117,16 @@ pub fn min_f64(a: f64, b: f64) -> f64 {
 pub fn sort_and_paginate_txs(
     mut simple_txs: Vec<SimpleTransaction>,
     pagination: Pagination,
-    sorted: bool,
+    sort_order: Option<SortOrder>,
 ) -> Vec<SimpleTransaction> {
-    if sorted {
-        simple_txs.sort_by(|a, b| b.confirmation_time.partial_cmp(&a.confirmation_time).unwrap());
+    if let Some(sort_order) = sort_order {
+        simple_txs.sort_by(|a, b| {
+            if sort_order == SortOrder::Desc {
+                b.confirmation_time.partial_cmp(&a.confirmation_time).unwrap()
+            } else {
+                a.confirmation_time.partial_cmp(&b.confirmation_time).unwrap()
+            }
+        });
     }
 
     // We paginated sorted vector
