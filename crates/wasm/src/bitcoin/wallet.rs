@@ -109,10 +109,11 @@ impl WasmWallet {
     pub async fn get_transactions(
         &self,
         pagination: Option<WasmPagination>,
+        sort: Option<WasmSortOrder>,
     ) -> Result<IWasmSimpleTransactionArray, DetailledWasmError> {
         let transaction = self
             .inner
-            .get_transactions(pagination.map(|pa| pa.into()), true)
+            .get_transactions(pagination.map(|pa| pa.into()), sort.map(|s| s.into()))
             .await
             .map_err(|e| e.into())?
             .into_iter()

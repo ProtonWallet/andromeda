@@ -17,6 +17,7 @@ use crate::{
     error::Error,
     mnemonic::Mnemonic,
     transactions::{SimpleTransaction, TransactionDetails},
+    utils::SortOrder,
 };
 
 #[derive(Debug)]
@@ -119,7 +120,7 @@ where
     pub async fn get_transactions(
         &self,
         pagination: Option<Pagination>,
-        sorted: bool,
+        sort: Option<SortOrder>,
     ) -> Result<Vec<SimpleTransaction>, Error> {
         let pagination = pagination.unwrap_or_default();
 
@@ -144,7 +145,7 @@ where
 
         let simple_txs = simple_txs.into_iter().flatten().collect::<Vec<_>>();
 
-        Ok(sort_and_paginate_txs(simple_txs, pagination, sorted))
+        Ok(sort_and_paginate_txs(simple_txs, pagination, sort))
     }
 
     pub async fn get_transaction(

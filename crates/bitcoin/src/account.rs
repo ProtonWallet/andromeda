@@ -27,6 +27,7 @@ use super::{payment_link::PaymentLink, transactions::Pagination, utils::sort_and
 use crate::{
     error::Error,
     transactions::{SimpleTransaction, TransactionDetails},
+    utils::SortOrder,
 };
 
 /// TLDR; A wallet is defined by its mnemonic + passphrase combo whereas a
@@ -231,7 +232,7 @@ where
     pub fn get_transactions(
         &self,
         pagination: Option<Pagination>,
-        sorted: bool,
+        sort: Option<SortOrder>,
     ) -> Result<Vec<SimpleTransaction>, Error> {
         let pagination = pagination.unwrap_or_default();
 
@@ -246,7 +247,7 @@ where
             .map(|tx| SimpleTransaction::from_detailled_tx(tx, Some(self.derivation_path.clone())))
             .collect::<Vec<_>>();
 
-        Ok(sort_and_paginate_txs(simple_txs, pagination, sorted))
+        Ok(sort_and_paginate_txs(simple_txs, pagination, sort))
     }
 
     /// Given a txid, returns a complete transaction    
