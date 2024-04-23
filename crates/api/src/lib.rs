@@ -238,9 +238,8 @@ impl ProtonWalletApiClient {
     pub fn from_version(app_version: String, user_agent: String) -> Self {
         let app_spec = WalletAppSpec::from_version(app_version, user_agent).inner();
         let auth_store = SimpleAuthStore::new("atlas");
-
-        let session = Session::new(auth_store, app_spec).unwrap();
-
+        let transport = ReqwestTransportFactory::new();
+        let session = Session::new_with_transport(auth_store, app_spec, transport).unwrap();
         Self::from_session(session)
     }
 
@@ -340,7 +339,7 @@ impl ProtonWalletApiClient {
     ) -> Result<Self, Error> {
         let app_spec = WalletAppSpec::from_version(app_version, user_agent).inner();
         let auth_store_env = env.unwrap_or("atlas".to_string());
-        let mut auth_store = SimpleAuthStore::new(auth_store_env);
+        let mut auth_store = SimpleAuthStore::new(auth_store_env.clone());
 
         match auth {
             AuthData::Uid(uid) => {
@@ -352,7 +351,8 @@ impl ProtonWalletApiClient {
             _ => {}
         }
 
-        let session = Session::new(auth_store, app_spec).unwrap();
+        let transport = ReqwestTransportFactory::new();
+        let session = Session::new_with_transport(auth_store, app_spec, transport).unwrap();
 
         Ok(Self::from_session(session))
     }
