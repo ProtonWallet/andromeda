@@ -6,12 +6,11 @@ use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
+use super::exchange_rate::WasmApiExchangeRate;
 use crate::{
     bitcoin::types::derivation_path::WasmDerivationPath,
     common::{error::WasmError, types::WasmScriptType},
 };
-
-use super::exchange_rate::WasmApiExchangeRate;
 
 #[wasm_bindgen]
 pub struct WasmWalletClient(WalletClient);
@@ -168,11 +167,15 @@ pub struct WasmApiWalletTransaction {
     pub ID: String,
     pub WalletID: String,
     pub WalletAccountID: Option<String>,
+    pub Label: Option<String>,
     pub TransactionID: String,
     pub TransactionTime: String,
-    pub HashedTransactionID: Option<String>,
-    pub Label: Option<String>,
     pub ExchangeRate: Option<WasmApiExchangeRate>,
+    pub HashedTransactionID: Option<String>,
+    pub Subject: Option<String>,
+    pub Body: Option<String>,
+    pub ToList: Option<String>,
+    pub Sender: Option<String>,
 }
 
 impl From<ApiWalletTransaction> for WasmApiWalletTransaction {
@@ -181,11 +184,15 @@ impl From<ApiWalletTransaction> for WasmApiWalletTransaction {
             ID: value.ID,
             WalletID: value.WalletID,
             WalletAccountID: value.WalletAccountID,
+            Label: value.Label,
             TransactionID: value.TransactionID,
             TransactionTime: value.TransactionTime,
-            HashedTransactionID: value.HashedTransactionID,
-            Label: value.Label,
             ExchangeRate: value.ExchangeRate.map(|r| r.into()),
+            HashedTransactionID: value.HashedTransactionID,
+            Subject: value.Subject,
+            Body: value.Body,
+            ToList: value.ToList,
+            Sender: value.Sender,
         }
     }
 }
