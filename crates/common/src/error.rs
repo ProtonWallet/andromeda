@@ -1,7 +1,8 @@
 use std::fmt::Debug;
 
 // errors in common layer
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
-    InvalidScriptType,
+    #[error("Invalid script type: {0}")]
+    InvalidScriptType(String),
 }

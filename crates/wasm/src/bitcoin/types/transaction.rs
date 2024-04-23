@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use andromeda_bitcoin::{
+    error::Error as BitcoinError,
     transactions::{DetailledTxOutput, SimpleTransaction, TransactionDetails},
     Address, BdkBlockTime, OutPoint, PartiallySignedTransaction, ScriptBuf, Sequence, TxIn,
 };
@@ -14,10 +15,7 @@ use super::{
     derivation_path::WasmDerivationPath,
     typescript_interfaces::IWasmOutpoint,
 };
-use crate::common::{
-    error::{DetailledWasmError, WasmError},
-    types::WasmNetwork,
-};
+use crate::common::{error::ErrorExt, types::WasmNetwork};
 
 #[wasm_bindgen(getter_with_clone)]
 #[derive(Clone, Serialize, Deserialize)]
@@ -44,10 +42,10 @@ impl Into<WasmScript> for ScriptBuf {
 #[wasm_bindgen]
 impl WasmScript {
     #[wasm_bindgen(js_name = toAddress)]
-    pub fn to_address(&self, network: WasmNetwork) -> Result<WasmAddress, DetailledWasmError> {
+    pub fn to_address(&self, network: WasmNetwork) -> Result<WasmAddress, js_sys::Error> {
         let script_bug: ScriptBuf = self.into();
         let address = Address::from_script(script_bug.as_script(), network.into())
-            .map_err(|_| WasmError::CannotGetAddressFromScript.into())?;
+            .map_err(|e| BitcoinError::from(e).to_js_error())?;
 
         Ok(address.into())
     }
@@ -67,10 +65,10 @@ impl WasmOutPoint {
 }
 
 impl TryInto<OutPoint> for WasmOutPoint {
-    type Error = WasmError;
+    type Error = js_sys::Error;
 
-    fn try_into(self) -> Result<OutPoint, WasmError> {
-        OutPoint::from_str(&self.0).map_err(|_| WasmError::OutpointParsingError)
+    fn try_into(self) -> Result<OutPoint, js_sys::Error> {
+        OutPoint::from_str(&self.0).map_err(|_| js_sys::Error::new("Could not parse outpoint"))
     }
 }
 
@@ -81,7 +79,7 @@ impl Into<WasmOutPoint> for OutPoint {
 }
 
 #[wasm_bindgen(getter_with_clone)]
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct WasmSequence(pub u32);
 
 impl Into<WasmSequence> for Sequence {
@@ -91,7 +89,7 @@ impl Into<WasmSequence> for Sequence {
 }
 
 #[wasm_bindgen(getter_with_clone)]
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct WasmTxIn {
     pub previous_output: WasmOutPoint,
     pub script_sig: WasmScript,
@@ -140,7 +138,7 @@ pub struct WasmTransactionDetails {
     pub confirmation_time: Option<WasmBlockTime>,
     pub inputs: Vec<WasmTxIn>,
     pub outputs: Vec<WasmTxOut>,
-    pub account_derivation_path: String,
+    // pub account_derivation_path: String,
 }
 
 // We need this wrapper because unfortunately, tsify doesn't support
@@ -165,7 +163,7 @@ impl Into<WasmTransactionDetails> for TransactionDetails {
             confirmation_time: self.confirmation_time.map(|t| t.into()),
             inputs: self.inputs.into_iter().map(|input| input.into()).collect::<Vec<_>>(),
             outputs: self.outputs.into_iter().map(|output| output.into()).collect::<Vec<_>>(),
-            account_derivation_path: self.account_derivation_path.to_string(),
+            // account_derivation_path: self.account_derivation_path.to_string(),
         }
     }
 }
@@ -174,10 +172,12 @@ impl Into<WasmTransactionDetails> for TransactionDetails {
 pub async fn create_transaction_from_psbt(
     psbt: &WasmPartiallySignedTransaction,
     account: &WasmAccount,
-) -> Result<WasmTransactionDetailsData, DetailledWasmError> {
+) -> Result<WasmTransactionDetailsData, js_sys::Error> {
     let psbt: PartiallySignedTransaction = psbt.into();
 
-    let tx = TransactionDetails::from_psbt(&psbt, account.get_inner()).map_err(|e| e.into())?;
+    let tx = TransactionDetails::from_psbt(&psbt, account.get_inner().read().expect("lock").get_wallet())
+        .map_err(|e| e.to_js_error())?;
+
     Ok(WasmTransactionDetailsData { Data: tx.into() })
 }
 
@@ -208,15 +208,15 @@ pub struct WasmSimpleTransaction {
     pub account_key: Option<WasmDerivationPath>,
 }
 
-impl Into<WasmSimpleTransaction> for SimpleTransaction {
-    fn into(self) -> WasmSimpleTransaction {
+impl From<SimpleTransaction> for WasmSimpleTransaction {
+    fn from(value: SimpleTransaction) -> WasmSimpleTransaction {
         WasmSimpleTransaction {
-            txid: self.txid.to_string(),
-            received: self.received,
-            sent: self.sent,
-            fees: self.fees,
-            confirmation_time: self.confirmation_time.map(|t| t.into()),
-            account_key: self.account_key.map(|k| k.into()),
+            txid: value.txid.to_string(),
+            received: value.received,
+            sent: value.sent,
+            fees: value.fees,
+            confirmation_time: value.confirmation_time.map(|t| t.into()),
+            account_key: value.account_key.map(|k| k.into()),
         }
     }
 }

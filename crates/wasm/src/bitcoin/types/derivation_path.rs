@@ -1,15 +1,12 @@
 use std::str::FromStr;
 
-use andromeda_bitcoin::DerivationPath;
+use andromeda_bitcoin::{error::Error as BitcoinError, DerivationPath};
 use andromeda_common::FromParts;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
 use super::typescript_interfaces::IWasmDerivationPath;
-use crate::common::{
-    error::{DetailledWasmError, WasmError},
-    types::WasmNetwork,
-};
+use crate::common::{error::ErrorExt, types::WasmNetwork};
 
 #[wasm_bindgen]
 #[derive(Clone, Deserialize, Serialize)]
@@ -20,8 +17,8 @@ pub struct WasmDerivationPath {
 #[wasm_bindgen]
 impl WasmDerivationPath {
     #[wasm_bindgen(constructor)]
-    pub fn new(path: &str) -> Result<WasmDerivationPath, DetailledWasmError> {
-        let derivation_path = DerivationPath::from_str(path).map_err(|_| WasmError::InvalidDerivationPath.into())?;
+    pub fn new(path: &str) -> Result<WasmDerivationPath, js_sys::Error> {
+        let derivation_path = DerivationPath::from_str(path).map_err(|e| BitcoinError::from(e).to_js_error())?;
 
         Ok(WasmDerivationPath { inner: derivation_path })
     }
@@ -39,9 +36,9 @@ impl WasmDerivationPath {
     }
 
     #[wasm_bindgen(js_name = fromString)]
-    pub fn from_str(str: String) -> Result<WasmDerivationPath, WasmError> {
+    pub fn from_str(str: String) -> Result<WasmDerivationPath, js_sys::Error> {
         Ok(Self {
-            inner: DerivationPath::from_str(&str).map_err(|_| WasmError::Bip32Error)?,
+            inner: DerivationPath::from_str(&str).map_err(|e| BitcoinError::from(e).to_js_error())?,
         })
     }
 }

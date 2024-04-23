@@ -1,63 +1,36 @@
 use std::fmt::Debug;
 
 use bdk::{descriptor::DescriptorError, keys::bip39::Error as Bip39Error, Error as BdkError};
-use bitcoin::bip32::Error as Bip32Error;
+use bitcoin::{
+    address::Error as BitcoinAddressError, bip32::Error as Bip32Error, hashes::hex::Error as BitcoinHexError,
+    Error as BitcoinError,
+};
+use esplora_client::Error as EsploraClientError;
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("Account wasn't found")]
     AccountNotFound,
-    // TODO: Maybe we want to segregate BipXX errors (Bip39/Bip32) from other bdk errors?
-    BdkError(BdkError),
-    Bip32Error(Bip32Error),
-    Bip39Error(Option<Bip39Error>),
-    CannotBroadcastTransaction,
-    CannotComputeTxFees,
-    CannotGetFeeEstimation,
-    CannotCreateAddressFromScript,
-    CannotGetAddressFromScript,
-    DerivationError,
-    DescriptorError(DescriptorError),
-    InvalidAccountIndex,
-    InvalidAddress,
-    InvalidData,
-    InvalidDescriptor,
-    InvalidDerivationPath,
-    InvalidNetwork,
-    InvalidTxId,
-    InvalidScriptType,
-    InvalidSecretKey,
-    InvalidMnemonic,
-    LoadError,
-    SyncError,
+    #[error("An error from BDK occured: \n\t{0}")]
+    BdkError(#[from] BdkError),
+    #[error("An error related to BIP32 occured: \n\t{0}")]
+    Bip32Error(#[from] Bip32Error),
+    #[error("An error related to BIP39 occured: \n\t{0}")]
+    Bip39Error(#[from] Bip39Error),
+    #[error("An error occured in esplora client: \n\t{0}")]
+    EsploraClientError(#[from] EsploraClientError),
+    #[error("An error related to rust-bitcoin occured: \n\t{0}")]
+    RustBitcoinError(#[from] BitcoinError),
+    #[error("An error related to bitcoin hashing occured: \n\t{0}")]
+    BitcoinHexError(#[from] BitcoinHexError),
+    #[error("An error related to bitcoin address occured: \n\t{0}")]
+    BitcoinAddressError(#[from] BitcoinAddressError),
+    #[error("An error related to descriptors occured: \n\t{0}")]
+    DescriptorError(#[from] DescriptorError),
+    #[error("Address is invalid: {0}")]
+    InvalidAddress(String),
+    #[error("Data is invalid: {0:?}")]
+    InvalidData(Vec<u8>),
+    #[error("Transaction was not found")]
     TransactionNotFound,
-}
-
-impl Into<Error> for DescriptorError {
-    fn into(self) -> Error {
-        Error::DescriptorError(self)
-    }
-}
-
-impl Into<Error> for BdkError {
-    fn into(self) -> Error {
-        Error::BdkError(self)
-    }
-}
-
-impl Into<Error> for Bip32Error {
-    fn into(self) -> Error {
-        Error::Bip32Error(self)
-    }
-}
-
-impl Into<Error> for Bip39Error {
-    fn into(self) -> Error {
-        Error::Bip39Error(Some(self))
-    }
-}
-
-impl Into<Error> for andromeda_common::error::Error {
-    fn into(self) -> Error {
-        Error::InvalidScriptType
-    }
 }

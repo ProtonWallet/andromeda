@@ -100,19 +100,9 @@ impl AddressClient {
         let url = format!("{}/addresses/{}/balance", BASE_WALLET_API_V1, address);
 
         let request = ProtonRequest::new(Method::GET, url);
-        let response = self
-            .session
-            .read()
-            .await
-            .bind(request)
-            .map_err(|e| e.into())?
-            .send()
-            .await
-            .map_err(|e| e.into())?;
+        let response = self.session.read().await.bind(request)?.send().await?;
 
-        let parsed = response
-            .to_json::<GetAddressBalanceResponseBody>()
-            .map_err(|_| Error::DeserializeError)?;
+        let parsed = response.to_json::<GetAddressBalanceResponseBody>()?;
 
         Ok(parsed.Balance)
     }
@@ -127,19 +117,9 @@ impl AddressClient {
             ),
         );
 
-        let response = self
-            .session
-            .read()
-            .await
-            .bind(request)
-            .map_err(|e| e.into())?
-            .send()
-            .await
-            .map_err(|e| e.into())?;
+        let response = self.session.read().await.bind(request)?.send().await?;
 
-        let parsed = response
-            .to_json::<GetScriptHashTransactionsResponseBody>()
-            .map_err(|_| Error::DeserializeError)?;
+        let parsed = response.to_json::<GetScriptHashTransactionsResponseBody>()?;
 
         Ok(parsed.Transactions)
     }
@@ -158,19 +138,9 @@ impl AddressClient {
             ),
         );
 
-        let response = self
-            .session
-            .read()
-            .await
-            .bind(request)
-            .map_err(|e| e.into())?
-            .send()
-            .await
-            .map_err(|e| e.into())?;
+        let response = self.session.read().await.bind(request)?.send().await?;
 
-        let parsed = response
-            .to_json::<GetScriptHashTransactionsResponseBody>()
-            .map_err(|_| Error::DeserializeError)?;
+        let parsed = response.to_json::<GetScriptHashTransactionsResponseBody>()?;
 
         Ok(parsed.Transactions)
     }

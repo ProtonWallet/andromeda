@@ -9,10 +9,7 @@ use super::{
     psbt::WasmPartiallySignedTransaction,
     types::{locktime::WasmLockTime, transaction::WasmOutPoint},
 };
-use crate::common::{
-    error::{DetailledWasmError, WasmError},
-    types::WasmNetwork,
-};
+use crate::common::{error::ErrorExt, types::WasmNetwork};
 
 #[wasm_bindgen]
 pub struct WasmTxBuilder {
@@ -91,12 +88,12 @@ impl WasmTxBuilder {
     }
 
     #[wasm_bindgen(js_name = setAccount)]
-    pub async fn set_account(&self, account: &WasmAccount) -> Result<WasmTxBuilder, DetailledWasmError> {
+    pub async fn set_account(&self, account: &WasmAccount) -> Result<WasmTxBuilder, js_sys::Error> {
         let inner = self
             .inner
             .set_account(account.get_inner())
             .await
-            .map_err(|e| e.into())?;
+            .map_err(|e| e.to_js_error())?;
 
         Ok(WasmTxBuilder { inner })
     }
@@ -125,19 +122,19 @@ impl WasmTxBuilder {
         index: usize,
         address_str: Option<String>,
         amount: Option<u64>,
-    ) -> Result<WasmTxBuilder, WasmError> {
+    ) -> Result<WasmTxBuilder, js_sys::Error> {
         let inner = self.inner.update_recipient(index, (address_str, amount)).await;
 
         Ok(WasmTxBuilder { inner })
     }
 
     #[wasm_bindgen(js_name = updateRecipientAmountToMax)]
-    pub async fn update_recipient_amount_to_max(&self, index: usize) -> Result<WasmTxBuilder, WasmError> {
+    pub async fn update_recipient_amount_to_max(&self, index: usize) -> Result<WasmTxBuilder, js_sys::Error> {
         let inner = self
             .inner
             .update_recipient_amount_to_max(index)
             .await
-            .map_err(|e| e.into())?;
+            .map_err(|e| e.to_js_error())?;
 
         Ok(WasmTxBuilder { inner })
     }
@@ -163,7 +160,7 @@ impl WasmTxBuilder {
      */
 
     #[wasm_bindgen(js_name = addUtxoToSpend)]
-    pub fn add_utxo_to_spend(&self, outpoint: WasmOutPoint) -> Result<WasmTxBuilder, WasmError> {
+    pub fn add_utxo_to_spend(&self, outpoint: WasmOutPoint) -> Result<WasmTxBuilder, js_sys::Error> {
         let serialised: OutPoint = outpoint.try_into()?;
         let inner = self.inner.add_utxo_to_spend(&serialised);
 
@@ -171,7 +168,7 @@ impl WasmTxBuilder {
     }
 
     #[wasm_bindgen(js_name = removeUtxoToSpend)]
-    pub fn remove_utxo_to_spend(&self, outpoint: WasmOutPoint) -> Result<WasmTxBuilder, WasmError> {
+    pub fn remove_utxo_to_spend(&self, outpoint: WasmOutPoint) -> Result<WasmTxBuilder, js_sys::Error> {
         let serialised: OutPoint = outpoint.try_into()?;
         let inner = self.inner.remove_utxo_to_spend(&serialised);
 
@@ -293,15 +290,12 @@ impl WasmTxBuilder {
      */
 
     #[wasm_bindgen(js_name = createPsbt)]
-    pub async fn create_pbst(
-        &self,
-        network: WasmNetwork,
-    ) -> Result<WasmPartiallySignedTransaction, DetailledWasmError> {
+    pub async fn create_pbst(&self, network: WasmNetwork) -> Result<WasmPartiallySignedTransaction, js_sys::Error> {
         let psbt = self
             .inner
             .create_pbst_with_coin_selection(false)
             .await
-            .map_err(|e| e.into())?;
+            .map_err(|e| e.to_js_error())?;
 
         Ok(WasmPartiallySignedTransaction::from_psbt(&psbt, network.into()))
     }

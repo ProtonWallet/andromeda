@@ -89,12 +89,9 @@ impl Mnemonic {
         rng.fill(&mut entropy);
 
         let generated_key: GeneratedKey<_, BareCtx> =
-            BdkMnemonic::generate_with_entropy((word_count, Language::English), entropy).map_err(|e| match e {
-                Some(e) => e.into(),
-                _ => Error::Bip39Error(None),
-            })?;
+            BdkMnemonic::generate_with_entropy((word_count, Language::English), entropy).expect("should not fail");
 
-        let mnemonic = BdkMnemonic::parse_in(Language::English, generated_key.to_string()).map_err(|e| e.into())?;
+        let mnemonic = BdkMnemonic::parse_in(Language::English, generated_key.to_string())?;
 
         Ok(Mnemonic { inner: mnemonic })
     }
@@ -114,9 +111,9 @@ impl Mnemonic {
     /// println!("{:?}", result)
     /// ```
     pub fn from_string(mnemonic: String) -> Result<Self, Error> {
-        BdkMnemonic::from_str(&mnemonic)
-            .map(|m| Mnemonic { inner: m })
-            .map_err(|_| Error::InvalidMnemonic)
+        let mnemonic = BdkMnemonic::from_str(&mnemonic).map(|m| Mnemonic { inner: m })?;
+
+        Ok(mnemonic)
     }
 
     /// serialize a `Mnemonic` to a string.
@@ -156,7 +153,7 @@ impl Mnemonic {
 
 #[cfg(test)]
 mod tests {
-    use bdk::keys::bip39::Language;
+    use bdk::keys::bip39::{Error as Bip39Error, Language};
 
     use super::{get_words_autocomplete, Mnemonic};
     use crate::error::Error;
@@ -230,7 +227,10 @@ mod tests {
         .unwrap();
 
         assert!(match mnemonic_error {
-            Error::InvalidMnemonic => true,
+            Error::Bip39Error(mnemonic_error) => match mnemonic_error {
+                Bip39Error::UnknownWord(word_index) => word_index == 0,
+                _ => false,
+            },
             _ => false,
         });
     }
@@ -245,7 +245,10 @@ mod tests {
         .unwrap();
 
         assert!(match mnemonic_error {
-            Error::InvalidMnemonic => true,
+            Error::Bip39Error(mnemonic_error) => match mnemonic_error {
+                Bip39Error::UnknownWord(word_index) => word_index == 0,
+                _ => false,
+            },
             _ => false,
         });
     }
@@ -260,7 +263,10 @@ mod tests {
         .unwrap();
 
         assert!(match mnemonic_error {
-            Error::InvalidMnemonic => true,
+            Error::Bip39Error(mnemonic_error) => match mnemonic_error {
+                Bip39Error::BadWordCount(word_count) => word_count == 11,
+                _ => false,
+            },
             _ => false,
         });
     }
@@ -275,7 +281,10 @@ mod tests {
         .unwrap();
 
         assert!(match mnemonic_error {
-            Error::InvalidMnemonic => true,
+            Error::Bip39Error(mnemonic_error) => match mnemonic_error {
+                Bip39Error::UnknownWord(word_index) => word_index == 0,
+                _ => false,
+            },
             _ => false,
         });
     }

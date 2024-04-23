@@ -129,37 +129,17 @@ impl EventClient {
 
     pub async fn get_event(&self, latest_event_id: &str) -> Result<ApiProtonEvent, Error> {
         let request = ProtonRequest::new(Method::GET, format!("{}/events/{}", BASE_CORE_API_V5, &latest_event_id));
-        let response = self
-            .session
-            .read()
-            .await
-            .bind(request)
-            .map_err(|e| e.into())?
-            .send()
-            .await
-            .map_err(|e| e.into())?;
+        let response = self.session.read().await.bind(request)?.send().await?;
 
-        let parsed = response
-            .to_json::<ApiProtonEvent>()
-            .map_err(|_| Error::DeserializeError)?;
+        let parsed = response.to_json::<ApiProtonEvent>()?;
         Ok(parsed)
     }
 
     pub async fn get_latest_event_id(&self) -> Result<String, Error> {
         let request = ProtonRequest::new(Method::GET, format!("{}/events/latest", BASE_CORE_API_V4));
-        let response = self
-            .session
-            .read()
-            .await
-            .bind(request)
-            .map_err(|e| e.into())?
-            .send()
-            .await
-            .map_err(|e| e.into())?;
+        let response = self.session.read().await.bind(request)?.send().await?;
 
-        let parsed = response
-            .to_json::<GetLatestEventIDResponseBody>()
-            .map_err(|_| Error::DeserializeError)?;
+        let parsed = response.to_json::<GetLatestEventIDResponseBody>()?;
         Ok(parsed.EventID)
     }
 }

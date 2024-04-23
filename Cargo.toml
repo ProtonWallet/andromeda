@@ -1,11 +1,23 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/api",
-    "crates/common",
-    "crates/bitcoin",
-    # "crates/wasm", # Muon wasm depends on Muon
-    # "examples/cli",
+  "crates/api",
+  "crates/common",
+  "crates/bitcoin",
+  "crates/wasm",    # Muon wasm depends on Muon
+  # "examples/cli",
 ]
 [profile.release]
 opt-level = "s" # Tell `rustc` to optimize for small code size.
+
+[workspace.dependencies]
+anyhow = "1.0"
+thiserror = "1.0"
+bdk = { version = "0.29.0", default-features = false, features = [
+  "std",
+  "keys-bip39",
+  "use-esplora-reqwest",
+  "reqwest-default-tls",
+  "async-interface",
+] }
+bitcoin = { version = "0.30.2", features = ["serde", "rand"] }

@@ -5,7 +5,7 @@ use andromeda_bitcoin::{
 use wasm_bindgen::prelude::*;
 
 use super::types::defined::WasmWordCount;
-use crate::common::error::DetailledWasmError;
+use crate::common::error::ErrorExt;
 
 #[wasm_bindgen]
 #[derive(Clone)]
@@ -39,17 +39,17 @@ impl WasmMnemonic {
     /// Generates a Mnemonic with a random entropy based on the given word
     /// count.
     #[wasm_bindgen(constructor)]
-    pub fn new(word_count: WasmWordCount) -> Result<WasmMnemonic, DetailledWasmError> {
-        let mnemonic = Mnemonic::new(word_count.into()).map_err(|e| e.into())?;
+    pub fn new(word_count: WasmWordCount) -> Result<WasmMnemonic, js_sys::Error> {
+        let mnemonic = Mnemonic::new(word_count.into()).map_err(|e| e.to_js_error())?;
         Ok(WasmMnemonic { inner: mnemonic })
     }
 
     /// Parse a Mnemonic with the given string.
     #[wasm_bindgen(js_name = fromString)]
-    pub fn from_string(mnemonic: &str) -> Result<WasmMnemonic, DetailledWasmError> {
+    pub fn from_string(mnemonic: &str) -> Result<WasmMnemonic, js_sys::Error> {
         Mnemonic::from_string(mnemonic.to_string())
             .map(|mnemonic| WasmMnemonic { inner: mnemonic.into() })
-            .map_err(|e| e.into())
+            .map_err(|e| e.to_js_error())
     }
 
     /// Returns the Mnemonic as a string.

@@ -1,11 +1,11 @@
 use std::str::FromStr;
 
-use andromeda_bitcoin::{Address, ScriptBuf};
-use serde::{Deserialize, Deserializer, Serialize};
+use andromeda_bitcoin::{error::Error as BitcoinError, Address, ScriptBuf};
+use serde::{Deserialize, Deserializer};
 use wasm_bindgen::prelude::*;
 
 use super::transaction::WasmScript;
-use crate::common::{error::WasmError, types::WasmNetwork};
+use crate::common::{error::ErrorExt, types::WasmNetwork};
 
 #[wasm_bindgen]
 #[derive(Clone)]
@@ -44,21 +44,21 @@ impl Into<WasmAddress> for Address {
 #[wasm_bindgen]
 impl WasmAddress {
     #[wasm_bindgen(constructor)]
-    pub fn new(str: String, network: WasmNetwork) -> Result<WasmAddress, WasmError> {
+    pub fn new(str: String, network: WasmNetwork) -> Result<WasmAddress, js_sys::Error> {
         let inner = Address::from_str(&str)
-            .map_err(|_| WasmError::InvalidAddress)?
+            .map_err(|e| BitcoinError::from(e).to_js_error())?
             .require_network(network.into())
-            .map_err(|_| WasmError::InvalidNetwork)?;
+            .map_err(|e| BitcoinError::from(e).to_js_error())?;
 
         Ok(WasmAddress { inner })
     }
 
     #[wasm_bindgen(js_name = fromScript)]
-    pub fn from_script(value: WasmScript, network: WasmNetwork) -> Result<WasmAddress, WasmError> {
+    pub fn from_script(value: WasmScript, network: WasmNetwork) -> Result<WasmAddress, js_sys::Error> {
         let script: ScriptBuf = value.into();
 
         Ok(WasmAddress {
-            inner: Address::from_script(&script, network.into()).map_err(|_| WasmError::InvalidAddress)?,
+            inner: Address::from_script(&script, network.into()).map_err(|e| BitcoinError::from(e).to_js_error())?,
         })
     }
 

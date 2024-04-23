@@ -1,11 +1,6 @@
-use std::{
-    fmt::Display,
-    sync::{Arc, RwLock},
-};
+use std::sync::{Arc, RwLock};
 
 use andromeda_bitcoin::{account::Account, BdkMemoryDatabase};
-use andromeda_common::ScriptType;
-use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
 use super::{
@@ -13,13 +8,13 @@ use super::{
     types::{
         address::WasmAddress,
         balance::WasmBalance,
-        pagination::WasmPagination,
-        transaction::{WasmSimpleTransaction, WasmTransactionDetails},
+        pagination::{WasmPagination, WasmSortOrder},
+        transaction::{WasmSimpleTransaction, WasmTransactionDetailsData},
         typescript_interfaces::{IWasmSimpleTransactionArray, IWasmUtxoArray},
         utxo::WasmUtxo,
     },
 };
-use crate::common::error::DetailledWasmError;
+use crate::common::error::ErrorExt;
 
 #[wasm_bindgen]
 pub struct WasmAccount {
@@ -47,59 +42,59 @@ impl WasmAccount {
         amount: Option<u64>,
         label: Option<String>,
         message: Option<String>,
-    ) -> Result<WasmPaymentLink, DetailledWasmError> {
+    ) -> Result<WasmPaymentLink, js_sys::Error> {
         let account_inner = self.get_inner();
 
         let payment_link: WasmPaymentLink = account_inner
             .write()
             .expect("lock")
             .get_bitcoin_uri(index, amount, label, message)
-            .map_err(|e| e.into())?
+            .map_err(|e| e.to_js_error())?
             .into();
 
         Ok(payment_link)
     }
 
     #[wasm_bindgen]
-    pub fn owns(&self, address: &WasmAddress) -> Result<bool, DetailledWasmError> {
+    pub fn owns(&self, address: &WasmAddress) -> Result<bool, js_sys::Error> {
         let owns = self
             .inner
             .read()
             .expect("lock")
             .owns(&address.into())
-            .map_err(|e| e.into())?;
+            .map_err(|e| e.to_js_error())?;
 
         Ok(owns)
     }
 
     #[wasm_bindgen(js_name = getBalance)]
-    pub fn get_balance(&self) -> Result<WasmBalance, DetailledWasmError> {
+    pub fn get_balance(&self) -> Result<WasmBalance, js_sys::Error> {
         let balance: WasmBalance = self
             .inner
             .read()
             .expect("lock")
             .get_balance()
-            .map_err(|e| e.into())?
+            .map_err(|e| e.to_js_error())?
             .into();
 
         Ok(balance)
     }
 
     #[wasm_bindgen(js_name = getDerivationPath)]
-    pub fn get_derivation_path(&self) -> Result<String, DetailledWasmError> {
+    pub fn get_derivation_path(&self) -> Result<String, js_sys::Error> {
         let derivation_path = self.inner.read().expect("lock").get_derivation_path().to_string();
 
         Ok(derivation_path)
     }
 
     #[wasm_bindgen(js_name = getUtxos)]
-    pub fn get_utxos(&self) -> Result<IWasmUtxoArray, DetailledWasmError> {
+    pub fn get_utxos(&self) -> Result<IWasmUtxoArray, js_sys::Error> {
         let utxos = self
             .inner
             .read()
             .expect("lock")
             .get_utxos()
-            .map_err(|e| e.into())?
+            .map_err(|e| e.to_js_error())?
             .into_iter()
             .map(|utxo| utxo.into())
             .collect::<Vec<WasmUtxo>>();
@@ -112,28 +107,28 @@ impl WasmAccount {
         &self,
         pagination: Option<WasmPagination>,
         sort: Option<WasmSortOrder>,
-    ) -> Result<IWasmSimpleTransactionArray, DetailledWasmError> {
+    ) -> Result<IWasmSimpleTransactionArray, js_sys::Error> {
         let transactions = self
             .inner
             .read()
             .expect("lock")
             .get_transactions(pagination.map(|pa| pa.into()), sort.map(|s| s.into()))
-            .map_err(|e| e.into())?
+            .map_err(|e| e.to_js_error())?
             .into_iter()
-            .map(|tx| tx.into())
+            .map(|tx| WasmSimpleTransaction::from(tx))
             .collect::<Vec<_>>();
 
         Ok(serde_wasm_bindgen::to_value(&transactions).unwrap().into())
     }
 
     #[wasm_bindgen(js_name = getTransaction)]
-    pub fn get_transaction(&self, txid: String) -> Result<WasmTransactionDetailsData, DetailledWasmError> {
+    pub fn get_transaction(&self, txid: String) -> Result<WasmTransactionDetailsData, js_sys::Error> {
         let transaction = self
             .inner
             .read()
             .expect("lock")
             .get_transaction(txid)
-            .map_err(|e| e.into())?;
+            .map_err(|e| e.to_js_error())?;
 
         Ok(WasmTransactionDetailsData {
             Data: transaction.into(),

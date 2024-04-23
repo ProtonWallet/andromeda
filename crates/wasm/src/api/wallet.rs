@@ -9,7 +9,7 @@ use wasm_bindgen::prelude::*;
 use super::exchange_rate::WasmApiExchangeRate;
 use crate::{
     bitcoin::types::derivation_path::WasmDerivationPath,
-    common::{error::WasmError, types::WasmScriptType},
+    common::{error::ErrorExt, types::WasmScriptType},
 };
 
 #[wasm_bindgen]
@@ -241,12 +241,12 @@ pub struct WasmApiWalletTransactions(pub Vec<WasmApiWalletTransactionData>);
 #[wasm_bindgen]
 impl WasmWalletClient {
     #[wasm_bindgen(js_name = "getWallets")]
-    pub async fn get_wallets(&self) -> Result<WasmApiWalletsData, WasmError> {
+    pub async fn get_wallets(&self) -> Result<WasmApiWalletsData, js_sys::Error> {
         let wallets = self
             .0
             .get_wallets()
             .await
-            .map_err(|e| e.into())
+            .map_err(|e| e.to_js_error())
             .map(|wallets| wallets.into_iter().map(|wallet| wallet.into()).collect::<Vec<_>>())?;
 
         Ok(WasmApiWalletsData(wallets))
@@ -264,7 +264,7 @@ impl WasmWalletClient {
         mnemonic: Option<String>,
         fingerprint: Option<String>,
         public_key: Option<String>,
-    ) -> Result<WasmApiWalletData, WasmError> {
+    ) -> Result<WasmApiWalletData, js_sys::Error> {
         let payload = CreateWalletRequestBody {
             Name: name,
             IsImported: match is_imported {
@@ -286,21 +286,25 @@ impl WasmWalletClient {
         self.0
             .create_wallet(payload)
             .await
-            .map_err(|e| e.into())
+            .map_err(|e| e.to_js_error())
             .map(|wallet| wallet.into())
     }
 
     #[wasm_bindgen(js_name = "deleteWallet")]
-    pub async fn delete_wallets(&self, wallet_id: String) -> Result<(), WasmError> {
-        self.0.delete_wallet(wallet_id).await.map_err(|e| e.into())?;
+    pub async fn delete_wallets(&self, wallet_id: String) -> Result<(), js_sys::Error> {
+        self.0.delete_wallet(wallet_id).await.map_err(|e| e.to_js_error())?;
         Ok(())
     }
 
     #[wasm_bindgen(js_name = "getWalletAccounts")]
-    pub async fn get_wallet_accounts(&self, wallet_id: String) -> Result<WasmApiWalletAccounts, WasmError> {
-        let wallet_accounts = self.0.get_wallet_accounts(wallet_id).await.map_err(|e| e.into())?;
+    pub async fn get_wallet_accounts(&self, wallet_id: String) -> Result<WasmApiWalletAccounts, js_sys::Error> {
+        let wallet_accounts = self
+            .0
+            .get_wallet_accounts(wallet_id)
+            .await
+            .map_err(|e| e.to_js_error())?;
 
-        let wallet_accounts: Result<Vec<WasmWalletAccountData>, WasmError> = wallet_accounts
+        let wallet_accounts: Result<Vec<WasmWalletAccountData>, js_sys::Error> = wallet_accounts
             .into_iter()
             .map(|account| Ok(WasmWalletAccountData { Data: account.into() }))
             .collect();
@@ -315,7 +319,7 @@ impl WasmWalletClient {
         derivation_path: WasmDerivationPath,
         label: String,
         script_type: WasmScriptType,
-    ) -> Result<WasmWalletAccountData, WasmError> {
+    ) -> Result<WasmWalletAccountData, js_sys::Error> {
         let payload = CreateWalletAccountRequestBody {
             DerivationPath: derivation_path.inner().to_string(),
             Label: label,
@@ -326,7 +330,7 @@ impl WasmWalletClient {
             .0
             .create_wallet_account(wallet_id, payload)
             .await
-            .map_err(|e| e.into())?;
+            .map_err(|e| e.to_js_error())?;
 
         Ok(WasmWalletAccountData { Data: account.into() })
     }
@@ -337,12 +341,12 @@ impl WasmWalletClient {
         wallet_id: String,
         wallet_account_id: String,
         label: String,
-    ) -> Result<WasmWalletAccountData, WasmError> {
+    ) -> Result<WasmWalletAccountData, js_sys::Error> {
         let account = self
             .0
             .update_wallet_account_label(wallet_id, wallet_account_id, label)
             .await
-            .map_err(|e| e.into())?;
+            .map_err(|e| e.to_js_error())?;
 
         Ok(WasmWalletAccountData { Data: account.into() })
     }
@@ -353,12 +357,12 @@ impl WasmWalletClient {
         wallet_id: String,
         wallet_account_id: String,
         email_address_id: String,
-    ) -> Result<WasmWalletAccountData, WasmError> {
+    ) -> Result<WasmWalletAccountData, js_sys::Error> {
         let account = self
             .0
             .add_email_address(wallet_id, wallet_account_id, email_address_id)
             .await
-            .map_err(|e| e.into())?;
+            .map_err(|e| e.to_js_error())?;
 
         Ok(WasmWalletAccountData { Data: account.into() })
     }
@@ -369,22 +373,26 @@ impl WasmWalletClient {
         wallet_id: String,
         wallet_account_id: String,
         email_address_id: String,
-    ) -> Result<WasmWalletAccountData, WasmError> {
+    ) -> Result<WasmWalletAccountData, js_sys::Error> {
         let account = self
             .0
             .remove_email_address(wallet_id, wallet_account_id, email_address_id)
             .await
-            .map_err(|e| e.into())?;
+            .map_err(|e| e.to_js_error())?;
 
         Ok(WasmWalletAccountData { Data: account.into() })
     }
 
     #[wasm_bindgen(js_name = "deleteWalletAccount")]
-    pub async fn delete_wallet_account(&self, wallet_id: String, wallet_account_id: String) -> Result<(), WasmError> {
+    pub async fn delete_wallet_account(
+        &self,
+        wallet_id: String,
+        wallet_account_id: String,
+    ) -> Result<(), js_sys::Error> {
         self.0
             .delete_wallet_account(wallet_id, wallet_account_id)
             .await
-            .map_err(|e| e.into())
+            .map_err(|e| e.to_js_error())
     }
 
     #[wasm_bindgen(js_name = "getWalletTransactions")]
@@ -393,12 +401,12 @@ impl WasmWalletClient {
         wallet_id: String,
         wallet_account_id: Option<String>,
         hashed_txids: Option<Vec<String>>,
-    ) -> Result<WasmApiWalletTransactions, WasmError> {
+    ) -> Result<WasmApiWalletTransactions, js_sys::Error> {
         let wallet_transactions = self
             .0
             .get_wallet_transactions(wallet_id, wallet_account_id, hashed_txids)
             .await
-            .map_err(|e| e.into())
+            .map_err(|e| e.to_js_error())
             .map(|transactions| {
                 transactions
                     .into_iter()
@@ -414,12 +422,12 @@ impl WasmWalletClient {
         &self,
         wallet_id: String,
         wallet_account_id: Option<String>,
-    ) -> Result<WasmApiWalletTransactions, WasmError> {
+    ) -> Result<WasmApiWalletTransactions, js_sys::Error> {
         let wallet_transactions = self
             .0
             .get_wallet_transactions_to_hash(wallet_id, wallet_account_id)
             .await
-            .map_err(|e| e.into())
+            .map_err(|e| e.to_js_error())
             .map(|transactions| {
                 transactions
                     .into_iter()
@@ -436,11 +444,11 @@ impl WasmWalletClient {
         wallet_id: String,
         wallet_account_id: String,
         payload: WasmCreateWalletTransactionPayload,
-    ) -> Result<WasmApiWalletTransactionData, WasmError> {
+    ) -> Result<WasmApiWalletTransactionData, js_sys::Error> {
         self.0
             .create_wallet_transaction(wallet_id, wallet_account_id, payload.into())
             .await
-            .map_err(|e| e.into())
+            .map_err(|e| e.to_js_error())
             .map(|t| WasmApiWalletTransactionData { Data: t.into() })
     }
 
@@ -451,11 +459,11 @@ impl WasmWalletClient {
         wallet_account_id: String,
         wallet_transaction_id: String,
         label: String,
-    ) -> Result<WasmApiWalletTransactionData, WasmError> {
+    ) -> Result<WasmApiWalletTransactionData, js_sys::Error> {
         self.0
             .update_wallet_transaction_label(wallet_id, wallet_account_id, wallet_transaction_id, label)
             .await
-            .map_err(|e| e.into())
+            .map_err(|e| e.to_js_error())
             .map(|t| WasmApiWalletTransactionData { Data: t.into() })
     }
 
@@ -466,11 +474,11 @@ impl WasmWalletClient {
         wallet_account_id: String,
         wallet_transaction_id: String,
         hash_txid: String,
-    ) -> Result<WasmApiWalletTransactionData, WasmError> {
+    ) -> Result<WasmApiWalletTransactionData, js_sys::Error> {
         self.0
             .update_wallet_transaction_hashed_txid(wallet_id, wallet_account_id, wallet_transaction_id, hash_txid)
             .await
-            .map_err(|e| e.into())
+            .map_err(|e| e.to_js_error())
             .map(|t| WasmApiWalletTransactionData { Data: t.into() })
     }
 
@@ -480,10 +488,10 @@ impl WasmWalletClient {
         wallet_id: String,
         wallet_account_id: String,
         wallet_transaction_id: String,
-    ) -> Result<(), WasmError> {
+    ) -> Result<(), js_sys::Error> {
         self.0
             .delete_wallet_transactions(wallet_id, wallet_account_id, wallet_transaction_id)
             .await
-            .map_err(|e| e.into())
+            .map_err(|e| e.to_js_error())
     }
 }

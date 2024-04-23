@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
-use crate::common::{error::WasmError, types::WasmBitcoinUnit};
+use crate::common::{error::ErrorExt, types::WasmBitcoinUnit};
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
@@ -342,38 +342,38 @@ impl From<SettingsClient> for WasmSettingsClient {
 #[wasm_bindgen]
 impl WasmSettingsClient {
     #[wasm_bindgen(js_name = "getUserSettings")]
-    pub async fn get_user_settings(&self) -> Result<WasmUserSettingsData, WasmError> {
+    pub async fn get_user_settings(&self) -> Result<WasmUserSettingsData, js_sys::Error> {
         self.0
             .get_user_settings()
             .await
-            .map_err(|e| e.into())
+            .map_err(|e| e.to_js_error())
             .map(|settings| WasmUserSettingsData(settings.into()))
     }
 
     #[wasm_bindgen(js_name = "setBitcoinUnit")]
-    pub async fn bitcoin_unit(&self, symbol: WasmBitcoinUnit) -> Result<WasmUserSettingsData, WasmError> {
+    pub async fn bitcoin_unit(&self, symbol: WasmBitcoinUnit) -> Result<WasmUserSettingsData, js_sys::Error> {
         self.0
             .bitcoin_unit(symbol.into())
             .await
-            .map_err(|e| e.into())
+            .map_err(|e| e.to_js_error())
             .map(|settings| WasmUserSettingsData(settings.into()))
     }
 
     #[wasm_bindgen(js_name = "setFiatCurrency")]
-    pub async fn fiat_currency(&self, symbol: WasmFiatCurrency) -> Result<WasmUserSettingsData, WasmError> {
+    pub async fn fiat_currency(&self, symbol: WasmFiatCurrency) -> Result<WasmUserSettingsData, js_sys::Error> {
         self.0
             .fiat_currency(symbol.into())
             .await
-            .map_err(|e| e.into())
+            .map_err(|e| e.to_js_error())
             .map(|settings| WasmUserSettingsData(settings.into()))
     }
 
     #[wasm_bindgen(js_name = "setTwoFaThreshold")]
-    pub async fn two_fa_threshold(&self, amount: u64) -> Result<WasmUserSettingsData, WasmError> {
+    pub async fn two_fa_threshold(&self, amount: u64) -> Result<WasmUserSettingsData, js_sys::Error> {
         self.0
             .two_fa_threshold(amount)
             .await
-            .map_err(|e| e.into())
+            .map_err(|e| e.to_js_error())
             .map(|settings| WasmUserSettingsData(settings.into()))
     }
 
@@ -381,11 +381,11 @@ impl WasmSettingsClient {
     pub async fn hide_empty_used_addresses(
         &self,
         hide_empty_used_addresses: bool,
-    ) -> Result<WasmUserSettingsData, WasmError> {
+    ) -> Result<WasmUserSettingsData, js_sys::Error> {
         self.0
             .hide_empty_used_addresses(hide_empty_used_addresses)
             .await
-            .map_err(|e| e.into())
+            .map_err(|e| e.to_js_error())
             .map(|settings| WasmUserSettingsData(settings.into()))
     }
 }

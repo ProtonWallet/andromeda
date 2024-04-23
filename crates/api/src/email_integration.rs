@@ -4,7 +4,10 @@ use async_std::sync::RwLock;
 use muon::{http::Method, ProtonRequest, Response, Session};
 use serde::{Deserialize, Serialize};
 
-use crate::{error::Error, BASE_WALLET_API_V1};
+use crate::{
+    error::{Error, ResponseError},
+    BASE_WALLET_API_V1,
+};
 
 #[derive(Clone)]
 pub struct EmailIntegrationClient {
@@ -50,42 +53,21 @@ impl EmailIntegrationClient {
             format!("{}/emails/lookup?Email={}", BASE_WALLET_API_V1, email),
         );
 
-        let response = self
-            .session
-            .read()
-            .await
-            .bind(request)
-            .map_err(|e| e.into())?
-            .send()
-            .await
-            .map_err(|e| e.into())?;
+        let response = self.session.read().await.bind(request)?.send().await?;
 
-        let parsed = response
-            .to_json::<LookupBitcoinAddressResponseBody>()
-            .map_err(|_| Error::DeserializeError)?;
+        let parsed = response.to_json::<LookupBitcoinAddressResponseBody>()?;
 
         Ok(parsed.WalletBitcoinAddress)
     }
 
     pub async fn create_bitcoin_addresses_request(&self, email: String) -> Result<(), Error> {
         let payload = CreateBitcoinAddressRequestBody { Email: email };
-        let request = ProtonRequest::new(Method::POST, format!("{}/emails/requests", BASE_WALLET_API_V1))
-            .json_body(payload)
-            .map_err(|_| Error::SerializeError)?;
+        let request =
+            ProtonRequest::new(Method::POST, format!("{}/emails/requests", BASE_WALLET_API_V1)).json_body(payload)?;
 
-        let response = self
-            .session
-            .read()
-            .await
-            .bind(request)
-            .map_err(|e| e.into())?
-            .send()
-            .await
-            .map_err(|e| e.into())?;
+        let response = self.session.read().await.bind(request)?.send().await?;
 
-        let _ = response
-            .to_json::<CreateBitcoinAddressRequestResponseBody>()
-            .map_err(|_| Error::DeserializeError)?;
+        let _ = response.to_json::<CreateBitcoinAddressRequestResponseBody>()?;
         Ok(())
     }
 }
@@ -104,6 +86,6 @@ mod tests {
 
         let bitcoin_address = client.lookup_bitcoin_address(String::from("pro@proton.black")).await;
 
-        println!("request done: {:?}", bitcoin_address);
+        println!("request done: {}", bitcoin_address.err().unwrap());
     }
 }

@@ -102,10 +102,7 @@ impl PaymentLink {
     }
 
     fn try_create_address(address_str: &str, network: Network) -> Result<Address, Error> {
-        let address = Address::from_str(address_str)
-            .map_err(|_| Error::InvalidAddress)?
-            .require_network(network.into())
-            .map_err(|_| Error::InvalidNetwork)?;
+        let address = Address::from_str(address_str)?.require_network(network.into())?;
 
         Ok(address)
     }
@@ -123,7 +120,7 @@ impl PaymentLink {
             let splitted = splitted.split("?").collect::<Vec<&str>>();
 
             let (address_str, query_params_str) = match splitted.len() {
-                0 => Err(Error::InvalidAddress),
+                0 => Err(Error::InvalidAddress(payment_link_str.to_string())),
                 1 => Ok((splitted[0], "")),
                 _ => Ok((splitted[0], splitted[1])),
             }?;
@@ -188,6 +185,7 @@ mod tests {
     use std::str::FromStr;
 
     use andromeda_common::Network;
+    use bitcoin::{address::Error as BitcoinAddressError, bech32::Error as Bech32Error, Network as BitcoinNetwork};
     use miniscript::bitcoin::Address;
 
     use super::super::payment_link::PaymentLink;
@@ -300,13 +298,16 @@ mod tests {
         .err()
         .unwrap();
 
-        assert_eq!(
-            true,
-            match error {
-                Error::InvalidAddress => true,
+        assert!(match error {
+            Error::BitcoinAddressError(error) => match error {
+                BitcoinAddressError::Bech32(error) => match error {
+                    Bech32Error::InvalidChar(invalid_char) => invalid_char == '-',
+                    _ => false,
+                },
                 _ => false,
-            }
-        );
+            },
+            _ => false,
+        });
     }
 
     #[test]
@@ -318,13 +319,14 @@ mod tests {
         .err()
         .unwrap();
 
-        assert_eq!(
-            true,
-            match error {
-                Error::InvalidNetwork => true,
+        assert!(match error {
+            Error::BitcoinAddressError(error) => match error {
+                BitcoinAddressError::NetworkValidation { required, found, .. } =>
+                    required == BitcoinNetwork::Bitcoin && found == BitcoinNetwork::Testnet,
                 _ => false,
-            }
-        );
+            },
+            _ => false,
+        });
     }
 
     #[test]
@@ -372,13 +374,16 @@ mod tests {
             Network::Testnet
         ) .err().unwrap();
 
-        assert_eq!(
-            true,
-            match error {
-                Error::InvalidAddress => true,
+        assert!(match error {
+            Error::BitcoinAddressError(error) => match error {
+                BitcoinAddressError::Bech32(error) => match error {
+                    Bech32Error::InvalidChar(invalid_char) => invalid_char == '-',
+                    _ => false,
+                },
                 _ => false,
-            }
-        );
+            },
+            _ => false,
+        });
     }
 
     #[test]
@@ -390,12 +395,13 @@ mod tests {
         .err()
         .unwrap();
 
-        assert_eq!(
-            true,
-            match error {
-                Error::InvalidNetwork => true,
+        assert!(match error {
+            Error::BitcoinAddressError(error) => match error {
+                BitcoinAddressError::NetworkValidation { required, found, .. } =>
+                    required == BitcoinNetwork::Bitcoin && found == BitcoinNetwork::Testnet,
                 _ => false,
-            }
-        );
+            },
+            _ => false,
+        });
     }
 }

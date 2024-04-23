@@ -87,19 +87,9 @@ impl BitcoinAddressClient {
             only_without_bitcoin_addresses.map(|o| o.to_string()),
         );
 
-        let response = self
-            .session
-            .read()
-            .await
-            .bind(request)
-            .map_err(|e| e.into())?
-            .send()
-            .await
-            .map_err(|e| e.into())?;
+        let response = self.session.read().await.bind(request)?.send().await?;
 
-        let parsed = response
-            .to_json::<GetBitcoinAddressesResponseBody>()
-            .map_err(|_| Error::DeserializeError)?;
+        let parsed = response.to_json::<GetBitcoinAddressesResponseBody>()?;
 
         Ok(parsed.WalletBitcoinAddresses)
     }
@@ -117,19 +107,9 @@ impl BitcoinAddressClient {
             ),
         );
 
-        let response = self
-            .session
-            .read()
-            .await
-            .bind(request)
-            .map_err(|e| e.into())?
-            .send()
-            .await
-            .map_err(|e| e.into())?;
+        let response = self.session.read().await.bind(request)?.send().await?;
 
-        let parsed = response
-            .to_json::<GetBitcoinAddressHighestIndexResponseBody>()
-            .map_err(|_| Error::DeserializeError)?;
+        let parsed = response.to_json::<GetBitcoinAddressHighestIndexResponseBody>()?;
 
         Ok(parsed.HighestIndex)
     }
@@ -150,22 +130,11 @@ impl BitcoinAddressClient {
                 BASE_WALLET_API_V1, wallet_id, wallet_account_id
             ),
         )
-        .json_body(payload)
-        .map_err(|_| Error::SerializeError)?;
+        .json_body(payload)?;
 
-        let response = self
-            .session
-            .read()
-            .await
-            .bind(request)
-            .map_err(|e| e.into())?
-            .send()
-            .await
-            .map_err(|e| e.into())?;
+        let response = self.session.read().await.bind(request)?.send().await?;
 
-        let parsed = response
-            .to_json::<GetBitcoinAddressesResponseBody>()
-            .map_err(|_| Error::DeserializeError)?;
+        let parsed = response.to_json::<GetBitcoinAddressesResponseBody>()?;
 
         Ok(parsed.WalletBitcoinAddresses)
     }
@@ -184,22 +153,11 @@ impl BitcoinAddressClient {
                 BASE_WALLET_API_V1, wallet_id, wallet_account_id, wallet_account_bitcoin_address_id
             ),
         )
-        .json_body(bitcoin_address)
-        .map_err(|_| Error::SerializeError)?;
+        .json_body(bitcoin_address)?;
 
-        let response = self
-            .session
-            .read()
-            .await
-            .bind(request)
-            .map_err(|e| e.into())?
-            .send()
-            .await
-            .map_err(|e| e.into())?;
+        let response = self.session.read().await.bind(request)?.send().await?;
 
-        let parsed = response
-            .to_json::<UpdateBitcoinAddressResponseBody>()
-            .map_err(|_| Error::DeserializeError)?;
+        let parsed = response.to_json::<UpdateBitcoinAddressResponseBody>()?;
 
         Ok(parsed.WalletBitcoinAddress)
     }

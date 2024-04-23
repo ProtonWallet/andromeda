@@ -35,7 +35,7 @@ where
     Storage: BatchDatabase + Debug,
 {
     pub fn new(network: Network, bip39_mnemonic: String, bip38_passphrase: Option<String>) -> Result<Self, Error> {
-        let mnemonic = Mnemonic::from_string(bip39_mnemonic).map_err(|_| Error::InvalidMnemonic)?;
+        let mnemonic = Mnemonic::from_string(bip39_mnemonic)?;
         let mprv = ExtendedPrivKey::new_master(
             network.into(),
             &mnemonic.inner().to_seed(match bip38_passphrase {
@@ -104,7 +104,7 @@ where
 
         let balance = account_balances
             .into_iter()
-            .fold(Ok(init), |acc, account_balance| match acc {
+            .fold(Ok(init), |acc: Result<Balance, Error>, account_balance| match acc {
                 Ok(acc) => Ok(Balance {
                     untrusted_pending: acc.untrusted_pending + account_balance.untrusted_pending,
                     confirmed: acc.confirmed + account_balance.confirmed,
@@ -132,7 +132,7 @@ where
                 let account_guard = account.read().expect("lock");
                 let wallet = account_guard.get_wallet();
 
-                let transactions = wallet.list_transactions(true).map_err(|e| e.into())?;
+                let transactions = wallet.list_transactions(true)?;
 
                 let transactions = transactions
                     .into_iter()
@@ -141,7 +141,7 @@ where
 
                 Ok(transactions)
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<Vec<Vec<SimpleTransaction>>, Error>>()?;
 
         let simple_txs = simple_txs.into_iter().flatten().collect::<Vec<_>>();
 
@@ -155,10 +155,11 @@ where
     ) -> Result<TransactionDetails, Error> {
         let account = self.accounts.get(derivation_path);
 
-        match account {
-            Some(account) => account.read().expect("lock").get_transaction(txid),
-            _ => Err(Error::InvalidAccountIndex),
-        }
+        account
+            .ok_or(Error::AccountNotFound)?
+            .read()
+            .expect("lock")
+            .get_transaction(txid)
     }
 
     pub fn get_network(&self) -> Network {

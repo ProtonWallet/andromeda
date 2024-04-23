@@ -133,9 +133,8 @@ impl DetailledTxOutput {
     {
         Ok(DetailledTxOutput {
             value: output.value,
-            is_mine: wallet.is_mine(&output.script_pubkey).map_err(|e| e.into())?,
-            address: Address::from_script(&output.script_pubkey, wallet.network())
-                .map_err(|_| Error::CannotCreateAddressFromScript)?,
+            is_mine: wallet.is_mine(&output.script_pubkey)?,
+            address: Address::from_script(&output.script_pubkey, wallet.network())?,
             script_pubkey: output.script_pubkey,
         })
     }

@@ -55,19 +55,9 @@ impl ProtonEmailAddressClient {
     pub async fn get_proton_email_addresses(&self) -> Result<Vec<ApiProtonAddress>, Error> {
         let request = ProtonRequest::new(Method::GET, format!("{}/addresses", BASE_CORE_API_V4));
 
-        let response = self
-            .session
-            .read()
-            .await
-            .bind(request)
-            .map_err(|e| e.into())?
-            .send()
-            .await
-            .map_err(|e| e.into())?;
+        let response = self.session.read().await.bind(request)?.send().await?;
 
-        let parsed = response
-            .to_json::<GetApiProtonAddressesResponseBody>()
-            .map_err(|_| Error::DeserializeError)?;
+        let parsed = response.to_json::<GetApiProtonAddressesResponseBody>()?;
 
         Ok(parsed.Addresses)
     }
