@@ -431,7 +431,7 @@ where
                 .map(|utxo| OutPoint::from(utxo.clone()))
                 .collect();
             let utxos: &[OutPoint] = &bdk_utxos;
-            tx_builder.add_utxos(utxos).map_err(|e| e.into())?;
+            tx_builder.add_utxos(utxos)?;
         }
 
         Ok(tx_builder)
@@ -444,13 +444,7 @@ where
     ) -> Result<PartiallySignedTransaction, Error> {
         for TmpRecipient(_uuid, address, amount) in &self.recipients {
             // TODO: here convert amount in sats
-            tx_builder.add_recipient(
-                Address::from_str(&address)
-                    .map_err(|_| Error::InvalidAddress)?
-                    .assume_checked()
-                    .script_pubkey(),
-                *amount,
-            );
+            tx_builder.add_recipient(Address::from_str(&address)?.assume_checked().script_pubkey(), *amount);
         }
 
         tx_builder.change_policy(self.change_policy);
@@ -472,13 +466,12 @@ where
         if !&self.data.is_empty() {
             let mut buf = PushBytesBuf::new();
             buf.extend_from_slice(self.data.as_slice())
-                .map_err(|_| Error::InvalidData)?;
+                .map_err(|_| Error::InvalidData(self.data.clone()))?;
 
             tx_builder.add_data(&buf.as_push_bytes());
         }
 
         let (psbt, _) = tx_builder.finish().unwrap();
-        // FIXME: .map_err(|e| e.into())?;
 
         Ok(psbt)
     }
@@ -507,7 +500,7 @@ where
             CoinSelection::Manual => {
                 let mut tx_builder = wallet.build_tx().coin_selection(BranchAndBoundCoinSelection::default());
 
-                tx_builder = self.commit_utxos(tx_builder).map_err(|e| e.into())?;
+                tx_builder = self.commit_utxos(tx_builder)?;
                 self.create_psbt(tx_builder, allow_dust)
             }
         };

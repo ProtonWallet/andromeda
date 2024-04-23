@@ -370,12 +370,7 @@ impl ProtonWalletApiClient {
     /// api_client.login("my_username", "my_password");
     /// ```
     pub async fn login(&mut self, username: &str, password: &str) -> Result<(), Error> {
-        self.session
-            .write()
-            .await
-            .authenticate(username, password)
-            .await
-            .map_err(|error| error.into())?;
+        self.session.write().await.authenticate(username, password).await?;
 
         Ok(())
     }

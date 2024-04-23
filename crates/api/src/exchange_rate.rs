@@ -82,19 +82,9 @@ impl ExchangeRateClient {
         };
         let request = ProtonRequest::new(Method::GET, path);
 
-        let response = self
-            .session
-            .read()
-            .await
-            .bind(request)
-            .map_err(|e| e.into())?
-            .send()
-            .await
-            .map_err(|e| e.into())?;
+        let response = self.session.read().await.bind(request)?.send().await?;
 
-        let parsed = response
-            .to_json::<GetExchangeRateResponseBody>()
-            .map_err(|_| Error::DeserializeError)?;
+        let parsed = response.to_json::<GetExchangeRateResponseBody>()?;
 
         Ok(parsed.ExchangeRate)
     }
@@ -102,19 +92,9 @@ impl ExchangeRateClient {
     pub async fn get_all_fiat_currencies(&self) -> Result<Vec<ApiFiatCurrency>, Error> {
         let request = ProtonRequest::new(Method::GET, format!("{}/fiat-currencies", BASE_WALLET_API_V1));
 
-        let response = self
-            .session
-            .read()
-            .await
-            .bind(request)
-            .map_err(|e| e.into())?
-            .send()
-            .await
-            .map_err(|e| e.into())?;
+        let response = self.session.read().await.bind(request)?.send().await?;
 
-        let parsed = response
-            .to_json::<GetAllFiatCurrenciesResponseBody>()
-            .map_err(|_| Error::DeserializeError)?;
+        let parsed = response.to_json::<GetAllFiatCurrenciesResponseBody>()?;
 
         Ok(parsed.FiatCurrencies)
     }

@@ -2,7 +2,7 @@ use andromeda_bitcoin::blockchain::Blockchain;
 use wasm_bindgen::prelude::*;
 
 use super::{account::WasmAccount, psbt::WasmPartiallySignedTransaction};
-use crate::common::error::WasmError;
+use crate::common::error::ErrorExt;
 
 #[wasm_bindgen(getter_with_clone)]
 pub struct WasmBlockchain(Blockchain);
@@ -23,11 +23,14 @@ impl WasmBlockchain {
 
     /// Perform a full sync for the account
     #[wasm_bindgen(js_name = fullSync)]
-    pub async fn full_sync(&self, account: &WasmAccount) -> Result<(), WasmError> {
+    pub async fn full_sync(&self, account: &WasmAccount) -> Result<(), js_sys::Error> {
         let inner = account.get_inner();
         let inner = inner.read().unwrap();
 
-        self.0.full_sync(inner.get_wallet()).await.map_err(|e| e.into())?;
+        self.0
+            .full_sync(inner.get_wallet())
+            .await
+            .map_err(|e| e.to_js_error())?;
 
         Ok(())
     }
@@ -41,10 +44,10 @@ impl WasmBlockchain {
 
     /// Broadcasts a provided transaction
     #[wasm_bindgen(js_name = broadcastPsbt)]
-    pub async fn broadcast_psbt(&self, psbt: &WasmPartiallySignedTransaction) -> Result<String, WasmError> {
+    pub async fn broadcast_psbt(&self, psbt: &WasmPartiallySignedTransaction) -> Result<String, js_sys::Error> {
         let tx = psbt.get_inner().extract_tx();
 
-        self.0.broadcast(tx.clone()).await.map_err(|e| e.into())?;
+        self.0.broadcast(tx.clone()).await.map_err(|e| e.to_js_error())?;
 
         Ok(tx.txid().to_string())
     }

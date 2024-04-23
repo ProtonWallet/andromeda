@@ -5,8 +5,6 @@ edition = "2021"
 
 [dependencies]
 serde = { version = "1.0.144", features = ["derive"] }
-bitcoin = { version = "0.30.2", default-features = false, features = [
-  "serde",
-  "secp-recovery",
-  "rand",
-] }
+bitcoin = { workspace = true }
+
+thiserror = { workspace = true }

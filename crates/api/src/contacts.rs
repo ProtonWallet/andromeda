@@ -43,19 +43,9 @@ impl ContactsClient {
             ),
         );
 
-        let response = self
-            .session
-            .read()
-            .await
-            .bind(request)
-            .map_err(|e| e.into())?
-            .send()
-            .await
-            .map_err(|e| e.into())?;
+        let response = self.session.read().await.bind(request)?.send().await?;
 
-        let parsed = response
-            .to_json::<GetContactsResponseBody>()
-            .map_err(|_| Error::DeserializeError)?;
+        let parsed = response.to_json::<GetContactsResponseBody>()?;
         Ok(parsed.ContactEmails)
     }
 }

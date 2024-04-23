@@ -1,7 +1,7 @@
 use andromeda_bitcoin::payment_link::PaymentLink;
 use wasm_bindgen::prelude::*;
 
-use crate::common::{error::DetailledWasmError, types::WasmNetwork};
+use crate::common::{error::ErrorExt, types::WasmNetwork};
 
 #[wasm_bindgen]
 pub enum WasmPaymentLinkKind {
@@ -50,8 +50,8 @@ impl WasmPaymentLink {
     }
 
     #[wasm_bindgen(js_name = tryParse)]
-    pub fn try_parse(str: String, network: WasmNetwork) -> Result<WasmPaymentLink, DetailledWasmError> {
-        let inner = PaymentLink::try_parse(str, network.into()).map_err(|e| e.into())?;
+    pub fn try_parse(str: String, network: WasmNetwork) -> Result<WasmPaymentLink, js_sys::Error> {
+        let inner = PaymentLink::try_parse(str, network.into()).map_err(|e| e.to_js_error())?;
 
         Ok(WasmPaymentLink { inner })
     }

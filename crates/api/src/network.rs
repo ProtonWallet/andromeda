@@ -28,19 +28,9 @@ impl NetworkClient {
 
     pub async fn get_network(&self) -> Result<Network, Error> {
         let request = ProtonRequest::new(Method::GET, format!("{}/network", BASE_WALLET_API_V1));
-        let response = self
-            .session
-            .read()
-            .await
-            .bind(request)
-            .map_err(|e| e.into())?
-            .send()
-            .await
-            .map_err(|e| e.into())?;
+        let response = self.session.read().await.bind(request)?.send().await?;
 
-        let parsed = response
-            .to_json::<GetNetworkResponseBody>()
-            .map_err(|_| Error::DeserializeError)?;
+        let parsed = response.to_json::<GetNetworkResponseBody>()?;
 
         let network = match parsed.Network {
             0 => Network::Bitcoin,

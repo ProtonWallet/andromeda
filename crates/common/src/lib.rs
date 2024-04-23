@@ -143,7 +143,7 @@ impl TryFrom<u8> for ScriptType {
             1 => Ok(ScriptType::NestedSegwit),
             2 => Ok(ScriptType::NativeSegwit),
             3 => Ok(ScriptType::Taproot),
-            _ => Err(Error::InvalidScriptType),
+            _ => Err(Error::InvalidScriptType(value.to_string())),
         }
     }
 }

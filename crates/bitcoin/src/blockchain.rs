@@ -25,30 +25,22 @@ impl Blockchain {
     where
         D: BatchDatabase,
     {
-        wallet
-            .sync(&self.0, SyncOptions::default())
-            .await
-            .map_err(|e| e.into())?;
+        wallet.sync(&self.0, SyncOptions::default()).await?;
 
         Ok(())
     }
 
     /// Returns fee estimations in a Map
     pub async fn get_fees_estimation(&self) -> Result<HashMap<String, f64>, Error> {
-        let fees = self
-            .0
-            .get_fee_estimates()
-            .await
-            .map_err(|_| Error::CannotGetFeeEstimation)?;
+        let fees = self.0.get_fee_estimates().await?;
 
         Ok(fees)
     }
 
     /// Broadcasts a provided transaction
     pub async fn broadcast(&self, transaction: Transaction) -> Result<(), Error> {
-        self.0
-            .broadcast(&transaction)
-            .await
-            .map_err(|_| Error::CannotBroadcastTransaction)
+        self.0.broadcast(&transaction).await?;
+
+        Ok(())
     }
 }

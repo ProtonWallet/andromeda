@@ -83,8 +83,7 @@ fn build_account_descriptors(
             index: KeychainKind::Internal as u32,
         }]
         .into(),
-    ))
-    .map_err(|e| e.into())?;
+    ))?;
 
     let external = builder((
         account_xprv,
@@ -92,8 +91,7 @@ fn build_account_descriptors(
             index: KeychainKind::External as u32,
         }]
         .into(),
-    ))
-    .map_err(|e| e.into())?;
+    ))?;
 
     Ok((external, internal))
 }
@@ -110,7 +108,9 @@ where
     ) -> Result<BdkWallet<Storage>, Error> {
         let (external_descriptor, internal_descriptor) = build_account_descriptors(account_xprv, script_type)?;
 
-        BdkWallet::new(external_descriptor, Some(internal_descriptor), network.into(), storage).map_err(|e| e.into())
+        let wallet = BdkWallet::new(external_descriptor, Some(internal_descriptor), network.into(), storage)?;
+
+        Ok(wallet)
     }
 
     /// Returns a mutable reference to account's BdkWallet struct
@@ -156,9 +156,7 @@ where
     ) -> Result<Self, Error> {
         let secp = Secp256k1::new();
 
-        let account_xprv = master_secret_key
-            .derive_priv(&secp, &derivation_path)
-            .map_err(|e| e.into())?;
+        let account_xprv = master_secret_key.derive_priv(&secp, &derivation_path)?;
 
         Ok(Self {
             derivation_path: derivation_path.into(),
@@ -181,7 +179,9 @@ where
     /// * untrusted pending (unconfirmed external)
     /// * confirmed coins
     pub fn get_balance(&self) -> Result<BdkBalance, Error> {
-        self.wallet.get_balance().map_err(|e| e.into())
+        let balance = self.wallet.get_balance()?;
+
+        Ok(balance)
     }
 
     /// Returns a list of unspent outputs as a vector
@@ -190,7 +190,9 @@ where
     ///
     /// Later we might want to add pagination on top of that.
     pub fn get_utxos(&self) -> Result<Vec<LocalUtxo>, Error> {
-        self.wallet.list_unspent().map_err(|e| e.into())
+        let utxos = self.wallet.list_unspent()?;
+
+        Ok(utxos)
     }
 
     /// From a master private key, returns a bitcoin account (as defined in https://bips.dev/44/)
@@ -201,13 +203,17 @@ where
     /// to avoid address reuse, we need to sync before calling this method.
     pub fn get_address(&mut self, index: Option<u32>) -> Result<AddressInfo, Error> {
         let index = index.map_or(AddressIndex::LastUnused, |index| AddressIndex::Peek(index));
-        self.wallet.get_address(index).map_err(|e| e.into())
+        let address = self.wallet.get_address(index)?;
+
+        Ok(address)
     }
 
     /// Returns a boolean indicating whether or not the account owns the
     /// provided address
     pub fn owns(&self, address: &Address) -> Result<bool, Error> {
-        self.wallet.is_mine(&address.script_pubkey()).map_err(|e| e.into())
+        let owns = self.wallet.is_mine(&address.script_pubkey())?;
+
+        Ok(owns)
     }
 
     /// Returns a bitcoin uri as defined in https://bips.dev/21/
@@ -241,8 +247,7 @@ where
         // happen here might be consuming, maybe later we need to rework this part
         let simple_txs = self
             .wallet
-            .list_transactions(true)
-            .map_err(|e| e.into())?
+            .list_transactions(true)?
             .into_iter()
             .map(|tx| SimpleTransaction::from_detailled_tx(tx, Some(self.derivation_path.clone())))
             .collect::<Vec<_>>();
@@ -252,13 +257,9 @@ where
 
     /// Given a txid, returns a complete transaction    
     pub fn get_transaction(&self, txid: String) -> Result<TransactionDetails, Error> {
-        let txid = Txid::from_str(&txid).map_err(|_| Error::InvalidTxId)?;
+        let txid = Txid::from_str(&txid)?;
 
-        let tx = self
-            .wallet
-            .get_tx(&txid, false)
-            .map_err(|e| e.into())?
-            .ok_or(Error::TransactionNotFound)?;
+        let tx = self.wallet.get_tx(&txid, false)?.ok_or(Error::TransactionNotFound)?;
 
         TransactionDetails::from_bdk(tx, self.get_wallet())
     }
@@ -272,27 +273,23 @@ where
     ) -> Result<bool, Error> {
         let sign_options = sign_options.unwrap_or_default();
 
-        self.wallet.sign(psbt, sign_options).map_err(|e| e.into())
+        let signed = self.wallet.sign(psbt, sign_options)?;
+
+        Ok(signed)
     }
 
     /// Broadcasts a given transaction
     pub async fn broadcast(&self, transaction: Transaction) -> Result<(), Error> {
         let blockchain = EsploraBlockchain::new("https://mempool.space/testnet/api", 20);
+        blockchain.broadcast(&transaction).await?;
 
-        blockchain
-            .broadcast(&transaction)
-            .await
-            .map_err(|_| Error::CannotBroadcastTransaction)
+        Ok(())
     }
 
     /// Perform a full sync for the account
     pub async fn full_sync(&self) -> Result<(), Error> {
         let blockchain = EsploraBlockchain::new("https://mempool.space/testnet/api", 20);
-
-        self.wallet
-            .sync(&blockchain, SyncOptions::default())
-            .await
-            .map_err(|e| e.into())?;
+        self.wallet.sync(&blockchain, SyncOptions::default()).await?;
 
         Ok(())
     }

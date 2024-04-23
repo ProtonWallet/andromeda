@@ -5,7 +5,7 @@ use settings::WasmSettingsClient;
 use wallet::WasmWalletClient;
 use wasm_bindgen::prelude::*;
 
-use crate::{api::env::BrowserOriginEnv, common::error::WasmError};
+use crate::api::env::BrowserOriginEnv;
 
 mod env;
 mod exchange_rate;
@@ -27,7 +27,7 @@ pub struct WasmProtonWalletApiClient(ProtonWalletApiClient);
 #[wasm_bindgen]
 impl WasmProtonWalletApiClient {
     #[wasm_bindgen(constructor)]
-    pub fn new(uid_str: Option<String>, origin: Option<String>) -> Result<WasmProtonWalletApiClient, WasmError> {
+    pub fn new(uid_str: Option<String>, origin: Option<String>) -> Result<WasmProtonWalletApiClient, js_sys::Error> {
         let config = ApiConfig {
             // TODO: add clients specs here
             spec: None,

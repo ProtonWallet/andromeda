@@ -1,11 +1,10 @@
 use andromeda_api::exchange_rate::{ApiExchangeRate, ExchangeRateClient};
-use andromeda_common::BitcoinUnit;
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
 use super::settings::WasmFiatCurrency;
-use crate::common::{error::WasmError, types::WasmBitcoinUnit};
+use crate::common::{error::ErrorExt, types::WasmBitcoinUnit};
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
@@ -52,11 +51,11 @@ impl WasmExchangeRateClient {
         &self,
         fiat: WasmFiatCurrency,
         time: u64,
-    ) -> Result<WasmApiExchangeRateData, WasmError> {
+    ) -> Result<WasmApiExchangeRateData, js_sys::Error> {
         self.0
-            .get_exchange_rate(BitcoinUnit::BTC, fiat.into(), time)
+            .get_exchange_rate(fiat.into(), Some(time))
             .await
             .map(|n| WasmApiExchangeRateData(n.into()))
-            .map_err(|e| e.into())
+            .map_err(|e| e.to_js_error())
     }
 }

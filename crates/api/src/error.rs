@@ -1,15 +1,24 @@
+use bitcoin::{consensus::encode::Error as BitcoinEncodingError, hashes::hex::Error as HexError};
 use muon::{Error as MuonError, RequestError as MuonRequestError, SessionError as MuonSessionError};
 use serde::Deserialize;
+use thiserror;
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
-    MuonError(MuonError),
+    #[error("A error from Muon occured: \n\t{0}")]
+    MuonError(#[from] MuonError),
     // Cannot provide more details because session mod is private for now
-    MuonSessionError(MuonSessionError),
-    MuonRequestError(MuonRequestError),
-    DeserializeError,
-    SerializeError,
+    #[error("An session error occured in Muon: \n\t{0}")]
+    MuonSessionError(#[from] MuonSessionError),
+    #[error("A request error occured in Muon: \n\t{0}")]
+    MuonRequestError(#[from] MuonRequestError),
+    #[error("Bitcoin deserialize error: \n\t{0}")]
+    BitcoinDeserializeError(#[from] BitcoinEncodingError),
+    #[error("Error decoding hex for bitcoin: \n\t{0}")]
+    HexDecoding(#[from] HexError),
+    #[error("HTTP error")]
     HttpError,
+    #[error("HTTP Response error")]
     ErrorCode(ResponseError),
 }
 
@@ -21,22 +30,4 @@ pub struct ResponseError {
     pub message: String,
     #[serde(rename = "Details")]
     pub details: serde_json::Value,
-}
-
-impl Into<Error> for MuonError {
-    fn into(self) -> Error {
-        Error::MuonError(self)
-    }
-}
-
-impl Into<Error> for MuonRequestError {
-    fn into(self) -> Error {
-        Error::MuonRequestError(self)
-    }
-}
-
-impl Into<Error> for MuonSessionError {
-    fn into(self) -> Error {
-        Error::MuonSessionError(self)
-    }
 }
