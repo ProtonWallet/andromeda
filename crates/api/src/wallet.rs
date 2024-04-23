@@ -205,6 +205,10 @@ pub struct ApiWalletTransaction {
     pub TransactionTime: String,
     pub ExchangeRate: Option<ApiExchangeRate>,
     pub HashedTransactionID: Option<String>,
+    pub Subject: Option<String>,
+    pub Body: Option<String>,
+    pub ToList: Option<String>,
+    pub Sender: Option<String>,
 }
 
 const HASHED_TRANSACTION_ID_KEY: &str = "HashedTransactionIDs[]";
