@@ -5,6 +5,7 @@ use muon::{http::Method, ProtonRequest, Response, Session};
 use serde::Deserialize;
 
 use crate::{
+    contacts::ApiContactEmails,
     error::Error,
     settings::UserSettings,
     wallet::{ApiWallet, ApiWalletAccount, ApiWalletKey, ApiWalletSettings, ApiWalletTransaction},
@@ -30,13 +31,23 @@ pub struct GetLatestEventIDResponseBody {
 pub struct ApiProtonEvent {
     pub Code: u16,
     pub EventID: String,
+    pub Refresh: u32,
     pub More: u32,
+    pub ContactEmails: Option<Vec<ApiContactsEmailEvent>>,
     pub Wallets: Option<Vec<ApiWalletEvent>>,
     pub WalletAccounts: Option<Vec<ApiWalletAccountEvent>>,
     pub WalletKeys: Option<Vec<ApiWalletKeyEvent>>,
     pub WalletSettings: Option<Vec<ApiWalletSettingsEvent>>,
     pub WalletTransactions: Option<Vec<ApiWalletTransactionsEvent>>,
     pub WalletUserSettings: Option<UserSettings>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+pub struct ApiContactsEmailEvent {
+    pub ID: String,
+    pub Action: u32,
+    pub ContactEmail: Option<ApiContactEmails>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -93,7 +104,9 @@ impl EventClient {
         events.push(ApiProtonEvent {
             Code: event.Code,
             EventID: next_event_id,
+            Refresh: event.Refresh,
             More: event.More,
+            ContactEmails: event.ContactEmails,
             Wallets: event.Wallets,
             WalletAccounts: event.WalletAccounts,
             WalletKeys: event.WalletKeys,
@@ -115,7 +128,9 @@ impl EventClient {
             events.push(ApiProtonEvent {
                 Code: event.Code,
                 EventID: next_event_id,
+                Refresh: event.Refresh,
                 More: event.More,
+                ContactEmails: event.ContactEmails,
                 Wallets: event.Wallets,
                 WalletAccounts: event.WalletAccounts,
                 WalletKeys: event.WalletKeys,
