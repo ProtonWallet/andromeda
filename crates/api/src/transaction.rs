@@ -2,6 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use async_std::sync::RwLock;
 use bitcoin::{consensus::deserialize, Transaction};
+use log::info;
 use muon::{http::Method, ProtonRequest, Response, Session};
 use serde::{Deserialize, Serialize};
 
@@ -229,7 +230,7 @@ impl TransactionClient {
         );
 
         let response = self.session.read().await.bind(request)?.send().await?;
-
+        info!("get_fee_estimates {:?}", String::from_utf8(response.body().to_vec()));
         let parsed = response.to_json::<GetFeeEstimateResponseBody>()?;
 
         Ok(parsed.FeeEstimates)

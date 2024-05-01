@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use async_std::sync::RwLock;
+use log::info;
 use muon::{http::Method, ProtonRequest, Response, Session};
 use serde::Deserialize;
 
@@ -118,6 +119,10 @@ impl AddressClient {
         );
 
         let response = self.session.read().await.bind(request)?.send().await?;
+        info!(
+            "get_scripthash_transactions {:?}",
+            String::from_utf8(response.body().to_vec())
+        );
 
         let parsed = response.to_json::<GetScriptHashTransactionsResponseBody>()?;
 
@@ -139,6 +144,11 @@ impl AddressClient {
         );
 
         let response = self.session.read().await.bind(request)?.send().await?;
+
+        info!(
+            "get_scripthash_transactions_at_transaction_id {:?}",
+            String::from_utf8(response.body().to_vec())
+        );
 
         let parsed = response.to_json::<GetScriptHashTransactionsResponseBody>()?;
 

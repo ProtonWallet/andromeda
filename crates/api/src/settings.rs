@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use andromeda_common::BitcoinUnit;
 use async_std::sync::RwLock;
+use log::info;
 use muon::{http::Method, ProtonRequest, Response, Session};
 use serde::{Deserialize, Serialize};
 
@@ -311,6 +312,8 @@ impl SettingsClient {
         })?;
 
         let response = self.session.read().await.bind(request)?.send().await?;
+
+        info!("hide_empty_used_addresses {:?}", String::from_utf8(response.body().to_vec()));
 
         let parsed = response.to_json::<GetUserSettingsResponseBody>()?;
 

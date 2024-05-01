@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use async_std::sync::RwLock;
+use log::info;
 use muon::{http::Method, ProtonRequest, Request, Response, Session};
 use serde::{Deserialize, Serialize};
 
@@ -302,6 +303,8 @@ impl WalletClient {
 
         let response = self.session.read().await.bind(request)?.send().await?;
 
+        info!("create_wallet {:?}", String::from_utf8(response.body().to_vec()));
+
         let parsed = response.to_json::<CreateWalletResponseBody>()?;
 
         Ok(ApiWalletData {
@@ -332,7 +335,7 @@ impl WalletClient {
 
         let response = self.session.read().await.bind(request)?.send().await?;
 
-        println!("response {:?}", response.to_json::<serde_json::Value>());
+        info!("delete_wallet {:?}", response.to_json::<serde_json::Value>());
 
         Ok(())
     }
