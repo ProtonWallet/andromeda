@@ -10,8 +10,8 @@ use error::Error;
 use event::EventClient;
 use exchange_rate::ExchangeRateClient;
 pub use muon::{
-    environment::ApiEnv, store::SimpleAuthStore, transports::ReqwestTransportFactory, AccessToken, AppSpec, AuthData,
-    AuthStore, Error as MuonError, Product, RefreshToken, Scope, Session, Uid,
+    environment::ApiEnv, store::SimpleAuthStore, transports::ReqwestTransportFactory, AccessToken, AppSpec, Auth,
+    AuthData, AuthStore, Error as MuonError, Product, RefreshToken, Scope, Scopes, Session, Uid,
 };
 use network::NetworkClient;
 use proton_email_address::ProtonEmailAddressClient;
