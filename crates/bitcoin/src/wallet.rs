@@ -58,7 +58,7 @@ where
         bip38_passphrase: Option<String>,
         accounts: Vec<(ScriptType, DerivationPath, Storage)>,
     ) -> Result<Self, Error> {
-        let mut wallet = Self::new(network, bip39_mnemonic, bip38_passphrase)?;
+        let mut wallet: Wallet<Storage> = Self::new(network, bip39_mnemonic, bip38_passphrase)?;
 
         for (script_type, derivation_path, storage) in accounts {
             wallet.add_account(script_type, derivation_path, storage)?;

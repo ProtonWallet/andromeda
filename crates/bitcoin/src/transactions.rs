@@ -1,3 +1,5 @@
+use std::sync::MutexGuard;
+
 use bdk::{
     database::BatchDatabase, psbt::PsbtUtils, BlockTime, TransactionDetails as BdkTransactionDetails,
     Wallet as BdkWallet,
@@ -33,7 +35,10 @@ pub struct TransactionDetails {
 }
 
 impl TransactionDetails {
-    pub fn from_bdk<Storage>(value: BdkTransactionDetails, wallet: &BdkWallet<Storage>) -> Result<Self, Error>
+    pub fn from_bdk<Storage>(
+        value: BdkTransactionDetails,
+        wallet: MutexGuard<BdkWallet<Storage>>,
+    ) -> Result<Self, Error>
     where
         Storage: BatchDatabase,
     {
@@ -47,7 +52,7 @@ impl TransactionDetails {
             outputs: value.transaction.clone().map_or(Ok(Vec::new()), |tx| {
                 tx.output
                     .into_iter()
-                    .map(|output| DetailledTxOutput::from_txout(output, wallet))
+                    .map(|output| DetailledTxOutput::from_txout(output, &wallet))
                     .collect::<Result<Vec<_>, _>>()
             })?,
         })
@@ -55,7 +60,10 @@ impl TransactionDetails {
 }
 
 impl TransactionDetails {
-    pub fn from_psbt<Storage>(psbt: &PartiallySignedTransaction, wallet: &BdkWallet<Storage>) -> Result<Self, Error>
+    pub fn from_psbt<Storage>(
+        psbt: &PartiallySignedTransaction,
+        wallet: MutexGuard<BdkWallet<Storage>>,
+    ) -> Result<Self, Error>
     where
         Storage: BatchDatabase,
     {
@@ -65,7 +73,7 @@ impl TransactionDetails {
             .output
             .clone()
             .into_iter()
-            .map(|output| DetailledTxOutput::from_txout(output, wallet))
+            .map(|output| DetailledTxOutput::from_txout(output, &wallet))
             .collect::<Result<Vec<_>, _>>()?;
 
         let tx = TransactionDetails {
@@ -127,7 +135,10 @@ pub struct DetailledTxOutput {
 }
 
 impl DetailledTxOutput {
-    pub fn from_txout<Storage>(output: TxOut, wallet: &BdkWallet<Storage>) -> Result<DetailledTxOutput, Error>
+    pub fn from_txout<Storage>(
+        output: TxOut,
+        wallet: &MutexGuard<BdkWallet<Storage>>,
+    ) -> Result<DetailledTxOutput, Error>
     where
         Storage: BatchDatabase,
     {

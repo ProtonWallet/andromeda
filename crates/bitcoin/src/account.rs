@@ -2,6 +2,7 @@ use std::{
     collections::{HashMap, HashSet},
     fmt::Debug,
     str::FromStr,
+    sync::{Mutex, MutexGuard},
 };
 
 use andromeda_common::{Network, ScriptType};
@@ -57,7 +58,7 @@ where
     Storage: BatchDatabase,
 {
     derivation_path: DerivationPath,
-    wallet: BdkWallet<Storage>,
+    wallet: Mutex<BdkWallet<Storage>>,
 }
 
 type ReturnedDescriptor = (
@@ -113,14 +114,9 @@ where
         Ok(wallet)
     }
 
-    /// Returns a mutable reference to account's BdkWallet struct
-    pub fn get_mutable_wallet(&mut self) -> &mut BdkWallet<Storage> {
-        &mut self.wallet
-    }
-
     /// Returns a reference to account's BdkWallet struct
-    pub fn get_wallet(&self) -> &BdkWallet<Storage> {
-        &self.wallet
+    pub fn get_wallet(&self) -> MutexGuard<BdkWallet<Storage>> {
+        self.wallet.lock().expect("account wallet mutex")
     }
 
     /// From a master private key, returns a bitcoin account (as defined in https://bips.dev/44/)
@@ -160,7 +156,7 @@ where
 
         Ok(Self {
             derivation_path: derivation_path.into(),
-            wallet: Self::build_wallet(account_xprv, network, script_type, storage)?,
+            wallet: Mutex::new(Self::build_wallet(account_xprv, network, script_type, storage)?),
         })
     }
 
@@ -179,8 +175,7 @@ where
     /// * untrusted pending (unconfirmed external)
     /// * confirmed coins
     pub fn get_balance(&self) -> Result<BdkBalance, Error> {
-        let balance = self.wallet.get_balance()?;
-
+        let balance = self.get_wallet().get_balance()?;
         Ok(balance)
     }
 
@@ -190,7 +185,7 @@ where
     ///
     /// Later we might want to add pagination on top of that.
     pub fn get_utxos(&self) -> Result<Vec<LocalUtxo>, Error> {
-        let utxos = self.wallet.list_unspent()?;
+        let utxos = self.get_wallet().list_unspent()?;
 
         Ok(utxos)
     }
@@ -203,7 +198,7 @@ where
     /// to avoid address reuse, we need to sync before calling this method.
     pub fn get_address(&mut self, index: Option<u32>) -> Result<AddressInfo, Error> {
         let index = index.map_or(AddressIndex::LastUnused, |index| AddressIndex::Peek(index));
-        let address = self.wallet.get_address(index)?;
+        let address = self.get_wallet().get_address(index)?;
 
         Ok(address)
     }
@@ -211,7 +206,7 @@ where
     /// Returns a boolean indicating whether or not the account owns the
     /// provided address
     pub fn owns(&self, address: &Address) -> Result<bool, Error> {
-        let owns = self.wallet.is_mine(&address.script_pubkey())?;
+        let owns = self.get_wallet().is_mine(&address.script_pubkey())?;
 
         Ok(owns)
     }
@@ -246,7 +241,7 @@ where
         // ones and confirmation_time for confirmed one) The collection that
         // happen here might be consuming, maybe later we need to rework this part
         let simple_txs = self
-            .wallet
+            .get_wallet()
             .list_transactions(true)?
             .into_iter()
             .map(|tx| SimpleTransaction::from_detailled_tx(tx, Some(self.derivation_path.clone())))
@@ -259,7 +254,10 @@ where
     pub fn get_transaction(&self, txid: String) -> Result<TransactionDetails, Error> {
         let txid = Txid::from_str(&txid)?;
 
-        let tx = self.wallet.get_tx(&txid, false)?.ok_or(Error::TransactionNotFound)?;
+        let tx = self
+            .get_wallet()
+            .get_tx(&txid, false)?
+            .ok_or(Error::TransactionNotFound)?;
 
         TransactionDetails::from_bdk(tx, self.get_wallet())
     }
@@ -273,7 +271,7 @@ where
     ) -> Result<bool, Error> {
         let sign_options = sign_options.unwrap_or_default();
 
-        let signed = self.wallet.sign(psbt, sign_options)?;
+        let signed = self.get_wallet().sign(psbt, sign_options)?;
 
         Ok(signed)
     }
@@ -289,7 +287,7 @@ where
     /// Perform a full sync for the account
     pub async fn full_sync(&self) -> Result<(), Error> {
         let blockchain = EsploraBlockchain::new("https://mempool.space/testnet/api", 20);
-        self.wallet.sync(&blockchain, SyncOptions::default()).await?;
+        self.get_wallet().sync(&blockchain, SyncOptions::default()).await?;
 
         Ok(())
     }

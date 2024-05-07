@@ -4,10 +4,7 @@ use async_std::sync::RwLock;
 use muon::{http::Method, ProtonRequest, Response, Session};
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    error::{Error, ResponseError},
-    BASE_WALLET_API_V1,
-};
+use crate::{error::Error, BASE_WALLET_API_V1};
 
 #[derive(Clone)]
 pub struct EmailIntegrationClient {

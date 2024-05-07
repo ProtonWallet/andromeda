@@ -3,28 +3,24 @@ name = "andromeda-bitcoin"
 version = "0.1.0"
 edition = "2021"
 
-
 [dependencies]
 andromeda-common = { version = "0.1.0", path = "../common" }
-
 serde = { version = "1.0.144", features = ["derive"] }
 uuid = { version = "1.6.1", features = ["v4", "fast-rng"] }
 urlencoding = "2.1.3"
 querystring = "1.1.0"
 futures = "0.3.30"
-
 hashbrown = "0.9.1"
-
+thiserror = { workspace = true }
 bitcoin = { workspace = true }
 miniscript = { version = "10.0.0", default-features = false }
-bdk = { workspace = true }
+bdk = { workspace = true, features = ["sqlite"] }
 esplora-client = { version = "0.6.0", default-features = false, features = [
   'async-https',
 ] }
 
-thiserror = { workspace = true }
-
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+bdk = { workspace = true }
 getrandom = { version = "0.2.10", features = ["js"] }
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 wasm-bindgen = { version = "0.2.88", features = [

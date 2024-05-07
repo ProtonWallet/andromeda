@@ -63,8 +63,7 @@ pub struct WalletAppSpec(AppSpec);
 impl WalletAppSpec {
     pub fn new() -> Self {
         let app_spec = AppSpec::new(
-            // TODO: change that to Wallet when added to `Product` enum
-            Product::Unspecified,
+            Product::Wallet,
             // TODO: change that when Wallet has a version (or provide it through args)
             "Other".to_owned(),
             // TODO: change that by provide user agent when building pw api client
@@ -78,9 +77,7 @@ impl WalletAppSpec {
     }
 
     pub fn from_version(app_version: String, user_agent: String) -> Self {
-        // TODO: change that to Wallet when added to Product enum above
-        // Product::Unspecified
-        let app_spec = AppSpec::new(Product::Unspecified, app_version, user_agent);
+        let app_spec = AppSpec::new(Product::Wallet, app_version, user_agent);
         WalletAppSpec(app_spec)
     }
 }
