@@ -481,8 +481,8 @@ where
     /// The resulting psbt can then be provided to Account.sign() method
     pub async fn create_pbst_with_coin_selection(&self, allow_dust: bool) -> Result<PartiallySignedTransaction, Error> {
         let account = self.account.clone().ok_or(Error::AccountNotFound)?;
-        let mut account_write_lock = account.write().expect("lock");
-        let wallet = account_write_lock.get_mutable_wallet();
+        let account_write_lock = account.read().expect("lock");
+        let wallet = account_write_lock.get_wallet();
 
         let updated = match self.coin_selection {
             CoinSelection::BranchAndBound => {

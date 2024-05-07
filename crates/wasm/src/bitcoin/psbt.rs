@@ -56,9 +56,9 @@ impl WasmPartiallySignedTransaction {
         let inner = wasm_account.get_inner();
 
         inner
-            .write()
+            .read()
             .expect("lock")
-            .get_mutable_wallet()
+            .get_wallet()
             .sign(&mut self.inner, SignOptions::default())
             .map_err(|e| BitcoinError::from(e).to_js_error())?;
 

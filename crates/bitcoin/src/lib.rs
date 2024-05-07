@@ -8,6 +8,10 @@ pub mod transactions;
 pub mod utils;
 pub mod wallet;
 
+#[cfg(not(target_family = "wasm"))]
+pub use bdk::database::AnyDatabase as BdkAnyDatabase;
+#[cfg(not(target_family = "wasm"))]
+pub use bdk::database::SqliteDatabase as BdkSqliteDatabase;
 #[doc(hidden)]
 pub use bdk::{
     bitcoin::{

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::MutexGuard};
 
 use bdk::{blockchain::EsploraBlockchain, database::BatchDatabase, SyncOptions, Wallet as BdkWallet};
 use bitcoin::Transaction;
@@ -21,7 +21,7 @@ impl Blockchain {
     }
 
     /// Perform a full sync for the account
-    pub async fn full_sync<D>(&self, wallet: &BdkWallet<D>) -> Result<(), Error>
+    pub async fn full_sync<'a, D>(&self, wallet: MutexGuard<'a, BdkWallet<D>>) -> Result<(), Error>
     where
         D: BatchDatabase,
     {
