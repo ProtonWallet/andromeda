@@ -6,7 +6,7 @@ use muon::{http::Method, ProtonRequest, Response, Session};
 use serde::Deserialize;
 
 use super::BASE_WALLET_API_V1;
-use crate::error::Error;
+use crate::{error::Error, proton_response_ext::ProtonResponseExt};
 
 pub struct BlockClient {
     session: Arc<RwLock<Session>>,
@@ -117,8 +117,9 @@ impl BlockClient {
 
         let request = ProtonRequest::new(Method::GET, url);
         let response = self.session.read().await.bind(request)?.send().await?;
+        let parsed = response.parse_response::<GetBlocksResponseBody>()?;
 
-        Ok(response.to_json::<GetBlocksResponseBody>()?.Blocks)
+        Ok(parsed.Blocks)
     }
 
     /// Get a [`BlockHeader`] given a particular block hash.
@@ -129,8 +130,7 @@ impl BlockClient {
         );
 
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<GetHeaderByHashResponseBody>()?;
+        let parsed = response.parse_response::<GetHeaderByHashResponseBody>()?;
 
         Ok(deserialize(&Vec::from_hex(&parsed.BlockHeader)?)?)
     }
@@ -142,8 +142,7 @@ impl BlockClient {
         );
 
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<GetBlockHashByBlockHeightResponseBody>()?;
+        let parsed = response.parse_response::<GetBlockHashByBlockHeightResponseBody>()?;
 
         Ok(BlockHash::from_str(&parsed.BlockHash)?)
     }
@@ -155,15 +154,13 @@ impl BlockClient {
         );
 
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<GetBlockStatusResponseBody>()?;
+        let parsed = response.parse_response::<GetBlockStatusResponseBody>()?;
 
         Ok(parsed.BlockStatus)
     }
 
     pub async fn get_block_by_hash(&self, block_hash: &BlockHash) -> Result<Block, Error> {
         let request = ProtonRequest::new(Method::GET, format!("{}/blocks/{}/raw", BASE_WALLET_API_V1, block_hash));
-
         let response = self.session.read().await.bind(request)?.send().await?;
 
         Ok(deserialize(response.body())?)
@@ -176,9 +173,7 @@ impl BlockClient {
         );
 
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<GetTxIdAtBlockIndexResponseBody>()?;
-
+        let parsed = response.parse_response::<GetTxIdAtBlockIndexResponseBody>()?;
         Ok(parsed.TransactionId)
     }
 
@@ -186,9 +181,7 @@ impl BlockClient {
         let request = ProtonRequest::new(Method::GET, format!("{}/blocks/tip/height", BASE_WALLET_API_V1,));
 
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<GetTipHeightResponseBody>()?;
-
+        let parsed = response.parse_response::<GetTipHeightResponseBody>()?;
         Ok(parsed.Height)
     }
 
@@ -196,8 +189,7 @@ impl BlockClient {
         let request = ProtonRequest::new(Method::GET, format!("{}/blocks/tip/hash", BASE_WALLET_API_V1,));
 
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<GetTipHashResponseBody>()?;
+        let parsed = response.parse_response::<GetTipHashResponseBody>()?;
 
         Ok(BlockHash::from_str(&parsed.BlockHash)?)
     }

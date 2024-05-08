@@ -45,21 +45,3 @@ pub fn setup_test_connection(url: String) -> Arc<RwLock<Session>> {
     let session = Session::new_dangerous(auth, app, transport, env).unwrap();
     Arc::new(RwLock::new(session))
 }
-
-// pasre slice to string. used when debuging response body
-// fn byte_slice_to_string(slice: &[u8]) -> Result<String, std::str::Utf8Error>
-// {     std::str::from_utf8(slice).map(|s| s.to_string())
-// }
-
-// example of the mocking fn
-
-// struct MyCustomPathMatcher;
-// impl Match for MyCustomPathMatcher {
-//     fn matches(&self, request: &Request) -> bool {
-//         println!("request: {:?}", request);
-//         request.url.path().starts_with("/emails") &&
-// !request.url.path().contains("blocked") } }
-// Mock::given(MyCustomPathMatcher)
-// .respond_with(response)
-// .mount(&mock_server)
-// .await;

@@ -2,10 +2,12 @@ use std::{collections::HashMap, sync::Arc};
 
 use async_std::sync::RwLock;
 use bitcoin::{consensus::deserialize, Transaction};
+use log::info;
 use muon::{http::Method, ProtonRequest, Response, Session};
 use serde::{Deserialize, Serialize};
 
 use super::{error::Error, BASE_WALLET_API_V1};
+use crate::proton_response_ext::ProtonResponseExt;
 
 //TODO:: code need to be used. remove all #[allow(dead_code)]
 
@@ -149,10 +151,8 @@ impl TransactionClient {
 
         let request =
             ProtonRequest::new(Method::POST, format!("{}/transactions", BASE_WALLET_API_V1)).json_body(body)?;
-
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<BroadcastRawTransactionResponseBody>()?;
+        let parsed = response.parse_response::<BroadcastRawTransactionResponseBody>()?;
 
         Ok(parsed.TransactionId)
     }
@@ -172,9 +172,8 @@ impl TransactionClient {
             Method::GET,
             format!("{}/transactions/{}/status", BASE_WALLET_API_V1, txid),
         );
-
         let response = self.session.read().await.bind(request)?.send().await?;
-        let parsed = response.to_json::<GetTransactionStatusResponseBody>()?;
+        let parsed = response.parse_response::<GetTransactionStatusResponseBody>()?;
 
         Ok(parsed.TransactionStatus)
     }
@@ -184,10 +183,8 @@ impl TransactionClient {
             Method::GET,
             format!("{}/transactions/{}/merkle-proof", BASE_WALLET_API_V1, txid),
         );
-
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<GetTransactionMerkleProofResponseBody>()?;
+        let parsed = response.parse_response::<GetTransactionMerkleProofResponseBody>()?;
 
         Ok(parsed.Proof)
     }
@@ -197,10 +194,8 @@ impl TransactionClient {
             Method::GET,
             format!("{}/transactions/{}/merkleblock-proof", BASE_WALLET_API_V1, txid),
         );
-
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<GetTransactionMerkleBlockProofResponseBody>()?;
+        let parsed = response.parse_response::<GetTransactionMerkleBlockProofResponseBody>()?;
 
         Ok(parsed.PartialMerkleTree)
     }
@@ -214,10 +209,8 @@ impl TransactionClient {
             Method::GET,
             format!("{}/transactions/{}/outspend/{}", BASE_WALLET_API_V1, txid, index),
         );
-
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<GetOutpointSpendingStatusResponseBody>()?;
+        let parsed = response.parse_response::<GetOutpointSpendingStatusResponseBody>()?;
 
         Ok(parsed.Outspend)
     }
@@ -229,8 +222,8 @@ impl TransactionClient {
         );
 
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<GetFeeEstimateResponseBody>()?;
+        info!("get_fee_estimates {:?}", String::from_utf8(response.body().to_vec()));
+        let parsed = response.parse_response::<GetFeeEstimateResponseBody>()?;
 
         Ok(parsed.FeeEstimates)
     }

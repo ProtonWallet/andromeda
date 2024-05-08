@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use async_std::sync::RwLock;
-use muon::{http::Method, ProtonRequest, Response, Session};
+use muon::{http::Method, ProtonRequest, Session};
 use serde::Deserialize;
 
 use super::BASE_WALLET_API_V1;
-use crate::error::Error;
+use crate::{error::Error, proton_response_ext::ProtonResponseExt};
 
 pub struct AddressClient {
     session: Arc<RwLock<Session>>,
@@ -101,8 +101,7 @@ impl AddressClient {
 
         let request = ProtonRequest::new(Method::GET, url);
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<GetAddressBalanceResponseBody>()?;
+        let parsed = response.parse_response::<GetAddressBalanceResponseBody>()?;
 
         Ok(parsed.Balance)
     }
@@ -116,10 +115,8 @@ impl AddressClient {
                 BASE_WALLET_API_V1, script_hash
             ),
         );
-
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<GetScriptHashTransactionsResponseBody>()?;
+        let parsed = response.parse_response::<GetScriptHashTransactionsResponseBody>()?;
 
         Ok(parsed.Transactions)
     }
@@ -139,8 +136,7 @@ impl AddressClient {
         );
 
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<GetScriptHashTransactionsResponseBody>()?;
+        let parsed = response.parse_response::<GetScriptHashTransactionsResponseBody>()?;
 
         Ok(parsed.Transactions)
     }

@@ -20,6 +20,8 @@ pub enum Error {
     HttpError,
     #[error("HTTP Response error")]
     ErrorCode(ResponseError),
+    #[error("Response parser error")]
+    DeserializeErr(String),
 }
 
 #[derive(Debug, Deserialize)]

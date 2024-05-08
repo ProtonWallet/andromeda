@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use async_std::sync::RwLock;
-use muon::{http::Method, ProtonRequest, Response, Session};
+use muon::{http::Method, ProtonRequest, Session};
 use serde::Deserialize;
 
-use crate::{error::Error, BASE_CONTACTS_API_V4};
+use crate::{error::Error, proton_response_ext::ProtonResponseExt, BASE_CONTACTS_API_V4};
 
 #[derive(Clone)]
 pub struct ContactsClient {
@@ -44,8 +44,8 @@ impl ContactsClient {
         );
 
         let response = self.session.read().await.bind(request)?.send().await?;
+        let parsed = response.parse_response::<GetContactsResponseBody>()?;
 
-        let parsed = response.to_json::<GetContactsResponseBody>()?;
         Ok(parsed.ContactEmails)
     }
 }

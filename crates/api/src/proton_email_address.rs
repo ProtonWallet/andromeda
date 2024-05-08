@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use async_std::sync::RwLock;
-use muon::{http::Method, ProtonRequest, Response, Session};
+use muon::{http::Method, ProtonRequest, Session};
 use serde::Deserialize;
 
-use crate::{error::Error, BASE_CORE_API_V4};
+use crate::{error::Error, proton_response_ext::ProtonResponseExt, BASE_CORE_API_V4};
 
 #[derive(Clone)]
 pub struct ProtonEmailAddressClient {
@@ -54,10 +54,8 @@ impl ProtonEmailAddressClient {
 
     pub async fn get_proton_email_addresses(&self) -> Result<Vec<ApiProtonAddress>, Error> {
         let request = ProtonRequest::new(Method::GET, format!("{}/addresses", BASE_CORE_API_V4));
-
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<GetApiProtonAddressesResponseBody>()?;
+        let parsed = response.parse_response::<GetApiProtonAddressesResponseBody>()?;
 
         Ok(parsed.Addresses)
     }
