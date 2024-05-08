@@ -2,10 +2,10 @@ use std::sync::Arc;
 
 use andromeda_common::BitcoinUnit;
 use async_std::sync::RwLock;
-use muon::{http::Method, ProtonRequest, Response, Session};
+use muon::{http::Method, ProtonRequest, Session};
 use serde::Deserialize;
 
-use crate::{error::Error, settings::FiatCurrency, BASE_WALLET_API_V1};
+use crate::{error::Error, proton_response_ext::ProtonResponseExt, settings::FiatCurrency, BASE_WALLET_API_V1};
 
 #[derive(Clone)]
 pub struct ExchangeRateClient {
@@ -84,8 +84,7 @@ impl ExchangeRateClient {
 
         let response = self.session.read().await.bind(request)?.send().await?;
 
-        let parsed = response.to_json::<GetExchangeRateResponseBody>()?;
-
+        let parsed = response.parse_response::<GetExchangeRateResponseBody>()?;
         Ok(parsed.ExchangeRate)
     }
 
@@ -94,8 +93,7 @@ impl ExchangeRateClient {
 
         let response = self.session.read().await.bind(request)?.send().await?;
 
-        let parsed = response.to_json::<GetAllFiatCurrenciesResponseBody>()?;
-
+        let parsed = response.parse_response::<GetAllFiatCurrenciesResponseBody>()?;
         Ok(parsed.FiatCurrencies)
     }
 }

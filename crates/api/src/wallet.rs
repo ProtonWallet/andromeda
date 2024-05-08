@@ -6,10 +6,7 @@ use muon::{http::Method, ProtonRequest, Request, Response, Session};
 use serde::{Deserialize, Serialize};
 
 use super::BASE_WALLET_API_V1;
-use crate::{
-    error::{Error, ResponseError},
-    exchange_rate::ApiExchangeRate,
-};
+use crate::{error::Error, exchange_rate::ApiExchangeRate, proton_response_ext::ProtonResponseExt};
 
 //TODO:: code need to be used. remove all #[allow(dead_code)]
 
@@ -290,22 +287,16 @@ impl WalletClient {
 
     pub async fn get_wallets(&self) -> Result<Vec<ApiWalletData>, Error> {
         let request = ProtonRequest::new(Method::GET, format!("{}/wallets", BASE_WALLET_API_V1));
-
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<GetWalletsResponseBody>()?;
+        let parsed = response.parse_response::<GetWalletsResponseBody>()?;
 
         Ok(parsed.Wallets)
     }
 
     pub async fn create_wallet(&self, payload: CreateWalletRequestBody) -> Result<ApiWalletData, Error> {
         let request = ProtonRequest::new(Method::POST, format!("{}/wallets", BASE_WALLET_API_V1)).json_body(payload)?;
-
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        info!("create_wallet {:?}", String::from_utf8(response.body().to_vec()));
-
-        let parsed = response.to_json::<CreateWalletResponseBody>()?;
+        let parsed = response.parse_response::<CreateWalletResponseBody>()?;
 
         Ok(ApiWalletData {
             Wallet: parsed.Wallet,
@@ -322,20 +313,16 @@ impl WalletClient {
             format!("{}/wallets/{}/name", BASE_WALLET_API_V1, wallet_id),
         )
         .json_body(payload)?;
-
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<UpdateWalletNameResponseBody>()?;
+        let parsed = response.parse_response::<UpdateWalletNameResponseBody>()?;
 
         Ok(parsed.Wallet)
     }
 
     pub async fn delete_wallet(&self, wallet_id: String) -> Result<(), Error> {
         let request = ProtonRequest::new(Method::DELETE, format!("{}/wallets/{}", BASE_WALLET_API_V1, wallet_id));
-
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        info!("delete_wallet {:?}", response.to_json::<serde_json::Value>());
+        let _ = response.parse_response::<DeleteWalletAccountResponseBody>()?;
 
         Ok(())
     }
@@ -345,9 +332,8 @@ impl WalletClient {
             Method::GET,
             format!("{}/wallets/{}/accounts", BASE_WALLET_API_V1, wallet_id),
         );
-
         let response = self.session.read().await.bind(request)?.send().await?;
-        let parsed = response.to_json::<GetWalletAccountsResponseBody>()?;
+        let parsed = response.parse_response::<GetWalletAccountsResponseBody>()?;
 
         Ok(parsed.Accounts)
     }
@@ -364,20 +350,9 @@ impl WalletClient {
         .json_body(payload)?;
 
         let response = self.session.read().await.bind(request)?.send().await?;
+        let parsed = response.parse_response::<CreateWalletAccountResponseBody>()?;
 
-        // at this monment, response.status() is alwasy 200. we need to try parse body
-        // to get error if there any
-        let parsed = response.to_json::<CreateWalletAccountResponseBody>();
-        match parsed {
-            Ok(res) => Ok(res.Account),
-            Err(_) => {
-                let parsed_error = response.to_json::<ResponseError>();
-                match parsed_error {
-                    Ok(res) => Err(Error::ErrorCode(res)),
-                    Err(err) => Err(err.into()),
-                }
-            }
-        }
+        Ok(parsed.Account)
     }
 
     pub async fn update_wallet_account_label(
@@ -398,8 +373,7 @@ impl WalletClient {
         .json_body(payload)?;
 
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<UpdateWalletAccountResponseBody>()?;
+        let parsed = response.parse_response::<UpdateWalletAccountResponseBody>()?;
 
         Ok(parsed.Account)
     }
@@ -422,8 +396,7 @@ impl WalletClient {
         .json_body(payload)?;
 
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<UpdateWalletAccountResponseBody>()?;
+        let parsed = response.parse_response::<UpdateWalletAccountResponseBody>()?;
 
         Ok(parsed.Account)
     }
@@ -443,8 +416,7 @@ impl WalletClient {
         );
 
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<UpdateWalletAccountResponseBody>()?;
+        let parsed = response.parse_response::<UpdateWalletAccountResponseBody>()?;
 
         Ok(parsed.Account)
     }
@@ -459,8 +431,7 @@ impl WalletClient {
         );
 
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let _parsed = response.to_json::<DeleteWalletAccountResponseBody>()?;
+        let _ = response.parse_response::<DeleteWalletAccountResponseBody>()?;
 
         Ok(())
     }
@@ -486,12 +457,12 @@ impl WalletClient {
         for txid in hashed_txids.unwrap_or(Vec::new()) {
             request = request.param(HASHED_TRANSACTION_ID_KEY, Some(txid));
         }
-
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        println!("{:?}", response.to_json::<serde_json::Value>());
-
-        let parsed = response.to_json::<GetWalletTransactionsResponseBody>()?;
+        info!(
+            "get_wallet_transactions {:?}",
+            serde_json::to_string_pretty(response.body())
+        );
+        let parsed = response.parse_response::<GetWalletTransactionsResponseBody>()?;
 
         Ok(parsed.WalletTransactions)
     }
@@ -510,10 +481,8 @@ impl WalletClient {
         };
 
         let request = ProtonRequest::new(Method::GET, url);
-
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<GetWalletTransactionsResponseBody>()?;
+        let parsed = response.parse_response::<GetWalletTransactionsResponseBody>()?;
 
         Ok(parsed.WalletTransactions)
     }
@@ -534,8 +503,7 @@ impl WalletClient {
         .json_body(payload)?;
 
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<CreateWalletTransactionResponseBody>()?;
+        let parsed = response.parse_response::<CreateWalletTransactionResponseBody>()?;
 
         Ok(parsed.WalletTransaction)
     }
@@ -559,8 +527,7 @@ impl WalletClient {
         .json_body(payload)?;
 
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<UpdateWalletTransactionLabelResponseBody>()?;
+        let parsed = response.parse_response::<UpdateWalletTransactionLabelResponseBody>()?;
 
         Ok(parsed.WalletTransaction)
     }
@@ -584,10 +551,8 @@ impl WalletClient {
             ),
         )
         .json_body(payload)?;
-
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<UpdateWalletTransactionHashedTxidResponseBody>()?;
+        let parsed = response.parse_response::<UpdateWalletTransactionHashedTxidResponseBody>()?;
 
         Ok(parsed.WalletTransaction)
     }
@@ -605,10 +570,8 @@ impl WalletClient {
                 BASE_WALLET_API_V1, wallet_id, wallet_account_id, wallet_transaction_id
             ),
         );
-
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let _parsed = response.to_json::<DeleteWalletTransactionResponseBody>()?;
+        let _ = response.parse_response::<DeleteWalletTransactionResponseBody>()?;
 
         Ok(())
     }

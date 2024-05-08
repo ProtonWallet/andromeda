@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use async_std::sync::RwLock;
-use muon::{http::Method, ProtonRequest, Request, Response, Session};
+use muon::{http::Method, ProtonRequest, Request, Session};
 use serde::{Deserialize, Serialize};
 
-use crate::{error::Error, BASE_WALLET_API_V1};
+use crate::{error::Error, proton_response_ext::ProtonResponseExt, BASE_WALLET_API_V1};
 
 const ONLY_WITHOUT_BITCOIN_ADDRESS_KEY: &str = "OnlyWithoutBitcoinAddresses[]";
 
@@ -86,10 +86,8 @@ impl BitcoinAddressClient {
             ONLY_WITHOUT_BITCOIN_ADDRESS_KEY,
             only_without_bitcoin_addresses.map(|o| o.to_string()),
         );
-
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<GetBitcoinAddressesResponseBody>()?;
+        let parsed = response.parse_response::<GetBitcoinAddressesResponseBody>()?;
 
         Ok(parsed.WalletBitcoinAddresses)
     }
@@ -108,9 +106,7 @@ impl BitcoinAddressClient {
         );
 
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<GetBitcoinAddressHighestIndexResponseBody>()?;
-
+        let parsed = response.parse_response::<GetBitcoinAddressHighestIndexResponseBody>()?;
         Ok(parsed.HighestIndex)
     }
 
@@ -133,9 +129,7 @@ impl BitcoinAddressClient {
         .json_body(payload)?;
 
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<GetBitcoinAddressesResponseBody>()?;
-
+        let parsed = response.parse_response::<GetBitcoinAddressesResponseBody>()?;
         Ok(parsed.WalletBitcoinAddresses)
     }
 
@@ -156,9 +150,7 @@ impl BitcoinAddressClient {
         .json_body(bitcoin_address)?;
 
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<UpdateBitcoinAddressResponseBody>()?;
-
+        let parsed = response.parse_response::<UpdateBitcoinAddressResponseBody>()?;
         Ok(parsed.WalletBitcoinAddress)
     }
 }

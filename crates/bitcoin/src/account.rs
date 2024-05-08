@@ -259,7 +259,7 @@ where
             .get_tx(&txid, false)?
             .ok_or(Error::TransactionNotFound)?;
 
-        TransactionDetails::from_bdk(tx, &self.get_wallet())
+        TransactionDetails::from_bdk(tx, self.get_wallet())
     }
 
     /// Given a mutable reference to a PSBT, and sign options, tries to sign

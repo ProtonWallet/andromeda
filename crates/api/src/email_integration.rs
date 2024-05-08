@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use async_std::sync::RwLock;
-use muon::{http::Method, ProtonRequest, Response, Session};
+use muon::{http::Method, ProtonRequest, Session};
 use serde::{Deserialize, Serialize};
 
-use crate::{error::Error, BASE_WALLET_API_V1};
+use crate::{error::Error, proton_response_ext::ProtonResponseExt, BASE_WALLET_API_V1};
 
 #[derive(Clone)]
 pub struct EmailIntegrationClient {
@@ -51,8 +51,7 @@ impl EmailIntegrationClient {
         );
 
         let response = self.session.read().await.bind(request)?.send().await?;
-
-        let parsed = response.to_json::<LookupBitcoinAddressResponseBody>()?;
+        let parsed = response.parse_response::<LookupBitcoinAddressResponseBody>()?;
 
         Ok(parsed.WalletBitcoinAddress)
     }
@@ -63,8 +62,8 @@ impl EmailIntegrationClient {
             ProtonRequest::new(Method::POST, format!("{}/emails/requests", BASE_WALLET_API_V1)).json_body(payload)?;
 
         let response = self.session.read().await.bind(request)?.send().await?;
+        let _ = response.parse_response::<CreateBitcoinAddressRequestResponseBody>()?;
 
-        let _ = response.to_json::<CreateBitcoinAddressRequestResponseBody>()?;
         Ok(())
     }
 }

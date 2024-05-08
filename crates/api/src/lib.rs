@@ -39,7 +39,7 @@ pub mod settings;
 pub mod transaction;
 pub mod wallet;
 
-// TODO: make this private
+pub mod proton_response_ext;
 pub mod utils;
 
 #[macro_use]
