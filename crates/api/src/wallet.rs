@@ -322,7 +322,7 @@ impl WalletClient {
     pub async fn delete_wallet(&self, wallet_id: String) -> Result<(), Error> {
         let request = ProtonRequest::new(Method::DELETE, format!("{}/wallets/{}", BASE_WALLET_API_V1, wallet_id));
         let response = self.session.read().await.bind(request)?.send().await?;
-        let _ = response.parse_response::<DeleteWalletAccountResponseBody>()?;
+        response.parse_response::<DeleteWalletAccountResponseBody>()?;
 
         Ok(())
     }
@@ -431,7 +431,7 @@ impl WalletClient {
         );
 
         let response = self.session.read().await.bind(request)?.send().await?;
-        let _ = response.parse_response::<DeleteWalletAccountResponseBody>()?;
+        response.parse_response::<DeleteWalletAccountResponseBody>()?;
 
         Ok(())
     }
@@ -458,10 +458,6 @@ impl WalletClient {
             request = request.param(HASHED_TRANSACTION_ID_KEY, Some(txid));
         }
         let response = self.session.read().await.bind(request)?.send().await?;
-        info!(
-            "get_wallet_transactions {:?}",
-            serde_json::to_string_pretty(response.body())
-        );
         let parsed = response.parse_response::<GetWalletTransactionsResponseBody>()?;
 
         Ok(parsed.WalletTransactions)
@@ -571,7 +567,7 @@ impl WalletClient {
             ),
         );
         let response = self.session.read().await.bind(request)?.send().await?;
-        let _ = response.parse_response::<DeleteWalletTransactionResponseBody>()?;
+        response.parse_response::<DeleteWalletTransactionResponseBody>()?;
 
         Ok(())
     }

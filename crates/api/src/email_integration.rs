@@ -62,7 +62,7 @@ impl EmailIntegrationClient {
             ProtonRequest::new(Method::POST, format!("{}/emails/requests", BASE_WALLET_API_V1)).json_body(payload)?;
 
         let response = self.session.read().await.bind(request)?.send().await?;
-        let _ = response.parse_response::<CreateBitcoinAddressRequestResponseBody>()?;
+        response.parse_response::<CreateBitcoinAddressRequestResponseBody>()?;
 
         Ok(())
     }
