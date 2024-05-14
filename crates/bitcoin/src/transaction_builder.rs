@@ -77,14 +77,14 @@ where
             account: self.account.clone(),
             recipients: self.recipients.clone(),
             utxos_to_spend: self.utxos_to_spend.clone(),
-            change_policy: self.change_policy.clone(),
-            fee_rate: self.fee_rate.clone(),
+            change_policy: self.change_policy,
+            fee_rate: self.fee_rate,
             drain_wallet: self.drain_wallet,
             drain_to: self.drain_to.clone(),
             rbf_enabled: self.rbf_enabled,
             data: self.data.clone(),
             coin_selection: self.coin_selection.clone(),
-            locktime: self.locktime.clone(),
+            locktime: self.locktime,
         }
     }
 }
@@ -157,6 +157,15 @@ fn correct_recipients_amounts(recipients: Vec<TmpRecipient>, amount_to_remove: u
     );
 
     acc_result.recipients
+}
+
+impl<D> Default for TxBuilder<D>
+where
+    D: BatchDatabase,
+{
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<D> TxBuilder<D>
@@ -253,7 +262,7 @@ where
 
     async fn constrain_recipient_amounts(&self) -> Self {
         if self.account.is_none() {
-            return self.clone();
+            self.clone()
         } else {
             let result = self.create_pbst_with_coin_selection(true).await;
 
@@ -330,7 +339,7 @@ where
     /// Adds an outpoint to the list of outpoints to spend.
     pub fn add_utxo_to_spend(&self, utxo_to_spend: &OutPoint) -> Self {
         let mut utxos_to_spend = self.utxos_to_spend.clone();
-        utxos_to_spend.insert(utxo_to_spend.clone());
+        utxos_to_spend.insert(*utxo_to_spend);
 
         TxBuilder {
             utxos_to_spend,
@@ -425,11 +434,7 @@ where
         mut tx_builder: BdkTxBuilder<'a, D, Cs, CreateTx>,
     ) -> Result<BdkTxBuilder<'a, D, Cs, CreateTx>, Error> {
         if !self.utxos_to_spend.is_empty() {
-            let bdk_utxos: Vec<OutPoint> = self
-                .utxos_to_spend
-                .iter()
-                .map(|utxo| OutPoint::from(utxo.clone()))
-                .collect();
+            let bdk_utxos: Vec<OutPoint> = self.utxos_to_spend.iter().copied().collect();
             let utxos: &[OutPoint] = &bdk_utxos;
             tx_builder.add_utxos(utxos)?;
         }
@@ -437,14 +442,14 @@ where
         Ok(tx_builder)
     }
 
-    fn create_psbt<'a, Cs: CoinSelectionAlgorithm<D>>(
+    fn create_psbt<Cs: CoinSelectionAlgorithm<D>>(
         &self,
-        mut tx_builder: BdkTxBuilder<'a, D, Cs, CreateTx>,
+        mut tx_builder: BdkTxBuilder<'_, D, Cs, CreateTx>,
         allow_dust: bool,
     ) -> Result<PartiallySignedTransaction, Error> {
         for TmpRecipient(_uuid, address, amount) in &self.recipients {
             // TODO: here convert amount in sats
-            tx_builder.add_recipient(Address::from_str(&address)?.assume_checked().script_pubkey(), *amount);
+            tx_builder.add_recipient(Address::from_str(address)?.assume_checked().script_pubkey(), *amount);
         }
 
         tx_builder.change_policy(self.change_policy);
@@ -490,11 +495,11 @@ where
                 self.create_psbt(tx_builder, allow_dust)
             }
             CoinSelection::LargestFirst => {
-                let tx_builder = wallet.build_tx().coin_selection(LargestFirstCoinSelection::default());
+                let tx_builder = wallet.build_tx().coin_selection(LargestFirstCoinSelection);
                 self.create_psbt(tx_builder, allow_dust)
             }
             CoinSelection::OldestFirst => {
-                let tx_builder = wallet.build_tx().coin_selection(OldestFirstCoinSelection::default());
+                let tx_builder = wallet.build_tx().coin_selection(OldestFirstCoinSelection);
                 self.create_psbt(tx_builder, allow_dust)
             }
             CoinSelection::Manual => {
@@ -599,10 +604,10 @@ mod tests {
         let tx_builder = TxBuilder::<MemoryDatabase>::new();
 
         let updated = tx_builder.enable_rbf();
-        assert_eq!(updated.rbf_enabled, true);
+        assert!(updated.rbf_enabled);
 
         let updated = tx_builder.disable_rbf();
-        assert_eq!(updated.rbf_enabled, false);
+        assert!(!updated.rbf_enabled);
     }
 
     #[test]

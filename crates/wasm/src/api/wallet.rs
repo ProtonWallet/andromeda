@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
-use super::exchange_rate::WasmApiExchangeRate;
+use super::{exchange_rate::WasmApiExchangeRate, settings::WasmFiatCurrencySymbol};
 use crate::{
     bitcoin::types::derivation_path::WasmDerivationPath,
     common::{error::ErrorExt, types::WasmScriptType},
@@ -131,6 +131,7 @@ impl From<ApiEmailAddress> for WasmApiEmailAddress {
 #[allow(non_snake_case)]
 pub struct WasmApiWalletAccount {
     pub WalletID: String,
+    pub FiatCurrency: WasmFiatCurrencySymbol,
     pub ID: String,
     pub DerivationPath: String,
     pub Label: String,
@@ -151,6 +152,7 @@ impl From<ApiWalletAccount> for WasmApiWalletAccount {
     fn from(value: ApiWalletAccount) -> Self {
         WasmApiWalletAccount {
             WalletID: value.WalletID,
+            FiatCurrency: value.FiatCurrency.into(),
             ID: value.ID,
             Label: value.Label,
             DerivationPath: value.DerivationPath,
@@ -290,6 +292,16 @@ impl WasmWalletClient {
             .map(|wallet| wallet.into())
     }
 
+    #[wasm_bindgen(js_name = "updateWalletName")]
+    pub async fn update_wallet_name(&self, wallet_id: String, name: String) -> Result<(), js_sys::Error> {
+        self.0
+            .update_wallet_name(wallet_id, name)
+            .await
+            .map_err(|e| e.to_js_error())?;
+
+        Ok(())
+    }
+
     #[wasm_bindgen(js_name = "deleteWallet")]
     pub async fn delete_wallets(&self, wallet_id: String) -> Result<(), js_sys::Error> {
         self.0.delete_wallet(wallet_id).await.map_err(|e| e.to_js_error())?;
@@ -329,6 +341,22 @@ impl WasmWalletClient {
         let account = self
             .0
             .create_wallet_account(wallet_id, payload)
+            .await
+            .map_err(|e| e.to_js_error())?;
+
+        Ok(WasmWalletAccountData { Data: account.into() })
+    }
+
+    #[wasm_bindgen(js_name = "updateWalletAccountFiatCurrency")]
+    pub async fn update_wallet_account_fiat_currency(
+        &self,
+        wallet_id: String,
+        wallet_account_id: String,
+        symbol: WasmFiatCurrencySymbol,
+    ) -> Result<WasmWalletAccountData, js_sys::Error> {
+        let account = self
+            .0
+            .update_wallet_account_fiat_currency(wallet_id, wallet_account_id, symbol.into())
             .await
             .map_err(|e| e.to_js_error())?;
 

@@ -130,13 +130,12 @@ pub fn sort_and_paginate_txs(
     }
 
     // We paginated sorted vector
-    let paginated = simple_txs
+
+    simple_txs
         .into_iter()
         .skip(pagination.skip)
         .take(pagination.take)
-        .collect::<Vec<_>>();
-
-    paginated
+        .collect::<Vec<_>>()
 }
 
 #[cfg(test)]

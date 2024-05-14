@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
 use async_std::sync::RwLock;
-use log::info;
-use muon::{http::Method, ProtonRequest, Request, Response, Session};
+use muon::{http::Method, ProtonRequest, Request, Session};
 use serde::{Deserialize, Serialize};
 
 use super::BASE_WALLET_API_V1;
-use crate::{error::Error, exchange_rate::ApiExchangeRate, proton_response_ext::ProtonResponseExt};
+use crate::{
+    error::Error, exchange_rate::ApiExchangeRate, proton_response_ext::ProtonResponseExt, settings::FiatCurrencySymbol,
+};
 
 //TODO:: code need to be used. remove all #[allow(dead_code)]
 
@@ -128,6 +129,7 @@ struct UpdateWalletNameResponseBody {
 pub struct ApiWalletAccount {
     pub ID: String,
     pub WalletID: String,
+    pub FiatCurrency: FiatCurrencySymbol,
     pub DerivationPath: String,
     pub Label: String,
     pub ScriptType: u8,
@@ -163,6 +165,12 @@ struct CreateWalletAccountResponseBody {
     #[allow(dead_code)]
     pub Code: u16,
     pub Account: ApiWalletAccount,
+}
+
+#[derive(Debug, Serialize)]
+#[allow(non_snake_case)]
+pub struct UpdateWalletAccountFiatCurrencyRequestBody {
+    pub Symbol: FiatCurrencySymbol,
 }
 
 #[derive(Debug, Serialize)]
@@ -355,6 +363,31 @@ impl WalletClient {
         Ok(parsed.Account)
     }
 
+    pub async fn update_wallet_account_fiat_currency(
+        &self,
+        wallet_id: String,
+        wallet_account_id: String,
+        fiat_currency_symbol: FiatCurrencySymbol,
+    ) -> Result<ApiWalletAccount, Error> {
+        let payload = UpdateWalletAccountFiatCurrencyRequestBody {
+            Symbol: fiat_currency_symbol,
+        };
+
+        let request = ProtonRequest::new(
+            Method::PUT,
+            format!(
+                "{}/wallets/{}/accounts/{}/currency/fiat",
+                BASE_WALLET_API_V1, wallet_id, wallet_account_id
+            ),
+        )
+        .json_body(payload)?;
+
+        let response = self.session.read().await.bind(request)?.send().await?;
+        let parsed = response.parse_response::<UpdateWalletAccountResponseBody>()?;
+
+        Ok(parsed.Account)
+    }
+
     pub async fn update_wallet_account_label(
         &self,
         wallet_id: String,
@@ -454,7 +487,7 @@ impl WalletClient {
 
         let mut request = ProtonRequest::new(Method::GET, url);
 
-        for txid in hashed_txids.unwrap_or(Vec::new()) {
+        for txid in hashed_txids.unwrap_or_default() {
             request = request.param(HASHED_TRANSACTION_ID_KEY, Some(txid));
         }
         let response = self.session.read().await.bind(request)?.send().await?;
@@ -988,6 +1021,7 @@ mod tests {
                     "Label": "string",
                     "ScriptType": 1,
                     "Addresses": [],
+                    "FiatCurrency": "USD"
                 }
             }
         );

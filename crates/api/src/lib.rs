@@ -1,3 +1,5 @@
+#[cfg(not(feature = "allow-dangerous-env"))]
+use std::marker::PhantomData;
 use std::sync::Arc;
 
 use address::AddressClient;
@@ -168,7 +170,10 @@ where
     /// The api client initial auth data
     pub auth: Option<AuthData>,
     /// The env for the api client
+    #[cfg(feature = "allow-dangerous-env")]
     pub env: Option<E>,
+    #[cfg(not(feature = "allow-dangerous-env"))]
+    pub env: PhantomData<E>,
 }
 
 impl ProtonWalletApiClient {
@@ -210,18 +215,19 @@ impl ProtonWalletApiClient {
             WalletAppSpec::new()
         };
 
-        #[cfg(feature = "local")]
+        let transport = ReqwestTransportFactory::new();
+
+        #[cfg(feature = "allow-dangerous-env")]
         let session = {
-            if config.env.is_some() {
-                let transport = ReqwestTransportFactory::new();
-                Session::new_dangerous(auth_store, app_spec.inner(), transport, config.env.unwrap()).unwrap()
+            if let Some(env) = config.env {
+                Session::new_dangerous(auth_store, app_spec.inner(), transport, env).unwrap()
             } else {
-                Session::new(auth_store, app_spec.inner()).unwrap()
+                Session::new_with_transport(auth_store, app_spec.inner(), transport).unwrap()
             }
         };
 
-        #[cfg(not(feature = "local"))]
-        let session = Session::new(auth_store, app_spec.inner()).unwrap();
+        #[cfg(not(feature = "allow-dangerous-env"))]
+        let session = Session::new_with_transport(auth_store, app_spec.inner(), transport).unwrap();
 
         Self::from_session(session)
     }
