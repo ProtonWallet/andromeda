@@ -5,7 +5,7 @@ use bitcoin::Transaction;
 
 use crate::error::Error;
 
-const DEFAULT_URL: &'static str = "https://mempool.space/testnet/api";
+const DEFAULT_URL: &str = "https://mempool.space/testnet/api";
 const DEFAULT_STOP_GAP: usize = 10;
 
 pub struct Blockchain(EsploraBlockchain);

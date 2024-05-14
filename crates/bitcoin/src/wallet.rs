@@ -88,7 +88,7 @@ where
 
     pub async fn get_balance(&self) -> Result<Balance, Error> {
         let async_iter = self.accounts.keys().map(|account_key| async move {
-            let account = self.accounts.get(&account_key).ok_or(Error::AccountNotFound)?;
+            let account = self.accounts.get(account_key).ok_or(Error::AccountNotFound)?;
             let account_guard = account.read().expect("lock");
             account_guard.get_balance()
         });
@@ -128,7 +128,7 @@ where
             .accounts
             .keys()
             .map(|account_key| {
-                let account = self.accounts.get(&account_key).ok_or(Error::AccountNotFound)?;
+                let account = self.accounts.get(account_key).ok_or(Error::AccountNotFound)?;
                 let account_guard = account.read().expect("lock");
                 let wallet = account_guard.get_wallet();
 

@@ -123,9 +123,9 @@ pub enum ScriptType {
     Taproot = 3,
 }
 
-impl Into<u8> for ScriptType {
-    fn into(self) -> u8 {
-        match self {
+impl From<ScriptType> for u8 {
+    fn from(val: ScriptType) -> Self {
+        match val {
             ScriptType::Legacy => 0u8,
             ScriptType::NestedSegwit => 1u8,
             ScriptType::NativeSegwit => 2u8,

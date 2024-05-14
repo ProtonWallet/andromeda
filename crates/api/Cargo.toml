@@ -26,5 +26,8 @@ muon = { version = "0.2.0", registry = "proton_internal", features = [
 tokio-test = "0.4.3"
 
 [features]
-local = ["muon/dangerous"]
+# Used to prefix endpoints with /api
+local = []
+# Used to be able to use a non-standard api (no atlas or prod)
+allow-dangerous-env = ["muon/dangerous"]
 test = ["muon/dangerous"]

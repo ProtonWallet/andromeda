@@ -51,7 +51,7 @@ pub struct Mnemonic {
 pub fn get_words_autocomplete(word_start: String) -> Vec<String> {
     Language::English
         .word_list()
-        .into_iter()
+        .iter()
         .filter(|word| word.starts_with(&word_start))
         .map(|word| word.to_string())
         .collect::<Vec<_>>()
@@ -143,7 +143,7 @@ impl Mnemonic {
     /// assert_eq!(result.as_words(), vec!["desk", "prevent", "enhance", "husband", "hungry", "idle", "member", "vessel", "room", "moment", "simple", "behave"]);
     /// ```
     pub fn as_words(&self) -> Vec<String> {
-        self.inner.word_iter().map(|word| String::from(word)).collect()
+        self.inner.word_iter().map(String::from).collect()
     }
 
     pub fn inner(&self) -> BdkMnemonic {

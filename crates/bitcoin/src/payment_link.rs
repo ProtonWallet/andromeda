@@ -38,8 +38,8 @@ impl ToString for PaymentLink {
             } => {
                 let params_str = Self::get_querystring(amount, label, message);
 
-                if params_str.len() > 0 {
-                    return format!("bitcoin:{}?{}", address.to_string(), params_str);
+                if !params_str.is_empty() {
+                    return format!("bitcoin:{}?{}", address, params_str);
                 }
 
                 address.to_string()
@@ -56,7 +56,7 @@ const MESSAGE_KEY: &str = "message";
 
 fn get_query_params(query_params: &Vec<(&str, &str)>, key: &str) -> Option<String> {
     query_params
-        .into_iter()
+        .iter()
         .find(|(param_key, _)| *param_key == key)
         .map(|(_, value)| decode(value).unwrap().to_string())
 }
@@ -90,11 +90,11 @@ impl PaymentLink {
             } => {
                 let params_str = Self::get_querystring(amount, label, message);
 
-                if params_str.len() > 0 {
-                    return format!("bitcoin:{}?{}", address.to_string(), params_str);
+                if !params_str.is_empty() {
+                    return format!("bitcoin:{}?{}", address, params_str);
                 }
 
-                format!("bitcoin:{}", address.to_string())
+                format!("bitcoin:{}", address)
             }
             Self::LightningURI { uri: _ } => self.to_string(),
             Self::UnifiedURI { uri: _ } => self.to_string(),
@@ -117,7 +117,7 @@ impl PaymentLink {
             let splitted = payment_link_str.split("bitcoin:").collect::<Vec<&str>>()[1];
 
             // Separate query_string, if any from bitcoin address
-            let splitted = splitted.split("?").collect::<Vec<&str>>();
+            let splitted = splitted.split('?').collect::<Vec<&str>>();
 
             let (address_str, query_params_str) = match splitted.len() {
                 0 => Err(Error::InvalidAddress(payment_link_str.to_string())),
@@ -125,7 +125,7 @@ impl PaymentLink {
                 _ => Ok((splitted[0], splitted[1])),
             }?;
 
-            let address = Self::try_create_address(&address_str, network)?;
+            let address = Self::try_create_address(address_str, network)?;
 
             let query_params = querystring::querify(query_params_str);
 
@@ -171,12 +171,12 @@ impl PaymentLink {
     {
         let address = account.get_address(index)?.address;
 
-        return Ok(PaymentLink::BitcoinURI {
+        Ok(PaymentLink::BitcoinURI {
             address,
             amount,
             label,
             message,
-        });
+        })
     }
 }
 

@@ -47,11 +47,11 @@ struct GetRawTransactionResponseBody {
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
-pub struct TransactionStatus {
+pub struct ApiTransactionStatus {
     pub IsConfirmed: u8,
-    pub BlockHeight: u32,
-    pub BlockHash: String,
-    pub BlockTime: u32,
+    pub BlockHeight: Option<u32>,
+    pub BlockHash: Option<String>,
+    pub BlockTime: Option<u64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -59,7 +59,7 @@ pub struct TransactionStatus {
 struct GetTransactionStatusResponseBody {
     #[allow(dead_code)]
     pub Code: u16,
-    pub TransactionStatus: TransactionStatus,
+    pub TransactionStatus: ApiTransactionStatus,
 }
 
 #[derive(Debug, Deserialize)]
@@ -90,9 +90,9 @@ struct GetTransactionMerkleBlockProofResponseBody {
 #[allow(non_snake_case)]
 pub struct OutpointSpendingStatus {
     pub IsSpent: u8,
-    pub TransactionId: String,
-    pub Vin: u64,
-    pub TransactionStatus: TransactionStatus,
+    pub TransactionId: Option<String>,
+    pub Vin: Option<u64>,
+    pub TransactionStatus: Option<ApiTransactionStatus>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -167,7 +167,7 @@ impl TransactionClient {
         Ok(parsed)
     }
 
-    pub async fn get_transaction_status(&self, txid: String) -> Result<TransactionStatus, Error> {
+    pub async fn get_transaction_status(&self, txid: String) -> Result<ApiTransactionStatus, Error> {
         let request = ProtonRequest::new(
             Method::GET,
             format!("{}/transactions/{}/status", BASE_WALLET_API_V1, txid),

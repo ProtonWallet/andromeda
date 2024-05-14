@@ -155,7 +155,7 @@ where
         let account_xprv = master_secret_key.derive_priv(&secp, &derivation_path)?;
 
         Ok(Self {
-            derivation_path: derivation_path.into(),
+            derivation_path,
             wallet: Mutex::new(Self::build_wallet(account_xprv, network, script_type, storage)?),
         })
     }
@@ -197,7 +197,7 @@ where
     /// If index is None, it will return last unused address of the account. So
     /// to avoid address reuse, we need to sync before calling this method.
     pub fn get_address(&mut self, index: Option<u32>) -> Result<AddressInfo, Error> {
-        let index = index.map_or(AddressIndex::LastUnused, |index| AddressIndex::Peek(index));
+        let index = index.map_or(AddressIndex::LastUnused, AddressIndex::Peek);
         let address = self.get_wallet().get_address(index)?;
 
         Ok(address)
@@ -386,15 +386,12 @@ mod tests {
         let address = account.get_address(None).unwrap();
         assert!(account.owns(&address).unwrap());
 
-        assert_eq!(
-            account
-                .owns(
-                    &Address::from_str("tb1qkwfhq25jnjq4fca2tptdhpsstz9ss2pampswhc")
-                        .unwrap()
-                        .assume_checked()
-                )
-                .unwrap(),
-            false
-        );
+        assert!(!account
+            .owns(
+                &Address::from_str("tb1qkwfhq25jnjq4fca2tptdhpsstz9ss2pampswhc")
+                    .unwrap()
+                    .assume_checked()
+            )
+            .unwrap());
     }
 }

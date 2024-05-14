@@ -5,7 +5,7 @@ use muon::{http::Method, ProtonRequest, Session};
 use serde::Deserialize;
 
 use super::BASE_WALLET_API_V1;
-use crate::{error::Error, proton_response_ext::ProtonResponseExt};
+use crate::{error::Error, proton_response_ext::ProtonResponseExt, transaction::ApiTransactionStatus};
 
 pub struct AddressClient {
     session: Arc<RwLock<Session>>,
@@ -51,15 +51,6 @@ pub struct ApiVin {
     pub IsCoinbase: u8,
     pub Sequence: u32,
     pub InnerRedeemScriptAsm: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[allow(non_snake_case)]
-pub struct ApiTransactionStatus {
-    pub IsConfirmed: u8,
-    pub BlockHeight: Option<u32>,
-    pub BlockHash: Option<String>,
-    pub BlockTime: Option<u64>,
 }
 
 #[derive(Debug, Deserialize)]

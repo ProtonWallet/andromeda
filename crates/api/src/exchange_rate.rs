@@ -5,7 +5,7 @@ use async_std::sync::RwLock;
 use muon::{http::Method, ProtonRequest, Session};
 use serde::Deserialize;
 
-use crate::{error::Error, proton_response_ext::ProtonResponseExt, settings::FiatCurrency, BASE_WALLET_API_V1};
+use crate::{error::Error, proton_response_ext::ProtonResponseExt, settings::FiatCurrencySymbol, BASE_WALLET_API_V1};
 
 #[derive(Clone)]
 pub struct ExchangeRateClient {
@@ -20,7 +20,7 @@ pub struct ApiExchangeRate {
     /// Bitcoin unit of the exchange rate
     pub BitcoinUnit: BitcoinUnit,
     /// Fiat currency of the exchange rate
-    pub FiatCurrency: FiatCurrency,
+    pub FiatCurrency: FiatCurrencySymbol,
     /// string <date-time>
     pub ExchangeRateTime: String,
     /// Exchange rate BitcoinUnit/FiatCurrency
@@ -43,7 +43,7 @@ struct GetExchangeRateResponseBody {
 pub struct ApiFiatCurrency {
     pub ID: String,
     pub Name: String,
-    pub Symbol: String,
+    pub Symbol: FiatCurrencySymbol,
     pub Sign: String,
     pub Cents: u64,
 }
@@ -64,21 +64,12 @@ impl ExchangeRateClient {
 
     pub async fn get_exchange_rate(
         &self,
-        fiat_currency: FiatCurrency,
+        fiat_currency: FiatCurrencySymbol,
         time: Option<u64>,
     ) -> Result<ApiExchangeRate, Error> {
         let path = match time {
-            Some(t) => format!(
-                "{}/rates?FiatCurrency={}&Time={}",
-                BASE_WALLET_API_V1,
-                fiat_currency.to_string(),
-                t,
-            ),
-            None => format!(
-                "{}/rates?FiatCurrency={}",
-                BASE_WALLET_API_V1,
-                fiat_currency.to_string(),
-            ),
+            Some(t) => format!("{}/rates?FiatCurrency={}&Time={}", BASE_WALLET_API_V1, fiat_currency, t,),
+            None => format!("{}/rates?FiatCurrency={}", BASE_WALLET_API_V1, fiat_currency,),
         };
         let request = ProtonRequest::new(Method::GET, path);
 
@@ -101,7 +92,7 @@ impl ExchangeRateClient {
 #[cfg(test)]
 mod tests {
     use super::ExchangeRateClient;
-    use crate::{settings::FiatCurrency, utils::common_session};
+    use crate::{settings::FiatCurrencySymbol, utils::common_session};
 
     #[tokio::test]
     #[ignore]
@@ -109,7 +100,9 @@ mod tests {
         let session = common_session().await;
         let client = ExchangeRateClient::new(session);
 
-        let exchange_rate = client.get_exchange_rate(FiatCurrency::EUR, Some(1707287982)).await;
+        let exchange_rate = client
+            .get_exchange_rate(FiatCurrencySymbol::EUR, Some(1707287982))
+            .await;
 
         println!("request done: {:?}", exchange_rate);
     }
