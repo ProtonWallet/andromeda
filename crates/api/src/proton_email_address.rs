@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use async_std::sync::RwLock;
-use muon::{http::Method, ProtonRequest, Session};
+use muon::{http::Method, ProtonRequest, Request, Session};
 use serde::Deserialize;
 
 use crate::{error::Error, proton_response_ext::ProtonResponseExt, BASE_CORE_API_V4};
@@ -9,6 +9,29 @@ use crate::{error::Error, proton_response_ext::ProtonResponseExt, BASE_CORE_API_
 #[derive(Clone)]
 pub struct ProtonEmailAddressClient {
     session: Arc<RwLock<Session>>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+struct GetApiAllKeyResponseBody {
+    #[allow(dead_code)]
+    pub Code: u16,
+    pub Address: ApiAllKeyAddress,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+pub struct ApiAllKeyAddress {
+    pub Keys: Vec<ApiAllKeyAddressKey>,
+    // skipping `SignedKeyList` from API document, will add it once we need to use it
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+pub struct ApiAllKeyAddressKey {
+    pub Flags: u32,
+    pub PublicKey: String,
+    pub Source: u32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -59,6 +82,23 @@ impl ProtonEmailAddressClient {
 
         Ok(parsed.Addresses)
     }
+
+    pub async fn get_all_public_keys(
+        &self,
+        email: String,
+        internal_only: Option<u8>,
+    ) -> Result<Vec<ApiAllKeyAddressKey>, Error> {
+        let mut request =
+            ProtonRequest::new(Method::GET, format!("{}/keys/all", BASE_CORE_API_V4)).param("Email", Some(email));
+        if internal_only.is_some() {
+            request = request.param("InternalOnly", Some(internal_only.unwrap_or(1).to_string()));
+        }
+
+        let response = self.session.read().await.bind(request)?.send().await?;
+        let parsed = response.parse_response::<GetApiAllKeyResponseBody>()?;
+
+        Ok(parsed.Address.Keys)
+    }
 }
 
 #[cfg(test)]
@@ -76,5 +116,18 @@ mod tests {
         let proton_email_addresses = client.get_proton_email_addresses().await;
 
         println!("request done: {:?}", proton_email_addresses);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn should_get_all_public_keys() {
+        let session = common_session().await;
+        let client = ProtonEmailAddressClient::new(session);
+
+        let all_public_keys = client
+            .get_all_public_keys(String::from("pro@proton.black"), Some(1))
+            .await;
+
+        println!("request done: {:?}", all_public_keys);
     }
 }
