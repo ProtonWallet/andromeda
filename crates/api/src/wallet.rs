@@ -1,20 +1,18 @@
 use std::sync::Arc;
 
-use async_std::sync::RwLock;
-use muon::{http::Method, ProtonRequest, Request, Session};
+use muon::Request;
 use serde::{Deserialize, Serialize};
 
 use super::BASE_WALLET_API_V1;
 use crate::{
-    error::Error, exchange_rate::ApiExchangeRate, proton_response_ext::ProtonResponseExt, settings::FiatCurrencySymbol,
+    core::{ProtonResponseExt, ToProtonRequest},
+    error::Error,
+    exchange_rate::ApiExchangeRate,
+    settings::FiatCurrencySymbol,
+    ProtonWalletApiClient,
 };
 
 //TODO:: code need to be used. remove all #[allow(dead_code)]
-
-#[derive(Clone)]
-pub struct WalletClient {
-    session: Arc<RwLock<Session>>,
-}
 
 #[derive(Debug, Deserialize, Serialize)]
 #[allow(non_snake_case)]
@@ -288,22 +286,36 @@ struct DeleteWalletTransactionResponseBody {
     pub Code: u16,
 }
 
+#[derive(Clone)]
+pub struct WalletClient {
+    api_client: Arc<ProtonWalletApiClient>,
+}
+
 impl WalletClient {
-    pub fn new(session: Arc<RwLock<Session>>) -> Self {
-        Self { session }
+    pub fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
+        Self { api_client }
     }
 
     pub async fn get_wallets(&self) -> Result<Vec<ApiWalletData>, Error> {
-        let request = ProtonRequest::new(Method::GET, format!("{}/wallets", BASE_WALLET_API_V1));
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let request = self
+            .api_client
+            .build_full_url(BASE_WALLET_API_V1, "wallets")
+            .to_get_request();
+
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetWalletsResponseBody>()?;
 
         Ok(parsed.Wallets)
     }
 
     pub async fn create_wallet(&self, payload: CreateWalletRequestBody) -> Result<ApiWalletData, Error> {
-        let request = ProtonRequest::new(Method::POST, format!("{}/wallets", BASE_WALLET_API_V1)).json_body(payload)?;
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let request = self
+            .api_client
+            .build_full_url(BASE_WALLET_API_V1, "wallets")
+            .to_post_request()
+            .json_body(payload)?;
+
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<CreateWalletResponseBody>()?;
 
         Ok(ApiWalletData {
@@ -316,31 +328,37 @@ impl WalletClient {
     pub async fn update_wallet_name(&self, wallet_id: String, name: String) -> Result<ApiWallet, Error> {
         let payload = UpdateWalletNameRequestBody { Name: name };
 
-        let request = ProtonRequest::new(
-            Method::PUT,
-            format!("{}/wallets/{}/name", BASE_WALLET_API_V1, wallet_id),
-        )
-        .json_body(payload)?;
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let request = self
+            .api_client
+            .build_full_url(BASE_WALLET_API_V1, format!("wallets/{}/name", wallet_id))
+            .to_put_request()
+            .json_body(payload)?;
+
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletNameResponseBody>()?;
 
         Ok(parsed.Wallet)
     }
 
     pub async fn delete_wallet(&self, wallet_id: String) -> Result<(), Error> {
-        let request = ProtonRequest::new(Method::DELETE, format!("{}/wallets/{}", BASE_WALLET_API_V1, wallet_id));
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let request = self
+            .api_client
+            .build_full_url(BASE_WALLET_API_V1, format!("wallets/{}", wallet_id))
+            .to_delete_request();
+
+        let response = self.api_client.send(request).await?;
         response.parse_response::<DeleteWalletAccountResponseBody>()?;
 
         Ok(())
     }
 
     pub async fn get_wallet_accounts(&self, wallet_id: String) -> Result<Vec<ApiWalletAccount>, Error> {
-        let request = ProtonRequest::new(
-            Method::GET,
-            format!("{}/wallets/{}/accounts", BASE_WALLET_API_V1, wallet_id),
-        );
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let request = self
+            .api_client
+            .build_full_url(BASE_WALLET_API_V1, format!("wallets/{}/accounts", wallet_id))
+            .to_get_request();
+
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetWalletAccountsResponseBody>()?;
 
         Ok(parsed.Accounts)
@@ -351,13 +369,13 @@ impl WalletClient {
         wallet_id: String,
         payload: CreateWalletAccountRequestBody,
     ) -> Result<ApiWalletAccount, Error> {
-        let request = ProtonRequest::new(
-            Method::POST,
-            format!("{}/wallets/{}/accounts", BASE_WALLET_API_V1, wallet_id),
-        )
-        .json_body(payload)?;
+        let request = self
+            .api_client
+            .build_full_url(BASE_WALLET_API_V1, format!("wallets/{}/accounts", wallet_id))
+            .to_post_request()
+            .json_body(payload)?;
 
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<CreateWalletAccountResponseBody>()?;
 
         Ok(parsed.Account)
@@ -373,16 +391,16 @@ impl WalletClient {
             Symbol: fiat_currency_symbol,
         };
 
-        let request = ProtonRequest::new(
-            Method::PUT,
-            format!(
-                "{}/wallets/{}/accounts/{}/currency/fiat",
-                BASE_WALLET_API_V1, wallet_id, wallet_account_id
-            ),
-        )
-        .json_body(payload)?;
+        let request = self
+            .api_client
+            .build_full_url(
+                BASE_WALLET_API_V1,
+                format!("wallets/{}/accounts/{}/currency/fiat", wallet_id, wallet_account_id),
+            )
+            .to_put_request()
+            .json_body(payload)?;
 
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletAccountResponseBody>()?;
 
         Ok(parsed.Account)
@@ -396,16 +414,16 @@ impl WalletClient {
     ) -> Result<ApiWalletAccount, Error> {
         let payload = UpdateWalletAccountLabelRequestBody { Label: label };
 
-        let request = ProtonRequest::new(
-            Method::PUT,
-            format!(
-                "{}/wallets/{}/accounts/{}/label",
-                BASE_WALLET_API_V1, wallet_id, wallet_account_id
-            ),
-        )
-        .json_body(payload)?;
+        let request = self
+            .api_client
+            .build_full_url(
+                BASE_WALLET_API_V1,
+                format!("wallets/{}/accounts/{}/label", wallet_id, wallet_account_id),
+            )
+            .to_put_request()
+            .json_body(payload)?;
 
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletAccountResponseBody>()?;
 
         Ok(parsed.Account)
@@ -419,16 +437,16 @@ impl WalletClient {
     ) -> Result<ApiWalletAccount, Error> {
         let payload = AddEmailAddressRequestBody { AddressID: address_id };
 
-        let request = ProtonRequest::new(
-            Method::PUT,
-            format!(
-                "{}/wallets/{}/accounts/{}/addresses/email",
-                BASE_WALLET_API_V1, wallet_id, wallet_account_id
-            ),
-        )
-        .json_body(payload)?;
+        let request = self
+            .api_client
+            .build_full_url(
+                BASE_WALLET_API_V1,
+                format!("wallets/{}/accounts/{}/addresses/email", wallet_id, wallet_account_id),
+            )
+            .to_put_request()
+            .json_body(payload)?;
 
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletAccountResponseBody>()?;
 
         Ok(parsed.Account)
@@ -440,30 +458,33 @@ impl WalletClient {
         wallet_account_id: String,
         address_id: String,
     ) -> Result<ApiWalletAccount, Error> {
-        let request = ProtonRequest::new(
-            Method::DELETE,
-            format!(
-                "{}/wallets/{}/accounts/{}/addresses/email/{}",
-                BASE_WALLET_API_V1, wallet_id, wallet_account_id, address_id
-            ),
-        );
+        let request = self
+            .api_client
+            .build_full_url(
+                BASE_WALLET_API_V1,
+                format!(
+                    "wallets/{}/accounts/{}/addresses/email/{}",
+                    wallet_id, wallet_account_id, address_id
+                ),
+            )
+            .to_delete_request();
 
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletAccountResponseBody>()?;
 
         Ok(parsed.Account)
     }
 
     pub async fn delete_wallet_account(&self, wallet_id: String, wallet_account_id: String) -> Result<(), Error> {
-        let request = ProtonRequest::new(
-            Method::DELETE,
-            format!(
-                "{}/wallets/{}/accounts/{}",
-                BASE_WALLET_API_V1, wallet_id, wallet_account_id
-            ),
-        );
+        let request = self
+            .api_client
+            .build_full_url(
+                BASE_WALLET_API_V1,
+                format!("wallets/{}/accounts/{}", wallet_id, wallet_account_id),
+            )
+            .to_delete_request();
 
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let response = self.api_client.send(request).await?;
         response.parse_response::<DeleteWalletAccountResponseBody>()?;
 
         Ok(())
@@ -475,22 +496,23 @@ impl WalletClient {
         wallet_account_id: Option<String>,
         hashed_txids: Option<Vec<String>>,
     ) -> Result<Vec<ApiWalletTransaction>, Error> {
-        let url = match wallet_account_id {
-            Some(wallet_account_id) => format!(
-                "{}/wallets/{}/accounts/{}/transactions",
-                BASE_WALLET_API_V1, wallet_id, wallet_account_id
-            ),
-            None => format!("{}/wallets/{}/transactions", BASE_WALLET_API_V1, wallet_id),
-        };
-
-        println!("{:?}", url);
-
-        let mut request = ProtonRequest::new(Method::GET, url);
+        let mut request = self
+            .api_client
+            .build_full_url(
+                BASE_WALLET_API_V1,
+                match wallet_account_id {
+                    Some(wallet_account_id) => {
+                        format!("wallets/{}/accounts/{}/transactions", wallet_id, wallet_account_id)
+                    }
+                    None => format!("wallets/{}/transactions", wallet_id),
+                },
+            )
+            .to_get_request();
 
         for txid in hashed_txids.unwrap_or_default() {
             request = request.param(HASHED_TRANSACTION_ID_KEY, Some(txid));
         }
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetWalletTransactionsResponseBody>()?;
 
         Ok(parsed.WalletTransactions)
@@ -501,16 +523,23 @@ impl WalletClient {
         wallet_id: String,
         wallet_account_id: Option<String>,
     ) -> Result<Vec<ApiWalletTransaction>, Error> {
-        let url = match wallet_account_id {
-            Some(wallet_account_id) => format!(
-                "{}/wallets/{}/accounts/{}/transactions/to-hash",
-                BASE_WALLET_API_V1, wallet_id, wallet_account_id
-            ),
-            None => format!("{}/wallets/{}/transactions/to-hash", BASE_WALLET_API_V1, wallet_id),
-        };
+        let request = self
+            .api_client
+            .build_full_url(
+                BASE_WALLET_API_V1,
+                match wallet_account_id {
+                    Some(wallet_account_id) => {
+                        format!(
+                            "wallets/{}/accounts/{}/transactions/to-hash",
+                            wallet_id, wallet_account_id
+                        )
+                    }
+                    None => format!("wallets/{}/transactions/to-hash", wallet_id),
+                },
+            )
+            .to_get_request();
 
-        let request = ProtonRequest::new(Method::GET, url);
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetWalletTransactionsResponseBody>()?;
 
         Ok(parsed.WalletTransactions)
@@ -522,16 +551,16 @@ impl WalletClient {
         wallet_account_id: String,
         payload: CreateWalletTransactionRequestBody,
     ) -> Result<ApiWalletTransaction, Error> {
-        let request = ProtonRequest::new(
-            Method::POST,
-            format!(
-                "{}/wallets/{}/accounts/{}/transactions",
-                BASE_WALLET_API_V1, wallet_id, wallet_account_id
-            ),
-        )
-        .json_body(payload)?;
+        let request = self
+            .api_client
+            .build_full_url(
+                BASE_WALLET_API_V1,
+                format!("wallets/{}/accounts/{}/transactions", wallet_id, wallet_account_id),
+            )
+            .to_post_request()
+            .json_body(payload)?;
 
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<CreateWalletTransactionResponseBody>()?;
 
         Ok(parsed.WalletTransaction)
@@ -546,16 +575,19 @@ impl WalletClient {
     ) -> Result<ApiWalletTransaction, Error> {
         let payload = UpdateWalletTransactionLabelRequestBody { Label: label };
 
-        let request = ProtonRequest::new(
-            Method::PUT,
-            format!(
-                "{}/wallets/{}/accounts/{}/transactions/{}/label",
-                BASE_WALLET_API_V1, wallet_id, wallet_account_id, wallet_transaction_id
-            ),
-        )
-        .json_body(payload)?;
+        let request = self
+            .api_client
+            .build_full_url(
+                BASE_WALLET_API_V1,
+                format!(
+                    "wallets/{}/accounts/{}/transactions/{}/label",
+                    wallet_id, wallet_account_id, wallet_transaction_id
+                ),
+            )
+            .to_put_request()
+            .json_body(payload)?;
 
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletTransactionLabelResponseBody>()?;
 
         Ok(parsed.WalletTransaction)
@@ -572,15 +604,19 @@ impl WalletClient {
             HashedTransactionID: hash_txid,
         };
 
-        let request = ProtonRequest::new(
-            Method::PUT,
-            format!(
-                "{}/wallets/{}/accounts/{}/transactions/{}/hash",
-                BASE_WALLET_API_V1, wallet_id, wallet_account_id, wallet_transaction_id
-            ),
-        )
-        .json_body(payload)?;
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let request = self
+            .api_client
+            .build_full_url(
+                BASE_WALLET_API_V1,
+                format!(
+                    "wallets/{}/accounts/{}/transactions/{}/hash",
+                    wallet_id, wallet_account_id, wallet_transaction_id
+                ),
+            )
+            .to_put_request()
+            .json_body(payload)?;
+
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletTransactionHashedTxidResponseBody>()?;
 
         Ok(parsed.WalletTransaction)
@@ -592,14 +628,18 @@ impl WalletClient {
         wallet_account_id: String,
         wallet_transaction_id: String,
     ) -> Result<(), Error> {
-        let request = ProtonRequest::new(
-            Method::DELETE,
-            format!(
-                "{}/wallets/{}/accounts/{}/transactions/{}",
-                BASE_WALLET_API_V1, wallet_id, wallet_account_id, wallet_transaction_id
-            ),
-        );
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let request = self
+            .api_client
+            .build_full_url(
+                BASE_WALLET_API_V1,
+                format!(
+                    "wallets/{}/accounts/{}/transactions/{}",
+                    wallet_id, wallet_account_id, wallet_transaction_id
+                ),
+            )
+            .to_delete_request();
+
+        let response = self.api_client.send(request).await?;
         response.parse_response::<DeleteWalletTransactionResponseBody>()?;
 
         Ok(())
@@ -620,14 +660,17 @@ mod tests {
     use super::{
         CreateWalletAccountRequestBody, CreateWalletRequestBody, CreateWalletTransactionRequestBody, WalletClient,
     };
-    use crate::{error::Error, utils::common_session, utils_test::setup_test_connection, BASE_WALLET_API_V1};
+    use crate::{
+        error::Error,
+        tests::utils::{common_api_client, setup_test_connection},
+        BASE_WALLET_API_V1,
+    };
 
     #[tokio::test]
     #[ignore]
     async fn should_get_wallets() {
-        println!("here start");
-        let session = common_session().await;
-        let client = WalletClient::new(session);
+        let api_client = common_api_client().await;
+        let client = WalletClient::new(api_client);
 
         let blocks = client.get_wallets().await;
         println!("request done: {:?}", blocks);
@@ -636,8 +679,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn should_create_wallet() {
-        let session = common_session().await;
-        let client = WalletClient::new(session);
+        let api_client = common_api_client().await;
+        let client = WalletClient::new(api_client);
 
         let payload = CreateWalletRequestBody {
             Name: String::from("My test wallet"),
@@ -659,8 +702,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn should_update_wallet_name() {
-        let session = common_session().await;
-        let client = WalletClient::new(session);
+        let api_client = common_api_client().await;
+        let client = WalletClient::new(api_client);
 
         let res = client
             .update_wallet_name(
@@ -677,8 +720,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn should_delete_wallet() {
-        let session = common_session().await;
-        let client = WalletClient::new(session);
+        let api_client = common_api_client().await;
+        let client = WalletClient::new(api_client);
 
         let wallet = client
             .delete_wallet(String::from(
@@ -692,8 +735,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn should_create_wallet_account() {
-        let session = common_session().await;
-        let client = WalletClient::new(session);
+        let api_client = common_api_client().await;
+        let client = WalletClient::new(api_client);
 
         let payload = CreateWalletAccountRequestBody {
             DerivationPath: DerivationPath::from_str("m/44'/1'/0'").unwrap().to_string(),
@@ -716,8 +759,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn should_get_wallet_accounts() {
-        let session = common_session().await;
-        let client = WalletClient::new(session);
+        let api_client = common_api_client().await;
+        let client = WalletClient::new(api_client);
 
         let res = client
             .get_wallet_accounts(String::from(
@@ -731,8 +774,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn should_delete_wallet_account() {
-        let session = common_session().await;
-        let client = WalletClient::new(session);
+        let api_client = common_api_client().await;
+        let client = WalletClient::new(api_client);
 
         let res = client
             .delete_wallet_account(
@@ -751,8 +794,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn should_update_wallet_account_label() {
-        let session = common_session().await;
-        let client = WalletClient::new(session);
+        let api_client = common_api_client().await;
+        let client = WalletClient::new(api_client);
 
         let res = client
             .update_wallet_account_label(
@@ -772,8 +815,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn should_get_wallet_transactions_by_wallet() {
-        let session = common_session().await;
-        let client = WalletClient::new(session);
+        let api_client = common_api_client().await;
+        let client = WalletClient::new(api_client);
 
         let res = client
             .get_wallet_transactions(
@@ -791,8 +834,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn should_get_wallet_transactions_by_wallet_account() {
-        let session = common_session().await;
-        let client = WalletClient::new(session);
+        let api_client = common_api_client().await;
+        let client = WalletClient::new(api_client);
 
         let res = client
             .get_wallet_transactions(
@@ -812,8 +855,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn should_get_wallet_transactions_with_query_param() {
-        let session = common_session().await;
-        let client = WalletClient::new(session);
+        let api_client = common_api_client().await;
+        let client = WalletClient::new(api_client);
 
         let res = client
             .get_wallet_transactions(
@@ -834,8 +877,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn should_get_wallet_transactions_to_hash_by_wallet() {
-        let session = common_session().await;
-        let client = WalletClient::new(session);
+        let api_client = common_api_client().await;
+        let client = WalletClient::new(api_client);
 
         let res = client
             .get_wallet_transactions_to_hash(
@@ -852,8 +895,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn should_get_wallet_transactions_to_hash_by_wallet_account() {
-        let session = common_session().await;
-        let client = WalletClient::new(session);
+        let api_client = common_api_client().await;
+        let client = WalletClient::new(api_client);
 
         let res = client
             .get_wallet_transactions_to_hash(
@@ -872,8 +915,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn should_create_wallet_transaction() {
-        let session = common_session().await;
-        let client = WalletClient::new(session);
+        let api_client = common_api_client().await;
+        let client = WalletClient::new(api_client);
 
         let payload = CreateWalletTransactionRequestBody {
             TransactionID: String::from("xyz"),
@@ -901,8 +944,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn should_update_wallet_transaction_label() {
-        let session = common_session().await;
-        let client = WalletClient::new(session);
+        let api_client = common_api_client().await;
+        let client = WalletClient::new(api_client);
 
         let res = client
             .update_wallet_transaction_label(
@@ -925,8 +968,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn should_update_wallet_transaction_hashed_txid() {
-        let session = common_session().await;
-        let client = WalletClient::new(session);
+        let api_client = common_api_client().await;
+        let client = WalletClient::new(api_client);
 
         let res = client
             .update_wallet_transaction_hashed_txid(
@@ -949,8 +992,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn should_delete_wallet_transaction() {
-        let session = common_session().await;
-        let client = WalletClient::new(session);
+        let api_client = common_api_client().await;
+        let client = WalletClient::new(api_client);
 
         let res = client
             .delete_wallet_transactions(
@@ -1033,8 +1076,8 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let session = setup_test_connection(mock_server.uri());
-        let client = WalletClient::new(session);
+        let api_client = setup_test_connection(mock_server.uri());
+        let client = WalletClient::new(api_client);
         let payload = CreateWalletAccountRequestBody {
             DerivationPath: DerivationPath::from_str("m/44'/1'/0'").unwrap().to_string(),
             Label: String::from("test_label_id"),

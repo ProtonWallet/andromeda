@@ -1,10 +1,13 @@
 use std::sync::Arc;
 
-use async_std::sync::RwLock;
-use muon::{http::Method, ProtonRequest, Request, Session};
+use muon::Request;
 use serde::{Deserialize, Serialize};
 
-use crate::{error::Error, proton_response_ext::ProtonResponseExt, BASE_WALLET_API_V1};
+use crate::{
+    core::{ProtonResponseExt, ToProtonRequest},
+    error::Error,
+    ProtonWalletApiClient, BASE_WALLET_API_V1,
+};
 
 const ONLY_WITHOUT_BITCOIN_ADDRESS_KEY: &str = "OnlyWithoutBitcoinAddresses[]";
 
@@ -61,12 +64,12 @@ struct UpdateBitcoinAddressResponseBody {
 
 #[derive(Clone)]
 pub struct BitcoinAddressClient {
-    session: Arc<RwLock<Session>>,
+    api_client: Arc<ProtonWalletApiClient>,
 }
 
 impl BitcoinAddressClient {
-    pub fn new(session: Arc<RwLock<Session>>) -> Self {
-        Self { session }
+    pub fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
+        Self { api_client }
     }
 
     pub async fn get_bitcoin_addresses(
@@ -75,18 +78,19 @@ impl BitcoinAddressClient {
         wallet_account_id: String,
         only_without_bitcoin_addresses: Option<u8>,
     ) -> Result<Vec<ApiWalletBitcoinAddress>, Error> {
-        let request = ProtonRequest::new(
-            Method::GET,
-            format!(
-                "{}/wallets/{}/accounts/{}/addresses/bitcoin",
-                BASE_WALLET_API_V1, wallet_id, wallet_account_id,
-            ),
-        )
-        .param(
-            ONLY_WITHOUT_BITCOIN_ADDRESS_KEY,
-            only_without_bitcoin_addresses.map(|o| o.to_string()),
-        );
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let request = self
+            .api_client
+            .build_full_url(
+                BASE_WALLET_API_V1,
+                format!("wallets/{}/accounts/{}/addresses/bitcoin", wallet_id, wallet_account_id,),
+            )
+            .to_get_request()
+            .param(
+                ONLY_WITHOUT_BITCOIN_ADDRESS_KEY,
+                only_without_bitcoin_addresses.map(|o| o.to_string()),
+            );
+
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetBitcoinAddressesResponseBody>()?;
 
         Ok(parsed.WalletBitcoinAddresses)
@@ -97,15 +101,18 @@ impl BitcoinAddressClient {
         wallet_id: String,
         wallet_account_id: String,
     ) -> Result<u64, Error> {
-        let request = ProtonRequest::new(
-            Method::GET,
-            format!(
-                "{}/wallets/{}/accounts/{}/addresses/bitcoin/index",
-                BASE_WALLET_API_V1, wallet_id, wallet_account_id
-            ),
-        );
+        let request = self
+            .api_client
+            .build_full_url(
+                BASE_WALLET_API_V1,
+                format!(
+                    "wallets/{}/accounts/{}/addresses/bitcoin/index",
+                    wallet_id, wallet_account_id,
+                ),
+            )
+            .to_get_request();
 
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetBitcoinAddressHighestIndexResponseBody>()?;
         Ok(parsed.HighestIndex)
     }
@@ -119,16 +126,17 @@ impl BitcoinAddressClient {
         let payload = AddBitcoinAddressesRequestBody {
             BitcoinAddresses: bitcoin_addresses,
         };
-        let request = ProtonRequest::new(
-            Method::POST,
-            format!(
-                "{}/wallets/{}/accounts/{}/addresses/bitcoin",
-                BASE_WALLET_API_V1, wallet_id, wallet_account_id
-            ),
-        )
-        .json_body(payload)?;
 
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let request = self
+            .api_client
+            .build_full_url(
+                BASE_WALLET_API_V1,
+                format!("wallets/{}/accounts/{}/addresses/bitcoin", wallet_id, wallet_account_id,),
+            )
+            .to_post_request()
+            .json_body(payload)?;
+
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetBitcoinAddressesResponseBody>()?;
         Ok(parsed.WalletBitcoinAddresses)
     }
@@ -140,16 +148,19 @@ impl BitcoinAddressClient {
         wallet_account_bitcoin_address_id: String,
         bitcoin_address: ApiBitcoinAddressCreationPayload,
     ) -> Result<ApiWalletBitcoinAddress, Error> {
-        let request = ProtonRequest::new(
-            Method::PUT,
-            format!(
-                "{}/wallets/{}/accounts/{}/addresses/bitcoin/{}",
-                BASE_WALLET_API_V1, wallet_id, wallet_account_id, wallet_account_bitcoin_address_id
-            ),
-        )
-        .json_body(bitcoin_address)?;
+        let request = self
+            .api_client
+            .build_full_url(
+                BASE_WALLET_API_V1,
+                format!(
+                    "wallets/{}/accounts/{}/addresses/bitcoin/{}",
+                    wallet_id, wallet_account_id, wallet_account_bitcoin_address_id
+                ),
+            )
+            .to_put_request()
+            .json_body(bitcoin_address)?;
 
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateBitcoinAddressResponseBody>()?;
         Ok(parsed.WalletBitcoinAddress)
     }

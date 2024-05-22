@@ -1,14 +1,17 @@
 use std::sync::Arc;
 
-use async_std::sync::RwLock;
-use muon::{http::Method, ProtonRequest, Session};
 use serde::Deserialize;
 
 use super::BASE_WALLET_API_V1;
-use crate::{error::Error, proton_response_ext::ProtonResponseExt, transaction::ApiTransactionStatus};
+use crate::{
+    core::{ProtonResponseExt, ToProtonRequest},
+    error::Error,
+    transaction::ApiTransactionStatus,
+    ProtonWalletApiClient,
+};
 
 pub struct AddressClient {
-    session: Arc<RwLock<Session>>,
+    api_client: Arc<ProtonWalletApiClient>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -82,16 +85,18 @@ pub struct GetScriptHashTransactionsAtTransactionIdResponseBody {
 }
 
 impl AddressClient {
-    pub fn new(session: Arc<RwLock<Session>>) -> Self {
-        Self { session }
+    pub fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
+        Self { api_client }
     }
 
     /// Get recent block summaries, starting at tip or height if provided
     pub async fn get_address_balance(&self, address: String) -> Result<AddressBalance, Error> {
-        let url = format!("{}/addresses/{}/balance", BASE_WALLET_API_V1, address);
+        let request = self
+            .api_client
+            .build_full_url(BASE_WALLET_API_V1, format!("addresses/{}/balance", address))
+            .to_get_request();
 
-        let request = ProtonRequest::new(Method::GET, url);
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetAddressBalanceResponseBody>()?;
 
         Ok(parsed.Balance)
@@ -99,14 +104,15 @@ impl AddressClient {
 
     /// Get a [`BlockHeader`] given a particular block hash.
     pub async fn get_scripthash_transactions(&self, script_hash: String) -> Result<Vec<ApiTx>, Error> {
-        let request = ProtonRequest::new(
-            Method::GET,
-            format!(
-                "{}/addresses/scripthash/{}/transactions",
-                BASE_WALLET_API_V1, script_hash
-            ),
-        );
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let request = self
+            .api_client
+            .build_full_url(
+                BASE_WALLET_API_V1,
+                format!("addresses/scripthash/{}/transactions", script_hash),
+            )
+            .to_get_request();
+
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetScriptHashTransactionsResponseBody>()?;
 
         Ok(parsed.Transactions)
@@ -118,15 +124,15 @@ impl AddressClient {
         script_hash: String,
         transaction_id: String,
     ) -> Result<Vec<ApiTx>, Error> {
-        let request = ProtonRequest::new(
-            Method::GET,
-            format!(
-                "{}/addresses/scripthash/{}/transactions/{}",
-                BASE_WALLET_API_V1, script_hash, transaction_id
-            ),
-        );
+        let request = self
+            .api_client
+            .build_full_url(
+                BASE_WALLET_API_V1,
+                format!("addresses/scripthash/{}/transactions/{}", script_hash, transaction_id),
+            )
+            .to_get_request();
 
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetScriptHashTransactionsResponseBody>()?;
 
         Ok(parsed.Transactions)
@@ -143,13 +149,13 @@ mod tests {
     };
 
     use super::AddressClient;
-    use crate::utils::common_session;
+    use crate::tests::utils::common_api_client;
 
     #[tokio::test]
     #[ignore]
     async fn should_get_address_balance() {
-        let session = common_session().await;
-        let client = AddressClient::new(session);
+        let api_client = common_api_client().await;
+        let client = AddressClient::new(api_client);
 
         let address = client
             .get_address_balance(String::from("tb1q886jdswcmtn5u9memdlaz0lymua637a9aufqq6"))
@@ -161,8 +167,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn should_get_scripthash_transactions() {
-        let session = common_session().await;
-        let client = AddressClient::new(session);
+        let api_client = common_api_client().await;
+        let client = AddressClient::new(api_client);
 
         let scripthash = sha256::Hash::hash(
             Address::from_str("tb1q886jdswcmtn5u9memdlaz0lymua637a9aufqq6")
@@ -180,8 +186,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn should_get_scripthash_transactions_at_transaction_id() {
-        let session = common_session().await;
-        let client = AddressClient::new(session);
+        let api_client = common_api_client().await;
+        let client = AddressClient::new(api_client);
 
         let scripthash = sha256::Hash::hash(
             Address::from_str("tb1q886jdswcmtn5u9memdlaz0lymua637a9aufqq6")

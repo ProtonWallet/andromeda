@@ -1,15 +1,13 @@
 use std::sync::Arc;
 
-use async_std::sync::RwLock;
-use muon::{http::Method, ProtonRequest, Session};
+use muon::Request;
 use serde::Deserialize;
 
-use crate::{error::Error, proton_response_ext::ProtonResponseExt, BASE_CONTACTS_API_V4};
-
-#[derive(Clone)]
-pub struct ContactsClient {
-    session: Arc<RwLock<Session>>,
-}
+use crate::{
+    core::{ProtonResponseExt, ToProtonRequest},
+    error::Error,
+    ProtonWalletApiClient, BASE_CONTACTS_API_V4,
+};
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
@@ -29,21 +27,35 @@ pub struct ApiContactEmails {
     pub IsProton: u32,
 }
 
+#[derive(Clone)]
+pub struct ContactsClient {
+    api_client: Arc<ProtonWalletApiClient>,
+}
+
 impl ContactsClient {
-    pub fn new(session: Arc<RwLock<Session>>) -> Self {
-        Self { session }
+    pub fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
+        Self { api_client }
     }
 
-    pub async fn get_contacts(&self, page_size: u64, page: u64) -> Result<Vec<ApiContactEmails>, Error> {
-        let request = ProtonRequest::new(
-            Method::GET,
-            format!(
-                "{}/contacts/emails?PageSize={}&Page={}",
-                BASE_CONTACTS_API_V4, page_size, page,
-            ),
-        );
+    pub async fn get_contacts(
+        &self,
+        page_size: Option<u64>,
+        page: Option<u64>,
+    ) -> Result<Vec<ApiContactEmails>, Error> {
+        let mut request = self
+            .api_client
+            .build_full_url(BASE_CONTACTS_API_V4, "contacts/emails")
+            .to_get_request();
 
-        let response = self.session.read().await.bind(request)?.send().await?;
+        if let Some(page_size) = page_size {
+            request = request.param("PageSize", Some(page_size.to_string()));
+        }
+
+        if let Some(page) = page {
+            request = request.param("Page", Some(page.to_string()));
+        }
+
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetContactsResponseBody>()?;
 
         Ok(parsed.ContactEmails)
@@ -59,15 +71,18 @@ mod tests {
     };
 
     use super::ContactsClient;
-    use crate::{utils::common_session, utils_test::setup_test_connection, BASE_CONTACTS_API_V4};
+    use crate::{
+        tests::utils::{common_api_client, setup_test_connection},
+        BASE_CONTACTS_API_V4,
+    };
 
     //TODO:: real api calls need to move to integration tests. with quark commands
     #[tokio::test]
     #[ignore]
     async fn should_get_contacts() {
-        let session = common_session().await;
-        let client = ContactsClient::new(session);
-        let contacts = client.get_contacts(100, 0).await;
+        let api_client = common_api_client().await;
+        let client = ContactsClient::new(api_client);
+        let contacts = client.get_contacts(Some(100), Some(0)).await;
         println!("request done: {:?}", contacts);
     }
 
@@ -103,9 +118,9 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let session = setup_test_connection(mock_server.uri());
-        let client = ContactsClient::new(session);
-        let contacts = client.get_contacts(100, 0).await;
+        let api_client = setup_test_connection(mock_server.uri());
+        let client = ContactsClient::new(api_client);
+        let contacts = client.get_contacts(Some(100), Some(0)).await;
         match contacts {
             Ok(ref vec) => assert!(vec.len() == 2, "Expected the vector to contain 2 contacts."),
             Err(_) => panic!("Expected Ok variant but got Err."),
@@ -125,7 +140,7 @@ mod tests {
             .await;
         let session = setup_test_connection(mock_server.uri());
         let client = ContactsClient::new(session);
-        let contacts = client.get_contacts(100, 0).await;
+        let contacts = client.get_contacts(Some(100), Some(0)).await;
         assert!(contacts.is_err());
     }
 }

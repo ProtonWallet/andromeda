@@ -1,16 +1,15 @@
 use std::sync::Arc;
 
 use andromeda_common::BitcoinUnit;
-use async_std::sync::RwLock;
-use muon::{http::Method, ProtonRequest, Session};
+use muon::Request;
 use serde::Deserialize;
 
-use crate::{error::Error, proton_response_ext::ProtonResponseExt, settings::FiatCurrencySymbol, BASE_WALLET_API_V1};
-
-#[derive(Clone)]
-pub struct ExchangeRateClient {
-    session: Arc<RwLock<Session>>,
-}
+use crate::{
+    core::{ProtonResponseExt, ToProtonRequest},
+    error::Error,
+    settings::FiatCurrencySymbol,
+    ProtonWalletApiClient, BASE_WALLET_API_V1,
+};
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
@@ -57,9 +56,14 @@ struct GetAllFiatCurrenciesResponseBody {
     pub FiatCurrencies: Vec<ApiFiatCurrency>,
 }
 
+#[derive(Clone)]
+pub struct ExchangeRateClient {
+    api_client: Arc<ProtonWalletApiClient>,
+}
+
 impl ExchangeRateClient {
-    pub fn new(session: Arc<RwLock<Session>>) -> Self {
-        Self { session }
+    pub fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
+        Self { api_client }
     }
 
     pub async fn get_exchange_rate(
@@ -67,22 +71,28 @@ impl ExchangeRateClient {
         fiat_currency: FiatCurrencySymbol,
         time: Option<u64>,
     ) -> Result<ApiExchangeRate, Error> {
-        let path = match time {
-            Some(t) => format!("{}/rates?FiatCurrency={}&Time={}", BASE_WALLET_API_V1, fiat_currency, t,),
-            None => format!("{}/rates?FiatCurrency={}", BASE_WALLET_API_V1, fiat_currency,),
-        };
-        let request = ProtonRequest::new(Method::GET, path);
+        let mut request = self
+            .api_client
+            .build_full_url(BASE_WALLET_API_V1, format!("rates?FiatCurrency={}", fiat_currency))
+            .to_get_request();
 
-        let response = self.session.read().await.bind(request)?.send().await?;
+        if let Some(time) = time {
+            request = request.param("Time", Some(time.to_string()))
+        }
+
+        let response = self.api_client.send(request).await?;
 
         let parsed = response.parse_response::<GetExchangeRateResponseBody>()?;
         Ok(parsed.ExchangeRate)
     }
 
     pub async fn get_all_fiat_currencies(&self) -> Result<Vec<ApiFiatCurrency>, Error> {
-        let request = ProtonRequest::new(Method::GET, format!("{}/fiat-currencies", BASE_WALLET_API_V1));
+        let request = self
+            .api_client
+            .build_full_url(BASE_WALLET_API_V1, "fiat-currencies")
+            .to_get_request();
 
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let response = self.api_client.send(request).await?;
 
         let parsed = response.parse_response::<GetAllFiatCurrenciesResponseBody>()?;
         Ok(parsed.FiatCurrencies)
@@ -92,13 +102,13 @@ impl ExchangeRateClient {
 #[cfg(test)]
 mod tests {
     use super::ExchangeRateClient;
-    use crate::{settings::FiatCurrencySymbol, utils::common_session};
+    use crate::{settings::FiatCurrencySymbol, tests::utils::common_api_client};
 
     #[tokio::test]
     #[ignore]
     async fn should_get_exchange_rate() {
-        let session = common_session().await;
-        let client = ExchangeRateClient::new(session);
+        let api_client = common_api_client().await;
+        let client = ExchangeRateClient::new(api_client);
 
         let exchange_rate = client
             .get_exchange_rate(FiatCurrencySymbol::EUR, Some(1707287982))
@@ -110,8 +120,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn should_get_all_fiat_currencies() {
-        let session = common_session().await;
-        let client = ExchangeRateClient::new(session);
+        let api_client = common_api_client().await;
+        let client = ExchangeRateClient::new(api_client);
 
         let fiat_currencies = client.get_all_fiat_currencies().await;
 

@@ -1,15 +1,12 @@
 use std::sync::Arc;
 
-use async_std::sync::RwLock;
-use muon::{http::Method, ProtonRequest, Session};
 use serde::{Deserialize, Serialize};
 
-use crate::{error::Error, proton_response_ext::ProtonResponseExt, BASE_WALLET_API_V1};
-
-#[derive(Clone)]
-pub struct EmailIntegrationClient {
-    session: Arc<RwLock<Session>>,
-}
+use crate::{
+    core::{ProtonResponseExt, ToProtonRequest},
+    error::Error,
+    ProtonWalletApiClient, BASE_WALLET_API_V1,
+};
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
@@ -39,18 +36,23 @@ struct CreateBitcoinAddressRequestResponseBody {
     pub Code: u16,
 }
 
+#[derive(Clone)]
+pub struct EmailIntegrationClient {
+    api_client: Arc<ProtonWalletApiClient>,
+}
+
 impl EmailIntegrationClient {
-    pub fn new(session: Arc<RwLock<Session>>) -> Self {
-        Self { session }
+    pub fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
+        Self { api_client }
     }
 
     pub async fn lookup_bitcoin_address(&self, email: String) -> Result<ApiWalletBitcoinAddressLookup, Error> {
-        let request = ProtonRequest::new(
-            Method::GET,
-            format!("{}/emails/lookup?Email={}", BASE_WALLET_API_V1, email),
-        );
+        let request = self
+            .api_client
+            .build_full_url(BASE_WALLET_API_V1, format!("emails/lookup?Email={}", email))
+            .to_get_request();
 
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<LookupBitcoinAddressResponseBody>()?;
 
         Ok(parsed.WalletBitcoinAddress)
@@ -58,10 +60,14 @@ impl EmailIntegrationClient {
 
     pub async fn create_bitcoin_addresses_request(&self, email: String) -> Result<(), Error> {
         let payload = CreateBitcoinAddressRequestBody { Email: email };
-        let request =
-            ProtonRequest::new(Method::POST, format!("{}/emails/requests", BASE_WALLET_API_V1)).json_body(payload)?;
 
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let request = self
+            .api_client
+            .build_full_url(BASE_WALLET_API_V1, "emails/requests")
+            .to_post_request()
+            .json_body(payload)?;
+
+        let response = self.api_client.send(request).await?;
         response.parse_response::<CreateBitcoinAddressRequestResponseBody>()?;
 
         Ok(())
@@ -72,13 +78,13 @@ impl EmailIntegrationClient {
 mod tests {
 
     use super::EmailIntegrationClient;
-    use crate::utils::common_session;
+    use crate::tests::utils::common_api_client;
 
     #[tokio::test]
     #[ignore]
     async fn should_lookup_bitcoin_address() {
-        let session = common_session().await;
-        let client = EmailIntegrationClient::new(session);
+        let api_client = common_api_client().await;
+        let client = EmailIntegrationClient::new(api_client);
 
         let bitcoin_address = client.lookup_bitcoin_address(String::from("pro@proton.black")).await;
 

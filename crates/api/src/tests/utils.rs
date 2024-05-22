@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
-use async_std::sync::RwLock;
 use muon::{
     environment::ApiEnv, store::SimpleAuthStore, transports::ReqwestTransportFactory, AppSpec, Product, Session,
 };
+
+use crate::ProtonWalletApiClient;
 
 #[derive(Debug, Default)]
 pub struct TestEnv {
@@ -37,11 +38,24 @@ impl ApiEnv for TestEnv {
     }
 }
 
-pub fn setup_test_connection(url: String) -> Arc<RwLock<Session>> {
+pub fn setup_test_connection(url: String) -> Arc<ProtonWalletApiClient> {
     let app = AppSpec::new(Product::Wallet, "web-wallet@5.0.999.999-dev".to_string(), "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36".to_string());
     let auth = SimpleAuthStore::new("atlas");
     let transport = ReqwestTransportFactory::new();
     let env = TestEnv::new(url);
     let session = Session::new_dangerous(auth, app, transport, env).unwrap();
-    Arc::new(RwLock::new(session))
+
+    Arc::new(ProtonWalletApiClient::from_session(session, None))
+}
+
+pub async fn common_api_client() -> Arc<ProtonWalletApiClient> {
+    let app = AppSpec::new(Product::Wallet, "web-wallet@5.0.999.999-dev".to_string(), "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36".to_string());
+    let auth = SimpleAuthStore::new("atlas");
+
+    let transport = ReqwestTransportFactory::new();
+    let mut session = Session::new_with_transport(auth, app, transport).unwrap();
+
+    session.authenticate("pro", "pro").await.unwrap();
+
+    Arc::new(ProtonWalletApiClient::from_session(session, None))
 }
