@@ -27,12 +27,17 @@ pub struct WasmProtonWalletApiClient(ProtonWalletApiClient);
 #[wasm_bindgen]
 impl WasmProtonWalletApiClient {
     #[wasm_bindgen(constructor)]
-    pub fn new(uid_str: Option<String>, origin: Option<String>) -> Result<WasmProtonWalletApiClient, js_sys::Error> {
+    pub fn new(
+        uid_str: Option<String>,
+        origin: Option<String>,
+        url_prefix: Option<String>,
+    ) -> Result<WasmProtonWalletApiClient, js_sys::Error> {
         let config = ApiConfig {
             // TODO: add clients specs here
             spec: None,
             auth: uid_str.map(|u| AuthData::Uid(Uid::from(u))),
             env: origin.map(|o| BrowserOriginEnv::new(o)),
+            url_prefix,
         };
 
         let client = ProtonWalletApiClient::from_config(config);
@@ -43,25 +48,25 @@ impl WasmProtonWalletApiClient {
     /// Returns a client to use exchange rate API
     #[wasm_bindgen]
     pub fn exchange_rate(&self) -> WasmExchangeRateClient {
-        WasmExchangeRateClient::from(self.0.exchange_rate.clone())
+        WasmExchangeRateClient::from(self.0.clients().exchange_rate.clone())
     }
 
     /// Returns a client to use settings API
     #[wasm_bindgen]
     pub fn settings(&self) -> WasmSettingsClient {
-        WasmSettingsClient::from(self.0.settings.clone())
+        WasmSettingsClient::from(self.0.clients().settings.clone())
     }
 
     /// Returns a client to use network API
     #[wasm_bindgen]
     pub fn network(&self) -> WasmNetworkClient {
-        WasmNetworkClient::from(self.0.network.clone())
+        WasmNetworkClient::from(self.0.clients().network.clone())
     }
 
     /// Returns a client to use wallet API
     #[wasm_bindgen]
     pub fn wallet(&self) -> WasmWalletClient {
-        WasmWalletClient::from(self.0.wallet.clone())
+        WasmWalletClient::from(self.0.clients().wallet.clone())
     }
 }
 
@@ -74,7 +79,7 @@ mod tests {
     #[wasm_bindgen_test]
     #[ignore]
     async fn should_create_pw_api_client() {
-        let mut client = WasmProtonWalletApiClient::new(None, None).unwrap();
+        let mut client = WasmProtonWalletApiClient::new(None, None, None).unwrap();
         client.0.login("pro", "pro").await.unwrap();
     }
 }

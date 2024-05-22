@@ -130,7 +130,6 @@ pub fn sort_and_paginate_txs(
     }
 
     // We paginated sorted vector
-
     simple_txs
         .into_iter()
         .skip(pagination.skip)

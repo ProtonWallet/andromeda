@@ -1,15 +1,17 @@
 use std::sync::Arc;
 
 use andromeda_common::Network;
-use async_std::sync::RwLock;
-use muon::{http::Method, ProtonRequest, Session};
 use serde::Deserialize;
 
-use crate::{error::Error, proton_response_ext::ProtonResponseExt, BASE_WALLET_API_V1};
+use crate::{
+    core::{ProtonResponseExt, ToProtonRequest},
+    error::Error,
+    ProtonWalletApiClient, BASE_WALLET_API_V1,
+};
 
 #[derive(Clone)]
 pub struct NetworkClient {
-    session: Arc<RwLock<Session>>,
+    api_client: Arc<ProtonWalletApiClient>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -22,13 +24,18 @@ struct GetNetworkResponseBody {
 }
 
 impl NetworkClient {
-    pub fn new(session: Arc<RwLock<Session>>) -> Self {
-        Self { session }
+    pub fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
+        Self { api_client }
     }
 
     pub async fn get_network(&self) -> Result<Network, Error> {
-        let request = ProtonRequest::new(Method::GET, format!("{}/network", BASE_WALLET_API_V1));
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let request = self
+            .api_client
+            .build_full_url(BASE_WALLET_API_V1, "network")
+            .to_get_request();
+
+        let response = self.api_client.send(request).await?;
+
         let parsed = response.parse_response::<GetNetworkResponseBody>()?;
         let network = match parsed.Network {
             0 => Network::Bitcoin,
@@ -42,13 +49,14 @@ impl NetworkClient {
 #[cfg(test)]
 mod tests {
     use super::NetworkClient;
-    use crate::utils::common_session;
+    use crate::tests::utils::common_api_client;
 
     #[tokio::test]
     #[ignore]
     async fn should_get_network() {
-        let session = common_session().await;
-        let client = NetworkClient::new(session);
+        let proton_api_client = common_api_client().await;
+
+        let client = NetworkClient::new(proton_api_client);
 
         let network = client.get_network().await;
         println!("request done: {:?}", network);

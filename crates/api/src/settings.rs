@@ -2,11 +2,13 @@ use core::fmt;
 use std::sync::Arc;
 
 use andromeda_common::BitcoinUnit;
-use async_std::sync::RwLock;
-use muon::{http::Method, ProtonRequest, Session};
 use serde::{Deserialize, Serialize};
 
-use crate::{error::Error, proton_response_ext::ProtonResponseExt, BASE_WALLET_API_V1};
+use crate::{
+    core::{ProtonResponseExt, ToProtonRequest},
+    error::Error,
+    ProtonWalletApiClient, BASE_WALLET_API_V1,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
 pub enum FiatCurrencySymbol {
@@ -110,10 +112,6 @@ impl fmt::Display for FiatCurrencySymbol {
         write!(f, "{:?}", self)
     }
 }
-#[derive(Clone)]
-pub struct SettingsClient {
-    session: Arc<RwLock<Session>>,
-}
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
@@ -158,57 +156,79 @@ struct UpdateHideEmptyUsedAddressesRequestBody {
     pub HideEmptyUsedAddresses: u8,
 }
 
+#[derive(Clone)]
+pub struct SettingsClient {
+    api_client: Arc<ProtonWalletApiClient>,
+}
+
 impl SettingsClient {
-    pub fn new(session: Arc<RwLock<Session>>) -> Self {
-        Self { session }
+    pub fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
+        Self { api_client }
     }
 
     pub async fn get_user_settings(&self) -> Result<UserSettings, Error> {
-        let request = ProtonRequest::new(Method::GET, format!("{}/settings", BASE_WALLET_API_V1));
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let request = self
+            .api_client
+            .build_full_url(BASE_WALLET_API_V1, "settings")
+            .to_get_request();
+
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetUserSettingsResponseBody>()?;
 
         Ok(parsed.WalletUserSettings)
     }
 
     pub async fn bitcoin_unit(&self, symbol: BitcoinUnit) -> Result<UserSettings, Error> {
-        let request = ProtonRequest::new(Method::PUT, format!("{}/settings/currency/bitcoin", BASE_WALLET_API_V1))
+        let request = self
+            .api_client
+            .build_full_url(BASE_WALLET_API_V1, "settings/currency/bitcoin")
+            .to_put_request()
             .json_body(UpdateBitcoinUnitRequestBody { Symbol: symbol })?;
-        let response = self.session.read().await.bind(request)?.send().await?;
+
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetUserSettingsResponseBody>()?;
 
         Ok(parsed.WalletUserSettings)
     }
 
     pub async fn fiat_currency(&self, symbol: FiatCurrencySymbol) -> Result<UserSettings, Error> {
-        let request = ProtonRequest::new(Method::PUT, format!("{}/settings/currency/fiat", BASE_WALLET_API_V1))
+        let request = self
+            .api_client
+            .build_full_url(BASE_WALLET_API_V1, "settings/currency/fiat")
+            .to_put_request()
             .json_body(UpdateFiatCurrencyRequestBody { Symbol: symbol })?;
-        let response = self.session.read().await.bind(request)?.send().await?;
+
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetUserSettingsResponseBody>()?;
 
         Ok(parsed.WalletUserSettings)
     }
 
     pub async fn two_fa_threshold(&self, amount: u64) -> Result<UserSettings, Error> {
-        let request = ProtonRequest::new(Method::PUT, format!("{}/settings/2fa/threshold", BASE_WALLET_API_V1))
+        let request = self
+            .api_client
+            .build_full_url(BASE_WALLET_API_V1, "settings/2fa/threshold")
+            .to_put_request()
             .json_body(Update2FAThresholdRequestBody {
                 TwoFactorAmountThreshold: amount,
             })?;
-        let response = self.session.read().await.bind(request)?.send().await?;
+
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetUserSettingsResponseBody>()?;
 
         Ok(parsed.WalletUserSettings)
     }
 
     pub async fn hide_empty_used_addresses(&self, hide_empty_used_addresses: bool) -> Result<UserSettings, Error> {
-        let request = ProtonRequest::new(
-            Method::PUT,
-            format!("{}/settings/addresses/used/hide", BASE_WALLET_API_V1),
-        )
-        .json_body(UpdateHideEmptyUsedAddressesRequestBody {
-            HideEmptyUsedAddresses: hide_empty_used_addresses.into(),
-        })?;
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let request = self
+            .api_client
+            .build_full_url(BASE_WALLET_API_V1, "settings")
+            .to_put_request()
+            .json_body(UpdateHideEmptyUsedAddressesRequestBody {
+                HideEmptyUsedAddresses: hide_empty_used_addresses.into(),
+            })?;
+
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetUserSettingsResponseBody>()?;
 
         Ok(parsed.WalletUserSettings)
@@ -218,13 +238,13 @@ impl SettingsClient {
 #[cfg(test)]
 mod tests {
     use super::SettingsClient;
-    use crate::utils::common_session;
+    use crate::tests::utils::common_api_client;
 
     #[tokio::test]
     #[ignore]
     async fn should_get_network() {
-        let session = common_session().await;
-        let client = SettingsClient::new(session);
+        let api_client = common_api_client().await;
+        let client = SettingsClient::new(api_client);
 
         let settings = client.get_user_settings().await;
         println!("request done: {:?}", settings);

@@ -15,6 +15,7 @@ pub use muon::{
     environment::ApiEnv, store::SimpleAuthStore, transports::ReqwestTransportFactory, AccessToken, AppSpec, Auth,
     AuthData, AuthStore, Error as MuonError, Product, RefreshToken, Scope, Scopes, Session, Uid,
 };
+use muon::{ProtonRequest, ProtonResponse, RequestError};
 use network::NetworkClient;
 use proton_email_address::ProtonEmailAddressClient;
 use settings::SettingsClient;
@@ -25,7 +26,7 @@ use wallet::WalletClient;
 mod env;
 
 #[cfg(test)]
-pub mod utils_test;
+mod tests;
 
 pub mod address;
 pub mod bitcoin_address;
@@ -41,24 +42,12 @@ pub mod settings;
 pub mod transaction;
 pub mod wallet;
 
-pub mod proton_response_ext;
-pub mod utils;
+mod core;
 
-#[macro_use]
-extern crate cfg_if;
-cfg_if! {
-    if #[cfg(feature = "local")] {
-        pub const BASE_WALLET_API_V1: &str = "/api/wallet/v1";
-        pub const BASE_CORE_API_V4: &str = "/api/core/v4";
-        pub const BASE_CORE_API_V5: &str = "/api/core/v5";
-        pub const BASE_CONTACTS_API_V4: &str = "/api/contacts/v4";
-    } else {
-        pub const BASE_WALLET_API_V1: &str = "/wallet/v1";
-        pub const BASE_CORE_API_V4: &str = "/core/v4";
-        pub const BASE_CORE_API_V5: &str = "/core/v5";
-        pub const BASE_CONTACTS_API_V4: &str = "/contacts/v4";
-    }
-}
+pub const BASE_WALLET_API_V1: &str = "/wallet/v1";
+pub const BASE_CORE_API_V4: &str = "/core/v4";
+pub const BASE_CORE_API_V5: &str = "/core/v5";
+pub const BASE_CONTACTS_API_V4: &str = "/contacts/v4";
 
 pub struct WalletAppSpec(AppSpec);
 
@@ -91,41 +80,6 @@ impl Default for WalletAppSpec {
     }
 }
 
-/// Dummy struct to build all Wallet api clients from a single sessions
-struct ApiClients(
-    BlockClient,
-    NetworkClient,
-    SettingsClient,
-    TransactionClient,
-    WalletClient,
-    AddressClient,
-    ExchangeRateClient,
-    EventClient,
-    ContactsClient,
-    ProtonEmailAddressClient,
-    EmailIntegrationClient,
-    BitcoinAddressClient,
-);
-
-impl ApiClients {
-    pub fn from_session(session: Arc<RwLock<Session>>) -> Self {
-        ApiClients(
-            BlockClient::new(session.clone()),
-            NetworkClient::new(session.clone()),
-            SettingsClient::new(session.clone()),
-            TransactionClient::new(session.clone()),
-            WalletClient::new(session.clone()),
-            AddressClient::new(session.clone()),
-            ExchangeRateClient::new(session.clone()),
-            EventClient::new(session.clone()),
-            ContactsClient::new(session.clone()),
-            ProtonEmailAddressClient::new(session.clone()),
-            EmailIntegrationClient::new(session.clone()),
-            BitcoinAddressClient::new(session.clone()),
-        )
-    }
-}
-
 /// An API client providing interfaces to send authenticated http requests to
 /// Wallet backend
 ///
@@ -139,25 +93,14 @@ impl ApiClients {
 /// let mut api_client = ProtonWalletApiClient::default();
 /// api_client.login("pro", "pro").await.unwrap();
 ///
-/// let network = api_client.network.get_network().await.unwrap();
+/// let network = api_client.clients().network.get_network().await.unwrap();
 /// println!("network fetch: {:?}", network);
 /// # })
 /// ```
+#[derive(Clone)]
 pub struct ProtonWalletApiClient {
     session: Arc<RwLock<Session>>,
-
-    pub block: BlockClient,
-    pub network: NetworkClient,
-    pub settings: SettingsClient,
-    pub transaction: TransactionClient,
-    pub wallet: WalletClient,
-    pub address: AddressClient,
-    pub exchange_rate: ExchangeRateClient,
-    pub event: EventClient,
-    pub contacts: ContactsClient,
-    pub proton_email_address: ProtonEmailAddressClient,
-    pub email_integration: EmailIntegrationClient,
-    pub bitcoin_address: BitcoinAddressClient,
+    url_prefix: Option<String>,
 }
 
 #[derive(Debug)]
@@ -169,11 +112,28 @@ where
     pub spec: Option<(String, String)>,
     /// The api client initial auth data
     pub auth: Option<AuthData>,
+    /// An optional prefix to use on every api endpoint call
+    pub url_prefix: Option<String>,
     /// The env for the api client
     #[cfg(feature = "allow-dangerous-env")]
     pub env: Option<E>,
     #[cfg(not(feature = "allow-dangerous-env"))]
     pub env: PhantomData<E>,
+}
+
+pub struct Clients {
+    pub block: BlockClient,
+    pub network: NetworkClient,
+    pub settings: SettingsClient,
+    pub transaction: TransactionClient,
+    pub wallet: WalletClient,
+    pub event: EventClient,
+    pub address: AddressClient,
+    pub proton_email_address: ProtonEmailAddressClient,
+    pub exchange_rate: ExchangeRateClient,
+    pub bitcoin_address: BitcoinAddressClient,
+    pub contacts: ContactsClient,
+    pub email_integration: EmailIntegrationClient,
 }
 
 impl ProtonWalletApiClient {
@@ -187,6 +147,7 @@ impl ProtonWalletApiClient {
     ///     spec: Some((String::from("android-wallet/1.0.0"), String::from("ProtonWallet/plus-agent-details"))),
     ///     auth: Some(auth),
     ///     env: Some(AtlasEnv::new(None)),
+    ///     url_prefix: None,
     /// };
     /// let api_client = ProtonWalletApiClient::from_config(config);
     /// ```
@@ -229,7 +190,7 @@ impl ProtonWalletApiClient {
         #[cfg(not(feature = "allow-dangerous-env"))]
         let session = Session::new_with_transport(auth_store, app_spec.inner(), transport).unwrap();
 
-        Self::from_session(session)
+        Self::from_session(session, config.url_prefix)
     }
 
     /// Builds a new api client from a wallet version and a user agent
@@ -243,7 +204,7 @@ impl ProtonWalletApiClient {
         let auth_store = SimpleAuthStore::new("atlas");
         let transport = ReqwestTransportFactory::new();
         let session = Session::new_with_transport(auth_store, app_spec, transport).unwrap();
-        Self::from_session(session)
+        Self::from_session(session, None)
     }
 
     /// Builds a new api client from a session.
@@ -258,41 +219,33 @@ impl ProtonWalletApiClient {
     /// # let auth_store = SimpleAuthStore::new("atlas");
     /// let session = Session::new(auth_store, app_spec).unwrap();
     ///
-    /// let api_client = ProtonWalletApiClient::from_session(session);
+    /// let api_client = ProtonWalletApiClient::from_session(session, None);
     /// ```
-    pub fn from_session(session: Session) -> Self {
+    pub fn from_session(session: Session, url_prefix: Option<String>) -> Self {
         let session = Arc::new(RwLock::new(session));
 
-        let ApiClients(
-            block,
-            network,
-            settings,
-            transaction,
-            wallet,
-            address,
-            exchange_rate,
-            event,
-            contacts,
-            proton_email_address,
-            email_integration,
-            bitcoin_address,
-        ) = ApiClients::from_session(session.clone());
-
         Self {
-            session,
+            session: session.clone(),
+            url_prefix,
+        }
+    }
 
-            block,
-            network,
-            settings,
-            transaction,
-            wallet,
-            address,
-            exchange_rate,
-            event,
-            contacts,
-            proton_email_address,
-            email_integration,
-            bitcoin_address,
+    pub fn clients(&self) -> Clients {
+        let api_client = Arc::new(self.clone());
+
+        Clients {
+            block: BlockClient::new(api_client.clone()),
+            network: NetworkClient::new(api_client.clone()),
+            settings: SettingsClient::new(api_client.clone()),
+            transaction: TransactionClient::new(api_client.clone()),
+            wallet: WalletClient::new(api_client.clone()),
+            event: EventClient::new(api_client.clone()),
+            address: AddressClient::new(api_client.clone()),
+            proton_email_address: ProtonEmailAddressClient::new(api_client.clone()),
+            exchange_rate: ExchangeRateClient::new(api_client.clone()),
+            bitcoin_address: BitcoinAddressClient::new(api_client.clone()),
+            contacts: ContactsClient::new(api_client.clone()),
+            email_integration: EmailIntegrationClient::new(api_client.clone()),
         }
     }
 
@@ -322,7 +275,7 @@ impl ProtonWalletApiClient {
 
         let session = Session::new(auth_store, app_spec).unwrap();
 
-        Ok(Self::from_session(session))
+        Ok(Self::from_session(session, None))
     }
 
     /// Builds a new api client from user's access token, refresh token, uid,
@@ -357,7 +310,7 @@ impl ProtonWalletApiClient {
         let transport = ReqwestTransportFactory::new();
         let session = Session::new_with_transport(auth_store, app_spec, transport).unwrap();
 
-        Ok(Self::from_session(session))
+        Ok(Self::from_session(session, None))
     }
 
     /// Performs an http request to authenticate the session used in the api
@@ -369,7 +322,7 @@ impl ProtonWalletApiClient {
     /// # let app_spec = AppSpec::default();
     /// # let auth_store = SimpleAuthStore::new("atlas");
     /// # let session = Session::new(auth_store, app_spec).unwrap();
-    /// let mut api_client = ProtonWalletApiClient::from_session(session);
+    /// let mut api_client = ProtonWalletApiClient::from_session(session, None);
     /// api_client.login("my_username", "my_password");
     /// ```
     pub async fn login(&mut self, username: &str, password: &str) -> Result<(), Error> {
@@ -378,8 +331,19 @@ impl ProtonWalletApiClient {
         Ok(())
     }
 
-    pub fn get_session(&self) -> Arc<RwLock<Session>> {
-        self.session.clone()
+    /// Builds a full url from base and endpoint.
+    /// If a prefix is set to be used on the apiclient, we prepend it before the
+    /// base
+    fn build_full_url(&self, base: impl ToString, url: impl ToString) -> String {
+        if let Some(prefix) = self.url_prefix.clone() {
+            format!("{}/{}/{}", prefix, base.to_string(), url.to_string())
+        } else {
+            format!("{}/{}", base.to_string(), url.to_string())
+        }
+    }
+
+    async fn send(&self, request: ProtonRequest) -> Result<ProtonResponse, RequestError> {
+        self.session.read().await.bind(request)?.send().await
     }
 }
 
@@ -391,6 +355,6 @@ impl Default for ProtonWalletApiClient {
 
         let session = Session::new(auth_store, app_spec).unwrap();
 
-        Self::from_session(session)
+        Self::from_session(session, None)
     }
 }

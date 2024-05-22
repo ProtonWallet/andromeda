@@ -1,24 +1,17 @@
 use std::sync::Arc;
 
-use async_std::sync::RwLock;
-use muon::{http::Method, ProtonRequest, Session};
 use serde::Deserialize;
 
 use crate::{
     contacts::ApiContactEmails,
+    core::{ProtonResponseExt, ToProtonRequest},
     error::Error,
-    proton_response_ext::ProtonResponseExt,
     settings::UserSettings,
     wallet::{ApiWallet, ApiWalletAccount, ApiWalletKey, ApiWalletSettings, ApiWalletTransaction},
-    BASE_CORE_API_V4, BASE_CORE_API_V5,
+    ProtonWalletApiClient, BASE_CORE_API_V4, BASE_CORE_API_V5,
 };
 
 const MAX_EVENTS_PER_POLL: usize = 50;
-
-#[derive(Clone)]
-pub struct EventClient {
-    session: Arc<RwLock<Session>>,
-}
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
@@ -91,9 +84,14 @@ pub struct ApiWalletTransactionsEvent {
     pub WalletTransaction: Option<ApiWalletTransaction>,
 }
 
+#[derive(Clone)]
+pub struct EventClient {
+    api_client: Arc<ProtonWalletApiClient>,
+}
+
 impl EventClient {
-    pub fn new(session: Arc<RwLock<Session>>) -> Self {
-        Self { session }
+    pub fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
+        Self { api_client }
     }
 
     pub async fn collect_events(&self, latest_event_id: String) -> Result<Vec<ApiProtonEvent>, Error> {
@@ -144,14 +142,22 @@ impl EventClient {
     }
 
     pub async fn get_event(&self, latest_event_id: &str) -> Result<ApiProtonEvent, Error> {
-        let request = ProtonRequest::new(Method::GET, format!("{}/events/{}", BASE_CORE_API_V5, &latest_event_id));
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let request = self
+            .api_client
+            .build_full_url(BASE_CORE_API_V5, format!("events/{}", &latest_event_id))
+            .to_get_request();
+
+        let response = self.api_client.send(request).await?;
         response.parse_response::<ApiProtonEvent>()
     }
 
     pub async fn get_latest_event_id(&self) -> Result<String, Error> {
-        let request = ProtonRequest::new(Method::GET, format!("{}/events/latest", BASE_CORE_API_V4));
-        let response = self.session.read().await.bind(request)?.send().await?;
+        let request = self
+            .api_client
+            .build_full_url(BASE_CORE_API_V4, "events/latest")
+            .to_get_request();
+
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetLatestEventIDResponseBody>()?;
 
         Ok(parsed.EventID)
@@ -161,13 +167,13 @@ impl EventClient {
 #[cfg(test)]
 mod tests {
     use super::EventClient;
-    use crate::utils::common_session;
+    use crate::tests::utils::common_api_client;
 
     #[tokio::test]
     #[ignore]
     async fn should_get_latest_event_id() {
-        let session = common_session().await;
-        let client = EventClient::new(session);
+        let api_client = common_api_client().await;
+        let client = EventClient::new(api_client);
 
         let latest_event_id = client.get_latest_event_id().await;
         println!("request done: {:?}", latest_event_id);
@@ -176,8 +182,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn should_collect_events() {
-        let session = common_session().await;
-        let client = EventClient::new(session);
+        let api_client = common_api_client().await;
+        let client = EventClient::new(api_client);
 
         let events = client
             .collect_events(String::from(
