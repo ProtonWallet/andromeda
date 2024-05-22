@@ -114,22 +114,22 @@ impl FromParts for DerivationPath {
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum ScriptType {
     /// Legacy scripts : https://bitcoinwiki.org/wiki/pay-to-pubkey-hash
-    Legacy = 0,
+    Legacy = 1,
     /// Nested segwit scrips : https://bitcoinwiki.org/wiki/pay-to-script-hash
-    NestedSegwit = 1,
+    NestedSegwit = 2,
     /// Native segwit scripts : https://bips.dev/173/
-    NativeSegwit = 2,
+    NativeSegwit = 3,
     /// Taproot scripts : https://bips.dev/341/
-    Taproot = 3,
+    Taproot = 4,
 }
 
 impl From<ScriptType> for u8 {
     fn from(val: ScriptType) -> Self {
         match val {
-            ScriptType::Legacy => 0u8,
-            ScriptType::NestedSegwit => 1u8,
-            ScriptType::NativeSegwit => 2u8,
-            ScriptType::Taproot => 3u8,
+            ScriptType::Legacy => 1u8,
+            ScriptType::NestedSegwit => 2u8,
+            ScriptType::NativeSegwit => 3u8,
+            ScriptType::Taproot => 4u8,
         }
     }
 }

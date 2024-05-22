@@ -119,10 +119,10 @@ impl Into<WasmKeychainKind> for KeychainKind {
 #[wasm_bindgen]
 #[derive(Clone, Copy, Deserialize, Serialize)]
 pub enum WasmScriptType {
-    Legacy = 0,
-    NestedSegwit = 1,
-    NativeSegwit = 2,
-    Taproot = 3,
+    Legacy = 1,
+    NestedSegwit = 2,
+    NativeSegwit = 3,
+    Taproot = 4,
 }
 
 impl Into<ScriptType> for WasmScriptType {
