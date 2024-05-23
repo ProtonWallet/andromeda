@@ -25,6 +25,9 @@ use wallet::WalletClient;
 #[cfg(feature = "local")]
 mod env;
 
+#[cfg(feature = "quark")]
+pub mod proton_quark;
+
 #[cfg(test)]
 mod tests;
 
@@ -38,9 +41,12 @@ pub mod event;
 pub mod exchange_rate;
 pub mod network;
 pub mod proton_email_address;
+pub mod proton_users;
 pub mod settings;
 pub mod transaction;
 pub mod wallet;
+
+pub use proton_users::ProtonUsersClient;
 
 mod core;
 

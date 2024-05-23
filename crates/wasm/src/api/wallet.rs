@@ -44,6 +44,7 @@ pub struct WasmApiWalletKey {
     pub WalletID: String,
     pub UserKeyID: String,
     pub WalletKey: String,
+    pub WalletKeySignature: String,
 }
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
@@ -85,6 +86,7 @@ impl From<ApiWalletData> for WasmApiWalletData {
                 WalletID: value.WalletKey.WalletID,
                 UserKeyID: value.WalletKey.UserKeyID,
                 WalletKey: value.WalletKey.WalletKey,
+                WalletKeySignature: value.WalletKey.WalletKeySignature,
             },
             WalletSettings: WasmApiWalletSettings {
                 WalletID: value.WalletSettings.WalletID,
@@ -263,6 +265,7 @@ impl WasmWalletClient {
         has_passphrase: bool,
         user_key_id: String,
         wallet_key: String,
+        wallet_key_signature: String,
         mnemonic: Option<String>,
         fingerprint: Option<String>,
         public_key: Option<String>,
@@ -280,6 +283,7 @@ impl WasmWalletClient {
             },
             UserKeyID: user_key_id,
             WalletKey: wallet_key,
+            WalletKeySignature: wallet_key_signature,
             Mnemonic: mnemonic,
             Fingerprint: fingerprint,
             PublicKey: public_key,

@@ -31,3 +31,5 @@ local = []
 # Used to be able to use a non-standard api (no atlas or prod)
 allow-dangerous-env = ["muon/dangerous"]
 test = ["muon/dangerous"]
+# quark command. only available in atlas
+quark = []
