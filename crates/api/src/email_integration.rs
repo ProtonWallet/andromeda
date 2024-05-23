@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use muon::Request;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -47,7 +48,7 @@ impl EmailIntegrationClient {
     }
 
     pub async fn lookup_bitcoin_address(&self, email: String) -> Result<ApiWalletBitcoinAddressLookup, Error> {
-        let request = self
+        let mut request = self
             .api_client
             .build_full_url(BASE_WALLET_API_V1, "emails/lookup")
             .to_get_request();
