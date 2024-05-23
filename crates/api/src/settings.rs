@@ -222,7 +222,7 @@ impl SettingsClient {
     pub async fn hide_empty_used_addresses(&self, hide_empty_used_addresses: bool) -> Result<UserSettings, Error> {
         let request = self
             .api_client
-            .build_full_url(BASE_WALLET_API_V1, "settings")
+            .build_full_url(BASE_WALLET_API_V1, "settings/addresses/used/hide")
             .to_put_request()
             .json_body(UpdateHideEmptyUsedAddressesRequestBody {
                 HideEmptyUsedAddresses: hide_empty_used_addresses.into(),

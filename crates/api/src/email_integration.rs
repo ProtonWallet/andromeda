@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use muon::Request;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -49,8 +50,9 @@ impl EmailIntegrationClient {
     pub async fn lookup_bitcoin_address(&self, email: String) -> Result<ApiWalletBitcoinAddressLookup, Error> {
         let request = self
             .api_client
-            .build_full_url(BASE_WALLET_API_V1, format!("emails/lookup?Email={}", email))
-            .to_get_request();
+            .build_full_url(BASE_WALLET_API_V1, "emails/lookup")
+            .to_get_request()
+            .param("Email", Some(email));
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<LookupBitcoinAddressResponseBody>()?;
