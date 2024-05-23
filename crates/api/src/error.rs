@@ -25,11 +25,9 @@ pub enum Error {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
 pub struct ResponseError {
-    #[serde(rename = "Code")]
-    pub code: u16,
-    #[serde(rename = "Error")]
-    pub message: String,
-    #[serde(rename = "Details")]
-    pub details: serde_json::Value,
+    pub Code: u16,
+    pub Details: serde_json::Value,
+    pub Error: String,
 }

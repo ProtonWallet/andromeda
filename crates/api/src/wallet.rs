@@ -56,6 +56,9 @@ pub struct CreateWalletRequestBody {
     pub UserKeyID: String,
     /// Base64 encoded binary data
     pub WalletKey: String,
+    /// Detached signature of the encrypted AES-GCM 256 key used to encrypt the
+    /// mnemonic or public key, as armored PGP
+    pub WalletKeySignature: String,
     /// Wallet mnemonic encrypted with the WalletKey, in base64 format
     pub Mnemonic: Option<String>,
     // Unique identifier of the mnemonic, using the first 4 bytes of the master public key hash, required if Mnemonic
@@ -72,6 +75,7 @@ pub struct ApiWalletKey {
     pub WalletID: String,
     pub UserKeyID: String,
     pub WalletKey: String,
+    pub WalletKeySignature: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -690,9 +694,9 @@ mod tests {
             Mnemonic: Some(String::from("")),
             Fingerprint: Some(String::from("")),
             PublicKey: None,
-
             UserKeyID: String::from("A2MiMDdmh59RhGQ13iuZ27tc_vEn5GTf-v1LaCRP99q2rkMmPeuMh1QRdtIjR5UwGAowachcaiYYf8Pcf9tOoA=="),
             WalletKey: String::from("Yituc2t2WS9paWRrTEVLTWRmMW15S3c0b3JoZis0aDA4L3d3SDdzbUJBd3BaaWxzakpNV0xHUmtRQ0wxbEJ2SjlTMHV3N2RIUUd2eWtVdm5ySzJLTmVzclBXVEpwRjVCY1hQOWJaU0ROVTFsa1luR3lZQmFoYXRFMzRwdWM1R0VDUDJTYU5wV0h3PT0="),
+            WalletKeySignature: String::from("-----BEGIN PGP SIGNATURE-----.*-----END PGP SIGNATURE-----"),
         };
 
         let blocks = client.create_wallet(payload).await;
@@ -1042,8 +1046,8 @@ mod tests {
         assert!(res.is_err());
         match res.unwrap_err() {
             Error::ErrorCode(code) => {
-                assert!(code.code == 2002);
-                assert!(code.message == "Attribute DerivationPath is invalid: The data should be a valid BIP 44, 49, 84 or 86 derivation path.");
+                assert!(code.Code == 2002);
+                assert!(code.Error == "Attribute DerivationPath is invalid: The data should be a valid BIP 44, 49, 84 or 86 derivation path.");
             }
             _ => {
                 panic!("Expected Ok variant but got Err.")
