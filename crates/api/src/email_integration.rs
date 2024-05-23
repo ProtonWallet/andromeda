@@ -51,8 +51,8 @@ impl EmailIntegrationClient {
         let request = self
             .api_client
             .build_full_url(BASE_WALLET_API_V1, "emails/lookup")
-            .param("Email", Some(email))
-            .to_get_request();
+            .to_get_request()
+            .param("Email", Some(email));
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<LookupBitcoinAddressResponseBody>()?;

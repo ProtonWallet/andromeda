@@ -74,8 +74,8 @@ impl ExchangeRateClient {
         let mut request = self
             .api_client
             .build_full_url(BASE_WALLET_API_V1, "rates")
-            .param("FiatCurrency", Some(fiat_currency.to_string()))
-            .to_get_request();
+            .to_get_request()
+            .param("FiatCurrency", Some(fiat_currency.to_string()));
         if let Some(time) = time {
             request = request.param("Time", Some(time.to_string()))
         }
