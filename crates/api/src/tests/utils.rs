@@ -59,3 +59,11 @@ pub async fn common_api_client() -> Arc<ProtonWalletApiClient> {
 
     Arc::new(ProtonWalletApiClient::from_session(session, None))
 }
+
+pub fn setup_test_connection_raw(url: String) -> Session {
+    let app = AppSpec::new(Product::Wallet, "web-wallet@5.0.999.999-dev".to_string(), "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36".to_string());
+    let auth = SimpleAuthStore::new("atlas");
+    let transport = ReqwestTransportFactory::new();
+    let env = TestEnv::new(url);
+    Session::new_dangerous(auth, app, transport, env).unwrap()
+}
