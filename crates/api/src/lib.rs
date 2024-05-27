@@ -11,6 +11,7 @@ use email_integration::EmailIntegrationClient;
 use error::Error;
 use event::EventClient;
 use exchange_rate::ExchangeRateClient;
+use invite::InviteClient;
 pub use muon::{
     environment::ApiEnv, store::SimpleAuthStore, transports::ReqwestTransportFactory, AccessToken, AppSpec, Auth,
     AuthData, AuthStore, Error as MuonError, Product, RefreshToken, Scope, Scopes, Session, Uid,
@@ -39,6 +40,7 @@ pub mod email_integration;
 pub mod error;
 pub mod event;
 pub mod exchange_rate;
+pub mod invite;
 pub mod network;
 pub mod proton_email_address;
 pub mod proton_users;
@@ -140,6 +142,7 @@ pub struct Clients {
     pub bitcoin_address: BitcoinAddressClient,
     pub contacts: ContactsClient,
     pub email_integration: EmailIntegrationClient,
+    pub invite: InviteClient,
 }
 
 impl ProtonWalletApiClient {
@@ -252,6 +255,7 @@ impl ProtonWalletApiClient {
             bitcoin_address: BitcoinAddressClient::new(api_client.clone()),
             contacts: ContactsClient::new(api_client.clone()),
             email_integration: EmailIntegrationClient::new(api_client.clone()),
+            invite: InviteClient::new(api_client.clone()),
         }
     }
 
