@@ -139,10 +139,10 @@ impl TryFrom<u8> for ScriptType {
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            0 => Ok(ScriptType::Legacy),
-            1 => Ok(ScriptType::NestedSegwit),
-            2 => Ok(ScriptType::NativeSegwit),
-            3 => Ok(ScriptType::Taproot),
+            1 => Ok(ScriptType::Legacy),
+            2 => Ok(ScriptType::NestedSegwit),
+            3 => Ok(ScriptType::NativeSegwit),
+            4 => Ok(ScriptType::Taproot),
             _ => Err(Error::InvalidScriptType(value.to_string())),
         }
     }
