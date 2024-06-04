@@ -111,7 +111,7 @@ impl FromParts for DerivationPath {
     }
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub enum ScriptType {
     /// Legacy scripts : https://bitcoinwiki.org/wiki/pay-to-pubkey-hash
     Legacy = 1,
@@ -144,25 +144,6 @@ impl TryFrom<u8> for ScriptType {
             3 => Ok(ScriptType::NativeSegwit),
             4 => Ok(ScriptType::Taproot),
             _ => Err(Error::InvalidScriptType(value.to_string())),
-        }
-    }
-}
-
-impl From<ScriptType> for ChildNumber {
-    /// Returns default purpose derivation index (level 1) for each script type
-    /// ```
-    /// # use bitcoin::bip32::ChildNumber;
-    /// # use andromeda_common::ScriptType;
-    /// #
-    /// let purpose: ChildNumber = ScriptType::NestedSegwit.into();
-    /// assert_eq!(purpose, ChildNumber::Hardened { index: 49 });
-    /// ```
-    fn from(value: ScriptType) -> Self {
-        match value {
-            ScriptType::Legacy => ChildNumber::Hardened { index: 44 },
-            ScriptType::NestedSegwit => ChildNumber::Hardened { index: 49 },
-            ScriptType::NativeSegwit => ChildNumber::Hardened { index: 84 },
-            ScriptType::Taproot => ChildNumber::Hardened { index: 86 },
         }
     }
 }
