@@ -39,7 +39,9 @@ impl NetworkClient {
         let parsed = response.parse_response::<GetNetworkResponseBody>()?;
         let network = match parsed.Network {
             0 => Network::Bitcoin,
-            _ => Network::Testnet,
+            1 => Network::Testnet,
+            2 => Network::Signet,
+            _ => Network::Regtest,
         };
 
         Ok(network)
