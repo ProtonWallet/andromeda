@@ -4,7 +4,7 @@ use andromeda_common::Network;
 use serde::Deserialize;
 
 use crate::{
-    core::{ProtonResponseExt, ToProtonRequest},
+    core::{ApiClient, ProtonResponseExt},
     error::Error,
     ProtonWalletApiClient, BASE_WALLET_API_V1,
 };
@@ -23,17 +23,23 @@ struct GetNetworkResponseBody {
     pub Network: u8,
 }
 
-impl NetworkClient {
-    pub fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
-        Self { api_client }
+impl ApiClient for NetworkClient {
+    fn api_client(&self) -> &Arc<ProtonWalletApiClient> {
+        &self.api_client
     }
 
-    pub async fn get_network(&self) -> Result<Network, Error> {
-        let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, "network")
-            .to_get_request();
+    fn base_url(&self) -> &str {
+        BASE_WALLET_API_V1
+    }
 
+    fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
+        Self { api_client }
+    }
+}
+
+impl NetworkClient {
+    pub async fn get_network(&self) -> Result<Network, Error> {
+        let request = self.get("network");
         let response = self.api_client.send(request).await?;
 
         let parsed = response.parse_response::<GetNetworkResponseBody>()?;
@@ -50,8 +56,10 @@ impl NetworkClient {
 
 #[cfg(test)]
 mod tests {
+    use muon::EnvId;
+
     use super::NetworkClient;
-    use crate::tests::utils::common_api_client;
+    use crate::{core::ApiClient, tests::utils::common_api_client};
 
     #[tokio::test]
     #[ignore]
@@ -62,5 +70,17 @@ mod tests {
 
         let network = client.get_network().await;
         println!("request done: {:?}", network);
+    }
+
+    #[test]
+    fn test_parse_env_id() {
+        let env: EnvId = "prod".parse().unwrap();
+        assert!(matches!(env, EnvId::Prod));
+
+        let env: EnvId = "atlas".parse().unwrap();
+        assert!(matches!(env, EnvId::Atlas(None)));
+
+        let env: EnvId = "atlas:scientist".parse().unwrap();
+        assert!(matches!(env, EnvId::Atlas(Some(name)) if name == "scientist"));
     }
 }

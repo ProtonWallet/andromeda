@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
-use muon::Request;
 use serde::Deserialize;
 
 use crate::{
-    core::{ProtonResponseExt, ToProtonRequest},
+    core::{ApiClient, ProtonResponseExt},
     error::Error,
     ProtonWalletApiClient, BASE_CORE_API_V4,
 };
@@ -73,16 +72,23 @@ pub struct ProtonEmailAddressClient {
     api_client: Arc<ProtonWalletApiClient>,
 }
 
-impl ProtonEmailAddressClient {
-    pub fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
-        Self { api_client }
+impl ApiClient for ProtonEmailAddressClient {
+    fn api_client(&self) -> &Arc<ProtonWalletApiClient> {
+        &self.api_client
     }
 
+    fn base_url(&self) -> &str {
+        BASE_CORE_API_V4
+    }
+
+    fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
+        Self { api_client }
+    }
+}
+
+impl ProtonEmailAddressClient {
     pub async fn get_proton_email_addresses(&self) -> Result<Vec<ApiProtonAddress>, Error> {
-        let request = self
-            .api_client
-            .build_full_url(BASE_CORE_API_V4, "addresses")
-            .to_get_request();
+        let request = self.get("addresses");
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetApiProtonAddressesResponseBody>()?;
@@ -95,14 +101,9 @@ impl ProtonEmailAddressClient {
         email: String,
         internal_only: Option<u8>,
     ) -> Result<Vec<ApiAllKeyAddressKey>, Error> {
-        let mut request = self
-            .api_client
-            .build_full_url(BASE_CORE_API_V4, "keys/all")
-            .to_get_request()
-            .param("Email", Some(email));
-
-        if internal_only.is_some() {
-            request = request.param("InternalOnly", internal_only.map(|i| i.to_string()));
+        let mut request = self.get("keys/all").query(("Email", email));
+        if let Some(intenal) = internal_only {
+            request = request.query(("InternalOnly", intenal.to_string()));
         }
 
         let response = self.api_client.send(request).await?;
@@ -116,7 +117,7 @@ impl ProtonEmailAddressClient {
 mod tests {
 
     use super::ProtonEmailAddressClient;
-    use crate::tests::utils::common_api_client;
+    use crate::{core::ApiClient, tests::utils::common_api_client};
 
     #[tokio::test]
     #[ignore]
@@ -127,6 +128,7 @@ mod tests {
         let proton_email_addresses = client.get_proton_email_addresses().await;
 
         println!("request done: {:?}", proton_email_addresses);
+        assert!(proton_email_addresses.is_ok());
     }
 
     #[tokio::test]
@@ -140,5 +142,6 @@ mod tests {
             .await;
 
         println!("request done: {:?}", all_public_keys);
+        assert!(all_public_keys.is_ok());
     }
 }

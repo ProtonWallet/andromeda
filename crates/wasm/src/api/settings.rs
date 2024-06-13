@@ -353,7 +353,7 @@ impl WasmSettingsClient {
     #[wasm_bindgen(js_name = "setBitcoinUnit")]
     pub async fn bitcoin_unit(&self, symbol: WasmBitcoinUnit) -> Result<WasmUserSettingsData, js_sys::Error> {
         self.0
-            .bitcoin_unit(symbol.into())
+            .update_bitcoin_unit(symbol.into())
             .await
             .map_err(|e| e.to_js_error())
             .map(|settings| WasmUserSettingsData(settings.into()))
@@ -362,7 +362,7 @@ impl WasmSettingsClient {
     #[wasm_bindgen(js_name = "setFiatCurrency")]
     pub async fn fiat_currency(&self, symbol: WasmFiatCurrencySymbol) -> Result<WasmUserSettingsData, js_sys::Error> {
         self.0
-            .fiat_currency(symbol.into())
+            .update_fiat_currency(symbol.into())
             .await
             .map_err(|e| e.to_js_error())
             .map(|settings| WasmUserSettingsData(settings.into()))
@@ -371,7 +371,7 @@ impl WasmSettingsClient {
     #[wasm_bindgen(js_name = "setTwoFaThreshold")]
     pub async fn two_fa_threshold(&self, amount: u64) -> Result<WasmUserSettingsData, js_sys::Error> {
         self.0
-            .two_fa_threshold(amount)
+            .update_two_fa_threshold(amount)
             .await
             .map_err(|e| e.to_js_error())
             .map(|settings| WasmUserSettingsData(settings.into()))
@@ -383,7 +383,7 @@ impl WasmSettingsClient {
         hide_empty_used_addresses: bool,
     ) -> Result<WasmUserSettingsData, js_sys::Error> {
         self.0
-            .hide_empty_used_addresses(hide_empty_used_addresses)
+            .update_hide_empty_used_addresses(hide_empty_used_addresses)
             .await
             .map_err(|e| e.to_js_error())
             .map(|settings| WasmUserSettingsData(settings.into()))

@@ -1,4 +1,4 @@
-use muon::{ProtonResponse, Response};
+use muon::http::HttpRes as ProtonResponse;
 use serde::de::DeserializeOwned;
 
 use crate::error::{Error, ResponseError};
@@ -14,22 +14,28 @@ impl ProtonResponseExt for ProtonResponse {
     where
         T: DeserializeOwned + std::fmt::Debug,
     {
-        // Attempt to parse the response into the expected type.
-        let parsed_response = self.to_json::<T>();
-        if let Ok(res) = parsed_response {
-            return Ok(res);
-        }
+        match self.body_json::<T>() {
+            Ok(res) => return Ok(res),
+            Err(parsed_response_err) => {
+                // Attempt to parse the response into the error type.
+                if let Ok(res) = self.body_json::<ResponseError>() {
+                    return Err(Error::ErrorCode(res));
+                }
 
-        if let Ok(res) = self.to_json::<ResponseError>() {
-            return Err(Error::ErrorCode(res));
-        }
+                // If parsing the known error type fails, check if the body can be read as a
+                // string.
+                let body = self.body().to_vec();
+                let error_details = match String::from_utf8(body) {
+                    Ok(text) => format!(
+                        "Failed to parse response: Error: {}, Body: {}",
+                        parsed_response_err, text
+                    ),
+                    // Directly propagate the original parsing error
+                    Err(_) => parsed_response_err.to_string(),
+                };
 
-        // If parsing the known error type fails, check if the body can be read as a
-        // string.
-        let body = self.body().to_vec();
-        match String::from_utf8(body) {
-            Ok(text) => Err(Error::DeserializeErr(format!("Failed to parse response: {}", text))),
-            Err(_) => Err(Error::from(parsed_response.unwrap_err())), // Directly propagate the original parsing error
+                Err(Error::DeserializeErr(error_details))
+            }
         }
     }
 }

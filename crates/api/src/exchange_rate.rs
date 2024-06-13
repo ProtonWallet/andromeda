@@ -1,11 +1,10 @@
 use std::sync::Arc;
 
 use andromeda_common::BitcoinUnit;
-use muon::Request;
 use serde::Deserialize;
 
 use crate::{
-    core::{ProtonResponseExt, ToProtonRequest},
+    core::{ApiClient, ProtonResponseExt},
     error::Error,
     settings::FiatCurrencySymbol,
     ProtonWalletApiClient, BASE_WALLET_API_V1,
@@ -61,23 +60,29 @@ pub struct ExchangeRateClient {
     api_client: Arc<ProtonWalletApiClient>,
 }
 
-impl ExchangeRateClient {
-    pub fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
+impl ApiClient for ExchangeRateClient {
+    fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
         Self { api_client }
     }
 
+    fn api_client(&self) -> &Arc<ProtonWalletApiClient> {
+        &self.api_client
+    }
+
+    fn base_url(&self) -> &str {
+        BASE_WALLET_API_V1
+    }
+}
+
+impl ExchangeRateClient {
     pub async fn get_exchange_rate(
         &self,
         fiat_currency: FiatCurrencySymbol,
         time: Option<u64>,
     ) -> Result<ApiExchangeRate, Error> {
-        let mut request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, "rates")
-            .to_get_request()
-            .param("FiatCurrency", Some(fiat_currency.to_string()));
+        let mut request = self.get("rates").query(("FiatCurrency", fiat_currency.to_string()));
         if let Some(time) = time {
-            request = request.param("Time", Some(time.to_string()))
+            request = request.query(("Time", time.to_string()))
         }
 
         let response = self.api_client.send(request).await?;
@@ -87,10 +92,7 @@ impl ExchangeRateClient {
     }
 
     pub async fn get_all_fiat_currencies(&self) -> Result<Vec<ApiFiatCurrency>, Error> {
-        let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, "fiat-currencies")
-            .to_get_request();
+        let request = self.get("fiat-currencies");
 
         let response = self.api_client.send(request).await?;
 
@@ -102,7 +104,7 @@ impl ExchangeRateClient {
 #[cfg(test)]
 mod tests {
     use super::ExchangeRateClient;
-    use crate::{settings::FiatCurrencySymbol, tests::utils::common_api_client};
+    use crate::{core::ApiClient, settings::FiatCurrencySymbol, tests::utils::common_api_client};
 
     #[tokio::test]
     #[ignore]
@@ -115,6 +117,7 @@ mod tests {
             .await;
 
         println!("request done: {:?}", exchange_rate);
+        assert!(exchange_rate.is_ok());
     }
 
     #[tokio::test]
@@ -126,5 +129,6 @@ mod tests {
         let fiat_currencies = client.get_all_fiat_currencies().await;
 
         println!("request done: {:?}", fiat_currencies);
+        assert!(fiat_currencies.is_ok());
     }
 }

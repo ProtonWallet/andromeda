@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
-use muon::Request;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    core::{ProtonResponseExt, ToProtonRequest},
+    core::{ApiClient, ProtonResponseExt},
     error::Error,
     ProtonWalletApiClient, BASE_WALLET_API_V1,
 };
@@ -67,29 +66,37 @@ pub struct BitcoinAddressClient {
     api_client: Arc<ProtonWalletApiClient>,
 }
 
-impl BitcoinAddressClient {
-    pub fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
-        Self { api_client }
+impl ApiClient for BitcoinAddressClient {
+    fn api_client(&self) -> &Arc<ProtonWalletApiClient> {
+        &self.api_client
     }
 
+    fn base_url(&self) -> &str {
+        BASE_WALLET_API_V1
+    }
+
+    fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
+        Self { api_client }
+    }
+}
+
+impl BitcoinAddressClient {
     pub async fn get_bitcoin_addresses(
         &self,
         wallet_id: String,
         wallet_account_id: String,
         only_without_bitcoin_addresses: Option<u8>,
     ) -> Result<Vec<ApiWalletBitcoinAddress>, Error> {
-        let request = self
-            .api_client
-            .build_full_url(
-                BASE_WALLET_API_V1,
-                format!("wallets/{}/accounts/{}/addresses/bitcoin", wallet_id, wallet_account_id,),
-            )
-            .to_get_request()
-            .param(
+        let mut request = self.get(format!(
+            "wallets/{}/accounts/{}/addresses/bitcoin",
+            wallet_id, wallet_account_id
+        ));
+        if let Some(only_without_bitcoin_addresses) = only_without_bitcoin_addresses {
+            request = request.query((
                 ONLY_WITHOUT_BITCOIN_ADDRESS_KEY,
-                only_without_bitcoin_addresses.map(|o| o.to_string()),
-            );
-
+                only_without_bitcoin_addresses.to_string(),
+            ));
+        }
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetBitcoinAddressesResponseBody>()?;
 
@@ -101,17 +108,10 @@ impl BitcoinAddressClient {
         wallet_id: String,
         wallet_account_id: String,
     ) -> Result<u64, Error> {
-        let request = self
-            .api_client
-            .build_full_url(
-                BASE_WALLET_API_V1,
-                format!(
-                    "wallets/{}/accounts/{}/addresses/bitcoin/index",
-                    wallet_id, wallet_account_id,
-                ),
-            )
-            .to_get_request();
-
+        let request = self.get(format!(
+            "wallets/{}/accounts/{}/addresses/bitcoin/index",
+            wallet_id, wallet_account_id,
+        ));
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetBitcoinAddressHighestIndexResponseBody>()?;
         Ok(parsed.HighestIndex)
@@ -128,13 +128,11 @@ impl BitcoinAddressClient {
         };
 
         let request = self
-            .api_client
-            .build_full_url(
-                BASE_WALLET_API_V1,
-                format!("wallets/{}/accounts/{}/addresses/bitcoin", wallet_id, wallet_account_id,),
-            )
-            .to_post_request()
-            .json_body(payload)?;
+            .post(format!(
+                "wallets/{}/accounts/{}/addresses/bitcoin",
+                wallet_id, wallet_account_id,
+            ))
+            .body_json(payload)?;
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetBitcoinAddressesResponseBody>()?;
@@ -149,16 +147,11 @@ impl BitcoinAddressClient {
         bitcoin_address: ApiBitcoinAddressCreationPayload,
     ) -> Result<ApiWalletBitcoinAddress, Error> {
         let request = self
-            .api_client
-            .build_full_url(
-                BASE_WALLET_API_V1,
-                format!(
-                    "wallets/{}/accounts/{}/addresses/bitcoin/{}",
-                    wallet_id, wallet_account_id, wallet_account_bitcoin_address_id
-                ),
-            )
-            .to_put_request()
-            .json_body(bitcoin_address)?;
+            .put(format!(
+                "wallets/{}/accounts/{}/addresses/bitcoin/{}",
+                wallet_id, wallet_account_id, wallet_account_bitcoin_address_id
+            ))
+            .body_json(bitcoin_address)?;
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateBitcoinAddressResponseBody>()?;

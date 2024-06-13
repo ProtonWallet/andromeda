@@ -5,7 +5,7 @@ use andromeda_common::BitcoinUnit;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    core::{ProtonResponseExt, ToProtonRequest},
+    core::{ApiClient, ProtonResponseExt},
     error::Error,
     ProtonWalletApiClient, BASE_WALLET_API_V1,
 };
@@ -161,16 +161,23 @@ pub struct SettingsClient {
     api_client: Arc<ProtonWalletApiClient>,
 }
 
-impl SettingsClient {
-    pub fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
+impl ApiClient for SettingsClient {
+    fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
         Self { api_client }
     }
 
+    fn api_client(&self) -> &Arc<ProtonWalletApiClient> {
+        return &self.api_client;
+    }
+
+    fn base_url(&self) -> &str {
+        BASE_WALLET_API_V1
+    }
+}
+
+impl SettingsClient {
     pub async fn get_user_settings(&self) -> Result<UserSettings, Error> {
-        let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, "settings")
-            .to_get_request();
+        let request = self.get("settings");
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetUserSettingsResponseBody>()?;
@@ -178,12 +185,10 @@ impl SettingsClient {
         Ok(parsed.WalletUserSettings)
     }
 
-    pub async fn bitcoin_unit(&self, symbol: BitcoinUnit) -> Result<UserSettings, Error> {
+    pub async fn update_bitcoin_unit(&self, symbol: BitcoinUnit) -> Result<UserSettings, Error> {
         let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, "settings/currency/bitcoin")
-            .to_put_request()
-            .json_body(UpdateBitcoinUnitRequestBody { Symbol: symbol })?;
+            .put("settings/currency/bitcoin")
+            .body_json(UpdateBitcoinUnitRequestBody { Symbol: symbol })?;
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetUserSettingsResponseBody>()?;
@@ -191,12 +196,10 @@ impl SettingsClient {
         Ok(parsed.WalletUserSettings)
     }
 
-    pub async fn fiat_currency(&self, symbol: FiatCurrencySymbol) -> Result<UserSettings, Error> {
+    pub async fn update_fiat_currency(&self, symbol: FiatCurrencySymbol) -> Result<UserSettings, Error> {
         let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, "settings/currency/fiat")
-            .to_put_request()
-            .json_body(UpdateFiatCurrencyRequestBody { Symbol: symbol })?;
+            .put("settings/currency/fiat")
+            .body_json(UpdateFiatCurrencyRequestBody { Symbol: symbol })?;
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetUserSettingsResponseBody>()?;
@@ -204,12 +207,10 @@ impl SettingsClient {
         Ok(parsed.WalletUserSettings)
     }
 
-    pub async fn two_fa_threshold(&self, amount: u64) -> Result<UserSettings, Error> {
+    pub async fn update_two_fa_threshold(&self, amount: u64) -> Result<UserSettings, Error> {
         let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, "settings/2fa/threshold")
-            .to_put_request()
-            .json_body(Update2FAThresholdRequestBody {
+            .put("settings/2fa/threshold")
+            .body_json(Update2FAThresholdRequestBody {
                 TwoFactorAmountThreshold: amount,
             })?;
 
@@ -219,12 +220,13 @@ impl SettingsClient {
         Ok(parsed.WalletUserSettings)
     }
 
-    pub async fn hide_empty_used_addresses(&self, hide_empty_used_addresses: bool) -> Result<UserSettings, Error> {
+    pub async fn update_hide_empty_used_addresses(
+        &self,
+        hide_empty_used_addresses: bool,
+    ) -> Result<UserSettings, Error> {
         let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, "settings/addresses/used/hide")
-            .to_put_request()
-            .json_body(UpdateHideEmptyUsedAddressesRequestBody {
+            .put("settings/addresses/used/hide")
+            .body_json(UpdateHideEmptyUsedAddressesRequestBody {
                 HideEmptyUsedAddresses: hide_empty_used_addresses.into(),
             })?;
 
@@ -237,16 +239,63 @@ impl SettingsClient {
 
 #[cfg(test)]
 mod tests {
+    use andromeda_common::BitcoinUnit;
+
     use super::SettingsClient;
-    use crate::tests::utils::common_api_client;
+    use crate::{core::ApiClient, settings::FiatCurrencySymbol, tests::utils::common_api_client};
 
     #[tokio::test]
     #[ignore]
-    async fn should_get_network() {
+    async fn should_get_user_settings() {
         let api_client = common_api_client().await;
         let client = SettingsClient::new(api_client);
 
         let settings = client.get_user_settings().await;
         println!("request done: {:?}", settings);
+        assert!(settings.is_ok());
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn should_update_bitcoin_unit() {
+        let api_client = common_api_client().await;
+        let client = SettingsClient::new(api_client);
+
+        let settings = client.update_bitcoin_unit(BitcoinUnit::BTC).await;
+        println!("request done: {:?}", settings);
+        assert!(settings.is_ok());
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn should_update_fiat_currency() {
+        let api_client = common_api_client().await;
+        let client = SettingsClient::new(api_client);
+
+        let settings = client.update_fiat_currency(FiatCurrencySymbol::USD).await;
+        println!("request done: {:?}", settings);
+        assert!(settings.is_ok());
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn should_update_two_fa_threshold() {
+        let api_client = common_api_client().await;
+        let client = SettingsClient::new(api_client);
+
+        let settings = client.update_two_fa_threshold(1000).await;
+        println!("request done: {:?}", settings);
+        assert!(settings.is_ok());
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn should_update_hide_empty_used_addresses() {
+        let api_client = common_api_client().await;
+        let client = SettingsClient::new(api_client);
+
+        let settings = client.update_hide_empty_used_addresses(true).await;
+        println!("request done: {:?}", settings);
+        assert!(settings.is_ok());
     }
 }

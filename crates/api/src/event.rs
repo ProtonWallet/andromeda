@@ -4,11 +4,11 @@ use serde::Deserialize;
 
 use crate::{
     contacts::ApiContactEmails,
-    core::{ProtonResponseExt, ToProtonRequest},
+    core::{ApiClient, ProtonResponseExt},
     error::Error,
     settings::UserSettings,
     wallet::{ApiWallet, ApiWalletAccount, ApiWalletKey, ApiWalletSettings, ApiWalletTransaction},
-    ProtonWalletApiClient, BASE_CORE_API_V4, BASE_CORE_API_V5,
+    ProtonWalletApiClient, BASE_CORE_API_V4,
 };
 
 const MAX_EVENTS_PER_POLL: usize = 50;
@@ -89,11 +89,21 @@ pub struct EventClient {
     api_client: Arc<ProtonWalletApiClient>,
 }
 
-impl EventClient {
-    pub fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
+impl ApiClient for EventClient {
+    fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
         Self { api_client }
     }
 
+    fn api_client(&self) -> &Arc<ProtonWalletApiClient> {
+        &self.api_client
+    }
+
+    fn base_url(&self) -> &str {
+        BASE_CORE_API_V4
+    }
+}
+
+impl EventClient {
     pub async fn collect_events(&self, latest_event_id: String) -> Result<Vec<ApiProtonEvent>, Error> {
         let mut events = Vec::with_capacity(4);
         let event = self.get_event(&latest_event_id).await?;
@@ -142,20 +152,14 @@ impl EventClient {
     }
 
     pub async fn get_event(&self, latest_event_id: &str) -> Result<ApiProtonEvent, Error> {
-        let request = self
-            .api_client
-            .build_full_url(BASE_CORE_API_V5, format!("events/{}", &latest_event_id))
-            .to_get_request();
+        let request = self.get(format!("events/{}", &latest_event_id));
 
         let response = self.api_client.send(request).await?;
         response.parse_response::<ApiProtonEvent>()
     }
 
     pub async fn get_latest_event_id(&self) -> Result<String, Error> {
-        let request = self
-            .api_client
-            .build_full_url(BASE_CORE_API_V4, "events/latest")
-            .to_get_request();
+        let request = self.get("events/latest");
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetLatestEventIDResponseBody>()?;
@@ -167,7 +171,7 @@ impl EventClient {
 #[cfg(test)]
 mod tests {
     use super::EventClient;
-    use crate::tests::utils::common_api_client;
+    use crate::{core::ApiClient, tests::utils::common_api_client};
 
     #[tokio::test]
     #[ignore]
@@ -177,6 +181,7 @@ mod tests {
 
         let latest_event_id = client.get_latest_event_id().await;
         println!("request done: {:?}", latest_event_id);
+        assert!(latest_event_id.is_ok());
     }
 
     #[tokio::test]
@@ -191,5 +196,6 @@ mod tests {
             ))
             .await;
         println!("request done: {:?}", events);
+        assert!(events.is_ok());
     }
 }

@@ -1,17 +1,13 @@
 use std::{collections::HashMap, sync::Arc};
 
 use bitcoin::{consensus::deserialize, Transaction};
-use log::info;
-use muon::Response;
 use serde::{Deserialize, Serialize};
 
 use super::{error::Error, BASE_WALLET_API_V1};
 use crate::{
-    core::{ProtonResponseExt, ToProtonRequest},
+    core::{ApiClient, ProtonResponseExt},
     ProtonWalletApiClient,
 };
-
-//TODO:: code need to be used. remove all #[allow(dead_code)]
 
 #[derive(Debug, Serialize)]
 #[allow(non_snake_case)]
@@ -118,11 +114,21 @@ pub struct TransactionClient {
     api_client: Arc<ProtonWalletApiClient>,
 }
 
-impl TransactionClient {
-    pub fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
-        Self { api_client }
+impl ApiClient for TransactionClient {
+    fn api_client(&self) -> &Arc<ProtonWalletApiClient> {
+        &self.api_client
     }
 
+    fn base_url(&self) -> &str {
+        BASE_WALLET_API_V1
+    }
+
+    fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
+        Self { api_client }
+    }
+}
+
+impl TransactionClient {
     pub async fn broadcast_raw_transaction(
         &self,
         signed_transaction_hex: String,
@@ -151,11 +157,7 @@ impl TransactionClient {
             Body: body,
         };
 
-        let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, "transactions")
-            .to_post_request()
-            .json_body(body)?;
+        let request = self.post("transactions").body_json(body)?;
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<BroadcastRawTransactionResponseBody>()?;
@@ -164,10 +166,7 @@ impl TransactionClient {
     }
 
     pub async fn get_raw_transaction(&self, txid: String) -> Result<Transaction, Error> {
-        let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, format!("transactions/{}/raw", txid))
-            .to_get_request();
+        let request = self.get(format!("transactions/{}/raw", txid));
 
         let response = self.api_client.send(request).await?;
         let parsed: Transaction = deserialize(response.body())?;
@@ -176,10 +175,7 @@ impl TransactionClient {
     }
 
     pub async fn get_transaction_status(&self, txid: String) -> Result<ApiTransactionStatus, Error> {
-        let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, format!("transactions/{}/status", txid))
-            .to_get_request();
+        let request = self.get(format!("transactions/{}/status", txid));
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetTransactionStatusResponseBody>()?;
@@ -188,10 +184,7 @@ impl TransactionClient {
     }
 
     pub async fn get_transaction_merkle_proof(&self, txid: String) -> Result<TransactionMerkleProof, Error> {
-        let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, format!("transactions/{}/merkle-proof", txid))
-            .to_get_request();
+        let request = self.get(format!("transactions/{}/merkle-proof", txid));
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetTransactionMerkleProofResponseBody>()?;
@@ -200,10 +193,7 @@ impl TransactionClient {
     }
 
     pub async fn get_transaction_merkle_block_proof(&self, txid: String) -> Result<String, Error> {
-        let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, format!("transactions/{}/merkleblock-proof", txid))
-            .to_get_request();
+        let request = self.get(format!("transactions/{}/merkleblock-proof", txid));
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetTransactionMerkleBlockProofResponseBody>()?;
@@ -216,10 +206,7 @@ impl TransactionClient {
         txid: String,
         index: u64,
     ) -> Result<OutpointSpendingStatus, Error> {
-        let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, format!("transactions/{}/outspend/{}", txid, index))
-            .to_get_request();
+        let request = self.get(format!("transactions/{}/outspend/{}", txid, index));
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetOutpointSpendingStatusResponseBody>()?;
@@ -228,13 +215,9 @@ impl TransactionClient {
     }
 
     pub async fn get_fee_estimates(&self) -> Result<HashMap<String, f64>, Error> {
-        let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, "transactions/fee-estimates".to_string())
-            .to_get_request();
+        let request = self.get("transactions/fee-estimates");
 
         let response = self.api_client.send(request).await?;
-        info!("get_fee_estimates {:?}", String::from_utf8(response.body().to_vec()));
         let parsed = response.parse_response::<GetFeeEstimateResponseBody>()?;
 
         Ok(parsed.FeeEstimates)
@@ -244,7 +227,7 @@ impl TransactionClient {
 #[cfg(test)]
 mod tests {
     use super::TransactionClient;
-    use crate::tests::utils::common_api_client;
+    use crate::{core::ApiClient, tests::utils::common_api_client};
 
     #[tokio::test]
     #[ignore]
@@ -256,6 +239,7 @@ mod tests {
             .get_raw_transaction("72a2f1d87b412c8db06b39a5027e98644150fd8ab41a54b0be762383e4283407".to_string())
             .await;
         println!("request done: {:?}", blocks);
+        assert!(blocks.is_ok());
     }
 
     #[tokio::test]
@@ -268,6 +252,7 @@ mod tests {
             .get_transaction_status("72a2f1d87b412c8db06b39a5027e98644150fd8ab41a54b0be762383e4283407".to_string())
             .await;
         println!("request done: {:?}", transaction_status);
+        assert!(transaction_status.is_ok());
     }
 
     #[tokio::test]
@@ -283,6 +268,7 @@ mod tests {
             .await;
 
         println!("request done: {:?}", transaction_merkle_proof);
+        assert!(transaction_merkle_proof.is_ok());
     }
 
     #[tokio::test]
@@ -298,6 +284,7 @@ mod tests {
             .await;
 
         println!("request done: {:?}", transaction_merkle_block_proof);
+        assert!(transaction_merkle_block_proof.is_ok());
     }
 
     #[tokio::test]
@@ -314,6 +301,7 @@ mod tests {
             .await;
 
         println!("request done: {:?}", outpoint_spending_status);
+        assert!(outpoint_spending_status.is_ok());
     }
 
     #[tokio::test]
@@ -325,5 +313,6 @@ mod tests {
         let fee_estimates = client.get_fee_estimates().await;
 
         println!("request done: {:?}", fee_estimates);
+        assert!(fee_estimates.is_ok());
     }
 }

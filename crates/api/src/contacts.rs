@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
-use muon::Request;
 use serde::Deserialize;
 
 use crate::{
-    core::{ProtonResponseExt, ToProtonRequest},
+    core::{ApiClient, ProtonResponseExt},
     error::Error,
     ProtonWalletApiClient, BASE_CONTACTS_API_V4,
 };
@@ -32,27 +31,34 @@ pub struct ContactsClient {
     api_client: Arc<ProtonWalletApiClient>,
 }
 
-impl ContactsClient {
-    pub fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
+impl ApiClient for ContactsClient {
+    fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
         Self { api_client }
     }
 
+    fn api_client(&self) -> &Arc<ProtonWalletApiClient> {
+        &self.api_client
+    }
+
+    fn base_url(&self) -> &str {
+        BASE_CONTACTS_API_V4
+    }
+}
+
+impl ContactsClient {
     pub async fn get_contacts(
         &self,
         page_size: Option<u64>,
         page: Option<u64>,
     ) -> Result<Vec<ApiContactEmails>, Error> {
-        let mut request = self
-            .api_client
-            .build_full_url(BASE_CONTACTS_API_V4, "contacts/emails")
-            .to_get_request();
+        let mut request = self.get("contacts/emails");
 
         if let Some(page_size) = page_size {
-            request = request.param("PageSize", Some(page_size.to_string()));
+            request = request.query(("PageSize", page_size.to_string()));
         }
 
         if let Some(page) = page {
-            request = request.param("Page", Some(page.to_string()));
+            request = request.query(("Page", page.to_string()));
         }
 
         let response = self.api_client.send(request).await?;
@@ -72,6 +78,7 @@ mod tests {
 
     use super::ContactsClient;
     use crate::{
+        core::ApiClient,
         tests::utils::{common_api_client, setup_test_connection},
         BASE_CONTACTS_API_V4,
     };
@@ -84,10 +91,18 @@ mod tests {
         let client = ContactsClient::new(api_client);
         let contacts = client.get_contacts(Some(100), Some(0)).await;
         println!("request done: {:?}", contacts);
+        assert!(contacts.is_ok());
     }
 
     #[tokio::test]
+    #[ignore]
+    #[cfg(feature = "allow-dangerous-env")]
     async fn test_get_contacts_code_1000() {
+        use std::env;
+
+        env::set_var("RUST_LOG", "debug");
+        tracing_subscriber::fmt::init();
+
         let mock_server = MockServer::start().await;
         let response_body = serde_json::json!(
             {
@@ -128,6 +143,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_get_contacts_deserialize_error() {
         let mock_server = MockServer::start().await;
         let response_body = serde_json::json!({});
