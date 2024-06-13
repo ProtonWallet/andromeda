@@ -1,12 +1,11 @@
 use std::{str::FromStr, sync::Arc};
 
 use bitcoin::{block::Header as BlockHeader, consensus::deserialize, hashes::hex::FromHex, Block, BlockHash};
-use muon::Response;
 use serde::Deserialize;
 
 use super::BASE_WALLET_API_V1;
 use crate::{
-    core::{ProtonResponseExt, ToProtonRequest},
+    core::{ApiClient, ProtonResponseExt},
     error::Error,
     ProtonWalletApiClient,
 };
@@ -94,9 +93,6 @@ struct GetTipHeightResponseBody {
     pub Height: u32,
 }
 
-pub struct BlockClient {
-    api_client: Arc<ProtonWalletApiClient>,
-}
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct GetTipHashResponseBody {
@@ -105,24 +101,31 @@ struct GetTipHashResponseBody {
     pub BlockHash: String,
 }
 
-impl BlockClient {
-    pub fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
+pub struct BlockClient {
+    api_client: Arc<ProtonWalletApiClient>,
+}
+
+impl ApiClient for BlockClient {
+    fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
         Self { api_client }
     }
 
+    fn api_client(&self) -> &Arc<ProtonWalletApiClient> {
+        &self.api_client
+    }
+
+    fn base_url(&self) -> &str {
+        BASE_WALLET_API_V1
+    }
+}
+
+impl BlockClient {
     /// Get recent block summaries, starting at tip or height if provided
     pub async fn get_blocks(&self, height: Option<u32>) -> Result<Vec<ApiBlock>, Error> {
-        let request = self
-            .api_client
-            .build_full_url(
-                BASE_WALLET_API_V1,
-                match height {
-                    Some(height) => format!("blocks/{}", height),
-                    None => "blocks".to_string(),
-                },
-            )
-            .to_get_request();
-
+        let request = self.get(match height {
+            Some(height) => format!("blocks/{}", height),
+            None => "blocks".to_string(),
+        });
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetBlocksResponseBody>()?;
 
@@ -131,10 +134,7 @@ impl BlockClient {
 
     /// Get a [`BlockHeader`] given a particular block hash.
     pub async fn get_header_by_hash(&self, block_hash: &BlockHash) -> Result<BlockHeader, Error> {
-        let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, format!("blocks/{}/header", block_hash))
-            .to_get_request();
+        let request = self.get(format!("blocks/{}/header", block_hash));
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetHeaderByHashResponseBody>()?;
@@ -143,10 +143,7 @@ impl BlockClient {
     }
 
     pub async fn get_block_hash(&self, block_height: u32) -> Result<BlockHash, Error> {
-        let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, format!("blocks/height/{}/hash", block_height))
-            .to_get_request();
+        let request = self.get(format!("blocks/height/{}/hash", block_height));
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetBlockHashByBlockHeightResponseBody>()?;
@@ -155,10 +152,7 @@ impl BlockClient {
     }
 
     pub async fn get_block_status(&self, block_hash: &BlockHash) -> Result<BlockStatus, Error> {
-        let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, format!("blocks/{}/status", block_hash))
-            .to_get_request();
+        let request = self.get(format!("blocks/{}/status", block_hash));
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetBlockStatusResponseBody>()?;
@@ -167,10 +161,7 @@ impl BlockClient {
     }
 
     pub async fn get_block_by_hash(&self, block_hash: &BlockHash) -> Result<Block, Error> {
-        let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, format!("blocks/{}/raw", block_hash))
-            .to_get_request();
+        let request = self.get(format!("blocks/{}/raw", block_hash));
 
         let response = self.api_client.send(request).await?;
 
@@ -178,10 +169,7 @@ impl BlockClient {
     }
 
     pub async fn get_txid_at_block_index(&self, block_hash: &BlockHash, index: usize) -> Result<String, Error> {
-        let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, format!("blocks/{}/txid/{}", block_hash, index))
-            .to_get_request();
+        let request = self.get(format!("blocks/{}/txid/{}", block_hash, index));
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetTxIdAtBlockIndexResponseBody>()?;
@@ -189,10 +177,7 @@ impl BlockClient {
     }
 
     pub async fn get_tip_height(&self) -> Result<u32, Error> {
-        let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, "blocks/tip/height".to_string())
-            .to_get_request();
+        let request = self.get("blocks/tip/height");
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetTipHeightResponseBody>()?;
@@ -200,10 +185,7 @@ impl BlockClient {
     }
 
     pub async fn get_tip_hash(&self) -> Result<BlockHash, Error> {
-        let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, "blocks/tip/hash".to_string())
-            .to_get_request();
+        let request = self.get("blocks/tip/hash");
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetTipHashResponseBody>()?;
@@ -219,7 +201,7 @@ mod tests {
     use bitcoin::BlockHash;
 
     use super::BlockClient;
-    use crate::tests::utils::common_api_client;
+    use crate::{core::ApiClient, tests::utils::common_api_client};
 
     #[tokio::test]
     #[ignore]
@@ -229,6 +211,7 @@ mod tests {
 
         let blocks = client.get_blocks(Some(0u32)).await;
         println!("request done: {:?}", blocks);
+        assert!(blocks.is_ok());
     }
 
     #[tokio::test]
@@ -243,6 +226,7 @@ mod tests {
             )
             .await;
         println!("request done: {:?}", header);
+        assert!(header.is_ok());
     }
 
     #[tokio::test]
@@ -253,6 +237,7 @@ mod tests {
 
         let block_hash = client.get_block_hash(0u32).await;
         println!("request done: {:?}", block_hash);
+        assert!(block_hash.is_ok());
     }
 
     #[tokio::test]
@@ -267,6 +252,7 @@ mod tests {
             )
             .await;
         println!("request done: {:?}", block_status);
+        assert!(block_status.is_ok());
     }
 
     #[tokio::test]
@@ -281,6 +267,7 @@ mod tests {
             )
             .await;
         println!("request done: {:?}", block);
+        assert!(block.is_ok());
     }
 
     #[tokio::test]
@@ -296,6 +283,7 @@ mod tests {
             )
             .await;
         println!("request done: {:?}", txid);
+        assert!(txid.is_ok());
     }
 
     #[tokio::test]
@@ -306,6 +294,7 @@ mod tests {
 
         let header = client.get_tip_height().await;
         println!("request done: {:?}", header);
+        assert!(header.is_ok());
     }
 
     #[tokio::test]
@@ -316,5 +305,6 @@ mod tests {
 
         let block_hash = client.get_tip_hash().await;
         println!("request done: {:?}", block_hash);
+        assert!(block_hash.is_ok());
     }
 }

@@ -1,9 +1,25 @@
 use std::sync::Arc;
 
-use muon::{http::Method, ProtonRequest};
+use muon::rest::core::v4::{keys::salts::KeySalt, users::User};
 use serde::{Deserialize, Serialize};
 
-use crate::{core::ProtonResponseExt, error::Error, ProtonWalletApiClient, BASE_CORE_API_V5};
+#[derive(Debug, Clone)]
+pub struct ChildSession {
+    pub session_id: String,
+    pub access_token: String,
+    pub refresh_token: String,
+    pub scopes: Vec<String>,
+}
+pub struct UserData {
+    pub user: User,
+    pub key_salts: Vec<KeySalt>,
+}
+
+use crate::{
+    core::{ApiClient, ProtonResponseExt},
+    error::Error,
+    ProtonWalletApiClient, BASE_CORE_API_V4,
+};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(non_snake_case)]
@@ -25,20 +41,18 @@ pub struct ProtonUserSettings {
     LogAuth: u32,
     InvoiceText: String,
     Density: u32,
-    Theme: Option<ThemeSettings>,
-    ThemeType: u32,
     WeekStart: u32,
     DateFormat: u32,
     TimeFormat: u32,
-    Welcome: String,
-    WelcomeFlag: String,
-    EarlyAccess: String,
+    Welcome: u32,
+    WelcomeFlag: u32,
+    EarlyAccess: u32,
     Flags: Option<FlagsSettings>,
     Referral: Option<ReferralSettings>,
-    DeviceRecovery: String,
-    Telemetry: String,
-    CrashReports: String,
-    HideSidePanel: String,
+    DeviceRecovery: u32,
+    Telemetry: u32,
+    CrashReports: u32,
+    HideSidePanel: u32,
     HighSecurity: HighSecuritySettings,
     SessionAccountRecovery: u32,
 }
@@ -67,13 +81,8 @@ pub struct PhoneSettings {
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(non_snake_case)]
 pub struct TwoFASettings {
-    // TwoFASettings is empty here we need it in the parser but we don't use it yet in our implementation
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[allow(non_snake_case)]
-pub struct ThemeSettings {
-    // ThemeSettings is empty here we need it in the parser but we don't use it yet in our implementation
+    Enabled: u32,
+    Allowed: u32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -118,7 +127,7 @@ pub struct ProtonUser {
     Subscribed: u32,
     Services: u32,
     Delinquent: u32,
-    OrganizationPrivateKey: String,
+    OrganizationPrivateKey: Option<String>,
     Email: String,
     DisplayName: String,
     Keys: Option<Vec<ProtonUserKey>>,
@@ -129,10 +138,12 @@ pub struct ProtonUserKey {
     ID: String,
     Version: u32,
     PrivateKey: String,
-    Token: String,
-    /// Deprecated
+    RecoverySecret: Option<String>,
+    RecoverySecretSignature: Option<String>,
+    Token: Option<String>,
     Fingerprint: String,
     Primary: u32,
+    Active: u32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -150,23 +161,36 @@ pub struct ProtonUsersClient {
     api_client: Arc<ProtonWalletApiClient>,
 }
 
-impl ProtonUsersClient {
-    pub fn new(api: Arc<ProtonWalletApiClient>) -> Self {
-        Self { api_client: api }
+impl ApiClient for ProtonUsersClient {
+    fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
+        Self { api_client }
     }
 
-    // get proton user info.
+    fn api_client(&self) -> &Arc<ProtonWalletApiClient> {
+        return &self.api_client;
+    }
+
+    fn base_url(&self) -> &str {
+        BASE_CORE_API_V4
+    }
+}
+
+impl ProtonUsersClient {
+    // get proton user info. This includes the user's keys.
     pub async fn get_user_info(&self) -> Result<ProtonUser, Error> {
-        let request = ProtonRequest::new(Method::GET, format!("{}/users", BASE_CORE_API_V5));
-        let response = self.api_client.session.read().await.bind(request)?.send().await?;
+        let request = self.get("users");
+
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<ApiProtonUserResponse>()?;
         Ok(parsed.User)
     }
 
     // get proton user settings.
+    //  used for 2fa settings and password recovery etc..
     pub async fn get_user_settings(&self) -> Result<ProtonUserSettings, Error> {
-        let request = ProtonRequest::new(Method::GET, format!("{}/settings", BASE_CORE_API_V5));
-        let response = self.api_client.session.read().await.bind(request)?.send().await?;
+        let request = self.get("settings");
+
+        let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<ApiProtonUserSettingsResponse>()?;
         Ok(parsed.UserSettings)
     }
@@ -174,14 +198,36 @@ impl ProtonUsersClient {
 
 #[cfg(test)]
 mod tests {
-
     use wiremock::{
         matchers::{method, path},
         Mock, MockServer, ResponseTemplate,
     };
 
     use super::ProtonUsersClient;
-    use crate::{tests::utils::setup_test_connection, BASE_CORE_API_V5};
+    use crate::{
+        core::ApiClient,
+        tests::utils::{common_api_client, setup_test_connection},
+        BASE_CORE_API_V4,
+    };
+
+    #[tokio::test]
+    #[ignore]
+    async fn should_get_user_info() {
+        let api_client = common_api_client().await;
+        let client = ProtonUsersClient::new(api_client);
+        let res = client.get_user_info().await;
+        println!("request done: {:?}", res);
+        assert!(res.is_ok());
+    }
+    #[tokio::test]
+    #[ignore]
+    async fn should_get_user_settings() {
+        let api_client = common_api_client().await;
+        let client = ProtonUsersClient::new(api_client);
+        let res = client.get_user_settings().await;
+        println!("request done: {:?}", res);
+        assert!(res.is_ok());
+    }
 
     #[tokio::test]
     async fn test_get_user_info_code_1000() {
@@ -212,14 +258,15 @@ mod tests {
                             "PrivateKey": "-----BEGIN PGP PRIVATE KEY BLOCK-----*-----END PGP PRIVATE KEY BLOCK-----",
                             "Token": "-----BEGIN PGP MESSAGE-----.*-----END PGP MESSAGE-----",
                             "Fingerprint": "c93f767df53b0ca8395cfde90483475164ec6353",
-                            "Primary": 1
+                            "Primary": 1,
+                            "Active": 1,
                         }
                     ]
                 },
                 "Code": 1000
             }
         );
-        let req_path: String = format!("{}/users", BASE_CORE_API_V5);
+        let req_path: String = format!("{}/users", BASE_CORE_API_V4);
         let response = ResponseTemplate::new(200).set_body_json(response_body);
         Mock::given(method("GET"))
             .and(path(req_path))
@@ -235,7 +282,10 @@ mod tests {
                 assert!(value.Name == "abc");
                 assert!(value.Keys.unwrap().len() > 0);
             }
-            Err(_) => panic!("Expected Ok variant but got Err."),
+            Err(e) => {
+                println!("Error: {:?}", e);
+                panic!("Expected Ok variant but got Err")
+            }
         }
     }
 
@@ -243,7 +293,7 @@ mod tests {
     async fn test_get_user_info_deserialize_error() {
         let mock_server = MockServer::start().await;
         let response_body = serde_json::json!({});
-        let req_path: String = format!("{}/users", BASE_CORE_API_V5);
+        let req_path: String = format!("{}/users", BASE_CORE_API_V4);
         let response = ResponseTemplate::new(400).set_body_json(response_body);
         Mock::given(method("GET"))
             .and(path(req_path))
@@ -310,9 +360,9 @@ mod tests {
                   "WeekStart": 1,
                   "DateFormat": 1,
                   "TimeFormat": 1,
-                  "Welcome": "1",
-                  "WelcomeFlag": "1",
-                  "EarlyAccess": "1",
+                  "Welcome": 1,
+                  "WelcomeFlag": 1,
+                  "EarlyAccess": 1,
                   "Flags": {
                     "Welcomed": 0,
                     "InAppPromosHidden": 0
@@ -321,10 +371,10 @@ mod tests {
                     "Link": "https://pr.tn/ref/ERBYvlX8SC4KOyb",
                     "Eligible": true
                   },
-                  "DeviceRecovery": "1",
-                  "Telemetry": "1",
-                  "CrashReports": "1",
-                  "HideSidePanel": "1",
+                  "DeviceRecovery": 1,
+                  "Telemetry": 1,
+                  "CrashReports": 1,
+                  "HideSidePanel": 1,
                   "HighSecurity": {
                     "Eligible": 1,
                     "Value": 1
@@ -333,7 +383,7 @@ mod tests {
                 }
               }
         );
-        let req_path: String = format!("{}/settings", BASE_CORE_API_V5);
+        let req_path: String = format!("{}/settings", BASE_CORE_API_V4);
         let response = ResponseTemplate::new(200).set_body_json(response_body);
         Mock::given(method("GET"))
             .and(path(req_path))
@@ -345,12 +395,15 @@ mod tests {
         let user_settings = users_client.get_user_settings().await;
         match user_settings {
             Ok(value) => {
-                assert!(value.HideSidePanel == "1", "Expected hide_side_panel to be 1.");
+                assert!(value.HideSidePanel == 1, "Expected hide_side_panel to be 1.");
                 assert!(value.Locale == "en_US", "Expected locale to be en_US.");
                 assert!(value.News == 244, "Expected news to be 244.");
                 assert!(value.Phone.is_some(), "Expected phone to be Some.");
             }
-            Err(_) => panic!("Expected Ok variant but got Err."),
+            Err(e) => {
+                println!("Error: {:?}", e);
+                panic!("Expected Ok variant but got Err")
+            }
         }
     }
 
@@ -358,7 +411,7 @@ mod tests {
     async fn test_get_users_settings_deserialize_error() {
         let mock_server = MockServer::start().await;
         let response_body = serde_json::json!({});
-        let req_path: String = format!("{}/settings", BASE_CORE_API_V5);
+        let req_path: String = format!("{}/settings", BASE_CORE_API_V4);
         let response = ResponseTemplate::new(400).set_body_json(response_body);
         Mock::given(method("GET"))
             .and(path(req_path))

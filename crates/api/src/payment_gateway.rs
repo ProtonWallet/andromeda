@@ -1,11 +1,10 @@
 use std::{collections::HashMap, fmt, sync::Arc};
 
-use muon::Request;
 use serde::Deserialize;
 use serde_repr::Deserialize_repr;
 
 use crate::{
-    core::{ProtonResponseExt, ToProtonRequest},
+    core::{ApiClient, ProtonResponseExt},
     error::Error,
     settings::FiatCurrencySymbol,
     ProtonWalletApiClient, BASE_WALLET_API_V1,
@@ -27,7 +26,6 @@ impl fmt::Display for GatewayProvider {
     }
 }
 
-/// countries part
 pub type CountriesByProvider = HashMap<GatewayProvider, Vec<ApiCountry>>;
 #[derive(Deserialize, Debug)]
 #[allow(non_snake_case)]
@@ -43,7 +41,6 @@ pub struct ApiCountry {
     pub Name: String,
 }
 
-/// fiat currencies part
 pub type FiatCurrenciesByProvider = HashMap<GatewayProvider, Vec<ApiFiatCurrency>>;
 #[derive(Deserialize, Debug)]
 #[allow(non_snake_case)]
@@ -59,7 +56,6 @@ pub struct ApiFiatCurrency {
     pub Symbol: String,
 }
 
-/// payment methods part
 pub type PaymentMethodsByProvider = HashMap<GatewayProvider, Vec<PaymentMethod>>;
 #[derive(Deserialize, Debug)]
 #[allow(non_snake_case)]
@@ -80,7 +76,6 @@ pub enum PaymentMethod {
     Unsupported,
 }
 
-/// quotes part
 pub type QuotesByProvider = HashMap<GatewayProvider, Vec<Quote>>;
 #[derive(Deserialize, Debug)]
 #[allow(non_snake_case)]
@@ -105,16 +100,23 @@ pub struct ProtonPaymentGatewayClient {
     api_client: Arc<ProtonWalletApiClient>,
 }
 
-impl ProtonPaymentGatewayClient {
-    pub fn new(api: Arc<ProtonWalletApiClient>) -> Self {
-        Self { api_client: api }
+impl ApiClient for ProtonPaymentGatewayClient {
+    fn api_client(&self) -> &Arc<ProtonWalletApiClient> {
+        &self.api_client
     }
 
+    fn base_url(&self) -> &str {
+        BASE_WALLET_API_V1
+    }
+
+    fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
+        Self { api_client }
+    }
+}
+
+impl ProtonPaymentGatewayClient {
     pub async fn get_countries(&self) -> Result<CountriesByProvider, Error> {
-        let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, "payment-gateway/countries")
-            .to_get_request();
+        let request = self.get("payment-gateway/countries");
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetCountriesResponseBody>()?;
@@ -122,10 +124,8 @@ impl ProtonPaymentGatewayClient {
     }
 
     pub async fn get_fiat_currencies(&self) -> Result<FiatCurrenciesByProvider, Error> {
-        let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, "payment-gateway/fiats")
-            .to_get_request();
+        let request = self.get("payment-gateway/fiats");
+
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetFiatCurrenciesResponseBody>()?;
         Ok(parsed.FiatCurrencies)
@@ -136,10 +136,9 @@ impl ProtonPaymentGatewayClient {
         fiat_symbol: FiatCurrencySymbol,
     ) -> Result<PaymentMethodsByProvider, Error> {
         let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, "payment-gateway/payment-methods")
-            .to_get_request()
-            .param("FiatCurrency", Some(fiat_symbol.to_string()));
+            .get("payment-gateway/payment-methods")
+            .query(("FiatCurrency", fiat_symbol.to_string()));
+
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetPaymentMethodsResponseBody>()?;
         Ok(parsed.PaymentMethods)
@@ -149,19 +148,19 @@ impl ProtonPaymentGatewayClient {
         &self,
         amount: String,
         fiat_currency: FiatCurrencySymbol,
-        pay_method: PaymentMethod,
+        pay_method: Option<PaymentMethod>,
         provider: Option<GatewayProvider>,
     ) -> Result<QuotesByProvider, Error> {
-        let pay_method = pay_method as i32;
         let mut request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, "payment-gateway/quotes")
-            .to_get_request()
-            .param("Amount", Some(amount))
-            .param("FiatCurrency", Some(fiat_currency.to_string()))
-            .param("PaymentMethod", Some(pay_method.to_string()));
+            .get("payment-gateway/quotes")
+            .query(("Amount", amount))
+            .query(("FiatCurrency", fiat_currency.to_string()));
+        if let Some(value) = pay_method {
+            let int_pay_method = value as i32;
+            request = request.query(("PaymentMethod", int_pay_method.to_string()));
+        }
         if let Some(value) = provider {
-            request = request.param("Provider", Some(value.to_string()));
+            request = request.query(("Provider", value.to_string()));
         }
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetQuotesResponseBody>()?;
@@ -178,6 +177,7 @@ mod tests {
     };
 
     use crate::{
+        core::ApiClient,
         payment_gateway::{
             GatewayProvider, GetCountriesResponseBody, GetFiatCurrenciesResponseBody, GetPaymentMethodsResponseBody,
             GetQuotesResponseBody, PaymentMethod, ProtonPaymentGatewayClient,
@@ -575,7 +575,7 @@ mod tests {
             .get_quotes(
                 "amount".to_string(),
                 FiatCurrencySymbol::AUD,
-                PaymentMethod::ApplePay,
+                Some(PaymentMethod::ApplePay),
                 Some(GatewayProvider::Ramp),
             )
             .await;
@@ -612,8 +612,9 @@ mod tests {
     async fn should_get_countries() {
         let api_client = common_api_client().await;
         let client = ProtonPaymentGatewayClient::new(api_client);
-        let countries = client.get_countries().await.unwrap();
+        let countries = client.get_countries().await;
         println!("get_countries done: {:?}", countries);
+        assert!(countries.is_ok());
     }
 
     #[tokio::test]
@@ -621,8 +622,9 @@ mod tests {
     async fn should_get_fiat_currencies() {
         let api_client = common_api_client().await;
         let client = ProtonPaymentGatewayClient::new(api_client);
-        let fiat_currencies = client.get_fiat_currencies().await.unwrap();
+        let fiat_currencies = client.get_fiat_currencies().await;
         println!("get_fiat_currencies done: {:?}", fiat_currencies);
+        assert!(fiat_currencies.is_ok());
     }
 
     #[tokio::test]
@@ -631,8 +633,9 @@ mod tests {
         let api_client = common_api_client().await;
         let client = ProtonPaymentGatewayClient::new(api_client);
 
-        let payments = client.get_payment_methods(FiatCurrencySymbol::AUD).await.unwrap();
+        let payments = client.get_payment_methods(FiatCurrencySymbol::AUD).await;
         println!("get_payment_methods done: {:?}", payments);
+        assert!(payments.is_ok());
     }
     #[tokio::test]
     #[ignore]
@@ -644,11 +647,11 @@ mod tests {
             .get_quotes(
                 "2.00".to_string(),
                 FiatCurrencySymbol::AUD,
-                PaymentMethod::ApplePay,
+                Some(PaymentMethod::ApplePay),
                 Some(GatewayProvider::Ramp),
             )
-            .await
-            .unwrap();
+            .await;
         println!("get_quotes done: {:?}", quotes);
+        assert!(quotes.is_ok());
     }
 }

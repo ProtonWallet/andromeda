@@ -1,11 +1,11 @@
-use andromeda_api::{self, ApiConfig, AuthData, ProtonWalletApiClient, Uid};
+use andromeda_api::{self, ApiConfig, Auth, ProtonWalletApiClient};
 use exchange_rate::WasmExchangeRateClient;
 use network::WasmNetworkClient;
 use settings::WasmSettingsClient;
 use wallet::WasmWalletClient;
 use wasm_bindgen::prelude::*;
 
-use crate::api::env::BrowserOriginEnv;
+use crate::common::error::ErrorExt;
 
 mod env;
 mod exchange_rate;
@@ -35,13 +35,11 @@ impl WasmProtonWalletApiClient {
         let config = ApiConfig {
             // TODO: add clients specs here
             spec: None,
-            auth: uid_str.map(|u| AuthData::Uid(Uid::from(u))),
-            env: origin.map(|o| BrowserOriginEnv::new(o)),
+            auth: uid_str.map(|u| Auth::external(u)),
+            env: origin,
             url_prefix,
         };
-
-        let client = ProtonWalletApiClient::from_config(config);
-
+        let client = ProtonWalletApiClient::from_config(config).map_err(|e| e.to_js_error())?;
         Ok(WasmProtonWalletApiClient(client))
     }
 
@@ -79,7 +77,7 @@ mod tests {
     #[wasm_bindgen_test]
     #[ignore]
     async fn should_create_pw_api_client() {
-        let mut client = WasmProtonWalletApiClient::new(None, None, None).unwrap();
+        let client = WasmProtonWalletApiClient::new(None, None, None).unwrap();
         client.0.login("pro", "pro").await.unwrap();
     }
 }

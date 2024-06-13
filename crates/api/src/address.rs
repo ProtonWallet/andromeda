@@ -4,12 +4,11 @@ use serde::Deserialize;
 
 use super::BASE_WALLET_API_V1;
 use crate::{
-    core::{ProtonResponseExt, ToProtonRequest},
+    core::{ApiClient, ProtonResponseExt},
     error::Error,
     transaction::ApiTransactionStatus,
     ProtonWalletApiClient,
 };
-
 pub struct AddressClient {
     api_client: Arc<ProtonWalletApiClient>,
 }
@@ -84,18 +83,24 @@ pub struct GetScriptHashTransactionsAtTransactionIdResponseBody {
     pub Transactions: Vec<ApiTx>,
 }
 
-impl AddressClient {
-    pub fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
+impl ApiClient for AddressClient {
+    fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
         Self { api_client }
     }
 
+    fn api_client(&self) -> &Arc<ProtonWalletApiClient> {
+        &self.api_client
+    }
+
+    fn base_url(&self) -> &str {
+        BASE_WALLET_API_V1
+    }
+}
+
+impl AddressClient {
     /// Get recent block summaries, starting at tip or height if provided
     pub async fn get_address_balance(&self, address: String) -> Result<AddressBalance, Error> {
-        let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, format!("addresses/{}/balance", address))
-            .to_get_request();
-
+        let request = self.get(format!("addresses/{}/balance", address));
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetAddressBalanceResponseBody>()?;
 
@@ -104,14 +109,7 @@ impl AddressClient {
 
     /// Get a [`BlockHeader`] given a particular block hash.
     pub async fn get_scripthash_transactions(&self, script_hash: String) -> Result<Vec<ApiTx>, Error> {
-        let request = self
-            .api_client
-            .build_full_url(
-                BASE_WALLET_API_V1,
-                format!("addresses/scripthash/{}/transactions", script_hash),
-            )
-            .to_get_request();
-
+        let request = self.get(format!("addresses/scripthash/{}/transactions", script_hash));
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetScriptHashTransactionsResponseBody>()?;
 
@@ -124,14 +122,10 @@ impl AddressClient {
         script_hash: String,
         transaction_id: String,
     ) -> Result<Vec<ApiTx>, Error> {
-        let request = self
-            .api_client
-            .build_full_url(
-                BASE_WALLET_API_V1,
-                format!("addresses/scripthash/{}/transactions/{}", script_hash, transaction_id),
-            )
-            .to_get_request();
-
+        let request = self.get(format!(
+            "addresses/scripthash/{}/transactions/{}",
+            script_hash, transaction_id
+        ));
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetScriptHashTransactionsResponseBody>()?;
 
@@ -149,7 +143,7 @@ mod tests {
     };
 
     use super::AddressClient;
-    use crate::tests::utils::common_api_client;
+    use crate::{core::ApiClient, tests::utils::common_api_client};
 
     #[tokio::test]
     #[ignore]

@@ -1,18 +1,15 @@
 use std::sync::Arc;
 
-use muon::Request;
 use serde::{Deserialize, Serialize};
 
 use super::BASE_WALLET_API_V1;
 use crate::{
-    core::{ProtonResponseExt, ToProtonRequest},
+    core::{ApiClient, ProtonResponseExt},
     error::Error,
     exchange_rate::ApiExchangeRate,
     settings::FiatCurrencySymbol,
     ProtonWalletApiClient,
 };
-
-//TODO:: code need to be used. remove all #[allow(dead_code)]
 
 #[derive(Debug, Deserialize, Serialize)]
 #[allow(non_snake_case)]
@@ -295,30 +292,30 @@ pub struct WalletClient {
     api_client: Arc<ProtonWalletApiClient>,
 }
 
-impl WalletClient {
-    pub fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
-        Self { api_client }
+impl ApiClient for WalletClient {
+    fn api_client(&self) -> &Arc<ProtonWalletApiClient> {
+        &self.api_client
     }
 
-    pub async fn get_wallets(&self) -> Result<Vec<ApiWalletData>, Error> {
-        let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, "wallets")
-            .to_get_request();
+    fn base_url(&self) -> &str {
+        BASE_WALLET_API_V1
+    }
 
+    fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
+        Self { api_client }
+    }
+}
+
+impl WalletClient {
+    pub async fn get_wallets(&self) -> Result<Vec<ApiWalletData>, Error> {
+        let request = self.get("wallets");
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetWalletsResponseBody>()?;
-
         Ok(parsed.Wallets)
     }
 
     pub async fn create_wallet(&self, payload: CreateWalletRequestBody) -> Result<ApiWalletData, Error> {
-        let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, "wallets")
-            .to_post_request()
-            .json_body(payload)?;
-
+        let request = self.post("wallets").body_json(payload)?;
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<CreateWalletResponseBody>()?;
 
@@ -331,25 +328,14 @@ impl WalletClient {
 
     pub async fn update_wallet_name(&self, wallet_id: String, name: String) -> Result<ApiWallet, Error> {
         let payload = UpdateWalletNameRequestBody { Name: name };
-
-        let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, format!("wallets/{}/name", wallet_id))
-            .to_put_request()
-            .json_body(payload)?;
-
+        let request = self.put(format!("wallets/{}/name", wallet_id)).body_json(payload)?;
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletNameResponseBody>()?;
-
         Ok(parsed.Wallet)
     }
 
     pub async fn delete_wallet(&self, wallet_id: String) -> Result<(), Error> {
-        let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, format!("wallets/{}", wallet_id))
-            .to_delete_request();
-
+        let request = self.delete(format!("wallets/{}", wallet_id));
         let response = self.api_client.send(request).await?;
         response.parse_response::<DeleteWalletAccountResponseBody>()?;
 
@@ -357,11 +343,7 @@ impl WalletClient {
     }
 
     pub async fn get_wallet_accounts(&self, wallet_id: String) -> Result<Vec<ApiWalletAccount>, Error> {
-        let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, format!("wallets/{}/accounts", wallet_id))
-            .to_get_request();
-
+        let request = self.get(format!("wallets/{}/accounts", wallet_id));
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetWalletAccountsResponseBody>()?;
 
@@ -374,10 +356,8 @@ impl WalletClient {
         payload: CreateWalletAccountRequestBody,
     ) -> Result<ApiWalletAccount, Error> {
         let request = self
-            .api_client
-            .build_full_url(BASE_WALLET_API_V1, format!("wallets/{}/accounts", wallet_id))
-            .to_post_request()
-            .json_body(payload)?;
+            .post(format!("wallets/{}/accounts", wallet_id))
+            .body_json(payload)?;
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<CreateWalletAccountResponseBody>()?;
@@ -394,15 +374,12 @@ impl WalletClient {
         let payload = UpdateWalletAccountFiatCurrencyRequestBody {
             Symbol: fiat_currency_symbol,
         };
-
         let request = self
-            .api_client
-            .build_full_url(
-                BASE_WALLET_API_V1,
-                format!("wallets/{}/accounts/{}/currency/fiat", wallet_id, wallet_account_id),
-            )
-            .to_put_request()
-            .json_body(payload)?;
+            .put(format!(
+                "wallets/{}/accounts/{}/currency/fiat",
+                wallet_id, wallet_account_id
+            ))
+            .body_json(payload)?;
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletAccountResponseBody>()?;
@@ -419,13 +396,8 @@ impl WalletClient {
         let payload = UpdateWalletAccountLabelRequestBody { Label: label };
 
         let request = self
-            .api_client
-            .build_full_url(
-                BASE_WALLET_API_V1,
-                format!("wallets/{}/accounts/{}/label", wallet_id, wallet_account_id),
-            )
-            .to_put_request()
-            .json_body(payload)?;
+            .put(format!("wallets/{}/accounts/{}/label", wallet_id, wallet_account_id))
+            .body_json(payload)?;
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletAccountResponseBody>()?;
@@ -442,13 +414,11 @@ impl WalletClient {
         let payload = AddEmailAddressRequestBody { AddressID: address_id };
 
         let request = self
-            .api_client
-            .build_full_url(
-                BASE_WALLET_API_V1,
-                format!("wallets/{}/accounts/{}/addresses/email", wallet_id, wallet_account_id),
-            )
-            .to_put_request()
-            .json_body(payload)?;
+            .put(format!(
+                "wallets/{}/accounts/{}/addresses/email",
+                wallet_id, wallet_account_id
+            ))
+            .body_json(payload)?;
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletAccountResponseBody>()?;
@@ -462,16 +432,10 @@ impl WalletClient {
         wallet_account_id: String,
         address_id: String,
     ) -> Result<ApiWalletAccount, Error> {
-        let request = self
-            .api_client
-            .build_full_url(
-                BASE_WALLET_API_V1,
-                format!(
-                    "wallets/{}/accounts/{}/addresses/email/{}",
-                    wallet_id, wallet_account_id, address_id
-                ),
-            )
-            .to_delete_request();
+        let request = self.delete(format!(
+            "wallets/{}/accounts/{}/addresses/email/{}",
+            wallet_id, wallet_account_id, address_id
+        ));
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletAccountResponseBody>()?;
@@ -480,14 +444,7 @@ impl WalletClient {
     }
 
     pub async fn delete_wallet_account(&self, wallet_id: String, wallet_account_id: String) -> Result<(), Error> {
-        let request = self
-            .api_client
-            .build_full_url(
-                BASE_WALLET_API_V1,
-                format!("wallets/{}/accounts/{}", wallet_id, wallet_account_id),
-            )
-            .to_delete_request();
-
+        let request = self.delete(format!("wallets/{}/accounts/{}", wallet_id, wallet_account_id));
         let response = self.api_client.send(request).await?;
         response.parse_response::<DeleteWalletAccountResponseBody>()?;
 
@@ -500,21 +457,15 @@ impl WalletClient {
         wallet_account_id: Option<String>,
         hashed_txids: Option<Vec<String>>,
     ) -> Result<Vec<ApiWalletTransaction>, Error> {
-        let mut request = self
-            .api_client
-            .build_full_url(
-                BASE_WALLET_API_V1,
-                match wallet_account_id {
-                    Some(wallet_account_id) => {
-                        format!("wallets/{}/accounts/{}/transactions", wallet_id, wallet_account_id)
-                    }
-                    None => format!("wallets/{}/transactions", wallet_id),
-                },
-            )
-            .to_get_request();
+        let mut request = self.get(match wallet_account_id {
+            Some(wallet_account_id) => {
+                format!("wallets/{}/accounts/{}/transactions", wallet_id, wallet_account_id)
+            }
+            None => format!("wallets/{}/transactions", wallet_id),
+        });
 
         for txid in hashed_txids.unwrap_or_default() {
-            request = request.param(HASHED_TRANSACTION_ID_KEY, Some(txid));
+            request = request.query((HASHED_TRANSACTION_ID_KEY, txid));
         }
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetWalletTransactionsResponseBody>()?;
@@ -527,21 +478,15 @@ impl WalletClient {
         wallet_id: String,
         wallet_account_id: Option<String>,
     ) -> Result<Vec<ApiWalletTransaction>, Error> {
-        let request = self
-            .api_client
-            .build_full_url(
-                BASE_WALLET_API_V1,
-                match wallet_account_id {
-                    Some(wallet_account_id) => {
-                        format!(
-                            "wallets/{}/accounts/{}/transactions/to-hash",
-                            wallet_id, wallet_account_id
-                        )
-                    }
-                    None => format!("wallets/{}/transactions/to-hash", wallet_id),
-                },
-            )
-            .to_get_request();
+        let request = self.get(match wallet_account_id {
+            Some(wallet_account_id) => {
+                format!(
+                    "wallets/{}/accounts/{}/transactions/to-hash",
+                    wallet_id, wallet_account_id
+                )
+            }
+            None => format!("wallets/{}/transactions/to-hash", wallet_id),
+        });
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetWalletTransactionsResponseBody>()?;
@@ -556,13 +501,11 @@ impl WalletClient {
         payload: CreateWalletTransactionRequestBody,
     ) -> Result<ApiWalletTransaction, Error> {
         let request = self
-            .api_client
-            .build_full_url(
-                BASE_WALLET_API_V1,
-                format!("wallets/{}/accounts/{}/transactions", wallet_id, wallet_account_id),
-            )
-            .to_post_request()
-            .json_body(payload)?;
+            .post(format!(
+                "wallets/{}/accounts/{}/transactions",
+                wallet_id, wallet_account_id
+            ))
+            .body_json(payload)?;
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<CreateWalletTransactionResponseBody>()?;
@@ -580,16 +523,11 @@ impl WalletClient {
         let payload = UpdateWalletTransactionLabelRequestBody { Label: label };
 
         let request = self
-            .api_client
-            .build_full_url(
-                BASE_WALLET_API_V1,
-                format!(
-                    "wallets/{}/accounts/{}/transactions/{}/label",
-                    wallet_id, wallet_account_id, wallet_transaction_id
-                ),
-            )
-            .to_put_request()
-            .json_body(payload)?;
+            .put(format!(
+                "wallets/{}/accounts/{}/transactions/{}/label",
+                wallet_id, wallet_account_id, wallet_transaction_id
+            ))
+            .body_json(payload)?;
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletTransactionLabelResponseBody>()?;
@@ -609,16 +547,11 @@ impl WalletClient {
         };
 
         let request = self
-            .api_client
-            .build_full_url(
-                BASE_WALLET_API_V1,
-                format!(
-                    "wallets/{}/accounts/{}/transactions/{}/hash",
-                    wallet_id, wallet_account_id, wallet_transaction_id
-                ),
-            )
-            .to_put_request()
-            .json_body(payload)?;
+            .put(format!(
+                "wallets/{}/accounts/{}/transactions/{}/hash",
+                wallet_id, wallet_account_id, wallet_transaction_id
+            ))
+            .body_json(payload)?;
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletTransactionHashedTxidResponseBody>()?;
@@ -632,17 +565,10 @@ impl WalletClient {
         wallet_account_id: String,
         wallet_transaction_id: String,
     ) -> Result<(), Error> {
-        let request = self
-            .api_client
-            .build_full_url(
-                BASE_WALLET_API_V1,
-                format!(
-                    "wallets/{}/accounts/{}/transactions/{}",
-                    wallet_id, wallet_account_id, wallet_transaction_id
-                ),
-            )
-            .to_delete_request();
-
+        let request = self.delete(format!(
+            "wallets/{}/accounts/{}/transactions/{}",
+            wallet_id, wallet_account_id, wallet_transaction_id
+        ));
         let response = self.api_client.send(request).await?;
         response.parse_response::<DeleteWalletTransactionResponseBody>()?;
 
@@ -665,6 +591,7 @@ mod tests {
         CreateWalletAccountRequestBody, CreateWalletRequestBody, CreateWalletTransactionRequestBody, WalletClient,
     };
     use crate::{
+        core::ApiClient,
         error::Error,
         tests::utils::{common_api_client, setup_test_connection},
         BASE_WALLET_API_V1,
@@ -676,8 +603,9 @@ mod tests {
         let api_client = common_api_client().await;
         let client = WalletClient::new(api_client);
 
-        let blocks = client.get_wallets().await;
-        println!("request done: {:?}", blocks);
+        let result = client.get_wallets().await;
+        println!("request done: {:?}", result);
+        assert!(result.is_ok());
     }
 
     #[tokio::test]
@@ -687,20 +615,21 @@ mod tests {
         let client = WalletClient::new(api_client);
 
         let payload = CreateWalletRequestBody {
-            Name: String::from("My test wallet"),
+            Name: String::from("yehAfGZvTxIBEu0lmlajrm3ewUZaF6eYr6nPBsZW5mU2KIGy2BK9FbsJ1wMNGolw4muTOq6+20GTOdRf"),
             Type: 1,
             HasPassphrase: 0,
             IsImported: 0,
-            Mnemonic: Some(String::from("")),
-            Fingerprint: Some(String::from("")),
+            Mnemonic: Some(String::from("03sX/gGsT+3iZY4lAaPcza9J4vFTSc8UOrkmLuJkwl1TXVBmlI2hL0nzEBIt/MF7Pha3/Pby672E1lEPp81oF4W+3hHJABSqM3rZarDmpBGFU3HPTcyY3eenkC/DeUlp+gHfM9Rg2w==")),
+            Fingerprint: Some(String::from("49707e7a")),
             PublicKey: None,
-            UserKeyID: String::from("A2MiMDdmh59RhGQ13iuZ27tc_vEn5GTf-v1LaCRP99q2rkMmPeuMh1QRdtIjR5UwGAowachcaiYYf8Pcf9tOoA=="),
-            WalletKey: String::from("Yituc2t2WS9paWRrTEVLTWRmMW15S3c0b3JoZis0aDA4L3d3SDdzbUJBd3BaaWxzakpNV0xHUmtRQ0wxbEJ2SjlTMHV3N2RIUUd2eWtVdm5ySzJLTmVzclBXVEpwRjVCY1hQOWJaU0ROVTFsa1luR3lZQmFoYXRFMzRwdWM1R0VDUDJTYU5wV0h3PT0="),
-            WalletKeySignature: String::from("-----BEGIN PGP SIGNATURE-----.*-----END PGP SIGNATURE-----"),
+            UserKeyID: String::from("4Xi8TArBe1WYfrFoJF5_wIDF0shMe5ACAqOArU6hjpUNoC0O0c_Zu5Afz11gGU1eeDu5Aanp_EUkpd44kjQ2lg=="),
+            WalletKey: String::from("-----BEGIN PGP MESSAGE-----\nVersion: ProtonMail\n\nwcBMA38ULORPpTD1AQgAgL+aR4cwCD+QKrW8XGlBoQv/e4sei9MFkLqoolu4\ncCoQIZXKBt6rroAgQaccwXngiTDrXELkAu2Bnjh6r5KakVu7cPyqjsIF3xjr\naSxWOZ0TcsmBNSgFgkITnNKrd4l9XKfMqCshII+mGVGb4r84glhLokMFU1xU\n5WcKGSry/oomDiyClBDnxdHr/sUNuj169uJz//uAMHQuFXqNtZ1wgwDlGCUL\nAZy5kquoSYZzSDksMj8TveIlV/HLQsFowBYgQks5FZm628Ufl/AY0F7zvxPZ\n359IAANyOi58RsX6U8500/moYd7S4aB4bRgbvUthPYOc5EAaj3I5dIphyy70\nbdJRAcf40LTwF1xOkNhIt5lEh3QAz1QxsV4miYJBbigZz0vCDyyiP/VuuexN\nb+atelhAp4ORS8j4GAe7BjXD4RFBG4avREjytzBd78tm4WitP4PY\n=ZA0x\n-----END PGP MESSAGE-----\n"),
+            WalletKeySignature: String::from("-----BEGIN PGP SIGNATURE-----\nVersion: ProtonMail\n\nwsCYBAABCgBMBQJmVtLgCRAEzZ3CX7rlCRYhBFNy3nIbmXFRgnNYHgTNncJf\nuuUJJJSAAAAAABEACmNvbnRleHRAcHJvdG9uLmNod2FsbGV0LmtleQAAmmQH\n/3rVCYilw5rmF1BQkgR23oE5DrfYOKdcFbQvIqXq4in2BwVMWzcojZsxD4GC\nOHCaaC61TnaELHoy8waQzzNSEmydi3MpVuryUEuqlC7C9fwZLYDMrDXKPJcA\nGNmAnj80iMkZrCn00/fMP2CvIKiYhrEbjH1KHWxceGmm4oMpD7na1h9zMVxa\ni4DL2KZtW4vcrvYNlrUjFwCLenBPa1CBJ0abi4n8htUykjWHoJvYhPrm1QAS\ns96wsMFtbwMoLlKQzTxldzF/jS9H5RFl0DfADQhMkipAVKj1qsUgLB3BcFcD\nNeIP4uGLgqKGAKAeq+HX3NDKuvoSAFb4dKsIQuN2doQ=\n=gFPX\n-----END PGP SIGNATURE-----\n"),
         };
 
-        let blocks = client.create_wallet(payload).await;
-        println!("request done: {:?}", blocks);
+        let result = client.create_wallet(payload).await;
+        println!("request done: {:?}", result);
+        assert!(result.is_ok());
     }
 
     #[tokio::test]
@@ -714,11 +643,11 @@ mod tests {
                 String::from(
                     "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
                 ),
-                String::from("My updated wallet"),
+                String::from("yehAfGZvTxIBEu0lmlajrm3ewUZaF6eYr6nPBsZW5mU2KIGy2BK9FbsJ1wMNGolw4muTOq6+20GTOdRf"),
             )
             .await;
-
         println!("request done: {:?}", res);
+        assert!(res.is_ok());
     }
 
     #[tokio::test]
@@ -734,6 +663,7 @@ mod tests {
             .await;
 
         println!("request done: {:?}", wallet);
+        assert!(wallet.is_ok());
     }
 
     #[tokio::test]
@@ -756,8 +686,8 @@ mod tests {
                 payload,
             )
             .await;
-
         println!("request done: {:?}", res);
+        assert!(res.is_ok());
     }
 
     #[tokio::test]
@@ -773,6 +703,7 @@ mod tests {
             .await;
 
         println!("request done: {:?}", res);
+        assert!(res.is_ok());
     }
 
     #[tokio::test]
@@ -786,6 +717,7 @@ mod tests {
                 String::from(
                     "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
                 ),
+                // replace the account id with the one you want to delete
                 String::from(
                     "_gsDVeX4osuFvPSlszWb-hGvo7d9poBm58MNxvvC2mmG2F1rfM72IqG3hJvGlgMqRHAMyXGgJCI0J8gfukLlXQ==",
                 ),
@@ -793,6 +725,7 @@ mod tests {
             .await;
 
         println!("request done: {:?}", res);
+        assert!(res.is_ok());
     }
 
     #[tokio::test]
@@ -807,13 +740,14 @@ mod tests {
                     "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
                 ),
                 String::from(
-                    "Ac3lBksHTrTEFUJ-LYUVg7Cx2xVLwjw_ZWMyVfYUKo7YFgTTWOj7uINQAGkjzM1HiadZfLDM9J6dJ_r3kJQZ5A==",
+                    "lY2ZCYkVNfl_osze70PRoqzg34MQI64mE3-pLc-yMp_6KXthkV1paUsyS276OdNwucz9zKoWKZL_TgtKxOPb0w==",
                 ),
                 String::from("QW5vdGhlciB0ZXN0IHdhbGxldCBhY2NvdW50IFhZWg=="),
             )
             .await;
 
         println!("request done: {:?}", res);
+        assert!(res.is_ok());
     }
 
     #[tokio::test]
@@ -833,6 +767,7 @@ mod tests {
             .await;
 
         println!("request done: {:?}", res);
+        assert!(res.is_ok());
     }
 
     #[tokio::test]
@@ -847,13 +782,14 @@ mod tests {
                     "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
                 ),
                 Some(String::from(
-                    "nt3NEGgRyn4jA0X-pn0W1b5kBGCdvCLAy4lBMMpIrnedkW38TbMus_mM_2bb4UhIn9I3-EU7mPzQG_nc90SPiQ==",
+                    "lY2ZCYkVNfl_osze70PRoqzg34MQI64mE3-pLc-yMp_6KXthkV1paUsyS276OdNwucz9zKoWKZL_TgtKxOPb0w==",
                 )),
                 None,
             )
             .await;
 
         println!("request done: {:?}", res);
+        assert!(res.is_ok());
     }
 
     #[tokio::test]
@@ -865,17 +801,18 @@ mod tests {
         let res = client
             .get_wallet_transactions(
                 String::from(
-                    "DGnqE6AlZV0bFUNlqjHCEAdmucxmuId02-zjI4xnI6FfWI1NwCsR2JofDXhoVSmLzHvTcqwWJg-4e79vycc_nA==",
+                    "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
                 ),
                 None,
                 Some(vec![
-                    String::from("fi9YAgAsh59I7tRLIdYzI5T8Mb21qBFkAmCR9ve2QBk="),
+                    String::from("k5WX0lOyT6Xe3h14f1A+fxZ47owxcjQFkGQy72tAXeQ="),
                     String::from("ZxIeKb4btZCywLEMmbF5MPZNednC2y/7jf/CUGZ9ivM="),
                 ]),
             )
             .await;
 
         println!("request done: {:?}", res);
+        assert!(res.is_ok());
     }
 
     #[tokio::test]
@@ -894,6 +831,7 @@ mod tests {
             .await;
 
         println!("request done: {:?}", res);
+        assert!(res.is_ok());
     }
 
     #[tokio::test]
@@ -908,12 +846,13 @@ mod tests {
                     "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
                 ),
                 Some(String::from(
-                    "nt3NEGgRyn4jA0X-pn0W1b5kBGCdvCLAy4lBMMpIrnedkW38TbMus_mM_2bb4UhIn9I3-EU7mPzQG_nc90SPiQ==",
+                    "lY2ZCYkVNfl_osze70PRoqzg34MQI64mE3-pLc-yMp_6KXthkV1paUsyS276OdNwucz9zKoWKZL_TgtKxOPb0w==",
                 )),
             )
             .await;
 
         println!("request done: {:?}", res);
+        assert!(res.is_ok());
     }
 
     #[tokio::test]
@@ -936,13 +875,14 @@ mod tests {
                     "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
                 ),
                 String::from(
-                    "nt3NEGgRyn4jA0X-pn0W1b5kBGCdvCLAy4lBMMpIrnedkW38TbMus_mM_2bb4UhIn9I3-EU7mPzQG_nc90SPiQ==",
+                    "lY2ZCYkVNfl_osze70PRoqzg34MQI64mE3-pLc-yMp_6KXthkV1paUsyS276OdNwucz9zKoWKZL_TgtKxOPb0w==",
                 ),
                 payload,
             )
             .await;
 
         println!("request done: {:?}", res);
+        assert!(res.is_ok());
     }
 
     #[tokio::test]
@@ -967,6 +907,7 @@ mod tests {
             .await;
 
         println!("request done: {:?}", res);
+        assert!(res.is_ok());
     }
 
     #[tokio::test]
@@ -991,6 +932,7 @@ mod tests {
             .await;
 
         println!("request done: {:?}", res);
+        assert!(res.is_ok());
     }
 
     #[tokio::test]
@@ -1014,6 +956,7 @@ mod tests {
             .await;
 
         println!("request done: {:?}", res);
+        assert!(res.is_ok());
     }
 
     /// Unit tests with mock
