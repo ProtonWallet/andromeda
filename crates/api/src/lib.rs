@@ -25,17 +25,17 @@ pub use proton_users::ProtonUsersClient;
 use settings::SettingsClient;
 use transaction::TransactionClient;
 use wallet::WalletClient;
+// expose muon's jni. it needs to be matched when use in client
+#[cfg(target_os = "android")]
+pub use {
+    muon::tls::java_init as init_android,
+    muon::tls::{
+        objects::{JClass, JObject},
+        sys::jboolean,
+        JNIEnv,
+    },
+};
 
-/// muon removed this expose. enable later
-// #[cfg(target_os = "android")]
-// pub use {
-//     muon::tls::java_init as init_android,
-//     muon::tls::{
-//         objects::{JClass, JObject},
-//         sys::jboolean,
-//         JNIEnv,
-//     },
-// };
 pub use crate::{
     core::WalletAuthStore,
     proton_users::{ChildSession, UserData},
