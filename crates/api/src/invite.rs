@@ -61,7 +61,6 @@ mod tests {
     use crate::{core::ApiClient, tests, InviteClient, BASE_WALLET_API_V1};
 
     #[tokio::test]
-    #[cfg(feature = "allow-dangerous-env")]
     async fn send_newcomer_invite_success() {
         let mock_server = MockServer::start().await;
         let response_body = serde_json::json!(

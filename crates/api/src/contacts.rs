@@ -95,14 +95,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
-    #[cfg(feature = "allow-dangerous-env")]
     async fn test_get_contacts_code_1000() {
-        use std::env;
-
-        env::set_var("RUST_LOG", "debug");
-        tracing_subscriber::fmt::init();
-
         let mock_server = MockServer::start().await;
         let response_body = serde_json::json!(
             {
@@ -143,7 +136,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     async fn test_get_contacts_deserialize_error() {
         let mock_server = MockServer::start().await;
         let response_body = serde_json::json!({});

@@ -2,7 +2,6 @@ use core::ApiClient;
 use std::sync::{Arc, Mutex};
 
 use address::AddressClient;
-use async_std::sync::RwLock;
 use bitcoin_address::BitcoinAddressClient;
 use block::BlockClient;
 use contacts::ContactsClient;
@@ -17,7 +16,8 @@ pub use muon::{
     flow::LoginFlow,
     http::{HttpReq as ProtonRequest, HttpReqExt, HttpRes as ProtonResponse},
     rest::core as CoreAPI,
-    App, Auth, Client, Env, EnvId, Error as MuonError, Product, Store, StoreReadErr, StoreWriteErr, Tokens, GET,
+    App, Auth, Client, DynStore, Env, EnvId, Error as MuonError, Product, Store, StoreReadErr, StoreWriteErr, Tokens,
+    GET,
 };
 use network::NetworkClient;
 use proton_email_address::ProtonEmailAddressClient;
@@ -85,8 +85,10 @@ pub const BASE_CONTACTS_API_V4: &str = "/contacts/v4";
 /// ```
 #[derive(Clone)]
 pub struct ProtonWalletApiClient {
-    session: Arc<RwLock<Client>>,
+    session: Client,
     url_prefix: Option<String>,
+    // cache the env, when doing the fork, we need to target same env
+    env: Option<String>,
 }
 
 #[derive(Debug)]
@@ -100,6 +102,8 @@ pub struct ApiConfig {
     /// The env for the api client
     /// could be [altas, prod, or rul link]
     pub env: Option<String>,
+    /// The muon auth store. web doesn't need but flutter side needs
+    pub store: Option<DynStore>,
 }
 
 pub struct Clients {
@@ -133,56 +137,30 @@ impl ProtonWalletApiClient {
     ///     auth: Some(auth),
     ///     env: Some("atlas".to_string()),
     ///     url_prefix: None,
+    ///     store: None,
     /// };
     /// let api_client = ProtonWalletApiClient::from_config(config);
     /// ```
     pub fn from_config(config: ApiConfig) -> Result<Self, Error> {
-        let auth = config.auth.unwrap_or(Auth::None);
-        let env: String = config.env.unwrap_or("atlas".to_string());
-        let auth_store = WalletAuthStore::from_env_str(env, Arc::new(Mutex::new(auth)));
+        let env: String = config.env.clone().unwrap_or("atlas".to_string());
         let app_spec: Result<App, ParseAppVersionErr> = if let Some((app_version, user_agent)) = config.spec {
             Ok(App::new(app_version)?.with_user_agent(user_agent))
         } else {
             Ok(App::default())
         };
-        let session = Client::new(app_spec?, auth_store)?;
-        Ok(Self::from_session(session, config.url_prefix))
-    }
 
-    /// Builds a new api client from a wallet version and a user agent
-    ///
-    /// ```rust
-    /// use andromeda_api::{ProtonWalletApiClient, WalletAuthStore};
-    /// let auth_store = WalletAuthStore::default();
-    /// let api_client = ProtonWalletApiClient::from_version("android-wallet/1.0.0".to_string(), "ProtonWallet/plus-agent-details".to_string(), auth_store);
-    /// ```
-    pub fn from_version(app_version: String, user_agent: String, store: impl Store) -> Result<Self, Error> {
-        let app_spec = App::new(app_version)?.with_user_agent(user_agent);
-        let session = Client::new(app_spec, store)?;
-        Ok(Self::from_session(session, None))
-    }
-
-    /// Builds a new api client from a session.
-    ///
-    /// Session can be either authenticated or not, authentication can be later
-    /// processed.
-    ///
-    /// ```rust
-    /// use andromeda_api::ProtonWalletApiClient;
-    /// use muon::{App, Client};
-    /// use andromeda_api::WalletAuthStore;
-    /// let app_spec = App::default();
-    /// let auth_store = WalletAuthStore::atlas(None);
-    /// let session = Client::new(app_spec, auth_store).unwrap();
-    /// let api_client = ProtonWalletApiClient::from_session(session, None);
-    /// ```
-    pub fn from_session(session: Client, url_prefix: Option<String>) -> Self {
-        let session = Arc::new(RwLock::new(session));
-
-        Self {
-            session: session.clone(),
-            url_prefix,
-        }
+        let session = if let Some(store) = config.store {
+            Client::new(App::default(), store)?
+        } else {
+            let auth = config.auth.unwrap_or(Auth::None);
+            let auth_store = WalletAuthStore::from_env_str(env, Arc::new(Mutex::new(auth)));
+            Client::new(app_spec?, auth_store)?
+        };
+        Ok(Self {
+            session: session,
+            url_prefix: config.url_prefix,
+            env: config.env,
+        })
     }
 
     pub fn clients(&self) -> Clients {
@@ -210,19 +188,12 @@ impl ProtonWalletApiClient {
     ///
     /// ```rust
     /// use andromeda_api::ProtonWalletApiClient;
-    /// use muon::{App, Client};
-    /// use andromeda_api::WalletAuthStore;
-    /// let app_spec = App::default();
-    /// let auth_store = WalletAuthStore::atlas(None);
-    /// let session = Client::new(app_spec, auth_store).unwrap();
-    /// let mut api_client = ProtonWalletApiClient::from_session(session, None);
+    /// let mut api_client = ProtonWalletApiClient::default();
     /// api_client.login("my_username", "my_password");
     /// ```
     pub async fn login(&self, username: &str, password: &str) -> Result<UserData, Error> {
-        let session_guard = self.session.write().await;
         info!("login start");
-        let client = session_guard.clone();
-        let LoginFlow::Ok(c) = client.auth().login(username, password).await? else {
+        let LoginFlow::Ok(c) = self.session.clone().auth().login(username, password).await? else {
             panic!("unexpected auth flow");
         };
         info!("login successful");
@@ -244,16 +215,21 @@ impl ProtonWalletApiClient {
         }) // later return the user
     }
 
+    /// fork session, client must be authenticated first
     pub async fn fork(&self) -> Result<ChildSession, Error> {
         use muon::flow::WithSelectorFlow;
 
-        let session_guard = self.session.write().await;
-        let client = session_guard.clone();
-
         // Fork the session
-        let selector = client.fork("ios-wallet").payload(b"hello world").send().await?;
+        let selector = self
+            .session
+            .clone()
+            .fork("ios-wallet")
+            .payload(b"hello world")
+            .send()
+            .await?;
         // Create a new client.
-        let store = WalletAuthStore::prod();
+        let store_env: String = self.env.clone().unwrap_or("atlas".to_string());
+        let store = WalletAuthStore::from_env_str(store_env, Arc::new(Mutex::new(Auth::None)));
         let app_version = "ios-wallet@1.0.0";
         let user_agentuser_agent = "ProtonWallet/1.0.0 (iOS/17.4; arm64)";
         let app_spec = App::new(app_version)?.with_user_agent(user_agentuser_agent);
@@ -289,16 +265,24 @@ impl ProtonWalletApiClient {
     }
 
     async fn send(&self, request: ProtonRequest) -> Result<ProtonResponse, MuonError> {
-        self.session.read().await.send(request).await
+        self.session.clone().send(request).await
     }
 }
 
 impl Default for ProtonWalletApiClient {
     /// default Proton Wallet api client. It uses `atlas` env
     fn default() -> Self {
-        let app_spec = App::default();
-        let auth_store = WalletAuthStore::atlas(None);
-        let session = Client::new(app_spec, auth_store).unwrap();
-        return Self::from_session(session, None);
+        let default_app = App::default();
+        let config = ApiConfig {
+            spec: Some((
+                default_app.app_version().to_string(),
+                default_app.user_agent().to_string(),
+            )),
+            url_prefix: None,
+            env: None,
+            store: None,
+            auth: None,
+        };
+        return Self::from_config(config).unwrap();
     }
 }

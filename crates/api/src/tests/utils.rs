@@ -1,23 +1,31 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
-use muon::{App, Auth, Client};
+use crate::{ApiConfig, ProtonWalletApiClient};
 
-use crate::{ProtonWalletApiClient, WalletAuthStore};
+pub fn test_spec() -> (String, String) {
+    ("web-wallet@5.0.999.999-dev".to_string(),"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36".to_string())
+}
 
 pub fn setup_test_connection(url: String) -> Arc<ProtonWalletApiClient> {
-    let app = App::new("web-wallet@5.0.999.999-dev").unwrap().with_user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-    let auth = WalletAuthStore::from_env_str(url, Arc::new(Mutex::new(Auth::None)));
-    let session = Client::new(app, auth).unwrap();
-    Arc::new(ProtonWalletApiClient::from_session(session, None))
+    let config = ApiConfig {
+        spec: Some(test_spec()),
+        url_prefix: None,
+        env: Some(url),
+        store: None,
+        auth: None,
+    };
+    Arc::new(ProtonWalletApiClient::from_config(config).unwrap())
 }
 
 pub async fn common_api_client() -> Arc<ProtonWalletApiClient> {
-    let session = {
-        let auth = WalletAuthStore::atlas(None);
-        let app = App::new("web-wallet@5.0.999").unwrap().with_user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-        Client::new(app, auth).unwrap()
+    let config = ApiConfig {
+        spec: Some(test_spec()),
+        url_prefix: None,
+        env: None,
+        store: None,
+        auth: None,
     };
-    let api = ProtonWalletApiClient::from_session(session, None);
+    let api = ProtonWalletApiClient::from_config(config).unwrap();
     api.login("pro", "pro").await.unwrap();
     Arc::new(api)
 }

@@ -57,9 +57,17 @@ impl NetworkClient {
 #[cfg(test)]
 mod tests {
     use muon::EnvId;
+    use wiremock::{
+        matchers::{method, path},
+        Mock, MockServer, ResponseTemplate,
+    };
 
     use super::NetworkClient;
-    use crate::{core::ApiClient, tests::utils::common_api_client};
+    use crate::{
+        core::ApiClient,
+        tests::utils::{common_api_client, setup_test_connection},
+        BASE_WALLET_API_V1,
+    };
 
     #[tokio::test]
     #[ignore]
@@ -82,5 +90,56 @@ mod tests {
 
         let env: EnvId = "atlas:scientist".parse().unwrap();
         assert!(matches!(env, EnvId::Atlas(Some(name)) if name == "scientist"));
+    }
+
+    #[tokio::test]
+    async fn test_get_network_1000() {
+        let mock_server = MockServer::start().await;
+        let json_body = serde_json::json!(
+        {
+            "Code": 1000,
+            "Network": 0
+        });
+
+        let req_path: String = format!("{}/network", BASE_WALLET_API_V1);
+        let response = ResponseTemplate::new(200).set_body_json(json_body);
+        Mock::given(method("GET"))
+            .and(path(req_path))
+            .respond_with(response)
+            .expect(1..)
+            .with_priority(1)
+            .mount(&mock_server)
+            .await;
+
+        let api_client = setup_test_connection(mock_server.uri());
+        let network_client = NetworkClient::new(api_client);
+        let res = network_client.get_network().await;
+        println!("test_get_network_1000 done: {:?}", res);
+        assert!(res.is_ok());
+        assert!(matches!(res.unwrap(), super::Network::Bitcoin));
+        let unmatched_requests = mock_server.received_requests().await.unwrap();
+        assert_eq!(unmatched_requests.len(), 1, "There should be no unmatched requests");
+    }
+
+    #[tokio::test]
+    async fn test_get_network_timeout() {
+        let mock_server = MockServer::start().await;
+        let req_path: String = format!("{}/network", BASE_WALLET_API_V1);
+        let response = ResponseTemplate::new(200).set_delay(std::time::Duration::from_secs(32));
+        Mock::given(method("GET"))
+            .and(path(req_path))
+            .respond_with(response)
+            .expect(1..)
+            .with_priority(1)
+            .mount(&mock_server)
+            .await;
+
+        let api_client = setup_test_connection(mock_server.uri());
+        let network_client = NetworkClient::new(api_client);
+        let res = network_client.get_network().await;
+        println!("test_get_network_timeout done: {:?}", res);
+        assert!(res.is_err());
+        let unmatched_requests = mock_server.received_requests().await.unwrap();
+        assert_eq!(unmatched_requests.len(), 1, "There should be no unmatched requests");
     }
 }
