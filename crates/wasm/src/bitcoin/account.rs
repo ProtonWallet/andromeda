@@ -3,13 +3,14 @@ use wasm_bindgen::prelude::*;
 
 use super::{
     payment_link::WasmPaymentLink,
+    psbt::WasmPsbt,
     types::{
         address::WasmAddress,
         address_info::WasmAddressInfo,
         balance::WasmBalance,
         derivation_path::WasmDerivationPath,
         pagination::{WasmPagination, WasmSortOrder},
-        transaction::{WasmTransaction, WasmTransactionDetailsArray, WasmTransactionDetailsData},
+        transaction::{WasmTransactionDetailsArray, WasmTransactionDetailsData},
         utxo::{WasmUtxo, WasmUtxoArray},
     },
     wallet::WasmWallet,
@@ -159,9 +160,11 @@ impl WasmAccount {
     }
 
     #[wasm_bindgen(js_name = insertUnconfirmedTransaction)]
-    pub async fn insert_unconfirmed_tx(&self, transaction: WasmTransaction) -> Result<(), js_sys::Error> {
+    pub async fn insert_unconfirmed_tx(&self, psbt: &WasmPsbt) -> Result<(), js_sys::Error> {
+        let transaction = psbt.get_inner().extract_tx().map_err(|e| e.to_js_error())?;
+
         self.inner
-            .insert_unconfirmed_tx(transaction.get_inner())
+            .insert_unconfirmed_tx(transaction)
             .await
             .map_err(|e| e.to_js_error())?;
 
