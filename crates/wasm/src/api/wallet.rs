@@ -13,6 +13,7 @@ use crate::{
 };
 
 #[wasm_bindgen]
+#[derive(Clone)]
 pub struct WasmWalletClient(WalletClient);
 
 impl From<WalletClient> for WasmWalletClient {

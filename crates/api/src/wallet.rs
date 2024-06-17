@@ -593,7 +593,7 @@ mod tests {
     use crate::{
         core::ApiClient,
         error::Error,
-        tests::utils::{common_api_client, setup_test_connection},
+        tests::utils::{common_api_client, setup_test_connection_arc},
         BASE_WALLET_API_V1,
     };
 
@@ -978,7 +978,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let session = setup_test_connection(mock_server.uri());
+        let session = setup_test_connection_arc(mock_server.uri());
         let client = WalletClient::new(session);
         let payload = CreateWalletAccountRequestBody {
             DerivationPath: DerivationPath::from_str("m/44'/1'/0'").unwrap().to_string(),
@@ -1023,7 +1023,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection(mock_server.uri());
+        let api_client = setup_test_connection_arc(mock_server.uri());
         let client = WalletClient::new(api_client);
         let payload = CreateWalletAccountRequestBody {
             DerivationPath: DerivationPath::from_str("m/44'/1'/0'").unwrap().to_string(),

@@ -46,7 +46,7 @@ impl InviteClient {
 
         let response = self.api_client.send(request).await?;
 
-        Ok(response.parse_response::<GetInviteResponseBody>()?)
+        response.parse_response::<GetInviteResponseBody>()
     }
 }
 
@@ -75,7 +75,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = tests::utils::setup_test_connection(mock_server.uri());
+        let api_client = tests::utils::setup_test_connection_arc(mock_server.uri());
         let client = InviteClient::new(api_client);
         let result = client.send_newcomer_invite("test@pm.me".to_owned()).await;
         match result {

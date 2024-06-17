@@ -12,9 +12,10 @@ pub const BITCOIN: u64 = 100_000_000 * SATOSHI;
 pub const MILLI_BITCOIN: u64 = BITCOIN / 1000;
 
 pub mod error;
+pub mod utils;
 
 /// Reimpl of BDK's Network enum to have exhaustive enum
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Network {
     /// Mainnet Bitcoin.
     Bitcoin,
@@ -56,6 +57,22 @@ impl From<BdkNetwork> for Network {
             BdkNetwork::Signet => Network::Signet,
             BdkNetwork::Regtest => Network::Regtest,
             _ => panic!("Network {} not supported", network),
+        }
+    }
+}
+
+impl TryFrom<String> for Network {
+    type Error = Error;
+
+    fn try_from(network: String) -> Result<Network, Error> {
+        let str = network.as_str();
+
+        match str {
+            "bitcoin" => Ok(Network::Bitcoin),
+            "testnet" => Ok(Network::Testnet),
+            "signet" => Ok(Network::Signet),
+            "regtest" => Ok(Network::Regtest),
+            _ => Err(Error::InvalidNetwork(network)),
         }
     }
 }

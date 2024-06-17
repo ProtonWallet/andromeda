@@ -1,32 +1,33 @@
 pub mod account;
-pub mod blockchain;
+pub mod blockchain_client;
 pub mod error;
 pub mod mnemonic;
 pub mod payment_link;
+pub mod psbt;
 pub mod transaction_builder;
 pub mod transactions;
 pub mod utils;
 pub mod wallet;
 
-#[cfg(not(target_family = "wasm"))]
-pub use bdk::database::AnyDatabase as BdkAnyDatabase;
-#[cfg(not(target_family = "wasm"))]
-pub use bdk::database::SqliteDatabase as BdkSqliteDatabase;
+pub mod storage;
+
+pub use bdk_persist::PersistBackend;
 #[doc(hidden)]
-pub use bdk::{
+pub use bdk_wallet::{
     bitcoin::{
-        bip32::{ChildNumber, DerivationPath, ExtendedPrivKey},
+        bip32::{ChildNumber, DerivationPath, Xpriv},
         block::Header as BlockHeader,
-        blockdata::locktime::absolute::{Height, LockTime, Time},
-        psbt::PartiallySignedTransaction,
+        blockdata::{
+            constants::genesis_block,
+            locktime::absolute::{Height, LockTime, Time},
+        },
         Address, BlockHash, Network as BdkNetwork, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Witness,
     },
-    database::MemoryDatabase as BdkMemoryDatabase,
+    chain::Append,
     keys::{
         bip39::{Language as BdkLanguage, Mnemonic as BdkMnemonic, MnemonicWithPassphrase, WordCount},
         DerivableKey, ExtendedKey,
     },
-    wallet::{tx_builder::ChangeSpendPolicy, AddressIndex, AddressInfo},
-    Balance as BdkBalance, BlockTime as BdkBlockTime, KeychainKind, LocalUtxo, SignOptions,
-    TransactionDetails as BdkTransactionDetails,
+    wallet::{tx_builder::ChangeSpendPolicy, AddressInfo, Balance, ChangeSet},
+    KeychainKind, LocalOutput, SignOptions,
 };

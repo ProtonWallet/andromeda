@@ -167,7 +167,7 @@ impl ApiClient for SettingsClient {
     }
 
     fn api_client(&self) -> &Arc<ProtonWalletApiClient> {
-        return &self.api_client;
+        &self.api_client
     }
 
     fn base_url(&self) -> &str {

@@ -27,12 +27,14 @@ impl fmt::Display for GatewayProvider {
 }
 
 pub type CountriesByProvider = HashMap<GatewayProvider, Vec<ApiCountry>>;
+
 #[derive(Deserialize, Debug)]
 #[allow(non_snake_case)]
 pub struct GetCountriesResponseBody {
     pub Code: i32,
     pub Countries: CountriesByProvider,
 }
+
 #[derive(Deserialize, Debug)]
 #[allow(non_snake_case)]
 pub struct ApiCountry {
@@ -41,7 +43,8 @@ pub struct ApiCountry {
     pub Name: String,
 }
 
-pub type FiatCurrenciesByProvider = HashMap<GatewayProvider, Vec<ApiFiatCurrency>>;
+pub type FiatCurrenciesByProvider = HashMap<GatewayProvider, Vec<ApiSimpleFiatCurrency>>;
+
 #[derive(Deserialize, Debug)]
 #[allow(non_snake_case)]
 pub struct GetFiatCurrenciesResponseBody {
@@ -51,12 +54,13 @@ pub struct GetFiatCurrenciesResponseBody {
 
 #[derive(Deserialize, Debug)]
 #[allow(non_snake_case)]
-pub struct ApiFiatCurrency {
+pub struct ApiSimpleFiatCurrency {
     pub Name: String,
-    pub Symbol: String,
+    pub Symbol: FiatCurrencySymbol,
 }
 
 pub type PaymentMethodsByProvider = HashMap<GatewayProvider, Vec<PaymentMethod>>;
+
 #[derive(Deserialize, Debug)]
 #[allow(non_snake_case)]
 pub struct GetPaymentMethodsResponseBody {
@@ -77,6 +81,7 @@ pub enum PaymentMethod {
 }
 
 pub type QuotesByProvider = HashMap<GatewayProvider, Vec<Quote>>;
+
 #[derive(Deserialize, Debug)]
 #[allow(non_snake_case)]
 pub struct Quote {
@@ -113,11 +118,11 @@ pub struct CreateOnRampCheckoutResponseBody {
 }
 
 #[derive(Clone)]
-pub struct ProtonPaymentGatewayClient {
+pub struct PaymentGatewayClient {
     api_client: Arc<ProtonWalletApiClient>,
 }
 
-impl ApiClient for ProtonPaymentGatewayClient {
+impl ApiClient for PaymentGatewayClient {
     fn api_client(&self) -> &Arc<ProtonWalletApiClient> {
         &self.api_client
     }
@@ -131,7 +136,7 @@ impl ApiClient for ProtonPaymentGatewayClient {
     }
 }
 
-impl ProtonPaymentGatewayClient {
+impl PaymentGatewayClient {
     pub async fn get_countries(&self) -> Result<CountriesByProvider, Error> {
         let request = self.get("payment-gateway/on-ramp/countries");
 
@@ -163,22 +168,24 @@ impl ProtonPaymentGatewayClient {
 
     pub async fn get_quotes(
         &self,
-        amount: String,
+        amount: f64,
         fiat_currency: FiatCurrencySymbol,
-        pay_method: Option<PaymentMethod>,
+        payment_method: Option<PaymentMethod>,
         provider: Option<GatewayProvider>,
     ) -> Result<QuotesByProvider, Error> {
         let mut request = self
             .get("payment-gateway/on-ramp/quotes")
             .query(("Amount", amount))
             .query(("FiatCurrency", fiat_currency.to_string()));
-        if let Some(value) = pay_method {
-            let int_pay_method = value as i32;
-            request = request.query(("PaymentMethod", int_pay_method.to_string()));
+
+        if let Some(value) = payment_method {
+            request = request.query(("PaymentMethod", (value as i32).to_string()));
         }
+
         if let Some(value) = provider {
             request = request.query(("Provider", value.to_string()));
         }
+
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetQuotesResponseBody>()?;
         Ok(parsed.Quotes)
@@ -211,7 +218,7 @@ impl ProtonPaymentGatewayClient {
 mod tests {
 
     use wiremock::{
-        matchers::{body_json, method, path},
+        matchers::{body_json, method, path, query_param},
         Mock, MockServer, ResponseTemplate,
     };
 
@@ -219,10 +226,10 @@ mod tests {
         core::ApiClient,
         payment_gateway::{
             GatewayProvider, GetCountriesResponseBody, GetFiatCurrenciesResponseBody, GetPaymentMethodsResponseBody,
-            GetQuotesResponseBody, PaymentMethod, ProtonPaymentGatewayClient,
+            GetQuotesResponseBody, PaymentGatewayClient, PaymentMethod,
         },
         settings::FiatCurrencySymbol,
-        tests::utils::{common_api_client, setup_test_connection},
+        tests::utils::{common_api_client, setup_test_connection_arc},
         BASE_WALLET_API_V1,
     };
 
@@ -297,11 +304,11 @@ mod tests {
         let response: GetFiatCurrenciesResponseBody = serde_json::from_value(json_value).unwrap();
         assert!(response.Code == 1000);
         assert!(response.FiatCurrencies.get(&GatewayProvider::Banxa).unwrap().len() == 1);
-        assert!(response.FiatCurrencies.get(&GatewayProvider::Banxa).unwrap()[0].Symbol == "AUD");
+        assert!(response.FiatCurrencies.get(&GatewayProvider::Banxa).unwrap()[0].Symbol == FiatCurrencySymbol::AUD);
         assert!(response.FiatCurrencies.get(&GatewayProvider::Banxa).unwrap()[0].Name == "Australian Dollar");
-        assert!(response.FiatCurrencies.get(&GatewayProvider::Ramp).unwrap()[0].Symbol == "AUD");
+        assert!(response.FiatCurrencies.get(&GatewayProvider::Ramp).unwrap()[0].Symbol == FiatCurrencySymbol::AUD);
         assert!(response.FiatCurrencies.get(&GatewayProvider::Ramp).unwrap()[0].Name == "Australian Dollar");
-        assert!(response.FiatCurrencies.get(&GatewayProvider::MoonPay).unwrap()[0].Symbol == "AUD");
+        assert!(response.FiatCurrencies.get(&GatewayProvider::MoonPay).unwrap()[0].Symbol == FiatCurrencySymbol::AUD);
         assert!(response.FiatCurrencies.get(&GatewayProvider::MoonPay).unwrap()[0].Name == "Australian Dollar");
     }
 
@@ -350,10 +357,14 @@ mod tests {
         let check = serde_json::from_value::<GetPaymentMethodsResponseBody>(json_value).unwrap();
         // hash map union the keys
         assert!(check.PaymentMethods.len() == 4);
-        assert!(check.PaymentMethods.get(&GatewayProvider::Banxa).unwrap().len() == 0);
-        assert!(check.PaymentMethods.get(&GatewayProvider::Unsupported).unwrap().len() == 0);
-        assert!(check.PaymentMethods.get(&GatewayProvider::Ramp).unwrap().len() == 0);
-        assert!(check.PaymentMethods.get(&GatewayProvider::MoonPay).unwrap().len() == 0);
+        assert!(check.PaymentMethods.get(&GatewayProvider::Banxa).unwrap().is_empty());
+        assert!(check
+            .PaymentMethods
+            .get(&GatewayProvider::Unsupported)
+            .unwrap()
+            .is_empty());
+        assert!(check.PaymentMethods.get(&GatewayProvider::Ramp).unwrap().is_empty());
+        assert!(check.PaymentMethods.get(&GatewayProvider::MoonPay).unwrap().is_empty());
     }
 
     #[test]
@@ -479,19 +490,19 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection(mock_server.uri());
-        let gateway_client = ProtonPaymentGatewayClient::new(api_client);
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let gateway_client = PaymentGatewayClient::new(api_client);
         let countries = gateway_client.get_countries().await;
         match countries {
             Ok(value) => {
-                assert!(value.len() > 0);
+                assert!(!value.is_empty());
                 assert!(value.get(&GatewayProvider::Banxa).unwrap().len() == 1);
                 assert!(value.get(&GatewayProvider::Banxa).unwrap()[0].Code == "AU");
                 assert!(value.get(&GatewayProvider::Banxa).unwrap()[0].Name == "Australia");
                 assert!(value.get(&GatewayProvider::Ramp).unwrap()[0].Code == "AU");
                 assert!(value.get(&GatewayProvider::Ramp).unwrap()[0].Name == "Australia");
             }
-            Err(e) => panic!("Expected Ok variant but got Err.{}", e.to_string()),
+            Err(e) => panic!("Expected Ok variant but got Err.{}", e),
         }
     }
 
@@ -524,19 +535,19 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection(mock_server.uri());
-        let gateway_client = ProtonPaymentGatewayClient::new(api_client);
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let gateway_client = PaymentGatewayClient::new(api_client);
         let fiat_currencies = gateway_client.get_fiat_currencies().await;
         match fiat_currencies {
             Ok(value) => {
-                assert!(value.len() > 0);
+                assert!(!value.is_empty());
                 assert!(value.get(&GatewayProvider::Banxa).unwrap().len() == 1);
-                assert!(value.get(&GatewayProvider::Banxa).unwrap()[0].Symbol == "AUD");
+                assert!(value.get(&GatewayProvider::Banxa).unwrap()[0].Symbol == FiatCurrencySymbol::AUD);
                 assert!(value.get(&GatewayProvider::Banxa).unwrap()[0].Name == "Australian Dollar");
-                assert!(value.get(&GatewayProvider::Ramp).unwrap()[0].Symbol == "AUD");
+                assert!(value.get(&GatewayProvider::Ramp).unwrap()[0].Symbol == FiatCurrencySymbol::AUD);
                 assert!(value.get(&GatewayProvider::Ramp).unwrap()[0].Name == "Australian Dollar");
             }
-            Err(e) => panic!("Expected Ok variant but got Err.{}", e.to_string()),
+            Err(e) => panic!("Expected Ok variant but got Err.{}", e),
         }
     }
 
@@ -558,17 +569,17 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection(mock_server.uri());
-        let gateway_client = ProtonPaymentGatewayClient::new(api_client);
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let gateway_client = PaymentGatewayClient::new(api_client);
         let fiat_currencies = gateway_client.get_payment_methods(FiatCurrencySymbol::AUD).await;
         match fiat_currencies {
             Ok(value) => {
-                assert!(value.len() > 0);
+                assert!(!value.is_empty());
                 assert!(value.get(&GatewayProvider::Banxa).unwrap().len() == 1);
                 assert!(value.get(&GatewayProvider::Banxa).unwrap()[0] == PaymentMethod::ApplePay);
                 assert!(value.get(&GatewayProvider::Ramp).unwrap()[0] == PaymentMethod::Unsupported);
             }
-            Err(e) => panic!("Expected Ok variant but got Err.{}", e.to_string()),
+            Err(e) => panic!("Expected Ok variant but got Err.{}", e),
         }
     }
 
@@ -591,12 +602,12 @@ mod tests {
                 ],
                 "Ramp": [
                     {
-                        "BitcoinAmount": "0.00437556",
-                        "FiatAmount": "300.50",
+                        "BitcoinAmount": "0.00135719",
+                        "FiatAmount": "100",
                         "FiatCurrencySymbol": "EUR",
-                        "NetworkFee": "1.34",
-                        "PaymentGatewayFee": "5.85",
-                        "PaymentMethod": 1
+                        "NetworkFee": "2.0715229730449",
+                        "PaymentGatewayFee": "3.3024386838943",
+                        "PaymentMethod": 3,
                     }
                 ]
             }
@@ -605,14 +616,18 @@ mod tests {
         let response = ResponseTemplate::new(200).set_body_json(json_body);
         Mock::given(method("GET"))
             .and(path(req_path))
+            .and(query_param("Amount", "300.5"))
+            .and(query_param("FiatCurrency", "AUD"))
+            .and(query_param("PaymentMethod", "1"))
+            .and(query_param("Provider", "Ramp"))
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection(mock_server.uri());
-        let gateway_client = ProtonPaymentGatewayClient::new(api_client);
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let gateway_client = PaymentGatewayClient::new(api_client);
         let quotes = gateway_client
             .get_quotes(
-                "amount".to_string(),
+                300.50,
                 FiatCurrencySymbol::AUD,
                 Some(PaymentMethod::ApplePay),
                 Some(GatewayProvider::Ramp),
@@ -620,7 +635,7 @@ mod tests {
             .await;
         match quotes {
             Ok(value) => {
-                assert!(value.len() > 0);
+                assert!(!value.is_empty());
                 assert!(value[&GatewayProvider::Banxa].len() == 1);
                 assert!(value[&GatewayProvider::Banxa][0].BitcoinAmount == "0.00437556");
                 assert_eq!(value[&GatewayProvider::Banxa][0].PaymentMethod, PaymentMethod::ApplePay);
@@ -632,17 +647,18 @@ mod tests {
                 assert_eq!(value[&GatewayProvider::Banxa][0].NetworkFee, "1.34");
                 assert_eq!(value[&GatewayProvider::Banxa][0].PaymentGatewayFee, "5.85");
 
-                assert!(value[&GatewayProvider::Ramp][0].BitcoinAmount == "0.00437556");
-                assert_eq!(value[&GatewayProvider::Ramp][0].PaymentMethod, PaymentMethod::ApplePay);
-                assert_eq!(value[&GatewayProvider::Ramp][0].FiatAmount, "300.50");
+                assert!(value[&GatewayProvider::Ramp][0].BitcoinAmount == "0.00135719");
+                assert_eq!(value[&GatewayProvider::Ramp][0].PaymentMethod, PaymentMethod::Card);
+                assert_eq!(value[&GatewayProvider::Ramp][0].FiatAmount, "100");
                 assert_eq!(
                     value[&GatewayProvider::Ramp][0].FiatCurrencySymbol,
                     FiatCurrencySymbol::EUR
                 );
-                assert_eq!(value[&GatewayProvider::Ramp][0].NetworkFee, "1.34");
-                assert_eq!(value[&GatewayProvider::Ramp][0].PaymentGatewayFee, "5.85");
+                assert_eq!(value[&GatewayProvider::Ramp][0].NetworkFee, "2.0715229730449");
+                assert_eq!(value[&GatewayProvider::Ramp][0].PaymentGatewayFee, "3.3024386838943");
             }
-            Err(e) => panic!("Expected Ok variant but got Err.{}", e.to_string()),
+
+            Err(e) => panic!("Expected Ok variant but got Err.{}", e),
         }
     }
 
@@ -677,8 +693,8 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let api_client = setup_test_connection(mock_server.uri());
-        let gateway_client = ProtonPaymentGatewayClient::new(api_client);
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let gateway_client = PaymentGatewayClient::new(api_client);
         let res = gateway_client
             .create_on_ramp_checkout(
                 "10.00".to_string(),
@@ -691,7 +707,7 @@ mod tests {
         println!("create_on_ramp_checkout done: {:?}", res);
         match res {
             Ok(value) => assert!(!value.is_empty()),
-            Err(e) => panic!("Expected Ok variant but got Err.{}", e.to_string()),
+            Err(e) => panic!("Expected Ok variant but got Err.{}", e),
         }
 
         let unmatched_requests = mock_server.received_requests().await.unwrap();
@@ -714,8 +730,8 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let api_client = setup_test_connection(mock_server.uri());
-        let gateway_client = ProtonPaymentGatewayClient::new(api_client);
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let gateway_client = PaymentGatewayClient::new(api_client);
         let res = gateway_client
             .create_on_ramp_checkout(
                 "10.00".to_string(),
@@ -735,7 +751,7 @@ mod tests {
     #[ignore]
     async fn should_get_countries() {
         let api_client = common_api_client().await;
-        let client = ProtonPaymentGatewayClient::new(api_client);
+        let client = PaymentGatewayClient::new(api_client);
         let countries = client.get_countries().await;
         println!("get_countries done: {:?}", countries);
         assert!(countries.is_ok());
@@ -745,7 +761,7 @@ mod tests {
     #[ignore]
     async fn should_get_fiat_currencies() {
         let api_client = common_api_client().await;
-        let client = ProtonPaymentGatewayClient::new(api_client);
+        let client = PaymentGatewayClient::new(api_client);
         let fiat_currencies = client.get_fiat_currencies().await;
         println!("get_fiat_currencies done: {:?}", fiat_currencies);
         assert!(fiat_currencies.is_ok());
@@ -755,7 +771,7 @@ mod tests {
     #[ignore]
     async fn should_get_payment_methods() {
         let api_client = common_api_client().await;
-        let client = ProtonPaymentGatewayClient::new(api_client);
+        let client = PaymentGatewayClient::new(api_client);
 
         let payments = client.get_payment_methods(FiatCurrencySymbol::AUD).await;
         println!("get_payment_methods done: {:?}", payments);
@@ -765,11 +781,11 @@ mod tests {
     #[ignore]
     async fn should_get_quotes() {
         let api_client = common_api_client().await;
-        let client = ProtonPaymentGatewayClient::new(api_client);
+        let client = PaymentGatewayClient::new(api_client);
 
         let quotes = client
             .get_quotes(
-                "2.00".to_string(),
+                2.00,
                 FiatCurrencySymbol::AUD,
                 Some(PaymentMethod::ApplePay),
                 Some(GatewayProvider::Ramp),
@@ -783,7 +799,7 @@ mod tests {
     #[ignore]
     async fn should_create_on_ramp_checkout() {
         let api_client = common_api_client().await;
-        let client = ProtonPaymentGatewayClient::new(api_client);
+        let client = PaymentGatewayClient::new(api_client);
 
         let res = client
             .create_on_ramp_checkout(

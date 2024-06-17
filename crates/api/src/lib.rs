@@ -20,6 +20,7 @@ pub use muon::{
     GET,
 };
 use network::NetworkClient;
+use payment_gateway::PaymentGatewayClient;
 use proton_email_address::ProtonEmailAddressClient;
 pub use proton_users::ProtonUsersClient;
 use settings::SettingsClient;
@@ -44,8 +45,7 @@ pub use crate::{
 #[cfg(feature = "quark")]
 pub mod proton_quark;
 
-#[cfg(test)]
-mod tests;
+pub mod tests;
 
 pub mod address;
 pub mod bitcoin_address;
@@ -66,10 +66,10 @@ pub mod wallet;
 
 pub mod core;
 
-pub const BASE_WALLET_API_V1: &str = "/wallet/v1";
-pub const BASE_CORE_API_V4: &str = "/core/v4";
-pub const BASE_CORE_API_V5: &str = "/core/v5";
-pub const BASE_CONTACTS_API_V4: &str = "/contacts/v4";
+pub const BASE_WALLET_API_V1: &str = "wallet/v1";
+pub const BASE_CORE_API_V4: &str = "core/v4";
+pub const BASE_CORE_API_V5: &str = "core/v5";
+pub const BASE_CONTACTS_API_V4: &str = "contacts/v4";
 
 /// An API client providing interfaces to send authenticated http requests to
 /// Wallet backend
@@ -114,6 +114,7 @@ pub struct Clients {
     pub wallet: WalletClient,
     pub event: EventClient,
     pub address: AddressClient,
+    pub payment_gateway: PaymentGatewayClient,
     pub proton_email_address: ProtonEmailAddressClient,
     pub exchange_rate: ExchangeRateClient,
     pub bitcoin_address: BitcoinAddressClient,
@@ -143,6 +144,7 @@ impl ProtonWalletApiClient {
     /// ```
     pub fn from_config(config: ApiConfig) -> Result<Self, Error> {
         let env: String = config.env.clone().unwrap_or("atlas".to_string());
+
         let app_spec: Result<App, ParseAppVersionErr> = if let Some((app_version, user_agent)) = config.spec {
             Ok(App::new(app_version)?.with_user_agent(user_agent))
         } else {
@@ -156,8 +158,9 @@ impl ProtonWalletApiClient {
             let auth_store = WalletAuthStore::from_env_str(env, Arc::new(Mutex::new(auth)));
             Client::new(app_spec?, auth_store)?
         };
+
         Ok(Self {
-            session: session,
+            session,
             url_prefix: config.url_prefix,
             env: config.env,
         })
@@ -174,6 +177,7 @@ impl ProtonWalletApiClient {
             wallet: WalletClient::new(api_client.clone()),
             event: EventClient::new(api_client.clone()),
             address: AddressClient::new(api_client.clone()),
+            payment_gateway: PaymentGatewayClient::new(api_client.clone()),
             proton_email_address: ProtonEmailAddressClient::new(api_client.clone()),
             exchange_rate: ExchangeRateClient::new(api_client.clone()),
             bitcoin_address: BitcoinAddressClient::new(api_client.clone()),
@@ -247,7 +251,7 @@ impl ProtonWalletApiClient {
             })
         } else {
             // Change to our error type
-            Err(Error::DeserializeErr("Payload not as expected".to_string()))
+            Err(Error::Deserialize("Payload not as expected".to_string()))
         }
     }
 
@@ -260,7 +264,7 @@ impl ProtonWalletApiClient {
         if let Some(prefix) = self.url_prefix.clone() {
             format!("{}/{}/{}", prefix, base.to_string(), url.to_string())
         } else {
-            format!("{}/{}", base.to_string(), url.to_string())
+            format!("/{}/{}", base.to_string(), url.to_string())
         }
     }
 
@@ -283,6 +287,6 @@ impl Default for ProtonWalletApiClient {
             store: None,
             auth: None,
         };
-        return Self::from_config(config).unwrap();
+        Self::from_config(config).unwrap()
     }
 }

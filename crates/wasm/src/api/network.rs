@@ -4,6 +4,7 @@ use wasm_bindgen::prelude::*;
 use crate::common::{error::ErrorExt, types::WasmNetwork};
 
 #[wasm_bindgen]
+#[derive(Clone)]
 pub struct WasmNetworkClient(NetworkClient);
 
 impl From<NetworkClient> for WasmNetworkClient {

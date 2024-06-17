@@ -1,15 +1,21 @@
 use andromeda_api::{self, ApiConfig, Auth, ProtonWalletApiClient};
+use bitcoin_address::WasmBitcoinAddressClient;
+use email_integration::WasmEmailIntegrationClient;
 use exchange_rate::WasmExchangeRateClient;
 use network::WasmNetworkClient;
+use payment_gateway::WasmPaymentGatewayClient;
 use settings::WasmSettingsClient;
 use wallet::WasmWalletClient;
 use wasm_bindgen::prelude::*;
 
 use crate::common::error::ErrorExt;
 
+mod bitcoin_address;
+mod email_integration;
 mod env;
 mod exchange_rate;
 mod network;
+mod payment_gateway;
 mod settings;
 mod wallet;
 
@@ -22,7 +28,25 @@ pub struct WasmAuthData {
 }
 
 #[wasm_bindgen]
+#[derive(Clone)]
 pub struct WasmProtonWalletApiClient(ProtonWalletApiClient);
+
+impl From<&WasmProtonWalletApiClient> for ProtonWalletApiClient {
+    fn from(value: &WasmProtonWalletApiClient) -> Self {
+        value.clone().0
+    }
+}
+
+#[wasm_bindgen(getter_with_clone)]
+pub struct WasmApiClients {
+    pub exchange_rate: WasmExchangeRateClient,
+    pub email_integration: WasmEmailIntegrationClient,
+    pub bitcoin_address: WasmBitcoinAddressClient,
+    pub payment_gateway: WasmPaymentGatewayClient,
+    pub settings: WasmSettingsClient,
+    pub network: WasmNetworkClient,
+    pub wallet: WasmWalletClient,
+}
 
 #[wasm_bindgen]
 impl WasmProtonWalletApiClient {
@@ -44,28 +68,19 @@ impl WasmProtonWalletApiClient {
         Ok(WasmProtonWalletApiClient(client))
     }
 
-    /// Returns a client to use exchange rate API
     #[wasm_bindgen]
-    pub fn exchange_rate(&self) -> WasmExchangeRateClient {
-        WasmExchangeRateClient::from(self.0.clients().exchange_rate.clone())
-    }
+    pub fn clients(&self) -> WasmApiClients {
+        let clients = self.0.clients();
 
-    /// Returns a client to use settings API
-    #[wasm_bindgen]
-    pub fn settings(&self) -> WasmSettingsClient {
-        WasmSettingsClient::from(self.0.clients().settings.clone())
-    }
-
-    /// Returns a client to use network API
-    #[wasm_bindgen]
-    pub fn network(&self) -> WasmNetworkClient {
-        WasmNetworkClient::from(self.0.clients().network.clone())
-    }
-
-    /// Returns a client to use wallet API
-    #[wasm_bindgen]
-    pub fn wallet(&self) -> WasmWalletClient {
-        WasmWalletClient::from(self.0.clients().wallet.clone())
+        WasmApiClients {
+            exchange_rate: WasmExchangeRateClient::from(clients.exchange_rate),
+            email_integration: WasmEmailIntegrationClient::from(clients.email_integration),
+            bitcoin_address: WasmBitcoinAddressClient::from(clients.bitcoin_address),
+            payment_gateway: WasmPaymentGatewayClient::from(clients.payment_gateway),
+            settings: WasmSettingsClient::from(clients.settings),
+            network: WasmNetworkClient::from(clients.network),
+            wallet: WasmWalletClient::from(clients.wallet),
+        }
     }
 }
 

@@ -9,6 +9,7 @@ use crate::{
     transaction::ApiTransactionStatus,
     ProtonWalletApiClient,
 };
+
 pub struct AddressClient {
     api_client: Arc<ProtonWalletApiClient>,
 }
@@ -194,7 +195,7 @@ mod tests {
     use super::{AddressClient, ScriptHashTransactionsPayload};
     use crate::{
         core::ApiClient,
-        tests::utils::{common_api_client, setup_test_connection},
+        tests::utils::{common_api_client, setup_test_connection_arc},
         BASE_WALLET_API_V1,
     };
 
@@ -323,17 +324,17 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let api_client = setup_test_connection(mock_server.uri());
+        let api_client = setup_test_connection_arc(mock_server.uri());
         let address_client = AddressClient::new(api_client);
         let transactions = address_client.get_scripthashes_transactions(script_hashes).await;
         println!("request done: {:?}", transactions);
         match transactions {
             Ok(value) => {
-                assert!(value.len() > 0);
+                assert!(!value.is_empty());
                 assert_eq!(value.get(&script_hash_1.to_string()).unwrap().len(), 0);
                 assert_eq!(value.get(&script_hash_2.to_string()).unwrap().len(), 0);
             }
-            Err(e) => panic!("Expected Ok variant but got Err.{}", e.to_string()),
+            Err(e) => panic!("Expected Ok variant but got Err.{}", e),
         }
 
         let unmatched_requests = mock_server.received_requests().await.unwrap();

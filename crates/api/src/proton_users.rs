@@ -167,7 +167,7 @@ impl ApiClient for ProtonUsersClient {
     }
 
     fn api_client(&self) -> &Arc<ProtonWalletApiClient> {
-        return &self.api_client;
+        &self.api_client
     }
 
     fn base_url(&self) -> &str {
@@ -206,7 +206,7 @@ mod tests {
     use super::ProtonUsersClient;
     use crate::{
         core::ApiClient,
-        tests::utils::{common_api_client, setup_test_connection},
+        tests::utils::{common_api_client, setup_test_connection_arc},
         BASE_CORE_API_V4,
     };
 
@@ -273,14 +273,14 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection(mock_server.uri());
+        let api_client = setup_test_connection_arc(mock_server.uri());
         let users_client = ProtonUsersClient::new(api_client);
         let user_info = users_client.get_user_info().await;
         match user_info {
             Ok(value) => {
                 assert!(value.DisplayName == "abc");
                 assert!(value.Name == "abc");
-                assert!(value.Keys.unwrap().len() > 0);
+                assert!(!value.Keys.unwrap().is_empty());
             }
             Err(e) => {
                 println!("Error: {:?}", e);
@@ -300,7 +300,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection(mock_server.uri());
+        let api_client = setup_test_connection_arc(mock_server.uri());
         let users_client = ProtonUsersClient::new(api_client);
         let user_info = users_client.get_user_info().await;
         assert!(user_info.is_err());
@@ -390,9 +390,10 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection(mock_server.uri());
+        let api_client = setup_test_connection_arc(mock_server.uri());
         let users_client = ProtonUsersClient::new(api_client);
         let user_settings = users_client.get_user_settings().await;
+        println!("user_settings {:?}", user_settings);
         match user_settings {
             Ok(value) => {
                 assert!(value.HideSidePanel == 1, "Expected hide_side_panel to be 1.");
@@ -418,7 +419,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection(mock_server.uri());
+        let api_client = setup_test_connection_arc(mock_server.uri());
         let users_client = ProtonUsersClient::new(api_client);
         let user_settings = users_client.get_user_settings().await;
         assert!(user_settings.is_err());

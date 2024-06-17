@@ -1,13 +1,46 @@
-use std::sync::MutexGuard;
+use std::{cmp::Ordering, sync::Arc};
 
-use bdk::{
-    database::BatchDatabase, psbt::PsbtUtils, BlockTime, TransactionDetails as BdkTransactionDetails,
+use andromeda_common::utils::now;
+use async_std::sync::MutexGuard;
+use bdk_wallet::{
+    chain::{tx_graph::CanonicalTx, ChainPosition, ConfirmationTimeHeightAnchor},
     Wallet as BdkWallet,
 };
-use bitcoin::{bip32::DerivationPath, psbt::PartiallySignedTransaction, TxIn, TxOut, Txid};
+use bitcoin::{bip32::DerivationPath, Sequence, Transaction, TxIn, TxOut, Txid, Witness};
 use miniscript::bitcoin::{Address, ScriptBuf};
 
-use crate::error::Error;
+use crate::{account::Account, error::Error, psbt::Psbt};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TransactionTime {
+    Confirmed { confirmation_time: u64 },
+    Unconfirmed { last_seen: u64 },
+}
+
+impl PartialOrd for TransactionTime {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match self {
+            TransactionTime::Unconfirmed { .. } => match other {
+                TransactionTime::Unconfirmed { .. } => Some(Ordering::Equal),
+                TransactionTime::Confirmed { .. } => Some(Ordering::Greater),
+            },
+            TransactionTime::Confirmed {
+                confirmation_time: confirmation_time_a,
+            } => match other {
+                TransactionTime::Unconfirmed { .. } => Some(Ordering::Less),
+                TransactionTime::Confirmed {
+                    confirmation_time: confirmation_time_b,
+                } => Some(confirmation_time_a.cmp(confirmation_time_b)),
+            },
+        }
+    }
+}
+
+impl Ord for TransactionTime {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap()
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct TransactionDetails {
@@ -27,102 +60,135 @@ pub struct TransactionDetails {
     /// If the transaction is confirmed, contains height and Unix timestamp of
     /// the block containing the transaction, unconfirmed transaction
     /// contains `None`.
-    pub confirmation_time: Option<BlockTime>,
+    pub time: TransactionTime,
     /// List of transaction inputs.
-    pub inputs: Vec<TxIn>,
+    pub inputs: Vec<DetailledTxIn>,
     /// List of transaction outputs.
     pub outputs: Vec<DetailledTxOutput>,
+    /// BIP44 Account to which the transaction is bound
+    pub account_derivation_path: DerivationPath,
 }
 
-impl TransactionDetails {
-    pub fn from_bdk<Storage>(
-        value: BdkTransactionDetails,
-        wallet: MutexGuard<BdkWallet<Storage>>,
-    ) -> Result<Self, Error>
-    where
-        Storage: BatchDatabase,
-    {
-        Ok(Self {
-            txid: value.txid,
-            received: value.received,
-            sent: value.sent,
-            fees: value.fee,
-            confirmation_time: value.confirmation_time,
-            inputs: value.transaction.clone().map_or(Vec::new(), |tx| tx.input),
-            outputs: value.transaction.clone().map_or(Ok(Vec::new()), |tx| {
-                tx.output
-                    .into_iter()
-                    .map(|output| DetailledTxOutput::from_txout(output, &wallet))
-                    .collect::<Result<Vec<_>, _>>()
-            })?,
+fn get_detailled_inputs(txins: Vec<TxIn>, wallet: &BdkWallet) -> Result<Vec<DetailledTxIn>, Error> {
+    let inputs = txins
+        .clone()
+        .into_iter()
+        .map(|input| DetailledTxIn::from_txin(input, wallet))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(inputs)
+}
+
+fn get_detailled_outputs(txout: Vec<TxOut>, wallet: &BdkWallet) -> Result<Vec<DetailledTxOutput>, Error> {
+    let outputs = txout
+        .clone()
+        .into_iter()
+        .map(|output| DetailledTxOutput::from_txout(output, wallet))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(outputs)
+}
+
+fn get_time(chain_position: ChainPosition<&ConfirmationTimeHeightAnchor>) -> TransactionTime {
+    match chain_position {
+        ChainPosition::Confirmed(anchor) => TransactionTime::Confirmed {
+            confirmation_time: anchor.confirmation_time,
+        },
+        ChainPosition::Unconfirmed(last_seen) => TransactionTime::Unconfirmed { last_seen },
+    }
+}
+
+pub trait ToTransactionDetails<A> {
+    fn to_transaction_details(&self, account: A) -> Result<TransactionDetails, Error>;
+}
+
+impl<'a> ToTransactionDetails<(&MutexGuard<'a, BdkWallet>, DerivationPath)>
+    for CanonicalTx<'_, Arc<Transaction>, ConfirmationTimeHeightAnchor>
+{
+    fn to_transaction_details(
+        &self,
+        (wallet_lock, account_derivation_path): (&MutexGuard<'a, BdkWallet>, DerivationPath),
+    ) -> Result<TransactionDetails, Error> {
+        let (sent, received) = wallet_lock.sent_and_received(&self.tx_node.tx);
+
+        let time = get_time(self.chain_position);
+        let outputs = get_detailled_outputs(self.tx_node.output.clone(), wallet_lock)?;
+        let inputs = get_detailled_inputs(self.tx_node.input.clone(), wallet_lock)?;
+
+        Ok(TransactionDetails {
+            txid: self.tx_node.txid(),
+
+            received: received.to_sat(),
+            sent: sent.to_sat(),
+            fees: wallet_lock.calculate_fee(&self.tx_node.tx).ok(),
+
+            time,
+
+            inputs,
+            outputs,
+
+            account_derivation_path,
         })
     }
 }
 
 impl TransactionDetails {
-    pub fn from_psbt<Storage>(
-        psbt: &PartiallySignedTransaction,
-        wallet: MutexGuard<BdkWallet<Storage>>,
-    ) -> Result<Self, Error>
-    where
-        Storage: BatchDatabase,
-    {
-        let tx = psbt.clone().extract_tx();
+    pub async fn from_psbt(psbt: &Psbt, account: Account) -> Result<Self, Error> {
+        let tx = psbt.extract_tx()?;
 
-        let outputs: Vec<DetailledTxOutput> = tx
-            .output
-            .clone()
-            .into_iter()
-            .map(|output| DetailledTxOutput::from_txout(output, &wallet))
-            .collect::<Result<Vec<_>, _>>()?;
+        let wallet_lock = account.get_wallet().await;
+
+        let outputs = get_detailled_outputs(tx.output.clone(), &wallet_lock)?;
+        let inputs = get_detailled_inputs(tx.input.clone(), &wallet_lock)?;
+
+        let (sent, received) = wallet_lock.sent_and_received(&tx);
 
         let tx = TransactionDetails {
             txid: tx.txid(),
-            received: 0u64,
-            sent: 0u64,
-            fees: psbt.fee_amount(),
-            confirmation_time: None,
-            inputs: tx.input.clone(),
+            received: received.to_sat(),
+            sent: sent.to_sat(),
+
+            fees: wallet_lock.calculate_fee(&tx).ok(),
+
+            time: TransactionTime::Unconfirmed {
+                last_seen: now().as_secs(),
+            },
+
+            inputs,
             outputs,
+
+            account_derivation_path: account.get_derivation_path(),
         };
 
         Ok(tx)
     }
+
+    pub fn get_time(&self) -> u64 {
+        match self.time {
+            TransactionTime::Confirmed { confirmation_time } => confirmation_time,
+            TransactionTime::Unconfirmed { last_seen } => last_seen,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
-pub struct SimpleTransaction {
-    /// Transaction id
-    pub txid: Txid,
-    /// Received value (sats)
-    /// Sum of owned outputs of this transaction.
-    pub received: u64,
-    /// Sent value (sats)
-    /// Sum of owned inputs of this transaction.
-    pub sent: u64,
-    /// Fee value (sats) if confirmed.
-    /// The availability of the fee depends on the backend. It's never `None`
-    /// with an Electrum Server backend, but it could be `None` with a
-    /// Bitcoin RPC node without txindex that receive funds while offline.
-    pub fees: Option<u64>,
-    /// If the transaction is confirmed, contains height and Unix timestamp of
-    /// the block containing the transaction, unconfirmed transaction
-    /// contains `None`.
-    pub confirmation_time: Option<BlockTime>,
-    /// Derivation of the account linked to the transaction
-    pub account_key: Option<DerivationPath>,
+pub struct DetailledTxIn {
+    pub previous_output: Option<DetailledTxOutput>, // Remove option when we know why some utxo are not found
+    pub script_sig: ScriptBuf,
+    pub sequence: Sequence,
+    pub witness: Witness,
 }
 
-impl SimpleTransaction {
-    pub fn from_detailled_tx(detailled_tx: BdkTransactionDetails, account_key: Option<DerivationPath>) -> Self {
-        SimpleTransaction {
-            account_key,
-            txid: detailled_tx.txid,
-            received: detailled_tx.received,
-            sent: detailled_tx.sent,
-            fees: detailled_tx.fee,
-            confirmation_time: detailled_tx.confirmation_time,
-        }
+impl DetailledTxIn {
+    pub fn from_txin(input: TxIn, wallet: &BdkWallet) -> Result<DetailledTxIn, Error> {
+        let utxo = wallet.get_utxo(input.previous_output);
+
+        Ok(DetailledTxIn {
+            previous_output: utxo.and_then(|utxo| DetailledTxOutput::from_txout(utxo.txout, wallet).ok()),
+            script_sig: input.script_sig,
+            sequence: input.sequence,
+            witness: input.witness,
+        })
     }
 }
 
@@ -135,16 +201,10 @@ pub struct DetailledTxOutput {
 }
 
 impl DetailledTxOutput {
-    pub fn from_txout<Storage>(
-        output: TxOut,
-        wallet: &MutexGuard<BdkWallet<Storage>>,
-    ) -> Result<DetailledTxOutput, Error>
-    where
-        Storage: BatchDatabase,
-    {
+    pub fn from_txout(output: TxOut, wallet: &BdkWallet) -> Result<DetailledTxOutput, Error> {
         Ok(DetailledTxOutput {
-            value: output.value,
-            is_mine: wallet.is_mine(&output.script_pubkey)?,
+            value: output.value.to_sat(),
+            is_mine: wallet.is_mine(&output.script_pubkey),
             address: Address::from_script(&output.script_pubkey, wallet.network())?,
             script_pubkey: output.script_pubkey,
         })

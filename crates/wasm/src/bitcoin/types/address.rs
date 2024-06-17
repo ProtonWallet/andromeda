@@ -1,14 +1,14 @@
 use std::str::FromStr;
 
 use andromeda_bitcoin::{error::Error as BitcoinError, Address, ScriptBuf};
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 use wasm_bindgen::prelude::*;
 
 use super::transaction::WasmScript;
 use crate::common::{error::ErrorExt, types::WasmNetwork};
 
 #[wasm_bindgen]
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct WasmAddress {
     inner: Address,
 }

@@ -15,7 +15,7 @@ impl ProtonResponseExt for ProtonResponse {
         T: DeserializeOwned + std::fmt::Debug,
     {
         match self.body_json::<T>() {
-            Ok(res) => return Ok(res),
+            Ok(res) => Ok(res),
             Err(parsed_response_err) => {
                 // Attempt to parse the response into the error type.
                 if let Ok(res) = self.body_json::<ResponseError>() {
@@ -34,7 +34,7 @@ impl ProtonResponseExt for ProtonResponse {
                     Err(_) => parsed_response_err.to_string(),
                 };
 
-                Err(Error::DeserializeErr(error_details))
+                Err(Error::Deserialize(error_details))
             }
         }
     }

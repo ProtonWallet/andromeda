@@ -8,7 +8,7 @@ doctest = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-andromeda-api = { path = "../api", features = ["local", "allow-dangerous-env"] }
+andromeda-api = { path = "../api" }
 andromeda-bitcoin = { path = "../bitcoin" }
 andromeda-common = { version = "0.1.0", path = "../common" }
 
@@ -17,6 +17,8 @@ serde-wasm-bindgen = "0.6.1"
 serde_json = "1.0.108"
 
 async-std = "1.10"
+
+anyhow = { workspace = true }
 
 wasm-bindgen = { version = "0.2.90", features = ["serde-serialize"] }
 wasm-bindgen-futures = "0.4.38"
@@ -35,4 +37,5 @@ wasm-bindgen-test = "0.3.38"
 # all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
 # code size when deploying.
 [features]
-default = ["console_error_panic_hook"]
+# On web, we need the `allow-dangerous-env` feature to be able to use the browser env and get the session from it.
+default = ["console_error_panic_hook", "andromeda-api/allow-dangerous-env"]

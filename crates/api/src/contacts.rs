@@ -79,7 +79,7 @@ mod tests {
     use super::ContactsClient;
     use crate::{
         core::ApiClient,
-        tests::utils::{common_api_client, setup_test_connection},
+        tests::utils::{common_api_client, setup_test_connection_arc},
         BASE_CONTACTS_API_V4,
     };
 
@@ -126,7 +126,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection(mock_server.uri());
+        let api_client = setup_test_connection_arc(mock_server.uri());
         let client = ContactsClient::new(api_client);
         let contacts = client.get_contacts(Some(100), Some(0)).await;
         match contacts {
@@ -146,7 +146,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let session = setup_test_connection(mock_server.uri());
+        let session = setup_test_connection_arc(mock_server.uri());
         let client = ContactsClient::new(session);
         let contacts = client.get_contacts(Some(100), Some(0)).await;
         assert!(contacts.is_err());
