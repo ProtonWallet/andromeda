@@ -331,6 +331,7 @@ impl From<UserSettings> for WasmUserSettings {
 pub struct WasmUserSettingsData(pub WasmUserSettings);
 
 #[wasm_bindgen]
+#[derive(Clone)]
 pub struct WasmSettingsClient(SettingsClient);
 
 impl From<SettingsClient> for WasmSettingsClient {

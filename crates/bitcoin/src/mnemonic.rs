@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use bdk::{
+use bdk_wallet::{
     bitcoin::secp256k1::{rand, rand::Rng},
     keys::{
         bip39::{Language, Mnemonic as BdkMnemonic, WordCount},
@@ -78,7 +78,7 @@ impl Mnemonic {
     ///
     /// ```rust
     /// use andromeda_bitcoin::mnemonic::Mnemonic;
-    /// use bdk::keys::bip39::WordCount;
+    /// use bdk_wallet::keys::bip39::WordCount;
     ///
     /// let result = Mnemonic::new(WordCount::Words12);
     /// println!("{:?}", result)
@@ -153,7 +153,7 @@ impl Mnemonic {
 
 #[cfg(test)]
 mod tests {
-    use bdk::keys::bip39::{Error as Bip39Error, Language};
+    use bdk_wallet::keys::bip39::{Error as Bip39Error, Language};
 
     use super::{get_words_autocomplete, Mnemonic};
     use crate::error::Error;
@@ -227,7 +227,7 @@ mod tests {
         .unwrap();
 
         assert!(match mnemonic_error {
-            Error::Bip39Error(mnemonic_error) => match mnemonic_error {
+            Error::Bip39(mnemonic_error) => match mnemonic_error {
                 Bip39Error::UnknownWord(word_index) => word_index == 0,
                 _ => false,
             },
@@ -245,7 +245,7 @@ mod tests {
         .unwrap();
 
         assert!(match mnemonic_error {
-            Error::Bip39Error(mnemonic_error) => match mnemonic_error {
+            Error::Bip39(mnemonic_error) => match mnemonic_error {
                 Bip39Error::UnknownWord(word_index) => word_index == 0,
                 _ => false,
             },
@@ -263,7 +263,7 @@ mod tests {
         .unwrap();
 
         assert!(match mnemonic_error {
-            Error::Bip39Error(mnemonic_error) => match mnemonic_error {
+            Error::Bip39(mnemonic_error) => match mnemonic_error {
                 Bip39Error::BadWordCount(word_count) => word_count == 11,
                 _ => false,
             },
@@ -281,7 +281,7 @@ mod tests {
         .unwrap();
 
         assert!(match mnemonic_error {
-            Error::Bip39Error(mnemonic_error) => match mnemonic_error {
+            Error::Bip39(mnemonic_error) => match mnemonic_error {
                 Bip39Error::UnknownWord(word_index) => word_index == 0,
                 _ => false,
             },

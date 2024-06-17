@@ -1,19 +1,18 @@
 use std::{
     io::{self, Write},
-    str::SplitWhitespace,
+    str::{FromStr, SplitWhitespace},
     sync::{Arc, Mutex, RwLock},
 };
 
+use andromeda_api::{ApiConfig, AtlasEnv, ProtonWalletApiClient};
 use andromeda_bitcoin::{
-    account::{Account, ScriptType},
-    bitcoin::Network,
-    blockchain::Blockchain,
-    wallet::Wallet,
-    BdkMemoryDatabase, DerivationPath,
+    account::Account, blockchain_client::BlockchainClient, transactions::TransactionTime, wallet::Wallet,
+    DerivationPath,
 };
+use andromeda_common::{Network, ScriptType};
 use tokio;
 
-fn create_wallet(words: &mut SplitWhitespace<'_>) -> Result<Arc<Mutex<Wallet<BdkMemoryDatabase>>>, &'static str> {
+fn create_wallet(words: &mut SplitWhitespace<'_>) -> Result<Arc<Mutex<Wallet<()>>>, &'static str> {
     let (bip39, bip38, network) = words.fold((None, None, None), |acc, word| {
         let bip39 = if acc.0.is_none() {
             word.strip_prefix("--bip39=")
@@ -40,7 +39,7 @@ fn create_wallet(words: &mut SplitWhitespace<'_>) -> Result<Arc<Mutex<Wallet<Bdk
     let bip39 = bip39.ok_or("ERROR: createwallet requires BIP39 mnemonic")?;
 
     let network = network
-        .map_or(Ok(Network::Testnet), |str| str.to_string().try_into())
+        .map_or(Ok(Network::Testnet), |str| Network::try_from(str.to_string()))
         .map_err(|_| "ERROR: invalid network")?;
 
     let wallet = Wallet::new(network, bip39, bip38);
@@ -50,9 +49,7 @@ fn create_wallet(words: &mut SplitWhitespace<'_>) -> Result<Arc<Mutex<Wallet<Bdk
         .map_err(|_| "ERROR: could not create wallet")
 }
 
-fn require_wallet(
-    wallet: Option<Arc<Mutex<Wallet<BdkMemoryDatabase>>>>,
-) -> Result<Arc<Mutex<Wallet<BdkMemoryDatabase>>>, &'static str> {
+fn require_wallet(wallet: Option<Arc<Mutex<Wallet<()>>>>) -> Result<Arc<Mutex<Wallet<()>>>, &'static str> {
     wallet.ok_or("ERROR: you need to create a wallet first. use onchain:wallet command")
 }
 
@@ -76,16 +73,16 @@ fn require_derivation_arg(words: &SplitWhitespace<'_>) -> Result<DerivationPath,
 }
 
 fn require_account_lock(
-    wallet: Arc<Mutex<Wallet<BdkMemoryDatabase>>>,
+    wallet: Arc<Mutex<Wallet<()>>>,
     derivation_path: &DerivationPath,
-) -> Result<Arc<RwLock<Account<BdkMemoryDatabase>>>, &'static str> {
+) -> Result<Arc<RwLock<Account<()>>>, &'static str> {
     let mut lock = wallet.lock().unwrap();
     let account = lock.get_account(derivation_path).ok_or("ERROR: account not found")?;
 
     Ok(account.clone())
 }
 
-async fn get_wallet_balance(wallet: Option<Arc<Mutex<Wallet<BdkMemoryDatabase>>>>) -> Result<(), &'static str> {
+async fn get_wallet_balance(wallet: Option<Arc<Mutex<Wallet<()>>>>) -> Result<(), &'static str> {
     let wallet = require_wallet(wallet)?;
 
     let lock = wallet.lock().unwrap();
@@ -93,7 +90,7 @@ async fn get_wallet_balance(wallet: Option<Arc<Mutex<Wallet<BdkMemoryDatabase>>>
 
     println!("\nBALANCE");
     println!("confirmed: {}", balance.confirmed);
-    println!("trusted_spendable: {}", balance.get_spendable());
+    println!("trusted_spendable: {}", balance.trusted_spendable());
     println!("trusted_pending: {}", balance.trusted_pending);
     println!("untrusted_pending: {}", balance.untrusted_pending);
 
@@ -102,11 +99,11 @@ async fn get_wallet_balance(wallet: Option<Arc<Mutex<Wallet<BdkMemoryDatabase>>>
 
 fn add_account(
     words: &mut SplitWhitespace<'_>,
-    wallet: Option<Arc<Mutex<Wallet<BdkMemoryDatabase>>>>,
+    wallet: Option<Arc<Mutex<Wallet<()>>>>,
 ) -> Result<DerivationPath, &'static str> {
     let wallet = require_wallet(wallet)?;
 
-    let (script_type, account_index) = words.fold((None, None), |acc, word| {
+    let (script_type, derivation_path) = words.fold((None, None), |acc, word| {
         let script_type = if acc.0.is_none() {
             word.strip_prefix("--scriptType=")
                 .map(|word| word.split("_").collect::<Vec<_>>().join(" "))
@@ -114,41 +111,57 @@ fn add_account(
             acc.0
         };
 
-        let account_index = if acc.1.is_none() {
-            word.strip_prefix("--accountIndex=")
+        let derivation_path = if acc.1.is_none() {
+            word.strip_prefix("--derivationPath=")
         } else {
             acc.1
         };
 
-        return (script_type, account_index);
+        return (script_type, derivation_path);
     });
 
     let script_type = match script_type {
         None => Ok(ScriptType::NativeSegwit),
-        Some(str) => str.try_into().map_err(|_| "ERROR:invalid script type"),
+        Some(str) => str
+            .parse::<u8>()
+            .map_err(|_| "ERROR:invalid script type")?
+            .try_into()
+            .map_err(|_| "ERROR:invalid script type"),
     }?;
 
-    let account_index = match account_index {
-        None => Ok(0),
-        Some(index) => index.parse::<u32>().map_err(|_| "ERROR:invalid index"),
+    let derivation_path = match derivation_path {
+        None => Ok(DerivationPath::from_str("m/84'/1'/0'").unwrap()),
+        Some(d) => DerivationPath::from_str(d).map_err(|_| "ERROR:invalid index"),
     }?;
 
     let mut lock = wallet.lock().unwrap();
-    let derivation_path = lock.add_account(script_type, account_index, BdkMemoryDatabase::new());
 
-    derivation_path.map_err(|_| "ERROR: could not add account")
+    lock.add_account(script_type, derivation_path.clone(), ())
+        .map_err(|_| "ERROR: could not add account")?;
+
+    Ok(derivation_path)
 }
 
 async fn sync_account(
     words: &mut SplitWhitespace<'_>,
-    wallet: Option<Arc<Mutex<Wallet<BdkMemoryDatabase>>>>,
+    wallet: Option<Arc<Mutex<Wallet<()>>>>,
 ) -> Result<DerivationPath, &'static str> {
+    println!("in sync_account");
     let wallet = require_wallet(wallet)?;
 
     let derivation_path = require_derivation_arg(words)?;
     let account = require_account_lock(wallet, &derivation_path)?;
 
-    let chain = Blockchain::new(None, None);
+
+    let mut proton_api_client = ProtonWalletApiClient::from_config(ApiConfig::<AtlasEnv> {
+        env: None,
+        spec: None,
+        auth: None,
+    });
+
+    proton_api_client.login("pro", "pro").await.unwrap();
+
+    let chain = BlockchainClient::new(proton_api_client);
 
     let read_lock = account.read().unwrap();
     chain.full_sync(read_lock.get_wallet()).await.unwrap();
@@ -159,7 +172,7 @@ async fn sync_account(
 
 async fn get_account_balance(
     words: &mut SplitWhitespace<'_>,
-    wallet: Option<Arc<Mutex<Wallet<BdkMemoryDatabase>>>>,
+    wallet: Option<Arc<Mutex<Wallet<()>>>>,
 ) -> Result<(), &'static str> {
     let wallet = require_wallet(wallet)?;
 
@@ -167,11 +180,11 @@ async fn get_account_balance(
     let account = require_account_lock(wallet, &derivation_path)?;
 
     let account_lock = account.read().unwrap();
-    let balance = account_lock.get_balance().map_err(|_| "Cannot get balance")?;
+    let balance = account_lock.get_balance();
 
     println!("\nBALANCE");
     println!("confirmed: {}", balance.confirmed);
-    println!("trusted_spendable: {}", balance.get_spendable());
+    println!("trusted_spendable: {}", balance.trusted_spendable());
     println!("trusted_pending: {}", balance.trusted_pending);
     println!("untrusted_pending: {}", balance.untrusted_pending);
 
@@ -180,7 +193,7 @@ async fn get_account_balance(
 
 async fn get_account_transactions(
     words: &mut SplitWhitespace<'_>,
-    wallet: Option<Arc<Mutex<Wallet<BdkMemoryDatabase>>>>,
+    wallet: Option<Arc<Mutex<Wallet<()>>>>,
 ) -> Result<(), &'static str> {
     let wallet = require_wallet(wallet)?;
 
@@ -198,9 +211,10 @@ async fn get_account_transactions(
             println!(
                 "txid: {:?} | time {} | sent: {} sats | received: {} sats | fees: {} ",
                 simple_tx.txid,
-                simple_tx
-                    .confirmation_time
-                    .map_or("Unconfirmed".to_string(), |t| t.height.to_string()),
+                simple_tx.time.map_or("Unconfirmed".to_string(), |t| match t {
+                    TransactionTime::Confirmed { confirmation_time } => confirmation_time.to_string(),
+                    TransactionTime::Unconfirmed { last_seen } => last_seen.to_string(),
+                }),
                 simple_tx.sent,
                 simple_tx.received,
                 match simple_tx.fees {
@@ -215,7 +229,7 @@ async fn get_account_transactions(
 
 async fn get_account_utxos(
     words: &mut SplitWhitespace<'_>,
-    wallet: Option<Arc<Mutex<Wallet<BdkMemoryDatabase>>>>,
+    wallet: Option<Arc<Mutex<Wallet<()>>>>,
 ) -> Result<(), &'static str> {
     let wallet = require_wallet(wallet)?;
 
@@ -225,16 +239,12 @@ async fn get_account_utxos(
     let account_lock = account.read().unwrap();
 
     println!("\nUTXOs");
-    account_lock
-        .get_utxos()
-        .map_err(|_| "Cannot get utxos")?
-        .into_iter()
-        .for_each(|utxo| {
-            println!(
-                "outpoint {} | keychain {:?} | value {} | spent {}",
-                utxo.outpoint, utxo.keychain, utxo.txout.value, utxo.is_spent
-            );
-        });
+    account_lock.get_utxos().into_iter().for_each(|utxo| {
+        println!(
+            "outpoint {} | keychain {:?} | value {} | spent {}",
+            utxo.outpoint, utxo.keychain, utxo.txout.value, utxo.is_spent
+        );
+    });
 
     Ok(())
 }
@@ -242,7 +252,7 @@ async fn get_account_utxos(
 async fn poll_for_user_input() {
     println!("Proton Wallet CLI launched. Enter \"help\" to view available commands. Press Ctrl-D to quit.");
 
-    let mut onchain_wallet: Option<Arc<Mutex<Wallet<BdkMemoryDatabase>>>> = None;
+    let mut onchain_wallet: Option<Arc<Mutex<Wallet<()>>>> = None;
 
     loop {
         print!("> ");

@@ -1,26 +1,12 @@
-use std::time::Duration;
-
 use andromeda_common::{BitcoinUnit, BITCOIN, MILLI_BITCOIN, SATOSHI};
 
 use super::transactions::Pagination;
-use crate::transactions::SimpleTransaction;
+use crate::transactions::TransactionDetails;
 
 #[derive(PartialEq, PartialOrd)]
 pub enum SortOrder {
     Asc,
     Desc,
-}
-
-pub fn now() -> Duration {
-    #[cfg(target_arch = "wasm32")]
-    return instant::SystemTime::now()
-        .duration_since(instant::SystemTime::UNIX_EPOCH)
-        .unwrap();
-
-    #[cfg(not(target_arch = "wasm32"))]
-    return std::time::SystemTime::now()
-        .duration_since(std::time::SystemTime::UNIX_EPOCH)
-        .unwrap();
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -115,23 +101,23 @@ pub fn min_f64(a: f64, b: f64) -> f64 {
 }
 
 pub fn sort_and_paginate_txs(
-    mut simple_txs: Vec<SimpleTransaction>,
+    mut txs: Vec<TransactionDetails>,
     pagination: Pagination,
     sort_order: Option<SortOrder>,
-) -> Vec<SimpleTransaction> {
+) -> Vec<TransactionDetails> {
     if let Some(sort_order) = sort_order {
-        simple_txs.sort_by(|a, b| {
+        // we only sort by time for now
+        txs.sort_by(|a, b| {
             if sort_order == SortOrder::Desc {
-                b.confirmation_time.partial_cmp(&a.confirmation_time).unwrap()
+                b.time.cmp(&a.time)
             } else {
-                a.confirmation_time.partial_cmp(&b.confirmation_time).unwrap()
+                a.time.cmp(&b.time)
             }
         });
     }
 
     // We paginated sorted vector
-    simple_txs
-        .into_iter()
+    txs.into_iter()
         .skip(pagination.skip)
         .take(pagination.take)
         .collect::<Vec<_>>()

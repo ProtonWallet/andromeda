@@ -1,5 +1,8 @@
 use ::muon::Error as MuonError;
-use bitcoin::{consensus::encode::Error as BitcoinEncodingError, hashes::hex::Error as HexError};
+use bitcoin::{
+    consensus::encode::Error as BitcoinEncodingError,
+    hashes::hex::{HexToArrayError, HexToBytesError},
+};
 use muon::{http::StatusErr, ParseAppVersionErr};
 use serde::Deserialize;
 use thiserror;
@@ -9,19 +12,21 @@ pub enum Error {
     #[error("An error occured in the Muon Api Version parser: \n\t{0}")]
     MuonApiVersion(#[from] ParseAppVersionErr),
     #[error("A error from Muon status: \n\t{0}")]
-    MuonStatueError(#[from] StatusErr),
+    MuonStatus(#[from] StatusErr),
     #[error("A error from Muon occured: \n\t{0}")]
     MuonError(#[from] MuonError),
     #[error("Bitcoin deserialize error: \n\t{0}")]
-    BitcoinDeserializeError(#[from] BitcoinEncodingError),
-    #[error("Error decoding hex for bitcoin: \n\t{0}")]
-    HexDecoding(#[from] HexError),
+    BitcoinDeserialize(#[from] BitcoinEncodingError),
+    #[error("An error occured when decoding hex to array: \n\t{0}")]
+    HexToArrayDecoding(#[from] HexToArrayError),
+    #[error("An error occured when decoding hex to bytes: \n\t{0}")]
+    HexToBytesErrorDecoding(#[from] HexToBytesError),
     #[error("HTTP error")]
-    HttpError,
+    Http,
     #[error("HTTP Response error")]
     ErrorCode(ResponseError),
     #[error("Response parser error")]
-    DeserializeErr(String),
+    Deserialize(String),
 }
 
 #[derive(Debug, Deserialize)]

@@ -5,7 +5,6 @@ use andromeda_common::FromParts;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
-use super::typescript_interfaces::IWasmDerivationPath;
 use crate::common::{error::ErrorExt, types::WasmNetwork};
 
 #[wasm_bindgen]
@@ -21,11 +20,6 @@ impl WasmDerivationPath {
         let derivation_path = DerivationPath::from_str(path).map_err(|e| BitcoinError::from(e).to_js_error())?;
 
         Ok(WasmDerivationPath { inner: derivation_path })
-    }
-
-    #[wasm_bindgen(js_name = fromRawTs)]
-    pub fn from_raw_ts(raw_ts: IWasmDerivationPath) -> WasmDerivationPath {
-        serde_wasm_bindgen::from_value(raw_ts.into()).unwrap()
     }
 
     #[wasm_bindgen(js_name = fromParts)]

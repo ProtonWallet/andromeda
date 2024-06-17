@@ -1,24 +1,27 @@
 use andromeda_bitcoin::AddressInfo;
+use serde::{Deserialize, Serialize};
+use tsify::Tsify;
 use wasm_bindgen::prelude::*;
-#[wasm_bindgen]
+
+use crate::common::types::WasmKeychainKind;
+
+#[wasm_bindgen(getter_with_clone)]
+#[derive(Tsify, Clone, Serialize, Deserialize)]
 pub struct WasmAddressInfo {
-    inner: AddressInfo,
-}
-
-#[wasm_bindgen]
-impl WasmAddressInfo {
-    #[wasm_bindgen(getter)]
-    pub fn index(&self) -> u32 {
-        self.inner.index
-    }
-
-    pub fn to_string(&self) -> String {
-        self.inner.to_string()
-    }
+    /// Child index of this address
+    pub index: u32,
+    /// Address
+    pub address: String,
+    /// Type of keychain
+    pub keychain: WasmKeychainKind,
 }
 
 impl Into<WasmAddressInfo> for AddressInfo {
     fn into(self) -> WasmAddressInfo {
-        WasmAddressInfo { inner: self }
+        WasmAddressInfo {
+            index: self.index,
+            address: self.address.to_string(),
+            keychain: self.keychain.into(),
+        }
     }
 }

@@ -1,19 +1,19 @@
 use andromeda_bitcoin::{
     transaction_builder::{CoinSelection, TmpRecipient, TxBuilder},
-    BdkMemoryDatabase, ChangeSpendPolicy, OutPoint,
+    ChangeSpendPolicy, OutPoint,
 };
 use wasm_bindgen::prelude::*;
 
 use super::{
     account::WasmAccount,
-    psbt::WasmPartiallySignedTransaction,
+    psbt::WasmPsbt,
     types::{locktime::WasmLockTime, transaction::WasmOutPoint},
 };
 use crate::common::{error::ErrorExt, types::WasmNetwork};
 
 #[wasm_bindgen]
 pub struct WasmTxBuilder {
-    inner: TxBuilder<BdkMemoryDatabase>,
+    inner: TxBuilder,
 }
 
 #[wasm_bindgen]
@@ -105,8 +105,8 @@ impl WasmTxBuilder {
     }
 
     #[wasm_bindgen(js_name = addRecipient)]
-    pub fn add_recipient(&self) -> WasmTxBuilder {
-        let inner = self.inner.add_recipient();
+    pub fn add_recipient(&self, address_str: Option<String>, amount: Option<u64>) -> WasmTxBuilder {
+        let inner = self.inner.add_recipient(Some((address_str, amount)));
         WasmTxBuilder { inner }
     }
 
@@ -148,7 +148,7 @@ impl WasmTxBuilder {
             .into_iter()
             .map(|recipient| {
                 let TmpRecipient(uuid, address, amount) = recipient;
-                WasmRecipient(uuid, address, amount)
+                WasmRecipient(uuid, address, amount.to_sat())
             })
             .collect();
 
@@ -250,15 +250,15 @@ impl WasmTxBuilder {
      */
 
     #[wasm_bindgen(js_name = setFeeRate)]
-    pub async fn set_fee_rate(&self, sat_per_vb: f32) -> WasmTxBuilder {
+    pub async fn set_fee_rate(&self, sat_per_vb: u64) -> WasmTxBuilder {
         let inner = self.inner.set_fee_rate(sat_per_vb).await;
         WasmTxBuilder { inner }
     }
 
     #[wasm_bindgen(js_name = getFeeRate)]
-    pub fn get_fee_rate(&self) -> Option<f32> {
+    pub fn get_fee_rate(&self) -> Option<u64> {
         if let Some(fee_rate) = self.inner.fee_rate {
-            Some(fee_rate.as_sat_per_vb())
+            Some(fee_rate.to_sat_per_vb_ceil())
         } else {
             None
         }
@@ -290,13 +290,13 @@ impl WasmTxBuilder {
      */
 
     #[wasm_bindgen(js_name = createPsbt)]
-    pub async fn create_pbst(&self, network: WasmNetwork) -> Result<WasmPartiallySignedTransaction, js_sys::Error> {
+    pub async fn create_pbst(&self, network: WasmNetwork) -> Result<WasmPsbt, js_sys::Error> {
         let psbt = self
             .inner
             .create_pbst_with_coin_selection(false)
             .await
             .map_err(|e| e.to_js_error())?;
 
-        Ok(WasmPartiallySignedTransaction::from_psbt(&psbt, network.into()))
+        WasmPsbt::from_psbt(&psbt, network.into())
     }
 }

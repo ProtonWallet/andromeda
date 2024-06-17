@@ -26,9 +26,6 @@ tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
 
 [features]
-default = []
-# Used to prefix endpoints with /api
-local = []
 # Used to be able to use a non-standard api (no atlas or prod)
 allow-dangerous-env = ["muon/unsealed"]
 test = ["allow-dangerous-env"]

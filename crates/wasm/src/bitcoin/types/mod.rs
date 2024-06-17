@@ -6,5 +6,4 @@ pub mod derivation_path;
 pub mod locktime;
 pub mod pagination;
 pub mod transaction;
-pub mod typescript_interfaces;
 pub mod utxo;

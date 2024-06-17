@@ -1,4 +1,4 @@
-use andromeda_bitcoin::LocalUtxo;
+use andromeda_bitcoin::LocalOutput;
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
@@ -6,7 +6,7 @@ use super::transaction::{WasmOutPoint, WasmScript};
 use crate::common::types::WasmKeychainKind;
 
 #[wasm_bindgen(getter_with_clone)]
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 pub struct WasmUtxo {
     pub value: u64,
     pub outpoint: WasmOutPoint,
@@ -15,10 +15,10 @@ pub struct WasmUtxo {
     pub is_spent: bool,
 }
 
-impl Into<WasmUtxo> for LocalUtxo {
+impl Into<WasmUtxo> for LocalOutput {
     fn into(self) -> WasmUtxo {
         WasmUtxo {
-            value: self.txout.value,
+            value: self.txout.value.to_sat(),
             outpoint: self.outpoint.into(),
             script_pubkey: self.txout.script_pubkey.into(),
             keychain: self.keychain.into(),
@@ -26,3 +26,6 @@ impl Into<WasmUtxo> for LocalUtxo {
         }
     }
 }
+
+#[wasm_bindgen(getter_with_clone)]
+pub struct WasmUtxoArray(pub Vec<WasmUtxo>);

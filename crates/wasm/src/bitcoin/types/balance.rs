@@ -1,4 +1,4 @@
-use andromeda_bitcoin::BdkBalance;
+use andromeda_bitcoin::Balance;
 use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
 pub struct WasmBalance {
@@ -12,13 +12,13 @@ pub struct WasmBalance {
     pub confirmed: u64,
 }
 
-impl Into<WasmBalance> for BdkBalance {
+impl Into<WasmBalance> for Balance {
     fn into(self) -> WasmBalance {
         WasmBalance {
-            immature: self.immature,
-            trusted_pending: self.trusted_pending,
-            untrusted_pending: self.untrusted_pending,
-            confirmed: self.confirmed,
+            immature: self.immature.to_sat(),
+            trusted_pending: self.trusted_pending.to_sat(),
+            untrusted_pending: self.untrusted_pending.to_sat(),
+            confirmed: self.confirmed.to_sat(),
         }
     }
 }

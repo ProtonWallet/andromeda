@@ -73,6 +73,7 @@ pub struct WasmApiFiatCurrencyData {
 pub struct WasmApiFiatCurrencies(pub Vec<WasmApiFiatCurrencyData>);
 
 #[wasm_bindgen]
+#[derive(Clone)]
 pub struct WasmExchangeRateClient(ExchangeRateClient);
 
 impl From<ExchangeRateClient> for WasmExchangeRateClient {
