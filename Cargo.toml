@@ -15,13 +15,13 @@ opt-level = "s" # Tell `rustc` to optimize for small code size.
 anyhow = "1.0"
 thiserror = "1.0"
 
-bitcoin = { version = "=0.31.0", default-features = false, features = [
+bitcoin = { version = "=0.32.0", default-features = false, features = [
   "serde",
   "secp-recovery",
   "rand",
 ] }
 
-bdk_wallet = { version = "=1.0.0-alpha.12", default-features = false, features = [
+bdk_wallet = { version = "=1.0.0-alpha.13", default-features = false, features = [
   "std",
   "keys-bip39",
 ] }

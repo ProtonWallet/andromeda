@@ -16,12 +16,10 @@ futures = "0.3.30"
 hashbrown = "0.9.1"
 
 bitcoin = { workspace = true }
-miniscript = { version = "11.0.0", default-features = false }
+miniscript = { version = "12.0.0", default-features = false }
 
 bdk_wallet = { workspace = true }
 bdk_esplora = { workspace = true }
-
-bdk_persist = { version = "0.3.0" }
 
 thiserror = { workspace = true }
 anyhow = { workspace = true }
@@ -38,3 +36,4 @@ wasm-bindgen-futures = "0.4.39"
 [dev-dependencies]
 tokio = { features = ["macros", "rt"], version = "1.35" }
 tokio-test = "0.4.3"
+bech32 = "0.11.0"

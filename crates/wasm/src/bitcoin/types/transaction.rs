@@ -4,7 +4,7 @@ use andromeda_bitcoin::{
     error::Error as BitcoinError,
     psbt::Psbt,
     transactions::{DetailledTxIn, DetailledTxOutput, TransactionDetails, TransactionTime},
-    Address, OutPoint, ScriptBuf, Sequence, Transaction,
+    Address, ConsensusParams, OutPoint, ScriptBuf, Sequence, Transaction,
 };
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
@@ -67,7 +67,7 @@ impl WasmScript {
     #[wasm_bindgen(js_name = toAddress)]
     pub fn to_address(&self, network: WasmNetwork) -> Result<WasmAddress, js_sys::Error> {
         let script_bug: ScriptBuf = self.into();
-        let address = Address::from_script(script_bug.as_script(), network.into())
+        let address = Address::from_script(script_bug.as_script(), ConsensusParams::new(network.into()))
             .map_err(|e| BitcoinError::from(e).to_js_error())?;
 
         Ok(address.into())

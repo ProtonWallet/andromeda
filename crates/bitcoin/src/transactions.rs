@@ -3,13 +3,12 @@ use std::{cmp::Ordering, sync::Arc};
 use andromeda_common::utils::now;
 use async_std::sync::MutexGuard;
 use bdk_wallet::{
+    bitcoin::{bip32::DerivationPath, Address, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Txid, Witness},
     chain::{tx_graph::CanonicalTx, ChainPosition, ConfirmationTimeHeightAnchor},
     Wallet as BdkWallet,
 };
-use bitcoin::{bip32::DerivationPath, Sequence, Transaction, TxIn, TxOut, Txid, Witness};
-use miniscript::bitcoin::{Address, ScriptBuf};
 
-use crate::{account::Account, error::Error, psbt::Psbt};
+use crate::{account::Account, error::Error, psbt::Psbt, storage::WalletStore};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TransactionTime {
@@ -116,11 +115,11 @@ impl<'a> ToTransactionDetails<(&MutexGuard<'a, BdkWallet>, DerivationPath)>
         let inputs = get_detailled_inputs(self.tx_node.input.clone(), wallet_lock)?;
 
         Ok(TransactionDetails {
-            txid: self.tx_node.txid(),
+            txid: self.tx_node.compute_txid(),
 
             received: received.to_sat(),
             sent: sent.to_sat(),
-            fees: wallet_lock.calculate_fee(&self.tx_node.tx).ok(),
+            fees: wallet_lock.calculate_fee(&self.tx_node.tx).ok().map(|a| a.to_sat()),
 
             time,
 
@@ -133,7 +132,7 @@ impl<'a> ToTransactionDetails<(&MutexGuard<'a, BdkWallet>, DerivationPath)>
 }
 
 impl TransactionDetails {
-    pub async fn from_psbt(psbt: &Psbt, account: Account) -> Result<Self, Error> {
+    pub async fn from_psbt<P: WalletStore>(psbt: &Psbt, account: Account<P>) -> Result<Self, Error> {
         let tx = psbt.extract_tx()?;
 
         let wallet_lock = account.get_wallet().await;
@@ -144,11 +143,11 @@ impl TransactionDetails {
         let (sent, received) = wallet_lock.sent_and_received(&tx);
 
         let tx = TransactionDetails {
-            txid: tx.txid(),
+            txid: tx.compute_txid(),
             received: received.to_sat(),
             sent: sent.to_sat(),
 
-            fees: wallet_lock.calculate_fee(&tx).ok(),
+            fees: wallet_lock.calculate_fee(&tx).ok().map(|a| a.to_sat()),
 
             time: TransactionTime::Unconfirmed {
                 last_seen: now().as_secs(),

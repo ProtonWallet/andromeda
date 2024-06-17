@@ -5,11 +5,11 @@ use andromeda_common::utils::now;
 use andromeda_esplora::{AsyncClient, EsploraAsyncExt};
 use async_std::sync::MutexGuard;
 use bdk_wallet::{
+    bitcoin::{Script, Transaction, Txid},
     chain::spk_client::{FullScanResult, SyncRequest, SyncResult},
     wallet::Wallet as BdkWallet,
     KeychainKind,
 };
-use bitcoin::{Script, Transaction, Txid};
 
 use crate::error::Error;
 
@@ -73,17 +73,6 @@ impl BlockchainClient {
         Ok(update)
     }
 
-    pub fn commit_scan(
-        &self,
-        wallet: &mut MutexGuard<'_, BdkWallet>,
-        update: FullScanResult<KeychainKind>,
-    ) -> Result<(), Error> {
-        wallet.apply_update(update)?;
-        wallet.commit()?;
-
-        Ok(())
-    }
-
     /// Partial sync uses already synced transactions, outpoints and unused
     /// addresses and tracks them, checking for transaction confirmation,
     /// outpoints spending and transactions received on unused addresses
@@ -103,7 +92,7 @@ impl BlockchainClient {
         let unused_spks = wallet
             .spk_index()
             .unused_spks()
-            .map(|(_k, _i, spk)| spk.to_owned())
+            .map(|((_k, _i), spk)| spk.to_owned())
             .collect::<Vec<_>>();
 
         let utxos = wallet.list_unspent().map(|utxo| utxo.outpoint).collect::<Vec<_>>();
@@ -153,13 +142,6 @@ impl BlockchainClient {
         let _ = update.graph_update.update_last_seen_unconfirmed(now().as_secs());
 
         Ok(update)
-    }
-
-    pub fn commit_sync(&self, wallet: &mut MutexGuard<'_, BdkWallet>, update: SyncResult) -> Result<(), Error> {
-        wallet.apply_update(update)?;
-        wallet.commit()?;
-
-        Ok(())
     }
 
     /// Returns whether or not the wallet needs to be synced again (new block)

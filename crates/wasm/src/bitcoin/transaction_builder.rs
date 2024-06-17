@@ -7,13 +7,14 @@ use wasm_bindgen::prelude::*;
 use super::{
     account::WasmAccount,
     psbt::WasmPsbt,
+    storage::WebOnchainStore,
     types::{locktime::WasmLockTime, transaction::WasmOutPoint},
 };
 use crate::common::{error::ErrorExt, types::WasmNetwork};
 
 #[wasm_bindgen]
 pub struct WasmTxBuilder {
-    inner: TxBuilder,
+    inner: TxBuilder<WebOnchainStore>,
 }
 
 #[wasm_bindgen]

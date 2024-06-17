@@ -6,7 +6,7 @@ use bitcoin::Address;
 use urlencoding::{decode, encode};
 
 use super::account::Account;
-use crate::{error::Error, utils::convert_amount};
+use crate::{error::Error, storage::WalletStore, utils::convert_amount};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum PaymentLink {
@@ -148,12 +148,15 @@ impl PaymentLink {
         Ok(PaymentLink::BitcoinAddress(address))
     }
 
-    pub async fn new_bitcoin_address(account: &mut Account, index: Option<u32>) -> Result<PaymentLink, Error> {
+    pub async fn new_bitcoin_address<P: WalletStore>(
+        account: &mut Account<P>,
+        index: Option<u32>,
+    ) -> Result<PaymentLink, Error> {
         Ok(PaymentLink::BitcoinAddress(account.get_address(index).await?.address))
     }
 
-    pub async fn new_bitcoin_uri(
-        account: &mut Account,
+    pub async fn new_bitcoin_uri<P: WalletStore>(
+        account: &mut Account<P>,
         index: Option<u32>,
         amount: Option<u64>,
         label: Option<String>,
@@ -175,11 +178,7 @@ mod tests {
     use std::str::FromStr;
 
     use andromeda_common::Network;
-    use bitcoin::{
-        address::{Error as BitcoinAddressError, ParseError},
-        bech32::primitives::decode::{CharError, SegwitHrpstringError, UncheckedHrpstringError},
-        Network as BitcoinNetwork,
-    };
+    use bitcoin::{address::ParseError, base58::Error as Base58Error};
     use miniscript::bitcoin::Address;
 
     use super::super::payment_link::PaymentLink;
@@ -294,15 +293,9 @@ mod tests {
 
         assert!(match error {
             Error::BitcoinAddressParse(error) => match error {
-                ParseError::Bech32(error) => {
-                    match error.0 {
-                        SegwitHrpstringError::Unchecked(error) => match error {
-                            UncheckedHrpstringError::Char(error) => match error {
-                                CharError::InvalidChar(character) => character == '-',
-                                _ => false,
-                            },
-                            _ => false,
-                        },
+                ParseError::Base58(error) => {
+                    match error {
+                        Base58Error::Decode(error) => error.invalid_base58_character() == 48,
                         _ => false,
                     }
                 }
@@ -322,9 +315,9 @@ mod tests {
         .unwrap();
 
         assert!(match error {
-            Error::BitcoinAddress(error) => match error {
-                BitcoinAddressError::NetworkValidation { required, found, .. } =>
-                    required == BitcoinNetwork::Bitcoin && found == BitcoinNetwork::Testnet,
+            Error::BitcoinAddressParse(error) => match error {
+                ParseError::NetworkValidation(error) =>
+                    error.to_string() == "address tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn is not valid on bitcoin",
                 _ => false,
             },
             _ => false,
@@ -376,21 +369,11 @@ mod tests {
             Network::Testnet
         ) .err().unwrap();
 
-        println!("errorerrorerror {:?}", error);
-        // BitcoinAddressParseError(Bech32(DecodeError(Unchecked(Char(InvalidChar('-'
-        // ))))))
-
         assert!(match error {
             Error::BitcoinAddressParse(error) => match error {
-                ParseError::Bech32(error) => {
-                    match error.0 {
-                        SegwitHrpstringError::Unchecked(error) => match error {
-                            UncheckedHrpstringError::Char(error) => match error {
-                                CharError::InvalidChar(character) => character == '-',
-                                _ => false,
-                            },
-                            _ => false,
-                        },
+                ParseError::Base58(error) => {
+                    match error {
+                        Base58Error::Decode(error) => error.invalid_base58_character() == 48,
                         _ => false,
                     }
                 }
@@ -409,10 +392,12 @@ mod tests {
         .err()
         .unwrap();
 
+        println!("errorerrorerror {:?}", error);
+
         assert!(match error {
-            Error::BitcoinAddress(error) => match error {
-                BitcoinAddressError::NetworkValidation { required, found, .. } =>
-                    required == BitcoinNetwork::Bitcoin && found == BitcoinNetwork::Testnet,
+            Error::BitcoinAddressParse(error) => match error {
+                ParseError::NetworkValidation(error) =>
+                    error.to_string() == "address tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn is not valid on bitcoin",
                 _ => false,
             },
             _ => false,

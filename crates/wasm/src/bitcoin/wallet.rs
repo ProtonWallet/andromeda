@@ -1,12 +1,12 @@
 use std::str::FromStr;
 
 use andromeda_bitcoin::{error::Error as BitcoinError, wallet::Wallet, DerivationPath};
-use andromeda_common::{error::Error, ScriptType};
+use andromeda_common::error::Error;
 use wasm_bindgen::prelude::*;
 
 use super::{
     account::WasmAccount,
-    storage::OnchainStorageFactory,
+    storage::{WebOnchainStore, WebOnchainStoreFactory},
     types::{
         balance::WasmBalance,
         derivation_path::WasmDerivationPath,
@@ -18,7 +18,7 @@ use crate::common::{error::ErrorExt, types::WasmNetwork};
 
 #[wasm_bindgen]
 pub struct WasmWallet {
-    inner: Wallet,
+    inner: Wallet<WebOnchainStore>,
 }
 
 #[wasm_bindgen]
@@ -28,7 +28,7 @@ extern "C" {
 }
 
 impl WasmWallet {
-    pub fn get_inner(&self) -> &Wallet {
+    pub fn get_inner(&self) -> &Wallet<WebOnchainStore> {
         &self.inner
     }
 }
@@ -40,41 +40,18 @@ impl WasmWallet {
         network: WasmNetwork,
         bip39_mnemonic: String,
         bip38_passphrase: Option<String>,
-        accounts: Option<Vec<AccountConfigTupple>>,
     ) -> Result<WasmWallet, js_sys::Error> {
-        let factory = OnchainStorageFactory::new();
-
-        let accounts = accounts.map_or(Vec::new(), |accounts| {
-            accounts
-                .into_iter()
-                .map(|acc| {
-                    let (script_type, derivation_path): (u8, String) = serde_wasm_bindgen::from_value(acc.into())
-                        .map_err(|_| js_sys::Error::new("Could not parse account config tupple"))?;
-
-                    let derivation_path =
-                        DerivationPath::from_str(&derivation_path).map_err(|e| BitcoinError::from(e).to_js_error())?;
-                    let script_type = script_type.try_into().map_err(|e: Error| e.to_js_error())?;
-
-                    let config = (script_type, derivation_path.clone());
-
-                    Ok::<(ScriptType, DerivationPath), js_sys::Error>(config)
-                })
-                .filter_map(Result::ok)
-                .collect::<Vec<_>>()
-        });
-
-        let wallet = Wallet::new_with_accounts(network.into(), bip39_mnemonic, bip38_passphrase, accounts, factory)
-            .map_err(|e| e.to_js_error())?;
+        let wallet = Wallet::new(network.into(), bip39_mnemonic, bip38_passphrase).map_err(|e| e.to_js_error())?;
 
         Ok(Self { inner: wallet })
     }
 
     #[wasm_bindgen(js_name = addAccount)]
     pub fn add_account(&mut self, script_type: u8, derivation_path: String) -> Result<WasmAccount, js_sys::Error> {
-        let factory = OnchainStorageFactory::new();
+        let factory = WebOnchainStoreFactory::new();
+
         // In a multi-wallet context, an account must be defined by the BIP32 masterkey
         // (fingerprint), and its derivation path (unique)
-
         let derivation_path =
             DerivationPath::from_str(&derivation_path).map_err(|e| BitcoinError::from(e).to_js_error())?;
 

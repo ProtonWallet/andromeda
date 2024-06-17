@@ -1,4 +1,4 @@
-use andromeda_bitcoin::{error::Error as BitcoinError, psbt::Psbt, Address, SignOptions};
+use andromeda_bitcoin::{error::Error as BitcoinError, psbt::Psbt, Address, ConsensusParams, SignOptions};
 use andromeda_common::Network;
 use wasm_bindgen::prelude::*;
 
@@ -32,7 +32,7 @@ impl WasmPsbt {
                 .output
                 .into_iter()
                 .map(|o| {
-                    let addr = Address::from_script(&o.script_pubkey, network.into()).unwrap();
+                    let addr = Address::from_script(&o.script_pubkey, ConsensusParams::new(network.into())).unwrap();
                     WasmPsbtRecipient(addr.to_string(), o.value.to_sat())
                 })
                 .collect(),

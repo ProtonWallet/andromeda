@@ -1,13 +1,35 @@
-use bdk_persist::PersistBackend;
-use bdk_wallet::wallet::ChangeSet;
+use bdk_wallet::{
+    chain::{CombinedChangeSet, ConfirmationTimeHeightAnchor},
+    KeychainKind,
+};
 
-pub trait PersistBackendFactory<P>
+use crate::error::Error;
+
+pub type ChangeSet = CombinedChangeSet<KeychainKind, ConfirmationTimeHeightAnchor>;
+
+pub trait WalletStore: Clone {
+    fn read(&self) -> Result<Option<ChangeSet>, Error>;
+
+    fn write(&self, changeset: &ChangeSet) -> Result<(), Error>;
+}
+
+pub trait WalletStoreFactory<P>
 where
-    P: PersistBackend<ChangeSet>,
+    P: WalletStore,
 {
     fn build(self, key: String) -> P;
 }
 
-impl PersistBackendFactory<()> for () {
+impl WalletStoreFactory<()> for () {
     fn build(self, _key: String) {}
+}
+
+impl WalletStore for () {
+    fn read(&self) -> Result<Option<ChangeSet>, Error> {
+        Ok(None)
+    }
+
+    fn write(&self, _changeset: &ChangeSet) -> Result<(), Error> {
+        Ok(())
+    }
 }
