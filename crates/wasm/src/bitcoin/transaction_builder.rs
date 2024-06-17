@@ -291,9 +291,20 @@ impl WasmTxBuilder {
 
     #[wasm_bindgen(js_name = createPsbt)]
     pub async fn create_pbst(&self, network: WasmNetwork) -> Result<WasmPsbt, js_sys::Error> {
+        let psbt = self.inner.create_psbt(false).await.map_err(|e| e.to_js_error())?;
+
+        WasmPsbt::from_psbt(&psbt, network.into())
+    }
+
+    #[wasm_bindgen(js_name = createDraftPsbt)]
+    pub async fn create_draft_psbt(
+        &self,
+        network: WasmNetwork,
+        allow_dust: Option<bool>,
+    ) -> Result<WasmPsbt, js_sys::Error> {
         let psbt = self
             .inner
-            .create_pbst_with_coin_selection(false)
+            .create_draft_psbt(allow_dust.unwrap_or(false))
             .await
             .map_err(|e| e.to_js_error())?;
 

@@ -254,7 +254,7 @@ impl TxBuilder {
 
     async fn constrain_recipient_amounts(&self) -> Self {
         if self.account.is_some() {
-            let result = self.create_pbst_with_coin_selection(true).await;
+            let result = self.create_psbt(true).await;
 
             if let Err(Error::CreateTx(CreateTxError::CoinSelection(CoinSelectionError::InsufficientFunds {
                 needed,
@@ -432,7 +432,7 @@ impl TxBuilder {
         Ok(tx_builder)
     }
 
-    fn create_psbt<Cs: CoinSelectionAlgorithm>(
+    fn finish_tx<Cs: CoinSelectionAlgorithm>(
         &self,
         mut tx_builder: BdkTxBuilder<Cs>,
         allow_dust: bool,
@@ -473,32 +473,45 @@ impl TxBuilder {
     /// Creates a PSBT from current TxBuilder
     ///
     /// The resulting psbt can then be provided to Account.sign() method
-    pub async fn create_pbst_with_coin_selection(&self, allow_dust: bool) -> Result<Psbt, Error> {
+    pub async fn create_psbt(&self, allow_dust: bool) -> Result<Psbt, Error> {
         let account = self.account.clone().ok_or(Error::AccountNotFound)?;
         let mut wallet = account.get_wallet().await;
 
         let updated = match self.coin_selection {
             CoinSelection::BranchAndBound => {
                 let tx_builder = wallet.build_tx().coin_selection(BranchAndBoundCoinSelection::default());
-                self.create_psbt(tx_builder, allow_dust)
+                self.finish_tx(tx_builder, allow_dust)
             }
             CoinSelection::LargestFirst => {
                 let tx_builder = wallet.build_tx().coin_selection(LargestFirstCoinSelection);
-                self.create_psbt(tx_builder, allow_dust)
+                self.finish_tx(tx_builder, allow_dust)
             }
             CoinSelection::OldestFirst => {
                 let tx_builder = wallet.build_tx().coin_selection(OldestFirstCoinSelection);
-                self.create_psbt(tx_builder, allow_dust)
+                self.finish_tx(tx_builder, allow_dust)
             }
             CoinSelection::Manual => {
                 let mut tx_builder = wallet.build_tx().coin_selection(BranchAndBoundCoinSelection::default());
 
                 tx_builder = self.commit_utxos(tx_builder)?;
-                self.create_psbt(tx_builder, allow_dust)
+                self.finish_tx(tx_builder, allow_dust)
             }
         };
 
         updated
+    }
+
+    /// Creates a draft PSBT from current TxBuilder to check if it is valid and
+    /// return potential errors. PSBTs returned from this methods should not
+    /// be broadcasted since indexes are not updated
+    pub async fn create_draft_psbt(&self, allow_dust: bool) -> Result<Psbt, Error> {
+        let account = self.account.clone().ok_or(Error::AccountNotFound)?;
+        let mut wallet = account.get_wallet().await;
+
+        let psbt = self.create_psbt(allow_dust).await?;
+        wallet.cancel_tx(&psbt.extract_tx()?);
+
+        Ok(psbt)
     }
 }
 
