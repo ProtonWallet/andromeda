@@ -11,7 +11,6 @@ pub mod wallet;
 
 pub mod storage;
 
-pub use bdk_persist::PersistBackend;
 #[doc(hidden)]
 pub use bdk_wallet::{
     bitcoin::{
@@ -21,6 +20,7 @@ pub use bdk_wallet::{
             constants::genesis_block,
             locktime::absolute::{Height, LockTime, Time},
         },
+        consensus::Params as ConsensusParams,
         Address, BlockHash, Network as BdkNetwork, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Witness,
     },
     chain::Append,

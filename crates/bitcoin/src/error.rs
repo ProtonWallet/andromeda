@@ -2,6 +2,12 @@ use std::fmt::Debug;
 
 use andromeda_esplora::error::Error as EsploraClientError;
 use bdk_wallet::{
+    bitcoin::{
+        address::ParseError as BitcoinAddressParseError,
+        bip32::Error as Bip32Error,
+        psbt::{Error as PsbtError, ExtractTxError},
+        OutPoint,
+    },
     chain::local_chain::CannotConnectError,
     descriptor::DescriptorError,
     keys::bip39::Error as Bip39Error,
@@ -12,12 +18,7 @@ use bdk_wallet::{
         InsertTxError, NewOrLoadError,
     },
 };
-use bitcoin::{
-    address::{Error as BitcoinAddressError, ParseError as BitcoinAddressParseError},
-    bip32::Error as Bip32Error,
-    psbt::{Error as PsbtError, ExtractTxError},
-    OutPoint,
-};
+use bitcoin::address::FromScriptError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -51,8 +52,8 @@ pub enum Error {
     HexToBytes(#[from] bitcoin::hashes::hex::HexToBytesError),
     #[error("An error occured when parsing bitcoin address : \n\t{0}")]
     BitcoinAddressParse(#[from] BitcoinAddressParseError),
-    #[error("An error related to bitcoin address occured: \n\t{0}")]
-    BitcoinAddress(#[from] BitcoinAddressError),
+    #[error("An error occured when creating an address from script: \n\t{0}")]
+    FromScript(#[from] FromScriptError),
     #[error("An error related to descriptors occured: \n\t{0}")]
     Descriptor(#[from] DescriptorError),
     #[error("An error occured when extracting tx from psbt: \n\t{0}")]

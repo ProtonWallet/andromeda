@@ -2,37 +2,43 @@ use core::fmt::Debug;
 use std::collections::HashMap;
 
 use andromeda_common::{Network, ScriptType};
-use bdk_persist::PersistBackend;
-use bdk_wallet::wallet::{Balance, ChangeSet};
-use bitcoin::Amount;
-use futures::future::try_join_all;
-use miniscript::bitcoin::{
-    bip32::{DerivationPath, Xpriv},
-    secp256k1::Secp256k1,
+use bdk_wallet::{
+    bitcoin::{
+        bip32::{DerivationPath, Xpriv},
+        secp256k1::Secp256k1,
+        Amount, NetworkKind,
+    },
+    wallet::Balance,
 };
+use futures::future::try_join_all;
 
 use super::{account::Account, transactions::Pagination, utils::sort_and_paginate_txs};
 use crate::{
     error::Error,
     mnemonic::Mnemonic,
-    storage::PersistBackendFactory,
+    storage::{WalletStore, WalletStoreFactory},
     transactions::{ToTransactionDetails, TransactionDetails},
     utils::SortOrder,
 };
 
 #[derive(Debug)]
-pub struct Wallet {
+pub struct Wallet<P: WalletStore> {
     mprv: Xpriv,
-    accounts: HashMap<DerivationPath, Account>,
+    accounts: HashMap<DerivationPath, Account<P>>,
     network: Network,
 }
 
-impl Wallet {
+impl<P: WalletStore> Wallet<P> {
     pub fn new(network: Network, bip39_mnemonic: String, bip38_passphrase: Option<String>) -> Result<Self, Error> {
         let mnemonic = Mnemonic::from_string(bip39_mnemonic)?;
 
+        let network_kind = match network {
+            Network::Bitcoin => NetworkKind::Main,
+            _ => NetworkKind::Test,
+        };
+
         let mprv = Xpriv::new_master(
-            network.into(),
+            network_kind,
             &mnemonic.inner().to_seed(match bip38_passphrase {
                 Some(bip38_passphrase) => bip38_passphrase,
                 None => "".to_string(),
@@ -47,41 +53,20 @@ impl Wallet {
         })
     }
 
-    pub fn new_with_accounts<P, F>(
-        network: Network,
-        bip39_mnemonic: String,
-        bip38_passphrase: Option<String>,
-        accounts: Vec<(ScriptType, DerivationPath)>,
-        factory: F,
-    ) -> Result<Self, Error>
-    where
-        P: PersistBackend<ChangeSet> + Send + Sync + 'static,
-        F: PersistBackendFactory<P> + Clone,
-    {
-        let mut wallet = Self::new(network, bip39_mnemonic, bip38_passphrase)?;
-
-        for (script_type, derivation_path) in accounts {
-            wallet.add_account(script_type, derivation_path, factory.clone())?;
-        }
-
-        Ok(wallet)
-    }
-
     pub fn mprv(&self) -> (Xpriv, Network) {
         (self.mprv, self.network)
     }
 
-    pub fn add_account<P, F>(
+    pub fn add_account<F>(
         &mut self,
-        scrip_type: ScriptType,
+        script_type: ScriptType,
         derivation_path: DerivationPath,
         factory: F,
-    ) -> Result<Account, Error>
+    ) -> Result<Account<P>, Error>
     where
-        P: PersistBackend<ChangeSet> + Send + Sync + 'static,
-        F: PersistBackendFactory<P>,
+        F: WalletStoreFactory<P>,
     {
-        let account = Account::new(self.mprv, self.network, scrip_type, derivation_path, factory)?;
+        let account = Account::new(self.mprv, self.network, script_type, derivation_path, factory)?;
 
         let derivation_path = account.get_derivation_path();
 
@@ -90,7 +75,7 @@ impl Wallet {
         Ok(account)
     }
 
-    pub fn get_account(&mut self, derivation_path: &DerivationPath) -> Option<&Account> {
+    pub fn get_account(&mut self, derivation_path: &DerivationPath) -> Option<&Account<P>> {
         self.accounts.get(derivation_path)
     }
 

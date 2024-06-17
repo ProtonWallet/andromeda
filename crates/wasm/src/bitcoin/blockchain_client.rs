@@ -98,10 +98,7 @@ impl WasmBlockchainClient {
             .await
             .map_err(|e| e.to_js_error())?;
 
-        let mut write_lock = account_inner.get_wallet().await;
-        self.inner
-            .commit_scan(&mut write_lock, update)
-            .map_err(|e| e.to_js_error())?;
+        account_inner.store_update(update).await.map_err(|e| e.to_js_error())?;
 
         Ok(())
     }
@@ -113,11 +110,7 @@ impl WasmBlockchainClient {
         let read_lock = account_inner.get_wallet().await;
         let update = self.inner.partial_sync(read_lock).await.map_err(|e| e.to_js_error())?;
 
-        let mut wallet_lock = account_inner.get_wallet().await;
-
-        self.inner
-            .commit_sync(&mut wallet_lock, update)
-            .map_err(|e| e.to_js_error())?;
+        account_inner.store_update(update).await.map_err(|e| e.to_js_error())?;
 
         Ok(())
     }
@@ -156,6 +149,6 @@ impl WasmBlockchainClient {
             .await
             .map_err(|e| e.to_js_error())?;
 
-        Ok(tx.txid().to_string())
+        Ok(tx.compute_txid().to_string())
     }
 }

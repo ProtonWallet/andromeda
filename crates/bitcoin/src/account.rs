@@ -2,28 +2,26 @@ use std::{collections::BTreeMap, fmt::Debug, str::FromStr, sync::Arc};
 
 use andromeda_common::{utils::now, Network, ScriptType};
 use async_std::sync::{Mutex, MutexGuard};
-use bdk_persist::PersistBackend;
 use bdk_wallet::{
     bitcoin::{
         bip32::{ChildNumber, DerivationPath, Xpriv},
+        constants::genesis_block,
+        psbt::Psbt,
         secp256k1::Secp256k1,
+        Address, Network as BdkNetwork, Transaction, Txid,
     },
     chain::ConfirmationTime,
     descriptor,
-    wallet::{AddressInfo, Balance as BdkBalance, ChangeSet},
+    wallet::{AddressInfo, Balance as BdkBalance, Update},
     KeychainKind, LocalOutput as LocalUtxo, SignOptions, Wallet as BdkWallet,
 };
-use bitcoin::{constants::genesis_block, Transaction};
-use miniscript::{
-    bitcoin::{psbt::Psbt, Address, Network as BdkNetwork, Txid},
-    descriptor::DescriptorSecretKey,
-    DescriptorPublicKey,
-};
+use bitcoin::params::Params;
+use miniscript::{descriptor::DescriptorSecretKey, DescriptorPublicKey};
 
 use super::{payment_link::PaymentLink, transactions::Pagination, utils::sort_and_paginate_txs};
 use crate::{
     error::Error,
-    storage::PersistBackendFactory,
+    storage::{WalletStore, WalletStoreFactory},
     transactions::{ToTransactionDetails, TransactionDetails},
     utils::SortOrder,
 };
@@ -50,8 +48,9 @@ use crate::{
 /// Wallet generated from mnemonic, derived into an Account that instantiates a
 /// BDK Wallet.
 #[derive(Debug, Clone)]
-pub struct Account {
+pub struct Account<P: WalletStore = ()> {
     derivation_path: DerivationPath,
+    store: P,
     wallet: Arc<Mutex<BdkWallet>>,
 }
 
@@ -61,13 +60,10 @@ type ReturnedDescriptor = (
     std::collections::HashSet<BdkNetwork>,
 );
 
-fn build_account_descriptors<P>(
+fn build_account_descriptors(
     account_xprv: Xpriv,
     script_type: ScriptType,
-) -> Result<(ReturnedDescriptor, ReturnedDescriptor), Error>
-where
-    P: PersistBackend<ChangeSet>,
-{
+) -> Result<(ReturnedDescriptor, ReturnedDescriptor), Error> {
     let builder = match script_type {
         ScriptType::Legacy => |xkey: (Xpriv, DerivationPath)| descriptor!(pkh(xkey)),
         ScriptType::NestedSegwit => |xkey: (Xpriv, DerivationPath)| descriptor!(sh(wpkh(xkey))),
@@ -94,16 +90,16 @@ where
     Ok((external, internal))
 }
 
-impl Account {
-    fn build_wallet<P: PersistBackend<ChangeSet> + Send + Sync + 'static>(
+impl<P: WalletStore> Account<P> {
+    fn build_wallet(
         account_xprv: Xpriv,
         network: Network,
         script_type: ScriptType,
         storage: P,
     ) -> Result<BdkWallet, Error> {
-        let (external_descriptor, internal_descriptor) = build_account_descriptors::<P>(account_xprv, script_type)?;
+        let (external_descriptor, internal_descriptor) = build_account_descriptors(account_xprv, script_type)?;
 
-        let genesis_block_hash = genesis_block(network.into()).block_hash();
+        let genesis_block_hash = genesis_block(Params::from(&network.into())).block_hash();
 
         // Due to a bug in bitcoin 0.31.0 (XPub::decode always return Testnet for test
         // envs), we need to simulate testnet but use genesis hash of correct network
@@ -115,10 +111,12 @@ impl Account {
             Network::Testnet
         };
 
+        let store_content = storage.read()?;
+
         let wallet = BdkWallet::new_or_load_with_genesis_hash(
             external_descriptor,
-            Some(internal_descriptor),
-            storage,
+            internal_descriptor,
+            store_content,
             compelled_network.into(),
             genesis_block_hash,
         )?;
@@ -142,7 +140,7 @@ impl Account {
     ///
     /// ```rust
     /// # use std::str::FromStr;
-    /// # use bdk_wallet::bitcoin::bip32::{DerivationPath, Xpriv};
+    /// # use bdk_wallet::bitcoin::{NetworkKind, bip32::{DerivationPath, Xpriv}};
     /// #
     /// # use andromeda_bitcoin::account::{Account};
     /// # use andromeda_bitcoin::mnemonic::Mnemonic;
@@ -150,11 +148,11 @@ impl Account {
     /// # tokio_test::block_on(async {
     /// #
     /// let mnemonic = Mnemonic::from_string(String::from("desk prevent enhance husband hungry idle member vessel room moment simple behave")).unwrap();
-    /// let mprv = Xpriv::new_master(Network::Testnet.into(), &mnemonic.inner().to_seed("")).unwrap();
+    /// let mprv = Xpriv::new_master(NetworkKind::Test, &mnemonic.inner().to_seed("")).unwrap();
     /// let account = Account::new(mprv, Network::Testnet, ScriptType::NativeSegwit, DerivationPath::from_str("m/86'/1'/0'").unwrap(), ());
     /// # })
     /// ```
-    pub fn new<F, P>(
+    pub fn new<F>(
         master_secret_key: Xpriv,
         network: Network,
         script_type: ScriptType,
@@ -162,23 +160,23 @@ impl Account {
         factory: F,
     ) -> Result<Self, Error>
     where
-        P: PersistBackend<ChangeSet> + Send + Sync + 'static,
-        F: PersistBackendFactory<P>,
+        F: WalletStoreFactory<P>,
     {
         let secp = Secp256k1::new();
 
         let account_xprv = master_secret_key.derive_priv(&secp, &derivation_path)?;
 
-        let storage_key = format!("{}_{}", master_secret_key.fingerprint(&secp), derivation_path);
-        let storage = factory.build(storage_key);
+        let store_key = format!("{}_{}", master_secret_key.fingerprint(&secp), derivation_path);
+        let store = factory.build(store_key);
 
         Ok(Self {
             derivation_path,
+            store: store.clone(),
             wallet: Arc::new(Mutex::new(Self::build_wallet(
                 account_xprv,
                 network,
                 script_type,
-                storage,
+                store,
             )?)),
         })
     }
@@ -198,7 +196,7 @@ impl Account {
     /// * untrusted pending (unconfirmed external)
     /// * confirmed coins
     pub async fn get_balance(&self) -> BdkBalance {
-        self.get_wallet().await.get_balance()
+        self.get_wallet().await.balance()
     }
 
     /// Returns a list of unspent outputs as a vector
@@ -223,7 +221,7 @@ impl Account {
         if let Some(index) = index {
             Ok(self.get_wallet().await.peek_address(keychain, index))
         } else {
-            Ok(self.get_wallet().await.next_unused_address(keychain)?)
+            Ok(self.get_wallet().await.next_unused_address(keychain))
         }
     }
 
@@ -298,7 +296,7 @@ impl Account {
         let wallet_lock = self.get_wallet().await;
         let tx = wallet_lock
             .transactions()
-            .find(|tx| tx.tx_node.txid() == txid)
+            .find(|tx| tx.tx_node.compute_txid() == txid)
             .ok_or(Error::TransactionNotFound)?;
 
         tx.to_transaction_details((&wallet_lock, self.get_derivation_path()))
@@ -333,6 +331,17 @@ impl Account {
 
         Ok(())
     }
+
+    pub async fn store_update(&self, update: impl Into<Update>) -> Result<(), Error> {
+        let mut wallet_lock = self.get_wallet().await;
+        wallet_lock.apply_update(update)?;
+
+        if let Some(changeset) = wallet_lock.take_staged() {
+            self.store.write(&changeset)?;
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -340,20 +349,22 @@ mod tests {
     use std::str::FromStr;
 
     use andromeda_common::Network;
-    use bitcoin::bip32::DerivationPath;
-    use miniscript::bitcoin::{bip32::Xpriv, Address};
+    use bdk_wallet::bitcoin::{
+        bip32::{DerivationPath, Xpriv},
+        Address, NetworkKind,
+    };
 
     use super::{Account, ScriptType};
     use crate::mnemonic::Mnemonic;
 
-    fn set_test_account(script_type: ScriptType, derivation_path: &str) -> Account {
-        let network = Network::Testnet;
+    fn set_test_account(script_type: ScriptType, derivation_path: &str) -> Account<()> {
+        let network = NetworkKind::Test;
         let mnemonic = Mnemonic::from_string("category law logic swear involve banner pink room diesel fragile sunset remove whale lounge captain code hobby lesson material current moment funny vast fade".to_string()).unwrap();
-        let master_secret_key = Xpriv::new_master(network.into(), &mnemonic.inner().to_seed("")).unwrap();
+        let master_secret_key = Xpriv::new_master(network, &mnemonic.inner().to_seed("")).unwrap();
 
         let derivation_path = DerivationPath::from_str(derivation_path).unwrap();
 
-        Account::new(master_secret_key, network, script_type, derivation_path, ()).unwrap()
+        Account::new(master_secret_key, Network::Testnet, script_type, derivation_path, ()).unwrap()
     }
 
     #[tokio::test]

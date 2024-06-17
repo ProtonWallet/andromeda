@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use andromeda_bitcoin::{error::Error as BitcoinError, Address, ScriptBuf};
+use andromeda_bitcoin::{error::Error as BitcoinError, Address, ConsensusParams, ScriptBuf};
 use serde::{Deserialize, Deserializer, Serialize};
 use wasm_bindgen::prelude::*;
 
@@ -58,7 +58,8 @@ impl WasmAddress {
         let script: ScriptBuf = value.into();
 
         Ok(WasmAddress {
-            inner: Address::from_script(&script, network.into()).map_err(|e| BitcoinError::from(e).to_js_error())?,
+            inner: Address::from_script(&script, ConsensusParams::new(network.into()))
+                .map_err(|e| BitcoinError::from(e).to_js_error())?,
         })
     }
 

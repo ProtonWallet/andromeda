@@ -4,6 +4,7 @@ use wasm_bindgen::prelude::*;
 use super::{
     payment_link::WasmPaymentLink,
     psbt::WasmPsbt,
+    storage::{WebOnchainStore, WebOnchainStoreFactory},
     types::{
         address::WasmAddress,
         address_info::WasmAddressInfo,
@@ -15,23 +16,19 @@ use super::{
     },
     wallet::WasmWallet,
 };
-use crate::{
-    bitcoin::storage::OnchainStorageFactory,
-    common::{error::ErrorExt, types::WasmScriptType},
-};
-
+use crate::common::{error::ErrorExt, types::WasmScriptType};
 #[wasm_bindgen]
 pub struct WasmAccount {
-    inner: Account,
+    inner: Account<WebOnchainStore>,
 }
 
 impl WasmAccount {
-    pub fn get_inner(&self) -> Account {
+    pub fn get_inner(&self) -> Account<WebOnchainStore> {
         self.inner.clone()
     }
 }
 
-impl Into<WasmAccount> for &Account {
+impl Into<WasmAccount> for &Account<WebOnchainStore> {
     fn into(self) -> WasmAccount {
         WasmAccount { inner: self.clone() }
     }
@@ -45,7 +42,7 @@ impl WasmAccount {
         script_type: WasmScriptType,
         derivation_path: WasmDerivationPath,
     ) -> Result<WasmAccount, js_sys::Error> {
-        let factory = OnchainStorageFactory::new();
+        let factory = WebOnchainStoreFactory::new();
 
         let (mprv, network) = wallet.get_inner().mprv();
         let account = Account::new(mprv, network, script_type.into(), (&derivation_path).into(), factory)

@@ -1,7 +1,7 @@
 use std::{fmt::Debug, str::FromStr};
 
 use bdk_wallet::{
-    bitcoin::ScriptBuf,
+    bitcoin::{absolute::LockTime, script::PushBytesBuf, Address, Amount, FeeRate, OutPoint, ScriptBuf},
     wallet::{
         coin_selection::{
             BranchAndBoundCoinSelection, CoinSelectionAlgorithm, Error as CoinSelectionError,
@@ -11,13 +11,11 @@ use bdk_wallet::{
         tx_builder::{ChangeSpendPolicy, TxBuilder as BdkTxBuilder},
     },
 };
-use bitcoin::{Amount, FeeRate};
 use hashbrown::HashSet;
-use miniscript::bitcoin::{absolute::LockTime, script::PushBytesBuf, Address, OutPoint};
 use uuid::Uuid;
 
 use super::account::Account;
-use crate::{error::Error, psbt::Psbt};
+use crate::{error::Error, psbt::Psbt, storage::WalletStore};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum CoinSelection {
@@ -46,8 +44,8 @@ pub struct TmpRecipient(pub String, pub String, pub Amount);
 /// raw transaction building and bitcoin URI processing
 /// (bitcoin:tb1....?amount=x&label=y)
 #[derive(Debug)]
-pub struct TxBuilder {
-    account: Option<Account>,
+pub struct TxBuilder<P: WalletStore = ()> {
+    account: Option<Account<P>>,
 
     pub recipients: Vec<TmpRecipient>,
     pub utxos_to_spend: HashSet<OutPoint>,
@@ -61,7 +59,7 @@ pub struct TxBuilder {
     pub locktime: Option<LockTime>,
 }
 
-impl Clone for TxBuilder {
+impl<P: WalletStore> Clone for TxBuilder<P> {
     fn clone(&self) -> Self {
         TxBuilder {
             account: self.account.clone(),
@@ -149,13 +147,13 @@ fn correct_recipients_amounts(recipients: Vec<TmpRecipient>, amount_to_remove: A
     acc_result.recipients
 }
 
-impl Default for TxBuilder {
+impl<P: WalletStore> Default for TxBuilder<P> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl TxBuilder {
+impl<P: WalletStore> TxBuilder<P> {
     pub fn new() -> Self {
         TxBuilder {
             account: None,
@@ -181,7 +179,7 @@ impl TxBuilder {
     /// # ...
     /// let updated = tx_builder.set_account(account).await.unwrap();
     /// ```
-    pub async fn set_account(&self, account: Account) -> Result<Self, Error> {
+    pub async fn set_account(&self, account: Account<P>) -> Result<Self, Error> {
         let balance = &account.get_balance().await;
 
         let tx_builder = TxBuilder {
@@ -517,9 +515,10 @@ impl TxBuilder {
 
 #[cfg(test)]
 mod tests {
-    use bdk_wallet::wallet::tx_builder::ChangeSpendPolicy;
-    use bitcoin::{Amount, FeeRate};
-    use miniscript::bitcoin::absolute::LockTime;
+    use bdk_wallet::{
+        bitcoin::{absolute::LockTime, Amount, FeeRate},
+        wallet::tx_builder::ChangeSpendPolicy,
+    };
 
     use super::{super::transaction_builder::CoinSelection, correct_recipients_amounts, TmpRecipient, TxBuilder};
     use crate::transaction_builder::allocate_amount_to_recipients;
@@ -606,7 +605,7 @@ mod tests {
 
     #[test]
     fn should_set_enable_rbf() {
-        let tx_builder = TxBuilder::new();
+        let tx_builder = TxBuilder::<()>::new();
 
         let updated = tx_builder.enable_rbf();
         assert!(updated.rbf_enabled);
@@ -617,7 +616,7 @@ mod tests {
 
     #[test]
     fn should_set_locktime() {
-        let tx_builder = TxBuilder::new();
+        let tx_builder = TxBuilder::<()>::new();
 
         let updated = tx_builder.add_locktime(LockTime::from_consensus(788373));
         assert_eq!(updated.locktime, Some(LockTime::from_consensus(788373)));
@@ -628,7 +627,7 @@ mod tests {
 
     #[test]
     fn should_set_coin_selection() {
-        let tx_builder = TxBuilder::new();
+        let tx_builder = TxBuilder::<()>::new();
 
         let updated = tx_builder.set_coin_selection(CoinSelection::LargestFirst);
         assert_eq!(updated.coin_selection, CoinSelection::LargestFirst);
@@ -639,7 +638,7 @@ mod tests {
 
     #[test]
     fn should_set_change_policy() {
-        let tx_builder = TxBuilder::new();
+        let tx_builder = TxBuilder::<()>::new();
 
         let updated = tx_builder.set_change_policy(ChangeSpendPolicy::ChangeAllowed);
         assert_eq!(updated.change_policy, ChangeSpendPolicy::ChangeAllowed);
@@ -650,7 +649,7 @@ mod tests {
 
     #[tokio::test]
     async fn should_change_fee_rate() {
-        let tx_builder = TxBuilder::new();
+        let tx_builder = TxBuilder::<()>::new();
 
         let updated = tx_builder.set_fee_rate(15).await;
         assert_eq!(updated.fee_rate, FeeRate::from_sat_per_vb(15));
@@ -658,7 +657,7 @@ mod tests {
 
     #[test]
     fn should_add_recipient() {
-        let tx_builder = TxBuilder::new();
+        let tx_builder = TxBuilder::<()>::new();
 
         let updated = tx_builder.add_recipient(None);
         assert_eq!(updated.recipients.len(), 2);
@@ -666,7 +665,7 @@ mod tests {
 
     #[tokio::test]
     async fn should_update_recipient() {
-        let tx_builder = TxBuilder::new();
+        let tx_builder = TxBuilder::<()>::new();
 
         let updated = tx_builder
             .update_recipient(0, (Some("tb1...xyz".to_string()), Some(15837)))
