@@ -252,7 +252,7 @@ impl<P: WalletStore> TxBuilder<P> {
 
     async fn constrain_recipient_amounts(&self) -> Self {
         if self.account.is_some() {
-            let result = self.create_psbt(true).await;
+            let result = self.create_draft_psbt(true).await;
 
             if let Err(Error::CreateTx(CreateTxError::CoinSelection(CoinSelectionError::InsufficientFunds {
                 needed,
@@ -503,10 +503,10 @@ impl<P: WalletStore> TxBuilder<P> {
     /// return potential errors. PSBTs returned from this methods should not
     /// be broadcasted since indexes are not updated
     pub async fn create_draft_psbt(&self, allow_dust: bool) -> Result<Psbt, Error> {
+        let psbt = self.create_psbt(allow_dust).await?;
+
         let account = self.account.clone().ok_or(Error::AccountNotFound)?;
         let mut wallet = account.get_wallet().await;
-
-        let psbt = self.create_psbt(allow_dust).await?;
         wallet.cancel_tx(&psbt.extract_tx()?);
 
         Ok(psbt)
