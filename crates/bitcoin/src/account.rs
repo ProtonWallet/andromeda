@@ -101,23 +101,13 @@ impl<P: WalletStore> Account<P> {
 
         let genesis_block_hash = genesis_block(Params::from(&network.into())).block_hash();
 
-        // Due to a bug in bitcoin 0.31.0 (XPub::decode always return Testnet for test
-        // envs), we need to simulate testnet but use genesis hash of correct network
-        // returned by API
-        // We should remove that when BDK upgrade's bitcoin to 0.31.2
-        let compelled_network = if (network) == Network::Bitcoin {
-            Network::Bitcoin
-        } else {
-            Network::Testnet
-        };
-
         let store_content = storage.read()?;
 
         let wallet = BdkWallet::new_or_load_with_genesis_hash(
             external_descriptor,
             internal_descriptor,
             store_content,
-            compelled_network.into(),
+            network.into(),
             genesis_block_hash,
         )?;
 
