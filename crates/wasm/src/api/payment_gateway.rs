@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
-use super::settings::WasmFiatCurrencySymbol;
 use crate::common::error::ErrorExt;
 
 #[wasm_bindgen]
@@ -113,14 +112,14 @@ impl From<CountriesByProvider> for WasmCountriesByProvider {
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[allow(non_snake_case)]
 pub struct WasmApiSimpleFiatCurrency {
-    pub Symbol: WasmFiatCurrencySymbol,
+    pub Symbol: String,
     pub Name: String,
 }
 
 impl From<&ApiSimpleFiatCurrency> for WasmApiSimpleFiatCurrency {
     fn from(value: &ApiSimpleFiatCurrency) -> Self {
         WasmApiSimpleFiatCurrency {
-            Symbol: value.Symbol.into(),
+            Symbol: value.Symbol.clone(),
             Name: value.Name.clone(),
         }
     }
@@ -248,7 +247,7 @@ impl From<PaymentMethodsByProvider> for WasmPaymentMethodsByProvider {
 pub struct WasmQuote {
     pub BitcoinAmount: String,
     pub FiatAmount: String,
-    pub FiatCurrencySymbol: WasmFiatCurrencySymbol,
+    pub FiatCurrencySymbol: String,
     pub NetworkFee: String,
     pub PaymentGatewayFee: String,
     pub PaymentMethod: WasmPaymentMethod,
@@ -259,7 +258,7 @@ impl From<&Quote> for WasmQuote {
         WasmQuote {
             BitcoinAmount: value.BitcoinAmount.clone(),
             FiatAmount: value.FiatAmount.clone(),
-            FiatCurrencySymbol: value.FiatCurrencySymbol.into(),
+            FiatCurrencySymbol: value.FiatCurrencySymbol.clone(),
             NetworkFee: value.NetworkFee.clone(),
             PaymentGatewayFee: value.PaymentGatewayFee.clone(),
             PaymentMethod: (&value.PaymentMethod).into(),
@@ -328,10 +327,10 @@ impl WasmPaymentGatewayClient {
     #[wasm_bindgen(js_name = "getPaymentMethods")]
     pub async fn get_payment_methods(
         &self,
-        fiat_currency: WasmFiatCurrencySymbol,
+        fiat_currency: String,
     ) -> Result<WasmPaymentMethodsByProvider, js_sys::Error> {
         self.0
-            .get_payment_methods(fiat_currency.into())
+            .get_payment_methods(fiat_currency)
             .await
             .map(|c| c.into())
             .map_err(|e| e.to_js_error())
@@ -341,19 +340,40 @@ impl WasmPaymentGatewayClient {
     pub async fn get_quotes(
         &self,
         amount: f64,
-        fiat_currency: WasmFiatCurrencySymbol,
+        fiat_currency: String,
         payment_method: Option<WasmPaymentMethod>,
         provider: Option<WasmGatewayProvider>,
     ) -> Result<WasmQuotesByProvider, js_sys::Error> {
         self.0
             .get_quotes(
                 amount,
-                fiat_currency.into(),
+                fiat_currency,
                 payment_method.map(|p| p.into()),
                 provider.map(|o| o.into()),
             )
             .await
             .map(|c| c.into())
+            .map_err(|e| e.to_js_error())
+    }
+
+    #[wasm_bindgen(js_name = "createOnRampCheckout")]
+    pub async fn create_on_ramp_checkout(
+        &self,
+        amount: String,
+        btc_address: String,
+        fiat_currency: String,
+        payment_method: WasmPaymentMethod,
+        provider: WasmGatewayProvider,
+    ) -> Result<String, js_sys::Error> {
+        self.0
+            .create_on_ramp_checkout(
+                amount,
+                btc_address,
+                fiat_currency,
+                payment_method.into(),
+                provider.into(),
+            )
+            .await
             .map_err(|e| e.to_js_error())
     }
 }
