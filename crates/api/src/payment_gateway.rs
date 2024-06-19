@@ -6,7 +6,6 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 use crate::{
     core::{ApiClient, ProtonResponseExt},
     error::Error,
-    settings::FiatCurrencySymbol,
     ProtonWalletApiClient, BASE_WALLET_API_V1,
 };
 
@@ -56,7 +55,7 @@ pub struct GetFiatCurrenciesResponseBody {
 #[allow(non_snake_case)]
 pub struct ApiSimpleFiatCurrency {
     pub Name: String,
-    pub Symbol: FiatCurrencySymbol,
+    pub Symbol: String,
 }
 
 pub type PaymentMethodsByProvider = HashMap<GatewayProvider, Vec<PaymentMethod>>;
@@ -87,7 +86,7 @@ pub type QuotesByProvider = HashMap<GatewayProvider, Vec<Quote>>;
 pub struct Quote {
     pub BitcoinAmount: String,
     pub FiatAmount: String,
-    pub FiatCurrencySymbol: FiatCurrencySymbol,
+    pub FiatCurrencySymbol: String,
     pub NetworkFee: String,
     pub PaymentGatewayFee: String,
     pub PaymentMethod: PaymentMethod,
@@ -105,7 +104,7 @@ pub struct GetQuotesResponseBody {
 pub struct CreateOnRampCheckoutRequestBody {
     pub Amount: String,
     pub BitcoinAddress: String,
-    pub FiatCurrency: FiatCurrencySymbol,
+    pub FiatCurrency: String,
     pub PaymentMethod: PaymentMethod,
     pub Provider: GatewayProvider,
 }
@@ -153,10 +152,7 @@ impl PaymentGatewayClient {
         Ok(parsed.FiatCurrencies)
     }
 
-    pub async fn get_payment_methods(
-        &self,
-        fiat_symbol: FiatCurrencySymbol,
-    ) -> Result<PaymentMethodsByProvider, Error> {
+    pub async fn get_payment_methods(&self, fiat_symbol: String) -> Result<PaymentMethodsByProvider, Error> {
         let request = self
             .get("payment-gateway/on-ramp/payment-methods")
             .query(("FiatCurrency", fiat_symbol.to_string()));
@@ -169,7 +165,7 @@ impl PaymentGatewayClient {
     pub async fn get_quotes(
         &self,
         amount: f64,
-        fiat_currency: FiatCurrencySymbol,
+        fiat_currency: String,
         payment_method: Option<PaymentMethod>,
         provider: Option<GatewayProvider>,
     ) -> Result<QuotesByProvider, Error> {
@@ -195,7 +191,7 @@ impl PaymentGatewayClient {
         &self,
         amount: String,
         btc_address: String,
-        fiat_currency: FiatCurrencySymbol,
+        fiat_currency: String,
         pay_method: PaymentMethod,
         provider: GatewayProvider,
     ) -> Result<String, Error> {
@@ -228,7 +224,6 @@ mod tests {
             GatewayProvider, GetCountriesResponseBody, GetFiatCurrenciesResponseBody, GetPaymentMethodsResponseBody,
             GetQuotesResponseBody, PaymentGatewayClient, PaymentMethod,
         },
-        settings::FiatCurrencySymbol,
         tests::utils::{common_api_client, setup_test_connection_arc},
         BASE_WALLET_API_V1,
     };
@@ -304,11 +299,11 @@ mod tests {
         let response: GetFiatCurrenciesResponseBody = serde_json::from_value(json_value).unwrap();
         assert!(response.Code == 1000);
         assert!(response.FiatCurrencies.get(&GatewayProvider::Banxa).unwrap().len() == 1);
-        assert!(response.FiatCurrencies.get(&GatewayProvider::Banxa).unwrap()[0].Symbol == FiatCurrencySymbol::AUD);
+        assert!(response.FiatCurrencies.get(&GatewayProvider::Banxa).unwrap()[0].Symbol == "AUD");
         assert!(response.FiatCurrencies.get(&GatewayProvider::Banxa).unwrap()[0].Name == "Australian Dollar");
-        assert!(response.FiatCurrencies.get(&GatewayProvider::Ramp).unwrap()[0].Symbol == FiatCurrencySymbol::AUD);
+        assert!(response.FiatCurrencies.get(&GatewayProvider::Ramp).unwrap()[0].Symbol == "AUD");
         assert!(response.FiatCurrencies.get(&GatewayProvider::Ramp).unwrap()[0].Name == "Australian Dollar");
-        assert!(response.FiatCurrencies.get(&GatewayProvider::MoonPay).unwrap()[0].Symbol == FiatCurrencySymbol::AUD);
+        assert!(response.FiatCurrencies.get(&GatewayProvider::MoonPay).unwrap()[0].Symbol == "AUD");
         assert!(response.FiatCurrencies.get(&GatewayProvider::MoonPay).unwrap()[0].Name == "Australian Dollar");
     }
 
@@ -423,7 +418,7 @@ mod tests {
         );
         let moonpay = response.Quotes.get(&GatewayProvider::MoonPay).unwrap();
         assert_eq!(moonpay[0].FiatAmount, "300.50");
-        assert_eq!(moonpay[0].FiatCurrencySymbol, FiatCurrencySymbol::EUR);
+        assert_eq!(moonpay[0].FiatCurrencySymbol, "EUR");
         assert_eq!(moonpay[0].NetworkFee, "1.34");
         assert_eq!(moonpay[0].PaymentGatewayFee, "5.85",);
         assert_eq!(moonpay[0].PaymentMethod, PaymentMethod::ApplePay);
@@ -542,9 +537,9 @@ mod tests {
             Ok(value) => {
                 assert!(!value.is_empty());
                 assert!(value.get(&GatewayProvider::Banxa).unwrap().len() == 1);
-                assert!(value.get(&GatewayProvider::Banxa).unwrap()[0].Symbol == FiatCurrencySymbol::AUD);
+                assert!(value.get(&GatewayProvider::Banxa).unwrap()[0].Symbol == "AUD");
                 assert!(value.get(&GatewayProvider::Banxa).unwrap()[0].Name == "Australian Dollar");
-                assert!(value.get(&GatewayProvider::Ramp).unwrap()[0].Symbol == FiatCurrencySymbol::AUD);
+                assert!(value.get(&GatewayProvider::Ramp).unwrap()[0].Symbol == "AUD");
                 assert!(value.get(&GatewayProvider::Ramp).unwrap()[0].Name == "Australian Dollar");
             }
             Err(e) => panic!("Expected Ok variant but got Err.{}", e),
@@ -571,7 +566,7 @@ mod tests {
             .await;
         let api_client = setup_test_connection_arc(mock_server.uri());
         let gateway_client = PaymentGatewayClient::new(api_client);
-        let fiat_currencies = gateway_client.get_payment_methods(FiatCurrencySymbol::AUD).await;
+        let fiat_currencies = gateway_client.get_payment_methods("AUD".to_string()).await;
         match fiat_currencies {
             Ok(value) => {
                 assert!(!value.is_empty());
@@ -628,7 +623,7 @@ mod tests {
         let quotes = gateway_client
             .get_quotes(
                 300.50,
-                FiatCurrencySymbol::AUD,
+                "AUD".to_string(),
                 Some(PaymentMethod::ApplePay),
                 Some(GatewayProvider::Ramp),
             )
@@ -640,20 +635,14 @@ mod tests {
                 assert!(value[&GatewayProvider::Banxa][0].BitcoinAmount == "0.00437556");
                 assert_eq!(value[&GatewayProvider::Banxa][0].PaymentMethod, PaymentMethod::ApplePay);
                 assert_eq!(value[&GatewayProvider::Banxa][0].FiatAmount, "300.50");
-                assert_eq!(
-                    value[&GatewayProvider::Banxa][0].FiatCurrencySymbol,
-                    FiatCurrencySymbol::EUR
-                );
+                assert_eq!(value[&GatewayProvider::Banxa][0].FiatCurrencySymbol, "EUR");
                 assert_eq!(value[&GatewayProvider::Banxa][0].NetworkFee, "1.34");
                 assert_eq!(value[&GatewayProvider::Banxa][0].PaymentGatewayFee, "5.85");
 
                 assert!(value[&GatewayProvider::Ramp][0].BitcoinAmount == "0.00135719");
                 assert_eq!(value[&GatewayProvider::Ramp][0].PaymentMethod, PaymentMethod::Card);
                 assert_eq!(value[&GatewayProvider::Ramp][0].FiatAmount, "100");
-                assert_eq!(
-                    value[&GatewayProvider::Ramp][0].FiatCurrencySymbol,
-                    FiatCurrencySymbol::EUR
-                );
+                assert_eq!(value[&GatewayProvider::Ramp][0].FiatCurrencySymbol, "EUR");
                 assert_eq!(value[&GatewayProvider::Ramp][0].NetworkFee, "2.0715229730449");
                 assert_eq!(value[&GatewayProvider::Ramp][0].PaymentGatewayFee, "3.3024386838943");
             }
@@ -699,7 +688,7 @@ mod tests {
             .create_on_ramp_checkout(
                 "10.00".to_string(),
                 "tb1q886jdswcmtn5u9memdlaz0lymua637a9aufqq6".to_string(),
-                FiatCurrencySymbol::AUD,
+                "AUD".to_string(),
                 PaymentMethod::Card,
                 GatewayProvider::Banxa,
             )
@@ -736,7 +725,7 @@ mod tests {
             .create_on_ramp_checkout(
                 "10.00".to_string(),
                 "tb1q886jdswcmtn5u9memdlaz0lymua637a9aufqq6".to_string(),
-                FiatCurrencySymbol::AUD,
+                "AUD".to_string(),
                 PaymentMethod::Card,
                 GatewayProvider::Banxa,
             )
@@ -773,7 +762,7 @@ mod tests {
         let api_client = common_api_client().await;
         let client = PaymentGatewayClient::new(api_client);
 
-        let payments = client.get_payment_methods(FiatCurrencySymbol::AUD).await;
+        let payments = client.get_payment_methods("AUD".to_string()).await;
         println!("get_payment_methods done: {:?}", payments);
         assert!(payments.is_ok());
     }
@@ -786,7 +775,7 @@ mod tests {
         let quotes = client
             .get_quotes(
                 2.00,
-                FiatCurrencySymbol::AUD,
+                "AUD".to_string(),
                 Some(PaymentMethod::ApplePay),
                 Some(GatewayProvider::Ramp),
             )
@@ -805,8 +794,7 @@ mod tests {
             .create_on_ramp_checkout(
                 "10.00".to_string(),
                 "tb1q886jdswcmtn5u9memdlaz0lymua637a9aufqq6".to_string(),
-                // "bc1q6tddnyhnssceakygvp3nkfx5uuzx7e9exdxnl2".to_string(),
-                FiatCurrencySymbol::AUD,
+                "AUD".to_string(),
                 PaymentMethod::Card,
                 GatewayProvider::Banxa,
             )
