@@ -1,5 +1,8 @@
 use andromeda_api::transaction::ExchangeRateOrTransactionTime;
-use andromeda_bitcoin::blockchain_client::{self, BlockchainClient};
+use andromeda_bitcoin::{
+    blockchain_client::{self, BlockchainClient},
+    error::Error as BitcoinError,
+};
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
@@ -91,14 +94,17 @@ impl WasmBlockchainClient {
     pub async fn full_sync(&self, account: &WasmAccount, stop_gap: Option<usize>) -> Result<(), js_sys::Error> {
         let account_inner = account.get_inner();
 
-        let read_lock = account_inner.get_wallet().await;
+        let wallet_lock = account_inner.get_wallet().await;
         let update = self
             .inner
-            .full_sync(read_lock, stop_gap)
+            .full_sync(wallet_lock, stop_gap)
             .await
             .map_err(|e| e.to_js_error())?;
 
-        account_inner.store_update(update).await.map_err(|e| e.to_js_error())?;
+        let mut wallet_lock = account_inner.get_wallet().await;
+        wallet_lock
+            .apply_update(update)
+            .map_err(|e| BitcoinError::from(e).to_js_error())?;
 
         Ok(())
     }
@@ -107,10 +113,17 @@ impl WasmBlockchainClient {
     pub async fn partial_sync(&self, account: &WasmAccount) -> Result<(), js_sys::Error> {
         let account_inner = account.get_inner();
 
-        let read_lock = account_inner.get_wallet().await;
-        let update = self.inner.partial_sync(read_lock).await.map_err(|e| e.to_js_error())?;
+        let wallet_lock = account_inner.get_wallet().await;
+        let update = self
+            .inner
+            .partial_sync(wallet_lock)
+            .await
+            .map_err(|e| e.to_js_error())?;
 
-        account_inner.store_update(update).await.map_err(|e| e.to_js_error())?;
+        let mut wallet_lock = account_inner.get_wallet().await;
+        wallet_lock
+            .apply_update(update)
+            .map_err(|e| BitcoinError::from(e).to_js_error())?;
 
         Ok(())
     }

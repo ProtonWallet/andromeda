@@ -319,13 +319,21 @@ impl<P: WalletStore> Account<P> {
             },
         )?;
 
+        self.store_stage(&mut wallet_lock).await?;
+
         Ok(())
     }
 
-    pub async fn store_update(&self, update: impl Into<Update>) -> Result<(), Error> {
+    pub async fn apply_update(&self, update: impl Into<Update>) -> Result<(), Error> {
         let mut wallet_lock = self.get_wallet().await;
         wallet_lock.apply_update(update)?;
 
+        self.store_stage(&mut wallet_lock).await?;
+
+        Ok(())
+    }
+
+    pub async fn store_stage(&self, wallet_lock: &mut MutexGuard<'_, BdkWallet>) -> Result<(), Error> {
         if let Some(changeset) = wallet_lock.take_staged() {
             self.store.write(&changeset)?;
         }
