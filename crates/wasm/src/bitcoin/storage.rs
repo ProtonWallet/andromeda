@@ -1,6 +1,7 @@
 use andromeda_bitcoin::{
     error::Error,
     storage::{ChangeSet, WalletStore, WalletStoreFactory},
+    Append,
 };
 use anyhow::anyhow;
 
@@ -46,8 +47,12 @@ impl WalletStore for WebOnchainStore {
         }
     }
 
-    fn write(&self, changeset: &ChangeSet) -> Result<(), Error> {
-        let serialized = serde_json::to_string(changeset).map_err(|_| anyhow!("Cannot serialize persisted data"))?;
+    fn write(&self, new_changeset: &ChangeSet) -> Result<(), Error> {
+        let mut prev_changeset = self.read()?.clone().unwrap_or_default();
+        prev_changeset.append(new_changeset.clone());
+
+        let serialized =
+            serde_json::to_string(&prev_changeset).map_err(|_| anyhow!("Cannot serialize persisted data"))?;
 
         let local_storage = get_storage().ok();
         if local_storage.is_some() {
