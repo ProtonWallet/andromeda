@@ -2,6 +2,7 @@ use andromeda_api::{self, ApiConfig, Auth, ProtonWalletApiClient};
 use bitcoin_address::WasmBitcoinAddressClient;
 use email_integration::WasmEmailIntegrationClient;
 use exchange_rate::WasmExchangeRateClient;
+use invite::WasmInviteClient;
 use network::WasmNetworkClient;
 use payment_gateway::WasmPaymentGatewayClient;
 use settings::WasmSettingsClient;
@@ -14,6 +15,7 @@ mod bitcoin_address;
 mod email_integration;
 mod env;
 mod exchange_rate;
+mod invite;
 mod network;
 mod payment_gateway;
 mod settings;
@@ -45,6 +47,7 @@ pub struct WasmApiClients {
     pub payment_gateway: WasmPaymentGatewayClient,
     pub settings: WasmSettingsClient,
     pub network: WasmNetworkClient,
+    pub invite: WasmInviteClient,
     pub wallet: WasmWalletClient,
 }
 
@@ -79,6 +82,7 @@ impl WasmProtonWalletApiClient {
             payment_gateway: WasmPaymentGatewayClient::from(clients.payment_gateway),
             settings: WasmSettingsClient::from(clients.settings),
             network: WasmNetworkClient::from(clients.network),
+            invite: WasmInviteClient::from(clients.invite),
             wallet: WasmWalletClient::from(clients.wallet),
         }
     }
