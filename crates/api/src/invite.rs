@@ -16,10 +16,11 @@ pub struct InviteRequestBody {
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
-pub struct GetInviteResponseBody {
+pub struct SendInviteResponseBody {
     pub Code: u16,
 }
 
+#[derive(Clone)]
 pub struct InviteClient {
     api_client: Arc<ProtonWalletApiClient>,
 }
@@ -39,34 +40,39 @@ impl ApiClient for InviteClient {
 }
 
 impl InviteClient {
-    pub async fn send_newcomer_invite(&self, invitee_email: String) -> Result<GetInviteResponseBody, Error> {
+    pub async fn send_newcomer_invite(&self, invitee_email: String) -> Result<(), Error> {
         let request = self
             .post("invites")
             .body_json(InviteRequestBody { Email: invitee_email })?;
 
         let response = self.api_client.send(request).await?;
+        response.parse_response::<SendInviteResponseBody>()?;
 
-        response.parse_response::<GetInviteResponseBody>()
-    }
-
-    pub async fn check_invite_status(&self, invitee_email: String) -> Result<(), Error> {
-        let request = self.get("invites").query(("Email", invitee_email));
-        self.api_client.send(request).await?;
         Ok(())
     }
 
-    pub async fn send_email_integration_invite(&self, invitee_email: String) -> Result<GetInviteResponseBody, Error> {
+    /// Call an endpoint to check whether or not user can send an invite to the
+    /// requested email. Throw if user cannot send, resolves if user can send
+    pub async fn check_invite_status(&self, invitee_email: String) -> Result<(), Error> {
+        let request = self.get("invites").query(("Email", invitee_email));
+        self.api_client.send(request).await?;
+
+        Ok(())
+    }
+
+    pub async fn send_email_integration_invite(&self, invitee_email: String) -> Result<(), Error> {
         let request = self
             .post("invites/email-integration")
             .body_json(InviteRequestBody { Email: invitee_email })?;
         let response = self.api_client.send(request).await?;
-        Ok(response.parse_response::<GetInviteResponseBody>()?)
+        response.parse_response::<SendInviteResponseBody>()?;
+
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
-
     use std::sync::Arc;
 
     use wiremock::{
