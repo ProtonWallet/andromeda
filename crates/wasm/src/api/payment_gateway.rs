@@ -376,4 +376,9 @@ impl WasmPaymentGatewayClient {
             .await
             .map_err(|e| e.to_js_error())
     }
+
+    #[wasm_bindgen(js_name = "signUrl")]
+    pub async fn sign_url(&self, url: String, provider: WasmGatewayProvider) -> Result<String, js_sys::Error> {
+        self.0.sign_url(url, provider.into()).await.map_err(|e| e.to_js_error())
+    }
 }

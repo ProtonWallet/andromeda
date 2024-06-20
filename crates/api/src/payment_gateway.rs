@@ -116,6 +116,20 @@ pub struct CreateOnRampCheckoutResponseBody {
     pub CheckoutUrl: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+#[allow(non_snake_case)]
+pub struct SignUrlRequestBody {
+    pub Url: String,
+    pub Provider: GatewayProvider,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+pub struct SignUrlResponseBody {
+    pub Code: i32,
+    pub SignedUrl: String,
+}
+
 #[derive(Clone)]
 pub struct PaymentGatewayClient {
     api_client: Arc<ProtonWalletApiClient>,
@@ -208,6 +222,21 @@ impl PaymentGatewayClient {
         let parsed = response.parse_response::<CreateOnRampCheckoutResponseBody>()?;
         Ok(parsed.CheckoutUrl)
     }
+
+    /// We expect only MoonPay to be provided as provider here, any other
+    /// provider will return a 400 for now
+    pub async fn sign_url(&self, url: String, provider: GatewayProvider) -> Result<String, Error> {
+        let body = SignUrlRequestBody {
+            Url: url,
+            Provider: provider,
+        };
+        let request = self.post("payment-gateway/on-ramp/sign-url").body_json(body)?;
+
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<SignUrlResponseBody>()?;
+
+        Ok(parsed.SignedUrl)
+    }
 }
 
 #[cfg(test)]
@@ -222,7 +251,7 @@ mod tests {
         core::ApiClient,
         payment_gateway::{
             GatewayProvider, GetCountriesResponseBody, GetFiatCurrenciesResponseBody, GetPaymentMethodsResponseBody,
-            GetQuotesResponseBody, PaymentGatewayClient, PaymentMethod,
+            GetQuotesResponseBody, PaymentGatewayClient, PaymentMethod, SignUrlRequestBody,
         },
         tests::utils::{common_api_client, setup_test_connection_arc},
         BASE_WALLET_API_V1,
@@ -734,6 +763,36 @@ mod tests {
             Ok(value) => panic!("Expected Error variant but got Ok.{}", value),
             Err(e) => assert!(!e.to_string().is_empty()),
         }
+    }
+
+    #[tokio::test]
+    async fn test_sign_url_1000() {
+        let mock_server = MockServer::start().await;
+        let json_body = serde_json::json!(
+        {
+            "Code": 1000,
+            "SignedUrl": "https://example.com?signature=xyz",
+        });
+        let req_path: String = format!("{}/payment-gateway/on-ramp/sign-url", BASE_WALLET_API_V1);
+        let response = ResponseTemplate::new(200).set_body_json(json_body);
+        Mock::given(method("POST"))
+            .and(path(req_path))
+            .and(body_json(SignUrlRequestBody {
+                Url: "https://example.com".to_string(),
+                Provider: GatewayProvider::MoonPay,
+            }))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let gateway_client = PaymentGatewayClient::new(api_client);
+        let res = gateway_client
+            .sign_url("https://example.com".to_string(), GatewayProvider::MoonPay)
+            .await
+            .unwrap();
+
+        assert_eq!(res, "https://example.com?signature=xyz".to_string())
     }
 
     #[tokio::test]
