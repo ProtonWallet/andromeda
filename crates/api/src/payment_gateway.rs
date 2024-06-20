@@ -127,7 +127,7 @@ pub struct SignUrlRequestBody {
 #[allow(non_snake_case)]
 pub struct SignUrlResponseBody {
     pub Code: i32,
-    pub SignedUrl: String,
+    pub UrlSignature: String,
 }
 
 #[derive(Clone)]
@@ -235,7 +235,7 @@ impl PaymentGatewayClient {
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<SignUrlResponseBody>()?;
 
-        Ok(parsed.SignedUrl)
+        Ok(parsed.UrlSignature)
     }
 }
 
@@ -771,7 +771,7 @@ mod tests {
         let json_body = serde_json::json!(
         {
             "Code": 1000,
-            "SignedUrl": "https://example.com?signature=xyz",
+            "UrlSignature": "xyz",
         });
         let req_path: String = format!("{}/payment-gateway/on-ramp/sign-url", BASE_WALLET_API_V1);
         let response = ResponseTemplate::new(200).set_body_json(json_body);
@@ -792,7 +792,7 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(res, "https://example.com?signature=xyz".to_string())
+        assert_eq!(res, "xyz".to_string())
     }
 
     #[tokio::test]
