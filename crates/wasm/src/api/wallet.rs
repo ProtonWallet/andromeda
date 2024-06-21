@@ -559,6 +559,7 @@ impl WasmWalletClient {
             .map(|t| WasmApiWalletTransactionData { Data: t.into() })
     }
 
+    #[wasm_bindgen(js_name = "updateExternalWalletTransactionSender")]
     pub async fn update_external_wallet_transaction_sender(
         &self,
         wallet_id: String,
@@ -573,6 +574,7 @@ impl WasmWalletClient {
             .map(|t| WasmApiWalletTransactionData { Data: t.into() })
     }
 
+    #[wasm_bindgen(js_name = "setWalletTransactionFlag")]
     pub async fn set_wallet_transaction_flag(
         &self,
         wallet_id: String,
@@ -587,6 +589,7 @@ impl WasmWalletClient {
             .map(|t| WasmApiWalletTransactionData { Data: t.into() })
     }
 
+    #[wasm_bindgen(js_name = "deleteWalletTransactionFlag")]
     pub async fn delete_wallet_transaction_flag(
         &self,
         wallet_id: String,
