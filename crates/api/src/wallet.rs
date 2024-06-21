@@ -223,8 +223,8 @@ pub struct ApiWalletTransaction {
     pub Label: Option<String>,
     pub TransactionID: String,
     pub TransactionTime: String,
-    pub IsSuspicious: bool,
-    pub IsPrivate: bool,
+    pub IsSuspicious: u8,
+    pub IsPrivate: u8,
     pub ExchangeRate: Option<ApiExchangeRate>,
     pub HashedTransactionID: Option<String>,
     pub Subject: Option<String>,
@@ -1271,8 +1271,8 @@ mod tests {
                     "Label":"xyw=",
                     "TransactionID":"-----BEGIN PGP MESSAGE-----\nVersion: ProtonMail\n\nwV4DV4P+kOmxMSUSAQdASrNn/jIFP6n+AjXwVk6VfU2SUiqGlmG7TkTtZijw\nkBowwibck93WAs73xSsUgbT1BNjRKeYVuZV6hdH+j9DImHBZqrzGmvkR6TNz\n3c9E2t520nEB9VnJbGKMkmsE8hKoL+aIGEvoeO5zAB5sCFKkxF0n/Ij5GkQE\nv7+nj8rTnyGOvkja9koS4lE0waUoSwswGPu/L1JUGLvZVai8Yc13ensyULmD\ngzZMClFfYeDNoXKYzXcXSYsU+FQRyljyB64zD0Z3Tw==\n=cx4x\n-----END PGP MESSAGE-----\n",
                     "TransactionTime":"1714553312",
-                    "IsSuspicious": true,
-                    "IsPrivate": true,
+                    "IsSuspicious": 1,
+                    "IsPrivate": 1,
                     "ExchangeRate":{
                         "ID":"pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
                         "BitcoinUnit":"BTC",
@@ -1329,8 +1329,8 @@ mod tests {
             wallet_transaction.HashedTransactionID
                 == Some(String::from("bymboZ1s6GaWwT9kCgrOTOVyzcPAKfmFYUHJCJy9c6U="))
         );
-        assert!(wallet_transaction.IsSuspicious == true);
-        assert!(wallet_transaction.IsPrivate == true);
+        assert!(wallet_transaction.IsSuspicious == 1);
+        assert!(wallet_transaction.IsPrivate == 1);
         assert!(wallet_transaction.Subject == None);
         assert!(wallet_transaction.Body == None);
         assert!(wallet_transaction.ToList == None);
