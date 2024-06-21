@@ -1,6 +1,6 @@
 use andromeda_api::wallet::{
     ApiEmailAddress, ApiWalletAccount, ApiWalletData, ApiWalletTransaction, CreateWalletAccountRequestBody,
-    CreateWalletRequestBody, CreateWalletTransactionRequestBody, TransactionType, WalletClient,
+    CreateWalletRequestBody, CreateWalletTransactionRequestBody, TransactionType, WalletClient, WalletTransactionFlag,
 };
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
@@ -199,6 +199,8 @@ pub struct WasmApiWalletTransaction {
     pub Label: Option<String>,
     pub TransactionID: String,
     pub TransactionTime: String,
+    pub IsSuspicious: bool,
+    pub IsPrivate: bool,
     pub ExchangeRate: Option<WasmApiExchangeRate>,
     pub HashedTransactionID: Option<String>,
     pub Subject: Option<String>,
@@ -217,12 +219,29 @@ impl From<ApiWalletTransaction> for WasmApiWalletTransaction {
             Label: value.Label,
             TransactionID: value.TransactionID,
             TransactionTime: value.TransactionTime,
+            IsSuspicious: value.IsSuspicious,
+            IsPrivate: value.IsPrivate,
             ExchangeRate: value.ExchangeRate.map(|r| r.into()),
             HashedTransactionID: value.HashedTransactionID,
             Subject: value.Subject,
             Body: value.Body,
             ToList: value.ToList,
             Sender: value.Sender,
+        }
+    }
+}
+
+#[wasm_bindgen]
+pub enum WasmWalletTransactionFlag {
+    Suspicious,
+    Private,
+}
+
+impl From<WasmWalletTransactionFlag> for WalletTransactionFlag {
+    fn from(value: WasmWalletTransactionFlag) -> Self {
+        match value {
+            WasmWalletTransactionFlag::Suspicious => WalletTransactionFlag::Suspicious,
+            WasmWalletTransactionFlag::Private => WalletTransactionFlag::Private,
         }
     }
 }
@@ -535,6 +554,48 @@ impl WasmWalletClient {
     ) -> Result<WasmApiWalletTransactionData, js_sys::Error> {
         self.0
             .update_wallet_transaction_hashed_txid(wallet_id, wallet_account_id, wallet_transaction_id, hash_txid)
+            .await
+            .map_err(|e| e.to_js_error())
+            .map(|t| WasmApiWalletTransactionData { Data: t.into() })
+    }
+
+    pub async fn update_external_wallet_transaction_sender(
+        &self,
+        wallet_id: String,
+        wallet_account_id: String,
+        wallet_transaction_id: String,
+        sender: String,
+    ) -> Result<WasmApiWalletTransactionData, js_sys::Error> {
+        self.0
+            .update_external_wallet_transaction_sender(wallet_id, wallet_account_id, wallet_transaction_id, sender)
+            .await
+            .map_err(|e| e.to_js_error())
+            .map(|t| WasmApiWalletTransactionData { Data: t.into() })
+    }
+
+    pub async fn set_wallet_transaction_flag(
+        &self,
+        wallet_id: String,
+        wallet_account_id: String,
+        wallet_transaction_id: String,
+        flag: WasmWalletTransactionFlag,
+    ) -> Result<WasmApiWalletTransactionData, js_sys::Error> {
+        self.0
+            .set_wallet_transaction_flag(wallet_id, wallet_account_id, wallet_transaction_id, flag.into())
+            .await
+            .map_err(|e| e.to_js_error())
+            .map(|t| WasmApiWalletTransactionData { Data: t.into() })
+    }
+
+    pub async fn delete_wallet_transaction_flag(
+        &self,
+        wallet_id: String,
+        wallet_account_id: String,
+        wallet_transaction_id: String,
+        flag: WasmWalletTransactionFlag,
+    ) -> Result<WasmApiWalletTransactionData, js_sys::Error> {
+        self.0
+            .delete_wallet_transaction_flag(wallet_id, wallet_account_id, wallet_transaction_id, flag.into())
             .await
             .map_err(|e| e.to_js_error())
             .map(|t| WasmApiWalletTransactionData { Data: t.into() })
