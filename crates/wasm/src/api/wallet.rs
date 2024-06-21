@@ -165,7 +165,8 @@ impl From<ApiWalletAccount> for WasmApiWalletAccount {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
 pub enum WasmTransactionType {
     NotSend,
     ProtonToProtonSend,
@@ -199,8 +200,8 @@ pub struct WasmApiWalletTransaction {
     pub Label: Option<String>,
     pub TransactionID: String,
     pub TransactionTime: String,
-    pub IsSuspicious: bool,
-    pub IsPrivate: bool,
+    pub IsSuspicious: u8,
+    pub IsPrivate: u8,
     pub ExchangeRate: Option<WasmApiExchangeRate>,
     pub HashedTransactionID: Option<String>,
     pub Subject: Option<String>,
