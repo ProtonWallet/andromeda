@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
+use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use super::BASE_WALLET_API_V1;
 use crate::{
@@ -199,12 +200,25 @@ struct DeleteWalletAccountResponseBody {
     pub Code: u16,
 }
 
+#[derive(Deserialize_repr, Serialize_repr, PartialEq, Debug)]
+#[repr(u8)]
+pub enum TransactionType {
+    NotSend = 0,
+    ProtonToProtonSend = 1,
+    ProtonToProtonReceive = 2,
+    ExternalSend = 3,
+    ExternalReceive = 4,
+    #[serde(other)]
+    Unsupported,
+}
+
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 pub struct ApiWalletTransaction {
     pub ID: String,
+    pub Type: Option<TransactionType>, // TODO: this should be made non-nullable once API is ready
     pub WalletID: String,
-    pub WalletAccountID: Option<String>,
+    pub WalletAccountID: Option<String>, // TODO this should be non-nullable
     pub Label: Option<String>,
     pub TransactionID: String,
     pub TransactionTime: String,

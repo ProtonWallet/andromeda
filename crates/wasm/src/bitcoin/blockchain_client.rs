@@ -101,9 +101,9 @@ impl WasmBlockchainClient {
             .await
             .map_err(|e| e.to_js_error())?;
 
-        let mut wallet_lock = account_inner.get_wallet().await;
-        wallet_lock
+        account_inner
             .apply_update(update)
+            .await
             .map_err(|e| BitcoinError::from(e).to_js_error())?;
 
         Ok(())
@@ -120,9 +120,9 @@ impl WasmBlockchainClient {
             .await
             .map_err(|e| e.to_js_error())?;
 
-        let mut wallet_lock = account_inner.get_wallet().await;
-        wallet_lock
+        account_inner
             .apply_update(update)
+            .await
             .map_err(|e| BitcoinError::from(e).to_js_error())?;
 
         Ok(())
