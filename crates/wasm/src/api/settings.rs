@@ -310,7 +310,6 @@ pub struct WasmUserSettings {
     pub BitcoinUnit: WasmBitcoinUnit,
     pub FiatCurrency: WasmFiatCurrencySymbol,
     pub HideEmptyUsedAddresses: u8,
-    pub ShowWalletRecovery: u8,
     pub TwoFactorAmountThreshold: Option<u64>,
 }
 
@@ -320,7 +319,6 @@ impl From<UserSettings> for WasmUserSettings {
             BitcoinUnit: value.BitcoinUnit.into(),
             FiatCurrency: value.FiatCurrency.into(),
             HideEmptyUsedAddresses: value.HideEmptyUsedAddresses,
-            ShowWalletRecovery: value.ShowWalletRecovery,
             TwoFactorAmountThreshold: value.TwoFactorAmountThreshold,
         }
     }
