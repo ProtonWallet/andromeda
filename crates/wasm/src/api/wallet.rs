@@ -1,6 +1,6 @@
 use andromeda_api::wallet::{
     ApiEmailAddress, ApiWalletAccount, ApiWalletData, ApiWalletTransaction, CreateWalletAccountRequestBody,
-    CreateWalletRequestBody, CreateWalletTransactionRequestBody, WalletClient,
+    CreateWalletRequestBody, CreateWalletTransactionRequestBody, TransactionType, WalletClient,
 };
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
@@ -165,11 +165,35 @@ impl From<ApiWalletAccount> for WasmApiWalletAccount {
     }
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+pub enum WasmTransactionType {
+    NotSend,
+    ProtonToProtonSend,
+    ProtonToProtonReceive,
+    ExternalSend,
+    ExternalReceive,
+    Unsupported,
+}
+
+impl From<TransactionType> for WasmTransactionType {
+    fn from(value: TransactionType) -> Self {
+        match value {
+            TransactionType::NotSend => WasmTransactionType::NotSend,
+            TransactionType::ProtonToProtonSend => WasmTransactionType::ProtonToProtonSend,
+            TransactionType::ProtonToProtonReceive => WasmTransactionType::ProtonToProtonReceive,
+            TransactionType::ExternalSend => WasmTransactionType::ExternalSend,
+            TransactionType::ExternalReceive => WasmTransactionType::ExternalReceive,
+            TransactionType::Unsupported => WasmTransactionType::Unsupported,
+        }
+    }
+}
+
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[allow(non_snake_case)]
 pub struct WasmApiWalletTransaction {
     pub ID: String,
+    pub Type: Option<WasmTransactionType>,
     pub WalletID: String,
     pub WalletAccountID: Option<String>,
     pub Label: Option<String>,
@@ -187,6 +211,7 @@ impl From<ApiWalletTransaction> for WasmApiWalletTransaction {
     fn from(value: ApiWalletTransaction) -> Self {
         WasmApiWalletTransaction {
             ID: value.ID,
+            Type: value.Type.map(|t| t.into()),
             WalletID: value.WalletID,
             WalletAccountID: value.WalletAccountID,
             Label: value.Label,
