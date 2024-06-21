@@ -119,7 +119,6 @@ pub struct UserSettings {
     pub BitcoinUnit: BitcoinUnit,
     pub FiatCurrency: FiatCurrencySymbol,
     pub HideEmptyUsedAddresses: u8,
-    pub ShowWalletRecovery: u8,
     pub TwoFactorAmountThreshold: Option<u64>,
 }
 
