@@ -1,3 +1,4 @@
+use core::fmt;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
@@ -222,12 +223,29 @@ pub struct ApiWalletTransaction {
     pub Label: Option<String>,
     pub TransactionID: String,
     pub TransactionTime: String,
+    pub IsSuspicious: bool,
+    pub IsPrivate: bool,
     pub ExchangeRate: Option<ApiExchangeRate>,
     pub HashedTransactionID: Option<String>,
     pub Subject: Option<String>,
     pub Body: Option<String>,
     pub ToList: Option<String>,
     pub Sender: Option<String>,
+}
+
+pub enum WalletTransactionFlag {
+    Suspicious,
+    Private,
+}
+
+impl fmt::Display for WalletTransactionFlag {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let output = match self {
+            WalletTransactionFlag::Suspicious => "suspicious",
+            WalletTransactionFlag::Private => "private",
+        };
+        write!(f, "{}", output)
+    }
 }
 
 const HASHED_TRANSACTION_ID_KEY: &str = "HashedTransactionIDs[]";
@@ -264,19 +282,19 @@ struct CreateWalletTransactionResponseBody {
     pub WalletTransaction: ApiWalletTransaction,
 }
 
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+struct UpdateWalletTransactionResponseBody {
+    #[allow(dead_code)]
+    pub Code: u16,
+    pub WalletTransaction: ApiWalletTransaction,
+}
+
 #[derive(Debug, Serialize)]
 #[allow(non_snake_case)]
 pub struct UpdateWalletTransactionLabelRequestBody {
     /// encrypted Base64 encoded binary data
     pub Label: String,
-}
-
-#[derive(Debug, Deserialize)]
-#[allow(non_snake_case)]
-struct UpdateWalletTransactionLabelResponseBody {
-    #[allow(dead_code)]
-    pub Code: u16,
-    pub WalletTransaction: ApiWalletTransaction,
 }
 
 #[derive(Debug, Serialize)]
@@ -286,12 +304,11 @@ pub struct UpdateWalletTransactionHashedTxidRequestBody {
     pub HashedTransactionID: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize)]
 #[allow(non_snake_case)]
-struct UpdateWalletTransactionHashedTxidResponseBody {
-    #[allow(dead_code)]
-    pub Code: u16,
-    pub WalletTransaction: ApiWalletTransaction,
+pub struct UpdateWalletTransactionExternalSenderRequestBody {
+    /// An armored PGP Message
+    pub Sender: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -544,7 +561,7 @@ impl WalletClient {
             .body_json(payload)?;
 
         let response = self.api_client.send(request).await?;
-        let parsed = response.parse_response::<UpdateWalletTransactionLabelResponseBody>()?;
+        let parsed = response.parse_response::<UpdateWalletTransactionResponseBody>()?;
 
         Ok(parsed.WalletTransaction)
     }
@@ -568,7 +585,70 @@ impl WalletClient {
             .body_json(payload)?;
 
         let response = self.api_client.send(request).await?;
-        let parsed = response.parse_response::<UpdateWalletTransactionHashedTxidResponseBody>()?;
+        let parsed = response.parse_response::<UpdateWalletTransactionResponseBody>()?;
+
+        Ok(parsed.WalletTransaction)
+    }
+
+    pub async fn update_external_wallet_transaction_sender(
+        &self,
+        wallet_id: String,
+        wallet_account_id: String,
+        wallet_transaction_id: String,
+        sender: String,
+    ) -> Result<ApiWalletTransaction, Error> {
+        let payload = UpdateWalletTransactionExternalSenderRequestBody { Sender: sender };
+
+        let request = self
+            .put(format!(
+                "wallets/{}/accounts/{}/transactions/{}/sender",
+                wallet_id, wallet_account_id, wallet_transaction_id
+            ))
+            .body_json(payload)?;
+
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<UpdateWalletTransactionResponseBody>()?;
+
+        Ok(parsed.WalletTransaction)
+    }
+
+    pub async fn set_wallet_transaction_flag(
+        &self,
+        wallet_id: String,
+        wallet_account_id: String,
+        wallet_transaction_id: String,
+        flag: WalletTransactionFlag,
+    ) -> Result<ApiWalletTransaction, Error> {
+        let request = self.put(format!(
+            "wallets/{}/accounts/{}/transactions/{}/{}",
+            wallet_id,
+            wallet_account_id,
+            wallet_transaction_id,
+            flag.to_string()
+        ));
+
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<UpdateWalletTransactionResponseBody>()?;
+
+        Ok(parsed.WalletTransaction)
+    }
+
+    pub async fn delete_wallet_transaction_flag(
+        &self,
+        wallet_id: String,
+        wallet_account_id: String,
+        wallet_transaction_id: String,
+        flag: WalletTransactionFlag,
+    ) -> Result<ApiWalletTransaction, Error> {
+        let request = self.delete(format!(
+            "wallets/{}/accounts/{}/transactions/{}/{}",
+            wallet_id,
+            wallet_account_id,
+            wallet_transaction_id,
+            flag.to_string()
+        ));
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<UpdateWalletTransactionResponseBody>()?;
 
         Ok(parsed.WalletTransaction)
     }
@@ -876,10 +956,10 @@ mod tests {
         let client = WalletClient::new(api_client);
 
         let payload = CreateWalletTransactionRequestBody {
-            TransactionID: String::from("xyz"),
-            HashedTransactionID: String::from("xyz"),
+            TransactionID: String::from("-----BEGIN PGP MESSAGE-----\nVersion: ProtonMail\n\nwV4DV4P+kOmxMSUSAQdASrNn/jIFP6n+AjXwVk6VfU2SUiqGlmG7TkTtZijw\nkBowwibck93WAs73xSsUgbT1BNjRKeYVuZV6hdH+j9DImHBZqrzGmvkR6TNz\n3c9E2t520nEB9VnJbGKMkmsE8hKoL+aIGEvoeO5zAB5sCFKkxF0n/Ij5GkQE\nv7+nj8rTnyGOvkja9koS4lE0waUoSwswGPu/L1JUGLvZVai8Yc13ensyULmD\ngzZMClFfYeDNoXKYzXcXSYsU+FQRyljyB64zD0Z3Tw==\n=cx4x\n-----END PGP MESSAGE-----"),
+            HashedTransactionID: String::from("XYgTAERpwkoYogPUWvlfmyaK17q7DTmkwDHdvpptrGc"),
             Label: Some(String::from("xyz")),
-            ExchangeRateID: None,
+            ExchangeRateID: Some(String::from("pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==")),
             TransactionTime: None,
         };
 
@@ -911,10 +991,10 @@ mod tests {
                     "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
                 ),
                 String::from(
-                    "nt3NEGgRyn4jA0X-pn0W1b5kBGCdvCLAy4lBMMpIrnedkW38TbMus_mM_2bb4UhIn9I3-EU7mPzQG_nc90SPiQ==",
+                    "lY2ZCYkVNfl_osze70PRoqzg34MQI64mE3-pLc-yMp_6KXthkV1paUsyS276OdNwucz9zKoWKZL_TgtKxOPb0w==",
                 ),
                 String::from(
-                    "l8vWAXHBQmv0u7OVtPbcqMa4iwQaBqowINSQjPrxAr-Da8fVPKUkUcqAq30_BCxj1X0nW70HQRmAa-rIvzmKUA==",
+                    "h3fiHve6jGce6SiAB14JJpusSHlRZT01jQWI-DK6Cc4aY8w_4qqyL8eNS021UNUJAZmT3XT5XnhQWIW97XYkpw==",
                 ),
                 String::from("xyz"),
             )
@@ -936,12 +1016,136 @@ mod tests {
                     "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
                 ),
                 String::from(
-                    "nt3NEGgRyn4jA0X-pn0W1b5kBGCdvCLAy4lBMMpIrnedkW38TbMus_mM_2bb4UhIn9I3-EU7mPzQG_nc90SPiQ==",
+                    "lY2ZCYkVNfl_osze70PRoqzg34MQI64mE3-pLc-yMp_6KXthkV1paUsyS276OdNwucz9zKoWKZL_TgtKxOPb0w==",
                 ),
                 String::from(
-                    "l8vWAXHBQmv0u7OVtPbcqMa4iwQaBqowINSQjPrxAr-Da8fVPKUkUcqAq30_BCxj1X0nW70HQRmAa-rIvzmKUA==",
+                    "h3fiHve6jGce6SiAB14JJpusSHlRZT01jQWI-DK6Cc4aY8w_4qqyL8eNS021UNUJAZmT3XT5XnhQWIW97XYkpw==",
                 ),
-                String::from("xyz"),
+                String::from("bymboZ1s6GaWwT9kCgrOTOVyzcPAKfmFYUHJCJy9c6U="),
+            )
+            .await;
+
+        println!("request done: {:?}", res);
+        assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn should_update_wallet_transaction_external_sender() {
+        let api_client = common_api_client().await;
+        let client = WalletClient::new(api_client);
+
+        let res = client.update_external_wallet_transaction_sender(
+                String::from(
+                    "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
+                ),
+                String::from(
+                    "lY2ZCYkVNfl_osze70PRoqzg34MQI64mE3-pLc-yMp_6KXthkV1paUsyS276OdNwucz9zKoWKZL_TgtKxOPb0w==",
+                ),
+                String::from(
+                    "h3fiHve6jGce6SiAB14JJpusSHlRZT01jQWI-DK6Cc4aY8w_4qqyL8eNS021UNUJAZmT3XT5XnhQWIW97XYkpw==",
+                ),
+                String::from("-----BEGIN PGP MESSAGE-----\nVersion: ProtonMail\n\nwV4DV4P+kOmxMSUSAQdASrNn/jIFP6n+AjXwVk6VfU2SUiqGlmG7TkTtZijw\nkBowwibck93WAs73xSsUgbT1BNjRKeYVuZV6hdH+j9DImHBZqrzGmvkR6TNz\n3c9E2t520nEB9VnJbGKMkmsE8hKoL+aIGEvoeO5zAB5sCFKkxF0n/Ij5GkQE\nv7+nj8rTnyGOvkja9koS4lE0waUoSwswGPu/L1JUGLvZVai8Yc13ensyULmD\ngzZMClFfYeDNoXKYzXcXSYsU+FQRyljyB64zD0Z3Tw==\n=cx4x\n-----END PGP MESSAGE-----"),
+            )
+            .await;
+
+        println!("request done: {:?}", res);
+        assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn should_set_wallet_transaction_private_flag() {
+        let api_client = common_api_client().await;
+        let client = WalletClient::new(api_client);
+
+        let res = client
+            .set_wallet_transaction_flag(
+                String::from(
+                    "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
+                ),
+                String::from(
+                    "lY2ZCYkVNfl_osze70PRoqzg34MQI64mE3-pLc-yMp_6KXthkV1paUsyS276OdNwucz9zKoWKZL_TgtKxOPb0w==",
+                ),
+                String::from(
+                    "h3fiHve6jGce6SiAB14JJpusSHlRZT01jQWI-DK6Cc4aY8w_4qqyL8eNS021UNUJAZmT3XT5XnhQWIW97XYkpw==",
+                ),
+                crate::wallet::WalletTransactionFlag::Private,
+            )
+            .await;
+
+        println!("request done: {:?}", res);
+        assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn should_set_wallet_transaction_suspicious_flag() {
+        let api_client = common_api_client().await;
+        let client = WalletClient::new(api_client);
+
+        let res = client
+            .set_wallet_transaction_flag(
+                String::from(
+                    "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
+                ),
+                String::from(
+                    "lY2ZCYkVNfl_osze70PRoqzg34MQI64mE3-pLc-yMp_6KXthkV1paUsyS276OdNwucz9zKoWKZL_TgtKxOPb0w==",
+                ),
+                String::from(
+                    "h3fiHve6jGce6SiAB14JJpusSHlRZT01jQWI-DK6Cc4aY8w_4qqyL8eNS021UNUJAZmT3XT5XnhQWIW97XYkpw==",
+                ),
+                crate::wallet::WalletTransactionFlag::Suspicious,
+            )
+            .await;
+
+        println!("request done: {:?}", res);
+        assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn should_delete_wallet_transaction_private_flag() {
+        let api_client = common_api_client().await;
+        let client = WalletClient::new(api_client);
+
+        let res = client
+            .delete_wallet_transaction_flag(
+                String::from(
+                    "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
+                ),
+                String::from(
+                    "lY2ZCYkVNfl_osze70PRoqzg34MQI64mE3-pLc-yMp_6KXthkV1paUsyS276OdNwucz9zKoWKZL_TgtKxOPb0w==",
+                ),
+                String::from(
+                    "h3fiHve6jGce6SiAB14JJpusSHlRZT01jQWI-DK6Cc4aY8w_4qqyL8eNS021UNUJAZmT3XT5XnhQWIW97XYkpw==",
+                ),
+                crate::wallet::WalletTransactionFlag::Private,
+            )
+            .await;
+
+        println!("request done: {:?}", res);
+        assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn should_delete_wallet_transaction_suspicious_flag() {
+        let api_client = common_api_client().await;
+        let client = WalletClient::new(api_client);
+
+        let res = client
+            .delete_wallet_transaction_flag(
+                String::from(
+                    "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
+                ),
+                String::from(
+                    "lY2ZCYkVNfl_osze70PRoqzg34MQI64mE3-pLc-yMp_6KXthkV1paUsyS276OdNwucz9zKoWKZL_TgtKxOPb0w==",
+                ),
+                String::from(
+                    "h3fiHve6jGce6SiAB14JJpusSHlRZT01jQWI-DK6Cc4aY8w_4qqyL8eNS021UNUJAZmT3XT5XnhQWIW97XYkpw==",
+                ),
+                crate::wallet::WalletTransactionFlag::Suspicious,
             )
             .await;
 
@@ -961,10 +1165,10 @@ mod tests {
                     "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
                 ),
                 String::from(
-                    "nt3NEGgRyn4jA0X-pn0W1b5kBGCdvCLAy4lBMMpIrnedkW38TbMus_mM_2bb4UhIn9I3-EU7mPzQG_nc90SPiQ==",
+                    "lY2ZCYkVNfl_osze70PRoqzg34MQI64mE3-pLc-yMp_6KXthkV1paUsyS276OdNwucz9zKoWKZL_TgtKxOPb0w==",
                 ),
                 String::from(
-                    "l8vWAXHBQmv0u7OVtPbcqMa4iwQaBqowINSQjPrxAr-Da8fVPKUkUcqAq30_BCxj1X0nW70HQRmAa-rIvzmKUA==",
+                    "h3fiHve6jGce6SiAB14JJpusSHlRZT01jQWI-DK6Cc4aY8w_4qqyL8eNS021UNUJAZmT3XT5XnhQWIW97XYkpw==",
                 ),
             )
             .await;
@@ -1052,5 +1256,84 @@ mod tests {
         assert!(walle_account.ScriptType == 1);
         assert!(walle_account.WalletID == "string");
         assert!(walle_account.ID == "string");
+    }
+
+    #[tokio::test]
+    async fn test_create_wallet_transaction_1000() {
+        let mock_server = MockServer::start().await;
+        let response_body = serde_json::json!(
+            {
+                "Code": 1000,
+                "WalletTransaction": {
+                    "ID":"h3fiHve6jGce6SiAB14JJpusSHlRZT01jQWI-DK6Cc4aY8w_4qqyL8eNS021UNUJAZmT3XT5XnhQWIW97XYkpw==",
+                    "WalletID":"pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
+                    "WalletAccountID":"lY2ZCYkVNfl_osze70PRoqzg34MQI64mE3-pLc-yMp_6KXthkV1paUsyS276OdNwucz9zKoWKZL_TgtKxOPb0w==",
+                    "Label":"xyw=",
+                    "TransactionID":"-----BEGIN PGP MESSAGE-----\nVersion: ProtonMail\n\nwV4DV4P+kOmxMSUSAQdASrNn/jIFP6n+AjXwVk6VfU2SUiqGlmG7TkTtZijw\nkBowwibck93WAs73xSsUgbT1BNjRKeYVuZV6hdH+j9DImHBZqrzGmvkR6TNz\n3c9E2t520nEB9VnJbGKMkmsE8hKoL+aIGEvoeO5zAB5sCFKkxF0n/Ij5GkQE\nv7+nj8rTnyGOvkja9koS4lE0waUoSwswGPu/L1JUGLvZVai8Yc13ensyULmD\ngzZMClFfYeDNoXKYzXcXSYsU+FQRyljyB64zD0Z3Tw==\n=cx4x\n-----END PGP MESSAGE-----\n",
+                    "TransactionTime":"1714553312",
+                    "IsSuspicious": true,
+                    "IsPrivate": true,
+                    "ExchangeRate":{
+                        "ID":"pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
+                        "BitcoinUnit":"BTC",
+                        "FiatCurrency":"EUR",
+                        "ExchangeRateTime":"1714553312",
+                        "ExchangeRate":5334511,
+                        "Cents":100,
+                    },
+                    "HashedTransactionID":"bymboZ1s6GaWwT9kCgrOTOVyzcPAKfmFYUHJCJy9c6U=",
+                    "Subject": null,
+                    "Body": null,
+                    "ToList": null,
+                    "Sender": null,
+                }
+            }
+        );
+        let wallet_id =
+            String::from("pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==");
+        let wallet_account_id =
+            String::from("lY2ZCYkVNfl_osze70PRoqzg34MQI64mE3-pLc-yMp_6KXthkV1paUsyS276OdNwucz9zKoWKZL_TgtKxOPb0w==");
+        let transaction_id = String::from("-----BEGIN PGP MESSAGE-----\nVersion: ProtonMail\n\nwV4DV4P+kOmxMSUSAQdASrNn/jIFP6n+AjXwVk6VfU2SUiqGlmG7TkTtZijw\nkBowwibck93WAs73xSsUgbT1BNjRKeYVuZV6hdH+j9DImHBZqrzGmvkR6TNz\n3c9E2t520nEB9VnJbGKMkmsE8hKoL+aIGEvoeO5zAB5sCFKkxF0n/Ij5GkQE\nv7+nj8rTnyGOvkja9koS4lE0waUoSwswGPu/L1JUGLvZVai8Yc13ensyULmD\ngzZMClFfYeDNoXKYzXcXSYsU+FQRyljyB64zD0Z3Tw==\n=cx4x\n-----END PGP MESSAGE-----\n");
+
+        let req_path = format!(
+            "{}/wallets/{}/accounts/{}/transactions",
+            BASE_WALLET_API_V1, wallet_id, wallet_account_id
+        );
+        let response = ResponseTemplate::new(200).set_body_json(response_body);
+        Mock::given(method("POST"))
+            .and(path(req_path))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let client = WalletClient::new(api_client);
+        let payload = CreateWalletTransactionRequestBody {
+            TransactionID: transaction_id,
+            HashedTransactionID: String::from("XYgTAERpwkoYogPUWvlfmyaK17q7DTmkwDHdvpptrGc"),
+            Label: Some(String::from("xyz")),
+            ExchangeRateID: Some(String::from(
+                "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
+            )),
+            TransactionTime: None,
+        };
+
+        let res = client
+            .create_wallet_transaction(wallet_id, wallet_account_id, payload)
+            .await;
+        assert!(res.is_ok());
+        let wallet_transaction = res.unwrap();
+        assert!(wallet_transaction.Label == Some(String::from("xyw=")));
+        assert!(wallet_transaction.TransactionID == "-----BEGIN PGP MESSAGE-----\nVersion: ProtonMail\n\nwV4DV4P+kOmxMSUSAQdASrNn/jIFP6n+AjXwVk6VfU2SUiqGlmG7TkTtZijw\nkBowwibck93WAs73xSsUgbT1BNjRKeYVuZV6hdH+j9DImHBZqrzGmvkR6TNz\n3c9E2t520nEB9VnJbGKMkmsE8hKoL+aIGEvoeO5zAB5sCFKkxF0n/Ij5GkQE\nv7+nj8rTnyGOvkja9koS4lE0waUoSwswGPu/L1JUGLvZVai8Yc13ensyULmD\ngzZMClFfYeDNoXKYzXcXSYsU+FQRyljyB64zD0Z3Tw==\n=cx4x\n-----END PGP MESSAGE-----\n");
+        assert!(wallet_transaction.TransactionTime == "1714553312");
+        assert!(
+            wallet_transaction.HashedTransactionID
+                == Some(String::from("bymboZ1s6GaWwT9kCgrOTOVyzcPAKfmFYUHJCJy9c6U="))
+        );
+        assert!(wallet_transaction.IsSuspicious == true);
+        assert!(wallet_transaction.IsPrivate == true);
+        assert!(wallet_transaction.Subject == None);
+        assert!(wallet_transaction.Body == None);
+        assert!(wallet_transaction.ToList == None);
+        assert!(wallet_transaction.Sender == None);
     }
 }
