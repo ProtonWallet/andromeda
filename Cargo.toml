@@ -14,6 +14,10 @@ opt-level = "s" # Tell `rustc` to optimize for small code size.
 [workspace.dependencies]
 anyhow = "1.0"
 thiserror = "1.0"
+serde_json = "1.0.117"
+serde = { version = "1.0.144", features = ["derive"] }
+
+async-std = "1.10"
 
 bitcoin = { version = "=0.32.0", default-features = false, features = [
   "serde",
@@ -28,3 +32,6 @@ bdk_wallet = { version = "=1.0.0-alpha.13", default-features = false, features =
 bdk_esplora = { version = "=0.9.0", default-features = false, features = [
   "async-https-rustls",
 ] }
+
+tokio = { features = ["macros", "rt"], version = "1.35" }
+tokio-test = "0.4.3"

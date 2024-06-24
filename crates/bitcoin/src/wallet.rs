@@ -97,14 +97,8 @@ impl<P: WalletStore> Wallet<P> {
 
         let balance = account_balances
             .into_iter()
-            .fold(Ok(init), |acc: Result<Balance, Error>, account_balance| match acc {
-                Ok(acc) => Ok(Balance {
-                    untrusted_pending: acc.untrusted_pending + account_balance.untrusted_pending,
-                    confirmed: acc.confirmed + account_balance.confirmed,
-                    immature: acc.immature + account_balance.immature,
-                    trusted_pending: acc.trusted_pending + account_balance.trusted_pending,
-                }),
-                _ => acc,
+            .fold(Ok(init), |acc: Result<Balance, Error>, account_balance| {
+                acc.map(|acc| acc + account_balance)
             })?;
 
         Ok(balance)

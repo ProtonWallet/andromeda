@@ -193,6 +193,8 @@ impl AsyncClient {
     pub async fn scripthash_txs(&self, script: &Script, last_seen: Option<Txid>) -> Result<Vec<Tx>, Error> {
         let script_hash = sha256::Hash::hash(script.as_bytes());
 
+        println!("script_hash: {:?}", script_hash.to_string());
+
         let txs = match last_seen {
             Some(last_seen) => {
                 self.address

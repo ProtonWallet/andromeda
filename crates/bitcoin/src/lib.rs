@@ -21,9 +21,10 @@ pub use bdk_wallet::{
             locktime::absolute::{Height, LockTime, Time},
         },
         consensus::Params as ConsensusParams,
-        Address, BlockHash, Network as BdkNetwork, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Witness,
+        Address, Amount, BlockHash, Network as BdkNetwork, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut,
+        Witness,
     },
-    chain::Append,
+    chain::{Append, ConfirmationTime, ConfirmationTimeHeightAnchor},
     keys::{
         bip39::{Language as BdkLanguage, Mnemonic as BdkMnemonic, MnemonicWithPassphrase, WordCount},
         DerivableKey, ExtendedKey,

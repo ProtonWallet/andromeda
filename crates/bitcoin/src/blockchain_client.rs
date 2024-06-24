@@ -63,7 +63,6 @@ impl BlockchainClient {
             .start_full_scan()
             .inspect_spks_for_keychain(KeychainKind::External, generate_inspect(KeychainKind::External))
             .inspect_spks_for_keychain(KeychainKind::Internal, generate_inspect(KeychainKind::Internal));
-
         let mut update = self
             .0
             .full_scan(request, stop_gap.unwrap_or(DEFAULT_STOP_GAP), PARALLEL_REQUESTS)
