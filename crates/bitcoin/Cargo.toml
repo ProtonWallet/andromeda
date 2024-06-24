@@ -8,7 +8,7 @@ andromeda-api = { version = "0.1.0", path = "../api" }
 andromeda-common = { version = "0.1.0", path = "../common" }
 andromeda-esplora = { version = "0.1.0", path = "../esplora" }
 
-serde = { version = "1.0.144", features = ["derive"] }
+serde = { workspace = true }
 uuid = { version = "1.6.1", features = ["v4", "fast-rng"] }
 urlencoding = "2.1.3"
 querystring = "1.1.0"
@@ -24,7 +24,7 @@ bdk_esplora = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
 
-async-std = "1.10"
+async-std = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2.10", features = ["js"] }
@@ -34,6 +34,6 @@ wasm-bindgen = { version = "0.2.88", features = [
 wasm-bindgen-futures = "0.4.39"
 
 [dev-dependencies]
-tokio = { features = ["macros", "rt"], version = "1.35" }
-tokio-test = "0.4.3"
+tokio = { workspace = true }
+tokio-test = { workspace = true }
 bech32 = "0.11.0"
