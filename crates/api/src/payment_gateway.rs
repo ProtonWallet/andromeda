@@ -130,6 +130,13 @@ pub struct SignUrlResponseBody {
     pub UrlSignature: String,
 }
 
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+pub struct GetPublicAPIKeyResponseBody {
+    pub Code: i32,
+    pub PublicApiKey: String,
+}
+
 #[derive(Clone)]
 pub struct PaymentGatewayClient {
     api_client: Arc<ProtonWalletApiClient>,
@@ -236,6 +243,20 @@ impl PaymentGatewayClient {
         let parsed = response.parse_response::<SignUrlResponseBody>()?;
 
         Ok(parsed.UrlSignature)
+    }
+
+    /// We expect only MoonPay or Ramp to be provided as provider here, any
+    /// other provider will return a 400 for now because they don't have any
+    /// public api key to be returned
+    pub async fn get_public_api_key(&self, provider: GatewayProvider) -> Result<String, Error> {
+        let request = self
+            .get("payment-gateway/on-ramp/public-api-key")
+            .query(("Provider", provider));
+
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<GetPublicAPIKeyResponseBody>()?;
+
+        Ok(parsed.PublicApiKey)
     }
 }
 
@@ -860,5 +881,33 @@ mod tests {
             .await;
         println!("create_on_ramp_checkout done: {:?}", res);
         assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_get_public_api_key() {
+        let mock_server = MockServer::start().await;
+        let json_body = serde_json::json!(
+        {
+            "Code": 1000,
+            "PublicApiKey": "ABC"
+        });
+        let req_path: String = format!("{}/payment-gateway/on-ramp/public-api-key", BASE_WALLET_API_V1);
+        let response = ResponseTemplate::new(200).set_body_json(json_body);
+
+        Mock::given(method("GET"))
+            .and(path(req_path))
+            .and(query_param("Provider", "MoonPay"))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let gateway_client = PaymentGatewayClient::new(api_client);
+        let public_api_key = gateway_client
+            .get_public_api_key(GatewayProvider::MoonPay)
+            .await
+            .unwrap();
+
+        assert_eq!(public_api_key, "ABC");
     }
 }
