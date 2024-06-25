@@ -11,7 +11,6 @@ use event::EventClient;
 use exchange_rate::ExchangeRateClient;
 use invite::InviteClient;
 use log::info;
-use muon::ParseAppVersionErr;
 pub use muon::{
     flow::LoginFlow,
     http::{HttpReq as ProtonRequest, HttpReqExt, HttpRes as ProtonResponse},
@@ -145,18 +144,18 @@ impl ProtonWalletApiClient {
     pub fn from_config(config: ApiConfig) -> Result<Self, Error> {
         let env: String = config.env.clone().unwrap_or("atlas".to_string());
 
-        let app_spec: Result<App, ParseAppVersionErr> = if let Some((app_version, user_agent)) = config.spec {
-            Ok(App::new(app_version)?.with_user_agent(user_agent))
+        let app_spec = if let Some((app_version, user_agent)) = config.spec {
+            App::new(app_version)?.with_user_agent(user_agent)
         } else {
-            Ok(App::default())
+            App::default()
         };
 
         let session = if let Some(store) = config.store {
-            Client::new(App::default(), store)?
+            Client::new(app_spec, store)?
         } else {
             let auth = config.auth.unwrap_or(Auth::None);
             let auth_store = WalletAuthStore::from_env_str(env, Arc::new(Mutex::new(auth)));
-            Client::new(app_spec?, auth_store)?
+            Client::new(app_spec, auth_store)?
         };
 
         Ok(Self {
