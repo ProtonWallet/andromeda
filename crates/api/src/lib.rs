@@ -147,7 +147,7 @@ impl ProtonWalletApiClient {
         let app_spec = if let Some((app_version, user_agent)) = config.spec {
             App::new(app_version)?.with_user_agent(user_agent)
         } else {
-            App::default()
+            App::new("Other")?
         };
 
         let session = if let Some(store) = config.store {
@@ -275,7 +275,7 @@ impl ProtonWalletApiClient {
 impl Default for ProtonWalletApiClient {
     /// default Proton Wallet api client. It uses `atlas` env
     fn default() -> Self {
-        let default_app = App::default();
+        let default_app = App::new("Other").unwrap();
         let config = ApiConfig {
             spec: Some((
                 default_app.app_version().to_string(),
