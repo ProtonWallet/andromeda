@@ -315,6 +315,7 @@ impl WasmWalletClient {
         mnemonic: Option<String>,
         fingerprint: Option<String>,
         public_key: Option<String>,
+        is_auto_created: Option<u8>,
     ) -> Result<WasmApiWalletData, js_sys::Error> {
         let payload = CreateWalletRequestBody {
             Name: name,
@@ -333,6 +334,7 @@ impl WasmWalletClient {
             Mnemonic: mnemonic,
             Fingerprint: fingerprint,
             PublicKey: public_key,
+            IsAutoCreated: is_auto_created,
         };
 
         self.0
