@@ -142,3 +142,16 @@ impl Into<u8> for WasmScriptType {
         script_type.into()
     }
 }
+
+pub trait FromBool {
+    fn from_bool(b: bool) -> Self;
+}
+
+impl FromBool for u8 {
+    fn from_bool(value: bool) -> Self {
+        match value {
+            true => 1,
+            false => 0,
+        }
+    }
+}
