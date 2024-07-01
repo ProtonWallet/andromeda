@@ -9,7 +9,10 @@ use wasm_bindgen::prelude::*;
 use super::{exchange_rate::WasmApiExchangeRate, settings::WasmFiatCurrencySymbol};
 use crate::{
     bitcoin::types::derivation_path::WasmDerivationPath,
-    common::{error::ErrorExt, types::WasmScriptType},
+    common::{
+        error::ErrorExt,
+        types::{FromBool, WasmScriptType},
+    },
 };
 
 #[wasm_bindgen]
@@ -315,26 +318,20 @@ impl WasmWalletClient {
         mnemonic: Option<String>,
         fingerprint: Option<String>,
         public_key: Option<String>,
-        is_auto_created: Option<u8>,
+        is_auto_created: Option<bool>,
     ) -> Result<WasmApiWalletData, js_sys::Error> {
         let payload = CreateWalletRequestBody {
             Name: name,
-            IsImported: match is_imported {
-                true => 1,
-                false => 0,
-            },
+            IsImported: u8::from_bool(is_imported),
             Type: wallet_type,
-            HasPassphrase: match has_passphrase {
-                true => 1,
-                false => 0,
-            },
+            HasPassphrase: u8::from_bool(has_passphrase),
             UserKeyID: user_key_id,
             WalletKey: wallet_key,
             WalletKeySignature: wallet_key_signature,
             Mnemonic: mnemonic,
             Fingerprint: fingerprint,
             PublicKey: public_key,
-            IsAutoCreated: is_auto_created,
+            IsAutoCreated: is_auto_created.map(|b| u8::from_bool(b)).unwrap_or(0),
         };
 
         self.0

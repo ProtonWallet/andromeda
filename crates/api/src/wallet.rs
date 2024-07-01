@@ -68,7 +68,7 @@ pub struct CreateWalletRequestBody {
     pub PublicKey: Option<String>,
     /// Flag that indicates the wallet is created from auto creation. 0 for no,
     /// 1 for yes
-    pub IsAutoCreated: Option<u8>,
+    pub IsAutoCreated: u8,
 }
 
 #[derive(Debug, Deserialize)]
@@ -722,7 +722,7 @@ mod tests {
             UserKeyID: String::from("4Xi8TArBe1WYfrFoJF5_wIDF0shMe5ACAqOArU6hjpUNoC0O0c_Zu5Afz11gGU1eeDu5Aanp_EUkpd44kjQ2lg=="),
             WalletKey: String::from("-----BEGIN PGP MESSAGE-----\nVersion: ProtonMail\n\nwcBMA38ULORPpTD1AQgAgL+aR4cwCD+QKrW8XGlBoQv/e4sei9MFkLqoolu4\ncCoQIZXKBt6rroAgQaccwXngiTDrXELkAu2Bnjh6r5KakVu7cPyqjsIF3xjr\naSxWOZ0TcsmBNSgFgkITnNKrd4l9XKfMqCshII+mGVGb4r84glhLokMFU1xU\n5WcKGSry/oomDiyClBDnxdHr/sUNuj169uJz//uAMHQuFXqNtZ1wgwDlGCUL\nAZy5kquoSYZzSDksMj8TveIlV/HLQsFowBYgQks5FZm628Ufl/AY0F7zvxPZ\n359IAANyOi58RsX6U8500/moYd7S4aB4bRgbvUthPYOc5EAaj3I5dIphyy70\nbdJRAcf40LTwF1xOkNhIt5lEh3QAz1QxsV4miYJBbigZz0vCDyyiP/VuuexN\nb+atelhAp4ORS8j4GAe7BjXD4RFBG4avREjytzBd78tm4WitP4PY\n=ZA0x\n-----END PGP MESSAGE-----\n"),
             WalletKeySignature: String::from("-----BEGIN PGP SIGNATURE-----\nVersion: ProtonMail\n\nwsCYBAABCgBMBQJmVtLgCRAEzZ3CX7rlCRYhBFNy3nIbmXFRgnNYHgTNncJf\nuuUJJJSAAAAAABEACmNvbnRleHRAcHJvdG9uLmNod2FsbGV0LmtleQAAmmQH\n/3rVCYilw5rmF1BQkgR23oE5DrfYOKdcFbQvIqXq4in2BwVMWzcojZsxD4GC\nOHCaaC61TnaELHoy8waQzzNSEmydi3MpVuryUEuqlC7C9fwZLYDMrDXKPJcA\nGNmAnj80iMkZrCn00/fMP2CvIKiYhrEbjH1KHWxceGmm4oMpD7na1h9zMVxa\ni4DL2KZtW4vcrvYNlrUjFwCLenBPa1CBJ0abi4n8htUykjWHoJvYhPrm1QAS\ns96wsMFtbwMoLlKQzTxldzF/jS9H5RFl0DfADQhMkipAVKj1qsUgLB3BcFcD\nNeIP4uGLgqKGAKAeq+HX3NDKuvoSAFb4dKsIQuN2doQ=\n=gFPX\n-----END PGP SIGNATURE-----\n"),
-            IsAutoCreated: Some(0)
+            IsAutoCreated: 0
         };
 
         let result = client.create_wallet(payload).await;
