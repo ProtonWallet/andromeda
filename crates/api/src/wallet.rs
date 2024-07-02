@@ -88,6 +88,7 @@ pub struct ApiWalletSettings {
     pub InvoiceDefaultDescription: Option<String>,
     pub InvoiceExpirationTime: u64,
     pub MaxChannelOpeningFee: u64,
+    pub ShowWalletRecovery: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -319,6 +320,14 @@ pub struct UpdateWalletTransactionExternalSenderRequestBody {
 struct DeleteWalletTransactionResponseBody {
     #[allow(dead_code)]
     pub Code: u16,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+struct UpdateWalletSettingsResponseBody {
+    #[allow(dead_code)]
+    pub Code: u16,
+    pub WalletSettings: ApiWalletSettings,
 }
 
 #[derive(Clone)]
@@ -670,6 +679,15 @@ impl WalletClient {
         response.parse_response::<DeleteWalletTransactionResponseBody>()?;
 
         Ok(())
+    }
+
+    pub async fn disable_show_wallet_recovery(&self, wallet_id: String) -> Result<ApiWalletSettings, Error> {
+        let request = self.put(format!("wallets/{}/settings/show-wallet-recovery/disable", wallet_id));
+
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<UpdateWalletSettingsResponseBody>()?;
+
+        Ok(parsed.WalletSettings)
     }
 }
 
@@ -1175,6 +1193,22 @@ mod tests {
                     "h3fiHve6jGce6SiAB14JJpusSHlRZT01jQWI-DK6Cc4aY8w_4qqyL8eNS021UNUJAZmT3XT5XnhQWIW97XYkpw==",
                 ),
             )
+            .await;
+
+        println!("request done: {:?}", res);
+        assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn should_disable_show_wallet_recovery() {
+        let api_client = common_api_client().await;
+        let client = WalletClient::new(api_client);
+
+        let res = client
+            .disable_show_wallet_recovery(String::from(
+                "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
+            ))
             .await;
 
         println!("request done: {:?}", res);
