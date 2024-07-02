@@ -60,6 +60,7 @@ pub struct WasmApiWalletSettings {
     pub InvoiceDefaultDescription: Option<String>,
     pub InvoiceExpirationTime: u64,
     pub MaxChannelOpeningFee: u64,
+    pub ShowWalletRecovery: Option<bool>,
 }
 
 #[wasm_bindgen(getter_with_clone)]
@@ -98,6 +99,7 @@ impl From<ApiWalletData> for WasmApiWalletData {
                 InvoiceDefaultDescription: value.WalletSettings.InvoiceDefaultDescription,
                 InvoiceExpirationTime: value.WalletSettings.InvoiceExpirationTime,
                 MaxChannelOpeningFee: value.WalletSettings.MaxChannelOpeningFee,
+                ShowWalletRecovery: value.WalletSettings.ShowWalletRecovery,
             },
         }
     }
