@@ -311,6 +311,9 @@ pub struct WasmUserSettings {
     pub FiatCurrency: WasmFiatCurrencySymbol,
     pub HideEmptyUsedAddresses: u8,
     pub TwoFactorAmountThreshold: Option<u64>,
+    pub ReceiveInviterNotification: Option<u8>,
+    pub ReceiveEmailIntegrationNotification: Option<u8>,
+    pub WalletCreated: Option<u8>,
 }
 
 impl From<UserSettings> for WasmUserSettings {
@@ -320,6 +323,9 @@ impl From<UserSettings> for WasmUserSettings {
             FiatCurrency: value.FiatCurrency.into(),
             HideEmptyUsedAddresses: value.HideEmptyUsedAddresses,
             TwoFactorAmountThreshold: value.TwoFactorAmountThreshold,
+            ReceiveInviterNotification: value.ReceiveInviterNotification,
+            ReceiveEmailIntegrationNotification: value.ReceiveEmailIntegrationNotification,
+            WalletCreated: value.WalletCreated,
         }
     }
 }
