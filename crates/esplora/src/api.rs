@@ -44,7 +44,7 @@ pub struct Vin {
 impl From<andromeda_api::address::ApiVin> for Vin {
     fn from(api_vin: andromeda_api::address::ApiVin) -> Self {
         Vin {
-            txid: Txid::from_str(&api_vin.TransactionId).unwrap(),
+            txid: Txid::from_str(&api_vin.TransactionID).unwrap(),
             vout: api_vin.Vout,
             prevout: Some(api_vin.Prevout.into()),
             scriptsig: ScriptBuf::from_hex(&api_vin.ScriptSig).unwrap(),
@@ -123,7 +123,7 @@ impl From<andromeda_api::transaction::OutpointSpendingStatus> for OutputStatus {
         OutputStatus {
             spent: outpoint_spending_status.IsSpent != 0,
             txid: outpoint_spending_status
-                .TransactionId
+                .TransactionID
                 .map(|t| Txid::from_str(&t).unwrap()),
             vin: outpoint_spending_status.Vin,
             status: outpoint_spending_status.TransactionStatus.map(|s| s.into()),
@@ -162,7 +162,7 @@ pub struct Tx {
 impl From<andromeda_api::address::ApiTx> for Tx {
     fn from(tx: andromeda_api::address::ApiTx) -> Self {
         Tx {
-            txid: Txid::from_str(&tx.TransactionId).unwrap(),
+            txid: Txid::from_str(&tx.TransactionID).unwrap(),
             version: tx.Version,
             locktime: tx.Locktime,
             vin: tx.Vin.unwrap().into_iter().map(|vin| vin.into()).collect(),

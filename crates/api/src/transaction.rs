@@ -28,7 +28,7 @@ struct BroadcastRawTransactionRequestBody {
 struct BroadcastRawTransactionResponseBody {
     #[allow(dead_code)]
     pub Code: u16,
-    pub TransactionId: String,
+    pub TransactionID: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -83,7 +83,7 @@ struct GetTransactionMerkleBlockProofResponseBody {
 #[allow(non_snake_case)]
 pub struct OutpointSpendingStatus {
     pub IsSpent: u8,
-    pub TransactionId: Option<String>,
+    pub TransactionID: Option<String>,
     pub Vin: Option<u64>,
     pub TransactionStatus: Option<ApiTransactionStatus>,
 }
@@ -162,7 +162,7 @@ impl TransactionClient {
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<BroadcastRawTransactionResponseBody>()?;
 
-        Ok(parsed.TransactionId)
+        Ok(parsed.TransactionID)
     }
 
     pub async fn get_raw_transaction(&self, txid: String) -> Result<Transaction, Error> {
