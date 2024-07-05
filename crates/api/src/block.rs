@@ -82,7 +82,7 @@ struct GetBlockByHashResponseBody {
 struct GetTxIdAtBlockIndexResponseBody {
     #[allow(dead_code)]
     pub Code: u16,
-    pub TransactionId: String,
+    pub TransactionID: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -173,7 +173,7 @@ impl BlockClient {
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetTxIdAtBlockIndexResponseBody>()?;
-        Ok(parsed.TransactionId)
+        Ok(parsed.TransactionID)
     }
 
     pub async fn get_tip_height(&self) -> Result<u32, Error> {

@@ -44,7 +44,7 @@ pub struct ApiVout {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 pub struct ApiVin {
-    pub TransactionId: String,
+    pub TransactionID: String,
     pub Vout: u32,
     pub Prevout: ApiVout,
     pub ScriptSig: String,
@@ -59,7 +59,7 @@ pub struct ApiVin {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 pub struct ApiTx {
-    pub TransactionId: String,
+    pub TransactionID: String,
     pub Version: i32,
     pub Locktime: u32,
     pub Vin: Option<Vec<ApiVin>>,
@@ -79,7 +79,7 @@ pub struct GetScriptHashTransactionsResponseBody {
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
-pub struct GetScriptHashTransactionsAtTransactionIdResponseBody {
+pub struct GetScriptHashTransactionsAtTransactionIDResponseBody {
     pub Code: u16,
     pub Transactions: Vec<ApiTx>,
 }
