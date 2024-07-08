@@ -26,6 +26,8 @@ use crate::{
     utils::SortOrder,
 };
 
+const EXTERNAL_KEYCHAIN: KeychainKind = KeychainKind::External;
+
 /// TLDR; A wallet is defined by its mnemonic + passphrase combo whereas a
 /// wallet account is defined by its derivation path from the wallet masterkey.
 /// In order to support wallet import from other major softwares, it has been
@@ -205,13 +207,11 @@ impl<P: WalletStore> Account<P> {
     /// If index is None, it will return last unused address of the account. So
     /// to avoid address reuse, we need to sync before calling this method.
     pub async fn get_address(&self, index: Option<u32>) -> Result<AddressInfo, Error> {
-        // so far, there is no use-case to get internal keychain address
-        let keychain = KeychainKind::External;
-
         if let Some(index) = index {
-            Ok(self.get_wallet().await.peek_address(keychain, index))
+            // so far, there is no use-case to get internal keychain address
+            Ok(self.get_wallet().await.peek_address(EXTERNAL_KEYCHAIN, index))
         } else {
-            Ok(self.get_wallet().await.next_unused_address(keychain))
+            Ok(self.get_wallet().await.next_unused_address(EXTERNAL_KEYCHAIN))
         }
     }
 
@@ -220,17 +220,35 @@ impl<P: WalletStore> Account<P> {
     /// # Note
     ///
     /// You need to take care of syncing the account before call this
+    #[deprecated(
+        note = "this fn returns next unused spk after of last unused. please use `get_index_after_last_used_address` instead"
+    )]
     pub async fn get_last_unused_address_index(&self) -> Option<u32> {
         // so far, there is no use-case to get internal keychain address
-        let keychain = KeychainKind::External;
 
         let wallet_lock = self.get_wallet();
         let mut spks = wallet_lock.await.spk_index().clone();
 
-        spks.next_unused_spk(&keychain).map(|spk| {
+        spks.next_unused_spk(&EXTERNAL_KEYCHAIN).map(|spk| {
             let ((index, _), _) = spk;
             index
         })
+    }
+
+    /// Returns the index directly after last used address
+    ///
+    /// # Note
+    ///
+    /// You need to take care of syncing the account before call this
+    pub async fn get_index_after_last_used_address(&self) -> u32 {
+        // so far, there is no use-case to get internal keychain address
+
+        let wallet_lock = self.get_wallet();
+        let spks = wallet_lock.await.spk_index().clone();
+
+        spks.last_used_index(&EXTERNAL_KEYCHAIN)
+            .map(|index| index + 1)
+            .unwrap_or(0)
     }
 
     /// Returns a boolean indicating whether or not the account owns the

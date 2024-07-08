@@ -13,7 +13,7 @@ use bdk_wallet::{
 
 use crate::error::Error;
 
-pub const DEFAULT_STOP_GAP: usize = 30;
+pub const DEFAULT_STOP_GAP: usize = 50;
 pub const PARALLEL_REQUESTS: usize = 5;
 
 pub struct BlockchainClient(AsyncClient);

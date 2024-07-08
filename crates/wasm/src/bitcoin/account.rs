@@ -64,11 +64,10 @@ impl WasmAccount {
         Ok(address)
     }
 
-    #[wasm_bindgen(js_name = getLastUnusedAddressIndex)]
-    pub async fn get_last_unused_address_index(&self) -> Option<u32> {
+    #[wasm_bindgen(js_name = getIndexAfterLastUsedAddress)]
+    pub async fn get_index_after_last_used_address(&self) -> u32 {
         let account_inner = self.get_inner();
-        let index = account_inner.get_last_unused_address_index().await;
-        index
+        account_inner.get_index_after_last_used_address().await
     }
 
     #[wasm_bindgen(js_name = getBitcoinUri)]
