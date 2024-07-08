@@ -357,6 +357,16 @@ impl WasmWalletClient {
         Ok(())
     }
 
+    #[wasm_bindgen(js_name = "disableShowWalletRecovery")]
+    pub async fn disable_show_wallet_recovery(&self, wallet_id: String) -> Result<(), js_sys::Error> {
+        self.0
+            .disable_show_wallet_recovery(wallet_id)
+            .await
+            .map_err(|e| e.to_js_error())?;
+
+        Ok(())
+    }
+
     #[wasm_bindgen(js_name = "deleteWallet")]
     pub async fn delete_wallets(&self, wallet_id: String) -> Result<(), js_sys::Error> {
         self.0.delete_wallet(wallet_id).await.map_err(|e| e.to_js_error())?;
