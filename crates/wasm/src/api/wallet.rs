@@ -143,8 +143,10 @@ pub struct WasmApiWalletAccount {
     pub ID: String,
     pub DerivationPath: String,
     pub Label: String,
+    pub Priority: u32,
     pub ScriptType: u8,
     pub Addresses: Vec<WasmApiEmailAddress>,
+    pub LastUsedIndex: u32,
 }
 
 // We need this wrapper because unfortunately, tsify doesn't support
@@ -163,9 +165,11 @@ impl From<ApiWalletAccount> for WasmApiWalletAccount {
             FiatCurrency: value.FiatCurrency.into(),
             ID: value.ID,
             Label: value.Label,
+            Priority: value.Priority,
             DerivationPath: value.DerivationPath,
             ScriptType: value.ScriptType,
             Addresses: value.Addresses.into_iter().map(|a| a.into()).collect::<Vec<_>>(),
+            LastUsedIndex: value.LastUsedIndex,
         }
     }
 }
@@ -424,6 +428,42 @@ impl WasmWalletClient {
         let account = self
             .0
             .update_wallet_account_label(wallet_id, wallet_account_id, label)
+            .await
+            .map_err(|e| e.to_js_error())?;
+
+        Ok(WasmWalletAccountData { Data: account.into() })
+    }
+
+    #[wasm_bindgen(js_name = "updateWalletAccountsOrder")]
+    pub async fn update_wallet_accounts_order(
+        &self,
+        wallet_id: String,
+        wallet_account_ids: Vec<String>,
+    ) -> Result<WasmApiWalletAccounts, js_sys::Error> {
+        let wallet_accounts = self
+            .0
+            .update_wallet_accounts_order(wallet_id, wallet_account_ids)
+            .await
+            .map_err(|e| e.to_js_error())?;
+
+        let wallet_accounts: Result<Vec<WasmWalletAccountData>, js_sys::Error> = wallet_accounts
+            .into_iter()
+            .map(|account| Ok(WasmWalletAccountData { Data: account.into() }))
+            .collect();
+
+        Ok(WasmApiWalletAccounts(wallet_accounts?))
+    }
+
+    #[wasm_bindgen(js_name = "updateWalletAccountLastUsedIndex")]
+    pub async fn update_wallet_account_last_used_index(
+        &self,
+        wallet_id: String,
+        wallet_account_id: String,
+        last_used_index: u32,
+    ) -> Result<WasmWalletAccountData, js_sys::Error> {
+        let account = self
+            .0
+            .update_wallet_account_last_used_index(wallet_id, wallet_account_id, last_used_index)
             .await
             .map_err(|e| e.to_js_error())?;
 
