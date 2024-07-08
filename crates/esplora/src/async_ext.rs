@@ -12,7 +12,9 @@ use bitcoin::Amount;
 use futures::{stream::FuturesOrdered, TryStreamExt};
 
 use super::{error::Error, AsyncClient};
-use crate::{Tx, TxStatus};
+use crate::TxStatus;
+
+pub const MAX_SPKS_PER_REQUESTS: usize = 50;
 
 /// Refer to [crate-level documentation] for more.
 ///
@@ -27,8 +29,7 @@ pub trait EsploraAsyncExt {
     /// * `keychain_spks`: keychains that we want to scan transactions for
     ///
     /// The full scan for each keychain stops after a gap of `stop_gap` script
-    /// pubkeys with no associated transactions. `parallel_requests`
-    /// specifies the max number of HTTP requests to make in parallel.
+    /// pubkeys with no associated transactions.
     ///
     /// ## Note
     ///
@@ -49,7 +50,6 @@ pub trait EsploraAsyncExt {
         &self,
         request: FullScanRequest<K>,
         stop_gap: usize,
-        parallel_requests: usize,
     ) -> Result<FullScanResult<K>, Error>;
 
     /// Sync a set of scripts with the blockchain (via an Esplora client) for
@@ -78,11 +78,11 @@ impl EsploraAsyncExt for AsyncClient {
         &self,
         request: FullScanRequest<K>,
         stop_gap: usize,
-        parallel_requests: usize,
     ) -> Result<FullScanResult<K>, Error> {
         let latest_blocks = fetch_latest_blocks(self).await?;
         let (graph_update, last_active_indices) =
-            full_scan_for_index_and_graph(self, request.spks_by_keychain, stop_gap, parallel_requests).await?;
+            full_scan_for_index_and_graph(self, request.spks_by_keychain, stop_gap).await?;
+
         let chain_update = chain_update(self, &latest_blocks, &request.chain_tip, graph_update.all_anchors()).await?;
         Ok(FullScanResult {
             chain_update,
@@ -203,47 +203,43 @@ async fn full_scan_for_index_and_graph<K: Ord + Clone + Send>(
     client: &AsyncClient,
     keychain_spks: BTreeMap<K, impl IntoIterator<IntoIter = impl Iterator<Item = (u32, ScriptBuf)> + Send> + Send>,
     stop_gap: usize,
-    parallel_requests: usize,
 ) -> Result<(TxGraph<ConfirmationTimeHeightAnchor>, BTreeMap<K, u32>), Error> {
-    type TxsOfSpkIndex = (u32, Vec<Tx>);
-    let parallel_requests = Ord::max(parallel_requests, 1);
     let mut graph = TxGraph::<ConfirmationTimeHeightAnchor>::default();
     let mut last_active_indexes = BTreeMap::<K, u32>::new();
 
     for (keychain, spks) in keychain_spks {
+        let mut spks_to_fetch = Ord::min(stop_gap, MAX_SPKS_PER_REQUESTS);
+
         let mut spks = spks.into_iter();
         let mut last_index = Option::<u32>::None;
         let mut last_active_index = Option::<u32>::None;
 
         loop {
-            let handles = spks
-                .by_ref()
-                .take(parallel_requests)
-                .map(|(spk_index, spk)| async move {
-                    let mut last_seen = None;
-                    let mut spk_txs = Vec::new();
+            let req_spks = spks.by_ref().take(spks_to_fetch).collect::<Vec<(u32, ScriptBuf)>>();
 
-                    loop {
-                        let txs = client.scripthash_txs(&spk, last_seen).await?;
-                        let tx_count = txs.len();
-                        last_seen = txs.last().map(|tx| tx.txid);
-                        spk_txs.extend(txs);
-                        if tx_count < 25 {
-                            break Result::<_, Error>::Ok((spk_index, spk_txs));
-                        }
-                    }
-                })
-                .collect::<FuturesOrdered<_>>();
+            if req_spks.is_empty() {
+                break;
+            }
+
+            let handles: std::collections::HashMap<String, (u32, Vec<crate::Tx>)> =
+                client.many_scripthash_txs(req_spks).await?;
 
             if handles.is_empty() {
                 break;
             }
 
-            for (index, txs) in handles.try_collect::<Vec<TxsOfSpkIndex>>().await? {
+            let mut sorted_handles = handles.values().collect::<Vec<_>>();
+            sorted_handles.sort_by(|(a_index, _), (b_index, _)| a_index.partial_cmp(b_index).unwrap());
+
+            for (index, txs) in sorted_handles.iter() {
+                let index = *index;
+                let txs = txs.clone();
+
                 last_index = Some(index);
                 if !txs.is_empty() {
                     last_active_index = Some(index);
                 }
+
                 for tx in txs {
                     let _ = graph.insert_tx(tx.to_tx());
                     if let Some(anchor) = anchor_from_status(&tx.status) {
@@ -271,14 +267,13 @@ async fn full_scan_for_index_and_graph<K: Ord + Clone + Send>(
             }
 
             let last_index = last_index.expect("Must be set since handles wasn't empty.");
-            let gap_limit_reached = if let Some(i) = last_active_index {
-                last_index >= i.saturating_add(stop_gap as u32)
-            } else {
-                last_index + 1 >= stop_gap as u32
-            };
-            if gap_limit_reached {
+            let count_until_stop_gap = stop_gap.saturating_sub((last_index - last_active_index.unwrap_or(0)) as usize);
+
+            if count_until_stop_gap == 0 {
                 break;
             }
+
+            spks_to_fetch = Ord::min(count_until_stop_gap, MAX_SPKS_PER_REQUESTS);
         }
 
         if let Some(last_active_index) = last_active_index {
@@ -300,7 +295,6 @@ async fn sync_for_index_and_graph(
         client,
         [((), misc_spks.into_iter().enumerate().map(|(i, spk)| (i as u32, spk)))].into(),
         usize::MAX,
-        parallel_requests,
     )
     .await
     .map(|(g, _)| g)?;

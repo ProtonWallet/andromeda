@@ -98,7 +98,7 @@ impl fmt::Display for BitcoinUnit {
 }
 
 pub trait FromParts {
-    fn from_parts(purpose: u32, network: Network, account_index: u32) -> Self;
+    fn from_parts(purpose: ScriptType, network: Network, account_index: u32) -> Self;
 }
 
 impl FromParts for DerivationPath {
@@ -108,13 +108,14 @@ impl FromParts for DerivationPath {
     /// derivation at third index ```rust
     /// # use std::str::FromStr;
     /// # use bitcoin::bip32::DerivationPath;
-    /// # use andromeda_common::{FromParts, Network};
+    /// # use andromeda_common::{FromParts, Network, ScriptType};
     /// #
-    /// let derivation_path = DerivationPath::from_parts(84, Network::Bitcoin,
+    /// let derivation_path =
+    /// DerivationPath::from_parts(ScriptType::NativeSegwit, Network::Bitcoin,
     /// 0); assert_eq!(derivation_path,
     /// DerivationPath::from_str("m/84'/0'/0'").unwrap()); ```
-    fn from_parts(purpose: u32, network: Network, account: u32) -> Self {
-        let purpose_level = ChildNumber::from_hardened_idx(purpose).unwrap();
+    fn from_parts(script_type: ScriptType, network: Network, account: u32) -> Self {
+        let purpose_level = ChildNumber::from(script_type);
 
         let network_index = match network {
             Network::Bitcoin => 0,
@@ -140,6 +141,17 @@ pub enum ScriptType {
     Taproot = 4,
 }
 
+impl ScriptType {
+    pub fn values() -> [ScriptType; 4] {
+        [
+            ScriptType::Legacy,
+            ScriptType::NativeSegwit,
+            ScriptType::NestedSegwit,
+            ScriptType::Taproot,
+        ]
+    }
+}
+
 impl From<ScriptType> for u8 {
     fn from(val: ScriptType) -> Self {
         match val {
@@ -161,6 +173,17 @@ impl TryFrom<u8> for ScriptType {
             3 => Ok(ScriptType::NativeSegwit),
             4 => Ok(ScriptType::Taproot),
             _ => Err(Error::InvalidScriptType(value.to_string())),
+        }
+    }
+}
+
+impl From<ScriptType> for ChildNumber {
+    fn from(val: ScriptType) -> Self {
+        match val {
+            ScriptType::Legacy => ChildNumber::Hardened { index: 44 },
+            ScriptType::NestedSegwit => ChildNumber::Hardened { index: 49 },
+            ScriptType::NativeSegwit => ChildNumber::Hardened { index: 84 },
+            ScriptType::Taproot => ChildNumber::Hardened { index: 86 },
         }
     }
 }

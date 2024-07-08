@@ -14,7 +14,13 @@ use super::{
         transaction::{WasmTransactionDetailsArray, WasmTransactionDetailsData},
     },
 };
-use crate::common::{error::ErrorExt, types::WasmNetwork};
+use crate::{
+    api::WasmProtonWalletApiClient,
+    common::{
+        error::ErrorExt,
+        types::{WasmNetwork, WasmScriptType},
+    },
+};
 
 #[wasm_bindgen]
 pub struct WasmWallet {
@@ -31,6 +37,15 @@ impl WasmWallet {
     pub fn get_inner(&self) -> &Wallet<WebOnchainStore> {
         &self.inner
     }
+}
+
+#[wasm_bindgen(getter_with_clone)]
+#[derive(Clone)]
+pub struct WasmDiscoveredAccount(pub WasmScriptType, pub u32, pub WasmDerivationPath);
+
+#[wasm_bindgen(getter_with_clone)]
+pub struct WasmDiscoveredAccounts {
+    pub data: Vec<WasmDiscoveredAccount>,
 }
 
 #[wasm_bindgen]
@@ -63,6 +78,29 @@ impl WasmWallet {
             .map_err(|e| BitcoinError::from(e).to_js_error())?;
 
         Ok((&account_arc).into())
+    }
+
+    #[wasm_bindgen(js_name = discoverAccounts)]
+    pub async fn discover_accounts(
+        &self,
+        api_client: &WasmProtonWalletApiClient,
+    ) -> Result<WasmDiscoveredAccounts, js_sys::Error> {
+        let factory = WebOnchainStoreFactory::new();
+
+        let accounts = self
+            .inner
+            .discover_accounts(api_client.into(), factory, None, None)
+            .await
+            .map_err(|e| BitcoinError::from(e).to_js_error())?;
+
+        let discovered_accounts = accounts
+            .into_iter()
+            .map(|(s, i, d)| WasmDiscoveredAccount(s.into(), i, d.into()))
+            .collect::<Vec<_>>();
+
+        Ok(WasmDiscoveredAccounts {
+            data: discovered_accounts,
+        })
     }
 
     #[wasm_bindgen(js_name = getAccount)]

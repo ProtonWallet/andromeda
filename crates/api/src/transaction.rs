@@ -38,7 +38,7 @@ struct GetRawTransactionResponseBody {
     pub Details: (),
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[allow(non_snake_case)]
 pub struct ApiTransactionStatus {
     pub IsConfirmed: u8,

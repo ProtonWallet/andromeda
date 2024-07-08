@@ -125,6 +125,17 @@ pub enum WasmScriptType {
     Taproot = 4,
 }
 
+impl From<ScriptType> for WasmScriptType {
+    fn from(value: ScriptType) -> WasmScriptType {
+        match value {
+            ScriptType::Legacy => WasmScriptType::Legacy,
+            ScriptType::NestedSegwit => WasmScriptType::NestedSegwit,
+            ScriptType::NativeSegwit => WasmScriptType::NativeSegwit,
+            ScriptType::Taproot => WasmScriptType::Taproot,
+        }
+    }
+}
+
 impl Into<ScriptType> for WasmScriptType {
     fn into(self) -> ScriptType {
         match self {
