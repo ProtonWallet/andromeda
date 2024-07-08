@@ -6,7 +6,7 @@ members = [
   "crates/bitcoin",
   "crates/esplora",
   "crates/wasm",    # Muon wasm depends on Muon
-  # "examples/cli",
+  "examples/cli",
 ]
 [profile.release]
 opt-level = "s" # Tell `rustc` to optimize for small code size.

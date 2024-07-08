@@ -1,10 +1,10 @@
 use std::{
     io::{self, Write},
     str::{FromStr, SplitWhitespace},
-    sync::{Arc, Mutex, RwLock},
+    sync::{Arc, Mutex},
 };
 
-use andromeda_api::{ApiConfig, AtlasEnv, ProtonWalletApiClient};
+use andromeda_api::{ApiConfig, ProtonWalletApiClient};
 use andromeda_bitcoin::{
     account::Account, blockchain_client::BlockchainClient, transactions::TransactionTime, wallet::Wallet,
     DerivationPath,
@@ -44,9 +44,10 @@ fn create_wallet(words: &mut SplitWhitespace<'_>) -> Result<Arc<Mutex<Wallet<()>
 
     let wallet = Wallet::new(network, bip39, bip38);
 
-    wallet
-        .map(|wallet| Arc::new(Mutex::new(wallet)))
-        .map_err(|_| "ERROR: could not create wallet")
+    wallet.map(|wallet| Arc::new(Mutex::new(wallet))).map_err(|e| {
+        println!("ERROR: could not create wallet {}", e);
+        "ERROR: could not create wallet"
+    })
 }
 
 fn require_wallet(wallet: Option<Arc<Mutex<Wallet<()>>>>) -> Result<Arc<Mutex<Wallet<()>>>, &'static str> {
@@ -75,7 +76,7 @@ fn require_derivation_arg(words: &SplitWhitespace<'_>) -> Result<DerivationPath,
 fn require_account_lock(
     wallet: Arc<Mutex<Wallet<()>>>,
     derivation_path: &DerivationPath,
-) -> Result<Arc<RwLock<Account<()>>>, &'static str> {
+) -> Result<Account<()>, &'static str> {
     let mut lock = wallet.lock().unwrap();
     let account = lock.get_account(derivation_path).ok_or("ERROR: account not found")?;
 
@@ -152,20 +153,24 @@ async fn sync_account(
     let derivation_path = require_derivation_arg(words)?;
     let account = require_account_lock(wallet, &derivation_path)?;
 
-
-    let mut proton_api_client = ProtonWalletApiClient::from_config(ApiConfig::<AtlasEnv> {
-        env: None,
-        spec: None,
+    let config = ApiConfig {
+        spec: Some((
+            String::from("web-wallet@1.0.0"),
+            String::from("ProtonWallet/plus-agent-details"),
+        )),
         auth: None,
-    });
+        env: Some("atlas".to_string()),
+        url_prefix: None,
+        store: None,
+    };
+
+    let proton_api_client = ProtonWalletApiClient::from_config(config).unwrap();
 
     proton_api_client.login("pro", "pro").await.unwrap();
 
     let chain = BlockchainClient::new(proton_api_client);
 
-    let read_lock = account.read().unwrap();
-    chain.full_sync(read_lock.get_wallet()).await.unwrap();
-    drop(read_lock);
+    chain.full_sync(account.get_wallet().await, None).await.unwrap();
 
     Ok(derivation_path)
 }
@@ -179,8 +184,7 @@ async fn get_account_balance(
     let derivation_path = require_derivation_arg(&words)?;
     let account = require_account_lock(wallet, &derivation_path)?;
 
-    let account_lock = account.read().unwrap();
-    let balance = account_lock.get_balance();
+    let balance = account.get_balance().await;
 
     println!("\nBALANCE");
     println!("confirmed: {}", balance.confirmed);
@@ -200,21 +204,20 @@ async fn get_account_transactions(
     let derivation_path = require_derivation_arg(&words)?;
     let account = require_account_lock(wallet, &derivation_path)?;
 
-    let account_lock = account.read().unwrap();
-
     println!("\nTRANSACTIONS");
-    account_lock
-        .get_transactions(None, true)
+    account
+        .get_transactions(None, None)
+        .await
         .map_err(|_| "Cannot get transactions")?
         .into_iter()
         .for_each(|simple_tx| {
             println!(
                 "txid: {:?} | time {} | sent: {} sats | received: {} sats | fees: {} ",
                 simple_tx.txid,
-                simple_tx.time.map_or("Unconfirmed".to_string(), |t| match t {
+                match simple_tx.time {
                     TransactionTime::Confirmed { confirmation_time } => confirmation_time.to_string(),
                     TransactionTime::Unconfirmed { last_seen } => last_seen.to_string(),
-                }),
+                },
                 simple_tx.sent,
                 simple_tx.received,
                 match simple_tx.fees {
@@ -236,10 +239,8 @@ async fn get_account_utxos(
     let derivation_path = require_derivation_arg(&words)?;
     let account = require_account_lock(wallet, &derivation_path)?;
 
-    let account_lock = account.read().unwrap();
-
     println!("\nUTXOs");
-    account_lock.get_utxos().into_iter().for_each(|utxo| {
+    account.get_utxos().await.into_iter().for_each(|utxo| {
         println!(
             "outpoint {} | keychain {:?} | value {} | spent {}",
             utxo.outpoint, utxo.keychain, utxo.txout.value, utxo.is_spent
