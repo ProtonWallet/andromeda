@@ -137,8 +137,10 @@ pub struct ApiWalletAccount {
     pub FiatCurrency: FiatCurrencySymbol,
     pub DerivationPath: String,
     pub Label: String,
+    pub Priority: u32,
     pub ScriptType: u8,
     pub Addresses: Vec<ApiEmailAddress>,
+    pub LastUsedIndex: u32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -186,6 +188,18 @@ pub struct UpdateWalletAccountLabelRequestBody {
 
 #[derive(Debug, Serialize)]
 #[allow(non_snake_case)]
+pub struct UpdateWalletAccountLastUsedIndexRequestBody {
+    pub LastUsedIndex: u32,
+}
+
+#[derive(Debug, Serialize)]
+#[allow(non_snake_case)]
+pub struct UpdateWalletAccountsOrderRequestBody {
+    pub WalletAccountIDs: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[allow(non_snake_case)]
 pub struct AddEmailAddressRequestBody {
     pub AddressID: String,
 }
@@ -196,6 +210,14 @@ struct UpdateWalletAccountResponseBody {
     #[allow(dead_code)]
     pub Code: u16,
     pub Account: ApiWalletAccount,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+struct UpdateWalletAccountsOrderResponseBody {
+    #[allow(dead_code)]
+    pub Code: u16,
+    pub Accounts: Vec<ApiWalletAccount>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -448,6 +470,25 @@ impl WalletClient {
         Ok(parsed.Account)
     }
 
+    pub async fn update_wallet_accounts_order(
+        &self,
+        wallet_id: String,
+        wallet_account_ids: Vec<String>,
+    ) -> Result<Vec<ApiWalletAccount>, Error> {
+        let payload = UpdateWalletAccountsOrderRequestBody {
+            WalletAccountIDs: wallet_account_ids,
+        };
+
+        let request = self
+            .put(format!("wallets/{}/accounts/order", wallet_id))
+            .body_json(payload)?;
+
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<UpdateWalletAccountsOrderResponseBody>()?;
+
+        Ok(parsed.Accounts)
+    }
+
     pub async fn add_email_address(
         &self,
         wallet_id: String,
@@ -459,6 +500,29 @@ impl WalletClient {
         let request = self
             .put(format!(
                 "wallets/{}/accounts/{}/addresses/email",
+                wallet_id, wallet_account_id
+            ))
+            .body_json(payload)?;
+
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<UpdateWalletAccountResponseBody>()?;
+
+        Ok(parsed.Account)
+    }
+
+    pub async fn update_wallet_account_last_used_index(
+        &self,
+        wallet_id: String,
+        wallet_account_id: String,
+        last_used_index: u32,
+    ) -> Result<ApiWalletAccount, Error> {
+        let payload = UpdateWalletAccountLastUsedIndexRequestBody {
+            LastUsedIndex: last_used_index,
+        };
+
+        let request = self
+            .put(format!(
+                "wallets/{}/accounts/{}/lastUsedIndex",
                 wallet_id, wallet_account_id
             ))
             .body_json(payload)?;
@@ -868,6 +932,54 @@ mod tests {
 
     #[tokio::test]
     #[ignore]
+    async fn should_update_wallet_accounts_order() {
+        let api_client = common_api_client().await;
+        let client = WalletClient::new(api_client);
+
+        let res = client
+            .update_wallet_accounts_order(
+                String::from(
+                    "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
+                ),
+                vec![
+                    String::from(
+                        "kBZYBzgHWtjW5igU33BXqwVZ66GBdJi4ycXPzZjyUmp840-O2yXyNEO0ayRveZKNnASS_btzUY-WkI_mcvNuOg==",
+                    ),
+                    String::from(
+                        "lY2ZCYkVNfl_osze70PRoqzg34MQI64mE3-pLc-yMp_6KXthkV1paUsyS276OdNwucz9zKoWKZL_TgtKxOPb0w==",
+                    ),
+                ],
+            )
+            .await;
+
+        println!("request done: {:?}", res);
+        assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn should_update_wallet_account_last_used_index() {
+        let api_client = common_api_client().await;
+        let client = WalletClient::new(api_client);
+
+        let res = client
+            .update_wallet_account_last_used_index(
+                String::from(
+                    "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
+                ),
+                String::from(
+                    "lY2ZCYkVNfl_osze70PRoqzg34MQI64mE3-pLc-yMp_6KXthkV1paUsyS276OdNwucz9zKoWKZL_TgtKxOPb0w==",
+                ),
+                666,
+            )
+            .await;
+
+        println!("request done: {:?}", res);
+        assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    #[ignore]
     async fn should_get_wallet_transactions_by_wallet() {
         let api_client = common_api_client().await;
         let client = WalletClient::new(api_client);
@@ -1265,9 +1377,11 @@ mod tests {
                     "WalletID": "string",
                     "DerivationPath": "m/44'/0'/0'",
                     "Label": "string",
+                    "Priority": 23,
                     "ScriptType": 1,
                     "Addresses": [],
-                    "FiatCurrency": "USD"
+                    "FiatCurrency": "USD",
+                    "LastUsedIndex": 666,
                 }
             }
         );
@@ -1292,8 +1406,10 @@ mod tests {
         assert!(walle_account.DerivationPath == "m/44'/0'/0'");
         assert!(walle_account.Label == "string");
         assert!(walle_account.ScriptType == 1);
+        assert!(walle_account.Priority == 23);
         assert!(walle_account.WalletID == "string");
         assert!(walle_account.ID == "string");
+        assert!(walle_account.LastUsedIndex == 666);
     }
 
     #[tokio::test]
