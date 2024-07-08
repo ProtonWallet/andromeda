@@ -31,7 +31,7 @@ pub struct GetAddressBalanceResponseBody {
     pub Balance: AddressBalance,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[allow(non_snake_case)]
 pub struct ApiVout {
     pub ScriptPubKey: String,
@@ -41,7 +41,7 @@ pub struct ApiVout {
     pub Value: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[allow(non_snake_case)]
 pub struct ApiVin {
     pub TransactionID: String,
@@ -56,7 +56,7 @@ pub struct ApiVin {
     pub InnerRedeemScriptAsm: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[allow(non_snake_case)]
 pub struct ApiTx {
     pub TransactionID: String,
@@ -84,7 +84,7 @@ pub struct GetScriptHashTransactionsAtTransactionIDResponseBody {
     pub Transactions: Vec<ApiTx>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[allow(non_snake_case)]
 pub struct ScriptHashTransactionsPayload {
     pub ScriptHash: String,
@@ -291,10 +291,171 @@ mod tests {
         {
             "Code": 1000,
             "Transactions": {
-                script_hash_1.to_string(): [],
-                script_hash_2.to_string(): [],
-            },
-        });
+              &script_hash_1.to_string(): [
+                {
+                  "TransactionID": "4864cd31446b99ddf378d5166fc66ab1672698f028e68968d004db0b13839ad7",
+                  "Version": 1,
+                  "Locktime": 2570572,
+                  "Vin": [
+                    {
+                      "TransactionID": "227bef57992d17b9777df39f12ac3ff27393c19d299e8aa5c8eea3131a862c62",
+                      "Vout": 0,
+                      "Prevout": {
+                        "ScriptPubKey": "0014826f689846b5bdbd45859ddb32bd809d196a56e9",
+                        "ScriptPubKeyAsm": "OP_0 OP_PUSHBYTES_20 826f689846b5bdbd45859ddb32bd809d196a56e9",
+                        "ScriptPubKeyType": "v0_p2wpkh",
+                        "ScriptPubKeyAddress": "tb1qsfhk3xzxkk7m63v9nhdn90vqn5vk54hff0lrq5",
+                        "Value": 8000
+                      },
+                      "ScriptSig": "",
+                      "ScriptSigAsm": "",
+                      "Witness": [
+                        "3044022041d98ade17d1fe61a8195f0ddf3382f8331359084543bf14f11c2a5b1e0f849a02201b58c49d7173ec81eca8cc856f9c8c23a392b25a097f4cf4b53f13fc96cea80501",
+                        "03d06ee6eedcbc8685a4ad87f1b62505d7828bd824c404b2b3ac13cc7668fff535"
+                      ],
+                      "InnerWitnessScriptAsm": null,
+                      "IsCoinbase": 0,
+                      "Sequence": 4294967294u64,
+                      "InnerRedeemScriptAsm": null
+                    }
+                  ],
+                  "Vout": [
+                    {
+                      "ScriptPubKey": "0014ff62ea61182b39397d2617d274f4c9bf4131220f",
+                      "ScriptPubKeyAsm": "OP_0 OP_PUSHBYTES_20 ff62ea61182b39397d2617d274f4c9bf4131220f",
+                      "ScriptPubKeyType": "v0_p2wpkh",
+                      "ScriptPubKeyAddress": "tb1qla3w5cgc9vunjlfxzlf8faxfhaqnzgs0grpj8h",
+                      "Value": 459
+                    },
+                    {
+                      "ScriptPubKey": "0014caf7fc57f4f24cd43ee21adcd725a8cb6fea6b5a",
+                      "ScriptPubKeyAsm": "OP_0 OP_PUSHBYTES_20 caf7fc57f4f24cd43ee21adcd725a8cb6fea6b5a",
+                      "ScriptPubKeyType": "v0_p2wpkh",
+                      "ScriptPubKeyAddress": "tb1qetmlc4l57fxdg0hzrtwdwfdgedh7566652ecmf",
+                      "Value": 7400
+                    }
+                  ],
+                  "Size": 222,
+                  "Weight": 561,
+                  "Fee": 141,
+                  "TransactionStatus": {
+                    "IsConfirmed": 1,
+                    "BlockHeight": 2570576,
+                    "BlockHash": "00000000000000100898f2f1121229ae689e27b2d1f0970f015ee27ae81c9aff",
+                    "BlockTime": 1704358819
+                  }
+                },
+                {
+                  "TransactionID": "227bef57992d17b9777df39f12ac3ff27393c19d299e8aa5c8eea3131a862c62",
+                  "Version": 2,
+                  "Locktime": 2545684,
+                  "Vin": [
+                    {
+                      "TransactionID": "f1659208d528a1c4eaa9223667a3b66b56230622e48fe92236a93ab6f9df3bef",
+                      "Vout": 0,
+                      "Prevout": {
+                        "ScriptPubKey": "0014803a7c4f9b0ee47a3da69b52ac19f580c348bbd4",
+                        "ScriptPubKeyAsm": "OP_0 OP_PUSHBYTES_20 803a7c4f9b0ee47a3da69b52ac19f580c348bbd4",
+                        "ScriptPubKeyType": "v0_p2wpkh",
+                        "ScriptPubKeyAddress": "tb1qsqa8cnumpmj850dxndf2cx04srp53w75y0n9jw",
+                        "Value": 209280
+                      },
+                      "ScriptSig": "",
+                      "ScriptSigAsm": "",
+                      "Witness": [
+                        "304402201f824767de76c12098f0b04b0692fbb66c26524fb5241ab2b6deff60478d91a602207323df0292bb3eb45423519b0058fce4dfa4c45d7e08f3b9cae7ff91e1f17b8501",
+                        "03ff93f204b5c827eb76252394c749cd68265882ba94384394538512cb85c56658"
+                      ],
+                      "InnerWitnessScriptAsm": null,
+                      "IsCoinbase": 0,
+                      "Sequence": 4294967293u64,
+                      "InnerRedeemScriptAsm": null
+                    }
+                  ],
+                  "Vout": [
+                    {
+                      "ScriptPubKey": "0014826f689846b5bdbd45859ddb32bd809d196a56e9",
+                      "ScriptPubKeyAsm": "OP_0 OP_PUSHBYTES_20 826f689846b5bdbd45859ddb32bd809d196a56e9",
+                      "ScriptPubKeyType": "v0_p2wpkh",
+                      "ScriptPubKeyAddress": "tb1qsfhk3xzxkk7m63v9nhdn90vqn5vk54hff0lrq5",
+                      "Value": 8000
+                    },
+                    {
+                      "ScriptPubKey": "0014267a528b872a04d53d3d83fea90da64e2605a1a2",
+                      "ScriptPubKeyAsm": "OP_0 OP_PUSHBYTES_20 267a528b872a04d53d3d83fea90da64e2605a1a2",
+                      "ScriptPubKeyType": "v0_p2wpkh",
+                      "ScriptPubKeyAddress": "tb1qyea99zu89gzd20fas0l2jrdxfcnqtgdz6z9ndq",
+                      "Value": 200997
+                    }
+                  ],
+                  "Size": 222,
+                  "Weight": 561,
+                  "Fee": 283,
+                  "TransactionStatus": {
+                    "IsConfirmed": 1,
+                    "BlockHeight": 2545697,
+                    "BlockHash": "000000000007a75255087dabacbef5ccbc2828a039d71bac6b8d7735243b5f50",
+                    "BlockTime": 1703574011
+                  }
+                }
+              ],
+              &script_hash_2.to_string(): [
+                {
+                  "TransactionID": "7de0a575f912e6a08bc9e9a22a5c4d86318c22c23298a02373ff5dffddb8307d",
+                  "Version": 1,
+                  "Locktime": 2570572,
+                  "Vin": [
+                    {
+                      "TransactionID": "6a7fb0885a0afd6e9092a7eac2cb77dc65e46419efacb699480d850fded88c3d",
+                      "Vout": 0,
+                      "Prevout": {
+                        "ScriptPubKey": "0014749fe0c1ad3c4fb90fea4aa5d4a1dff8d2b234a4",
+                        "ScriptPubKeyAsm": "OP_0 OP_PUSHBYTES_20 749fe0c1ad3c4fb90fea4aa5d4a1dff8d2b234a4",
+                        "ScriptPubKeyType": "v0_p2wpkh",
+                        "ScriptPubKeyAddress": "tb1qwj07psdd838mjrl2f2jafgwllrftyd9yjug4ps",
+                        "Value": 2059
+                      },
+                      "ScriptSig": "",
+                      "ScriptSigAsm": "",
+                      "Witness": [
+                        "3044022051c5438f66054f3e37bcf7a7e12aa5cc33c4472ea2f942d9ccab5d3a4e60a72c0220446cde78c0ac2bc55596421c98c05e9b09902223250b58da003809d296ba157301",
+                        "036593beafc40cb6d886def43569ffd91d8e21954d94d0e219dda1bea09be508a6"
+                      ],
+                      "InnerWitnessScriptAsm": null,
+                      "IsCoinbase": 0,
+                      "Sequence": 4294967294u64,
+                      "InnerRedeemScriptAsm": null
+                    }
+                  ],
+                  "Vout": [
+                    {
+                      "ScriptPubKey": "0014db96479b24ff8b6644318e9b45e689d60e00fea2",
+                      "ScriptPubKeyAsm": "OP_0 OP_PUSHBYTES_20 db96479b24ff8b6644318e9b45e689d60e00fea2",
+                      "ScriptPubKeyType": "v0_p2wpkh",
+                      "ScriptPubKeyAddress": "tb1qmwty0xeyl79kv3p336d5te5f6c8qpl4zm7zefu",
+                      "Value": 790
+                    },
+                    {
+                      "ScriptPubKey": "0014b8bd3c495fc429ac304f7677e8dccbdbf0404399",
+                      "ScriptPubKeyAsm": "OP_0 OP_PUSHBYTES_20 b8bd3c495fc429ac304f7677e8dccbdbf0404399",
+                      "ScriptPubKeyType": "v0_p2wpkh",
+                      "ScriptPubKeyAddress": "tb1qhz7ncj2lcs56cvz0wem73hxtm0cyqsuem6z5te",
+                      "Value": 1128
+                    }
+                  ],
+                  "Size": 222,
+                  "Weight": 561,
+                  "Fee": 141,
+                  "TransactionStatus": {
+                    "IsConfirmed": 1,
+                    "BlockHeight": 2570575,
+                    "BlockHash": "0000000000000033658b475be1c95cb213f987dc7dcdf9d05bcb48de71400003",
+                    "BlockTime": 1704358197
+                  }
+                }
+              ]
+            }
+          });
 
         let req_path: String = format!("{}/addresses/scripthashes/transactions", BASE_WALLET_API_V1);
         let response = ResponseTemplate::new(200).set_body_json(json_body);
@@ -331,8 +492,8 @@ mod tests {
         match transactions {
             Ok(value) => {
                 assert!(!value.is_empty());
-                assert_eq!(value.get(&script_hash_1.to_string()).unwrap().len(), 0);
-                assert_eq!(value.get(&script_hash_2.to_string()).unwrap().len(), 0);
+                assert!(!value.get(&script_hash_1.to_string()).unwrap().is_empty());
+                assert!(!value.get(&script_hash_2.to_string()).unwrap().is_empty());
             }
             Err(e) => panic!("Expected Ok variant but got Err.{}", e),
         }

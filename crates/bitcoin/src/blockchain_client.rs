@@ -6,7 +6,7 @@ use andromeda_esplora::{AsyncClient, EsploraAsyncExt};
 use async_std::sync::MutexGuard;
 use bdk_wallet::{
     bitcoin::{Script, Transaction, Txid},
-    chain::spk_client::{FullScanResult, SyncRequest, SyncResult},
+    chain::spk_client::{FullScanResult, SyncResult},
     wallet::Wallet as BdkWallet,
     KeychainKind,
 };
@@ -63,10 +63,8 @@ impl BlockchainClient {
             .start_full_scan()
             .inspect_spks_for_keychain(KeychainKind::External, generate_inspect(KeychainKind::External))
             .inspect_spks_for_keychain(KeychainKind::Internal, generate_inspect(KeychainKind::Internal));
-        let mut update = self
-            .0
-            .full_scan(request, stop_gap.unwrap_or(DEFAULT_STOP_GAP), PARALLEL_REQUESTS)
-            .await?;
+
+        let mut update = self.0.full_scan(request, stop_gap.unwrap_or(DEFAULT_STOP_GAP)).await?;
         let _ = update.graph_update.update_last_seen_unconfirmed(now().as_secs());
 
         Ok(update)
@@ -80,12 +78,8 @@ impl BlockchainClient {
     ///
     /// This has to be done on top of a full sync.
     pub async fn partial_sync<'a>(&self, wallet: MutexGuard<'a, BdkWallet>) -> Result<SyncResult, Error> {
-        let cp = wallet.latest_checkpoint();
-
         let chain = wallet.local_chain();
         let chain_tip = chain.tip().block_id();
-
-        let mut request = SyncRequest::from_chain_tip(cp.clone());
 
         // Script pubkeys that are not used yet
         let unused_spks = wallet
@@ -103,37 +97,11 @@ impl BlockchainClient {
             .map(|canonical_tx| canonical_tx.tx_node.txid)
             .collect::<Vec<Txid>>();
 
-        request = request
+        let request = wallet
+            .start_sync_with_revealed_spks()
             .chain_spks(unused_spks.into_iter())
             .chain_outpoints(utxos.into_iter())
             .chain_txids(unconfirmed_txids.into_iter());
-
-        let total_spks = request.spks.len();
-        let total_txids = request.txids.len();
-        let total_ops = request.outpoints.len();
-
-        request = request
-            .inspect_spks({
-                let mut visited = 0;
-                move |_| {
-                    visited += 1;
-                    eprintln!(" [ {:>6.2}% ]", (visited * 100) as f32 / total_spks as f32)
-                }
-            })
-            .inspect_txids({
-                let mut visited = 0;
-                move |_| {
-                    visited += 1;
-                    eprintln!(" [ {:>6.2}% ]", (visited * 100) as f32 / total_txids as f32)
-                }
-            })
-            .inspect_outpoints({
-                let mut visited = 0;
-                move |_| {
-                    visited += 1;
-                    eprintln!(" [ {:>6.2}% ]", (visited * 100) as f32 / total_ops as f32)
-                }
-            });
 
         let mut update = self.0.sync(request, PARALLEL_REQUESTS).await?;
 

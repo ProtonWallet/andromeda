@@ -14,7 +14,7 @@
 use std::{collections::HashMap, str::FromStr};
 
 use andromeda_api::{
-    address::AddressClient,
+    address::{AddressClient, ScriptHashTransactionsPayload},
     block::BlockClient,
     transaction::{ExchangeRateOrTransactionTime, TransactionClient},
     ProtonWalletApiClient,
@@ -24,7 +24,7 @@ use bitcoin::{
     consensus::{deserialize, serialize},
     hashes::{hex::FromHex, sha256, Hash},
     hex::DisplayHex,
-    Block, BlockHash, MerkleBlock, Script, Transaction, Txid,
+    Block, BlockHash, MerkleBlock, Script, ScriptBuf, Transaction, Txid,
 };
 #[allow(unused_imports)]
 use log::{debug, error, info, trace};
@@ -36,6 +36,8 @@ pub struct AsyncClient {
     address: AddressClient,
     block: BlockClient,
 }
+
+const TRANSACTIONS_PER_PAGE: u32 = 25;
 
 impl AsyncClient {
     /// build an async client from the base url and [`Client`]
@@ -193,8 +195,6 @@ impl AsyncClient {
     pub async fn scripthash_txs(&self, script: &Script, last_seen: Option<Txid>) -> Result<Vec<Tx>, Error> {
         let script_hash = sha256::Hash::hash(script.as_bytes());
 
-        println!("script_hash: {:?}", script_hash.to_string());
-
         let txs = match last_seen {
             Some(last_seen) => {
                 self.address
@@ -209,6 +209,54 @@ impl AsyncClient {
         };
 
         Ok(txs.into_iter().map(|tx| tx.into()).collect())
+    }
+
+    pub async fn many_scripthash_txs(
+        &self,
+        scripts: Vec<(u32, ScriptBuf)>,
+    ) -> Result<HashMap<String, (u32, Vec<Tx>)>, Error> {
+        let mut txs_by_spk_map: HashMap<String, (u32, Vec<Tx>)> = scripts
+            .into_iter()
+            .map(|(spk_index, spk)| (sha256::Hash::hash(spk.as_bytes()).to_string(), (spk_index, Vec::new())))
+            .collect::<HashMap<_, _>>();
+
+        let mut remaining_spks_to_fetch = txs_by_spk_map
+            .iter()
+            .map(|(spk, (_spk_index, txs))| ScriptHashTransactionsPayload {
+                ScriptHash: spk.clone(),
+                TransactionID: txs.last().map(|v| v.txid.to_string()),
+            })
+            .collect::<Vec<_>>();
+
+        loop {
+            let fetched_txs_by_spk = self
+                .address
+                .get_scripthashes_transactions(remaining_spks_to_fetch.clone())
+                .await?;
+
+            let mut new_remaining_spks_to_fetch = Vec::<ScriptHashTransactionsPayload>::new();
+            fetched_txs_by_spk.iter().for_each(|(spk, fetched_txs)| {
+                // Extends txs vectors with newly fetched transations
+                let (_index, txs) = txs_by_spk_map.get_mut(spk).expect("Should be in the init hashmap");
+                txs.extend(fetched_txs.clone().into_iter().map(|tx| tx.into()));
+
+                // Refetch spk with txid as anchor if we hit the max items per page
+                if fetched_txs.len() as u32 >= TRANSACTIONS_PER_PAGE {
+                    new_remaining_spks_to_fetch.push(ScriptHashTransactionsPayload {
+                        ScriptHash: spk.clone(),
+                        TransactionID: fetched_txs.last().map(|v| v.TransactionID.clone()),
+                    });
+                }
+            });
+
+            if new_remaining_spks_to_fetch.is_empty() {
+                break;
+            }
+
+            remaining_spks_to_fetch = new_remaining_spks_to_fetch;
+        }
+
+        Ok(txs_by_spk_map)
     }
 
     /// Get an map where the key is the confirmation target (in number of

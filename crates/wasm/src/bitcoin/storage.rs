@@ -66,7 +66,7 @@ impl WalletStore for WebOnchainStore {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct WebOnchainStoreFactory();
 
 impl WebOnchainStoreFactory {

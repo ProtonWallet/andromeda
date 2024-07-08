@@ -5,7 +5,10 @@ use andromeda_common::FromParts;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
-use crate::common::{error::ErrorExt, types::WasmNetwork};
+use crate::common::{
+    error::ErrorExt,
+    types::{WasmNetwork, WasmScriptType},
+};
 
 #[wasm_bindgen]
 #[derive(Clone, Deserialize, Serialize)]
@@ -23,9 +26,9 @@ impl WasmDerivationPath {
     }
 
     #[wasm_bindgen(js_name = fromParts)]
-    pub fn from_parts(purpose: u32, network: WasmNetwork, account_index: u32) -> WasmDerivationPath {
+    pub fn from_parts(script_type: WasmScriptType, network: WasmNetwork, account_index: u32) -> WasmDerivationPath {
         Self {
-            inner: DerivationPath::from_parts(purpose, network.into(), account_index),
+            inner: DerivationPath::from_parts(script_type.into(), network.into(), account_index),
         }
     }
 
