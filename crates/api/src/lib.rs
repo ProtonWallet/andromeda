@@ -57,11 +57,13 @@ pub mod exchange_rate;
 pub mod invite;
 pub mod network;
 pub mod payment_gateway;
-pub mod proton_email_address;
-pub mod proton_users;
 pub mod settings;
 pub mod transaction;
 pub mod wallet;
+
+pub mod proton_email_address;
+pub mod proton_settings;
+pub mod proton_users;
 
 pub mod core;
 
