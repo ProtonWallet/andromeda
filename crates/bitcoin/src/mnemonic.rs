@@ -96,6 +96,11 @@ impl Mnemonic {
         Ok(Mnemonic { inner: mnemonic })
     }
 
+    pub fn new_with(entropy: &[u8]) -> Result<Self, Error> {
+        let mnemonic = BdkMnemonic::from_entropy_in(Language::English, entropy)?;
+        Ok(Mnemonic { inner: mnemonic })
+    }
+
     /// Parses a string to a `Mnemonic`.
     ///
     /// # Arguments

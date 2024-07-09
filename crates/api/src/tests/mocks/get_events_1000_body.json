@@ -1,0 +1,1118 @@
+{
+    "Code": 1000,
+    "EventID": "ACXDmTaBub14w==",
+    "Refresh": 0,
+    "More": 0,
+    "Messages": [
+        {
+            "ID": "KPlISx5MiML3XcSYPrREF-...-adgMIhFhPaAukDm9fw3MAOfsds-tfNw==",
+            "Action": 1,
+            "Message": {
+                "ID": "KPlISx5MiML3XcSYPrREF-Jw9AFa2kk60Lqw7FVWAGvJUsT_zzWKFI-adgMIhFhPaAukDm9fw3MAOfsds-tfNw==",
+                "Order": 456,
+                "ConversationID": "Wk30GtU7aIj8Gu6yWkSc3SacA==",
+                "Subject": "new subject",
+                "Unread": 1,
+                "Type": 1,
+                "SenderAddress": "me@protonmail.com",
+                "SenderName": "Me",
+                "Sender": {
+                    "Address": "foo@protonmail.dev",
+                    "Name": "Joe",
+                    "IsProton": 1,
+                    "DisplaySenderImage": 1,
+                    "BimiSelector": null,
+                    "IsSimpleLogin": 1
+                },
+                "ToList": {
+                    "Address": "foo@protonmail.dev",
+                    "Name": "Joe",
+                    "Group": "string",
+                    "IsProton": 1
+                },
+                "CcList": {
+                    "Address": "foo@protonmail.dev",
+                    "Name": "Joe",
+                    "Group": "string",
+                    "IsProton": 1
+                },
+                "BccList": {
+                    "Address": "foo@protonmail.dev",
+                    "Name": "Joe",
+                    "Group": "string",
+                    "IsProton": 1
+                },
+                "Time": 1433890289,
+                "SnoozeTime": 1433890289,
+                "Size": 148,
+                "IsEncrypted": 1,
+                "ExpirationTime": 0,
+                "IsReplied": 0,
+                "IsRepliedAll": 0,
+                "IsForwarded": 0,
+                "AddressID": "cO6RgDJwoHFScLqIkVnRD9luDVkh20EDto1aIHVHU43-dJlREzFcUjS-c7bB-_qlnxBgwAShddHZ4UDdu6RswQ==",
+                "LabelIDs": [
+                    "1"
+                ],
+                "ExternalID": "somesemirandomstringofchars",
+                "NumAttachments": 2,
+                "Flags": 8198,
+                "AttachmentInfo": {
+                    "image/jpeg": {
+                        "inline": 2,
+                        "attachment": 1
+                    },
+                    "text/calendar": {
+                        "attachment": 1
+                    }
+                },
+                "AttachmentsMetadata": [
+                    {
+                        "ID": "string",
+                        "Name": "string",
+                        "Size": 0,
+                        "MIMEType": "string",
+                        "Disposition": "attachment"
+                    }
+                ],
+                "SenderImage": 1,
+                "DisplaySnoozedReminder": true,
+                "IsProton": 1,
+                "BimiSelector": "default",
+                "LabelIDsAdded": [
+                    "2"
+                ],
+                "LabelIDsRemoved": [
+                    "2"
+                ]
+            }
+        }
+    ],
+    "Conversations": [
+        {
+            "ID": "I6hgx3Ol-d3HYa3E394T...ACXDmTaBub14w==",
+            "Action": 1,
+            "Conversation": {
+                "AddressID": "AJuSqm0qvIL4LSMR9LWsqNO...a2OlAU_Iqr2Qcducsz-ZA==",
+                "ID": "I6hgx3Ol-d3HYa3E394T_ACXDmTaBub14w==",
+                "Order": 675,
+                "Subject": "Testing",
+                "Senders": [
+                    {}
+                ],
+                "Recipients": [
+                    {}
+                ],
+                "NumMessages": 5,
+                "NumUnread": 0,
+                "NumAttachments": 0,
+                "ExpirationTime": 0,
+                "Size": 3555,
+                "LabelIDs": [
+                    "0"
+                ],
+                "Labels": [
+                    {
+                        "ID": "0",
+                        "ContextNumUnread": 0,
+                        "ContextNumMessages": 5,
+                        "ContextTime": 1578070879,
+                        "ContextExpirationTime": 0,
+                        "ContextSize": 541,
+                        "ContextNumAttachments": 0,
+                        "ContextSnoozeTime": 1578070879
+                    }
+                ],
+                "DisplaySnoozedReminder": true,
+                "DisplaySenderImage": 1,
+                "IsProton": 1,
+                "BimiSelector": "default",
+                "LabelIDsAdded": [
+                    "2"
+                ],
+                "LabelIDsRemoved": [
+                    "2"
+                ],
+                "AttachmentInfo": {
+                    "image/jpeg": {
+                        "inline": 2,
+                        "attachment": 1
+                    },
+                    "text/calendar": {
+                        "attachment": 1
+                    }
+                },
+                "AttachmentsMetadata": [
+                    {
+                        "ID": "string",
+                        "Name": "string",
+                        "Size": 0,
+                        "MIMEType": "string",
+                        "Disposition": "attachment"
+                    }
+                ]
+            }
+        }
+    ],
+    "Importers": [
+        {
+            "ID": "ziWi-ZOb28XR4sCGFCEpqQbd1...lEhjBbUPDMHGU699fw==",
+            "Action": 1,
+            "Importer": {
+                "ID": "ziWi-ZOb28XR4sCGFCEpqQbd1...lEp-fhjBbUPDMHGU699fw==",
+                "Account": "test@protonmail.dev",
+                "Product": [
+                    "Mail"
+                ],
+                "Provider": 1,
+                "TokenID": "ziWi-ZOb28XR4sCGFCEpqQbd1...lEp-fhjBbUPDMHGU699fw==",
+                "ModifyTime": "12345678",
+                "ImapHost": "imap.mail.ru",
+                "ImapPort": 993,
+                "Sasl": "PLAIN",
+                "AllowSelfSigned": 0,
+                "INBOX": 76844,
+                "Отправленные": 0,
+                "Черновики": 0,
+                "INBOX/Social": 0,
+                "INBOX/Newsletters": 0
+            }
+        }
+    ],
+    "ImportReports": [
+        {
+            "ID": "ARy95iNxhniEgYJrRrGv...F49RxFpMqWE_ZGDXEvGV2CEkA==",
+            "Action": 1,
+            "ImportReport": {
+                "ID": "ARy95iNxhniEgYJrRrGv...F49RxFpMqWE_ZGDXEvGV2CEkA==",
+                "Provider": 1,
+                "Account": "test@gmx.fr",
+                "State": 0,
+                "CreateTime": 1592827431,
+                "EndTime": 1592829784,
+                "TotalSize": 262612461,
+                "Summary": {
+                    "Calendar": {
+                        "State": 0,
+                        "NumEvents": 1245,
+                        "TotalSize": 1245,
+                        "RollbackState": 1
+                    },
+                    "Contact": {
+                        "State": 0,
+                        "NumContacts": 1245,
+                        "NumGroups": 1245,
+                        "TotalSize": 1245,
+                        "RollbackState": 1
+                    },
+                    "Mail": {
+                        "State": 0,
+                        "NumMessages": 1245,
+                        "TotalSize": 1245,
+                        "RollbackState": 1,
+                        "CanDeleteSource": 0
+                    }
+                }
+            }
+        }
+    ],
+    "Contacts": [
+        {
+            "ID": "afeaefaeTaBub14w==",
+            "Action": 1,
+            "Contact": {
+                "ID": "a29olIjFv0rnXxBhSMw==",
+                "Name": "ProtonMail Features",
+                "UID": "proton-legacy-139892c2-f691-4118-8c29-061196013e04",
+                "Size": 1434,
+                "CreateTime": 1503815366,
+                "ModifyTime": 1503815366,
+                "ContactEmails": [
+                    {
+                        "ID": "aefew4323jFv0BhSMw==",
+                        "Name": "test1",
+                        "Email": "features@protonmail.black",
+                        "Type": [
+                            "work"
+                        ],
+                        "Defaults": 1,
+                        "Order": 1,
+                        "ContactID": "a29olIjFv0rnXxBhSMw==",
+                        "LabelIDs": [
+                            "I6hgx3Ol-d3HYa3E394T_ACXDmTaBub14w=="
+                        ],
+                        "CanonicalEmail": "features@protonmail.black",
+                        "LastUsedTime": 0,
+                        "IsProton": 1
+                    }
+                ],
+                "LabelIDs": [
+                    "I6hgx3Ol-d3HYa3E394T_ACXDmTaBub14w=="
+                ],
+                "Cards": [
+                    {
+                        "Type": 2,
+                        "Data": "    BEGIN:VCARD\n    VERSION:4.0\n    FN:ProtonMail Features\n    UID:proton-legacy-139892c2-f691-4118-8c29-061196013e04\n    item1.EMAIL;TYPE=work;PREF=1:features@protonmail.black\n    item2.EMAIL;TYPE=home;PREF=2:features@protonmail.ch\n    END:VCARD",
+                        "Signature": "-----BEGIN PGP SIGNATURE-----.*-----END PGP SIGNATURE-----"
+                    }
+                ]
+            }
+        }
+    ],
+    "ContactEmails": [
+        {
+            "ID": "sadfaACXDmTaBub14w==",
+            "Action": 1,
+            "ContactEmail": {
+                "ID": "aefew4323jFv0BhSMw==",
+                "Name": "test1",
+                "Email": "features@protonmail.black",
+                "Type": [
+                    "work"
+                ],
+                "Defaults": 1,
+                "Order": 1,
+                "ContactID": "a29olIjFv0rnXxBhSMw==",
+                "LabelIDs": [
+                    "I6hgx3Ol-d3HYa3E394T_ACXDmTaBub14w=="
+                ],
+                "CanonicalEmail": "features@protonmail.black",
+                "LastUsedTime": 0,
+                "IsProton": 1
+            }
+        }
+    ],
+    "Filters": [
+        {
+            "ID": "Ik65N-aChBuWFd...UvkFTwJFJPQg==",
+            "Action": 1,
+            "Filter": {
+                "ID": "Ik65N-aChBuWFdo1JpmHJB4iWetfzjVLNILERQqbYFBZc5crnxOabXKuIMKhiwBNwiuogItetAUvkFTwJFJPQg==",
+                "Name": "Updated",
+                "Status": 1,
+                "Priority": 1,
+                "Sieve": "require [\"fileinto\"]; if address :DOMAIN :is [\"From\", \"Delivered-To\"] \"protonmail.ch\" { fileinto \"mylabel\"; } else { keep; }",
+                "Tree": [
+                    {
+                        "If": {
+                            "Headers": [
+                                "From"
+                            ],
+                            "Keys": [
+                                "protonmail.ch"
+                            ],
+                            "Match": {
+                                "Type": "Is"
+                            },
+                            "Format": {
+                                "Type": "UnicodeCaseMap"
+                            },
+                            "Type": "Address",
+                            "AddressPart": {
+                                "Type": "Domain"
+                            }
+                        },
+                        "Then": [
+                            {
+                                "Type": "Fileinto",
+                                "Name": "mylabel"
+                            }
+                        ],
+                        "Type": "If"
+                    }
+                ],
+                "Version": 2
+            }
+        }
+    ],
+    "IncomingDefaults": [
+        {
+            "ID": "Ik65N-aChBuWFd...UvkFTwJFJPQg==",
+            "Action": 1,
+            "Filter": {}
+        }
+    ],
+    "OrgIncomingDefaults": [
+        {
+            "ID": "Ik65N-aChBuWFd...UvkFTwJFJPQg==",
+            "Action": 1,
+            "OrgIncomingDefault": {
+                "ID": "string",
+                "Location": 0,
+                "Type": 0,
+                "Time": 0,
+                "Email": "string"
+            }
+        }
+    ],
+    "Labels": [
+        {
+            "ID": "sadfaACXDmTaBub14w==",
+            "Action": 1,
+            "Label": {
+                "ID": "sadfaACXDmTaBub14w==",
+                "Name": "Event Label!",
+                "Path": "Folder/Event Label!",
+                "Type": 1,
+                "Color": "#f66",
+                "Order": 8,
+                "Notify": 1,
+                "Expanded": 1,
+                "Sticky": 1,
+                "ParentID": "sadfaACXDmTaBub14w==",
+                "Display": 1,
+                "Exclusive": 0
+            }
+        }
+    ],
+    "Subscription": {
+        "ID": "<encrypted_sub_id>",
+        "InvoiceID": "<encrypted_invoice_id>",
+        "Cycle": 1,
+        "PeriodStart": 1455617471,
+        "PeriodEnd": 1458119471,
+        "CouponCode": null,
+        "Currency": "USD",
+        "Amount": 1500,
+        "Plans": [
+            {
+                "ID": "<encrypted_plan_id2>",
+                "Type": [
+                    0,
+                    1
+                ],
+                "State": 1,
+                "Cycle": 1,
+                "Name": "business",
+                "Title": "ProtonMail Business (monthly)",
+                "Currency": "USD",
+                "Amount": 1000,
+                "MaxDomains": 1,
+                "MaxAddresses": 5,
+                "MaxCalendars": 25,
+                "MaxSpace": 10737418240,
+                "MaxMembers": 2,
+                "MaxVPN": 0,
+                "Services": 1,
+                "Features": 1
+            }
+        ],
+        "Renew": 1
+    },
+    "User": {
+        "ID": "MJLke8kWh1BBvG95JBIrZvzpgsZ94hNNgjNHVyhXMiv4g9cn6SgvqiIFR5cigpml2LD_iUk_3DkV29oojTt3eA==",
+        "Name": "jason",
+        "DisplayName": "jason",
+        "Email": "jason@proton.me",
+        "Currency": "USD",
+        "Credit": 0,
+        "Type": 0,
+        "CreateTime": 1654615966,
+        "MaxSpace": 10737418240,
+        "MaxUpload": 26214400,
+        "UsedSpace": 70376905,
+        "ProductUsedSpace": {
+            "Calendar": 0,
+            "Contact": 0,
+            "Drive": 0,
+            "Mail": 0,
+            "Pass": 0
+        },
+        "NumAI": 0,
+        "Role": 2,
+        "Private": 1,
+        "ToMigrate": 1,
+        "MnemonicStatus": 1,
+        "Subscribed": 5,
+        "Services": 5,
+        "Delinquent": 0,
+        "Keys": {
+            "ID": "IlnTbqicN-2HfUGIn-ki8bqZfLqNj5ErUB0z24Qx5g-4NvrrIc6GLvEpj2EPfwGDv28aKYVRRrSgEFhR_zhlkA==",
+            "Version": 3,
+            "PrivateKey": "-----BEGIN PGP PRIVATE KEY BLOCK-----*-----END PGP PRIVATE KEY BLOCK-----",
+            "Fingerprint": "c93f767df53b0ca8395cfde90483475164ec6353",
+            "Primary": 1,
+            "Active": 1,
+            "RecoverySecret": "1H8EGg3J1...Qwk243hf",
+            "RecoverySecretSignature": "-----BEGIN PGP SIGNATURE-----..."
+        },
+        "Flags": {
+            "protected": true,
+            "onboard-checklist-storage-granted": true,
+            "has-temporary-password": true,
+            "test-account": true,
+            "no-login": true,
+            "recovery-attempt": true,
+            "sso": true,
+            "no-proton-address": true
+        },
+        "AccountRecovery": {
+            "State": 1,
+            "StartTime": 1686834569,
+            "EndTime": 1687000169,
+            "Reason": 1,
+            "UID": "qmi2ptbz4sefeahddjxghsxtu2orlgyf"
+        }
+    },
+    "UserSettings": {
+        "Email": {
+            "Value": "abc@gmail.com",
+            "Status": 0,
+            "Notify": 1,
+            "Reset": 0
+        },
+        "Password": {
+            "Mode": 2,
+            "ExpirationTime": null
+        },
+        "Phone": {
+            "Value": "+18005555555",
+            "Status": 0,
+            "Notify": 0,
+            "Reset": 0
+        },
+        "2FA": {
+            "Enabled": 3,
+            "Allowed": 3,
+            "ExpirationTime": null,
+            "U2FKeys": [
+                {
+                    "Label": "A name",
+                    "KeyHandle": "aKeyHandle",
+                    "Compromised": 0
+                }
+            ],
+            "RegisteredKeys": [
+                {
+                    "AttestationFormat": "fido2-u2f",
+                    "CredentialID": [
+                        null
+                    ],
+                    "Name": "My security key"
+                }
+            ]
+        },
+        "News": 244,
+        "Locale": "en_US",
+        "LogAuth": 2,
+        "InvoiceText": "रिवार में हुआ। ज檷\\n Cartoon Law Services\\n 1 DisneyWorld Lane\\n Orlando, FL, 12345\\n VAT",
+        "Density": 0,
+        "Theme": {},
+        "ThemeType": 1,
+        "WeekStart": 1,
+        "DateFormat": 1,
+        "TimeFormat": 1,
+        "Welcome": "1",
+        "WelcomeFlag": "1",
+        "EarlyAccess": "1",
+        "Flags": {
+            "Welcomed": 0,
+            "InAppPromosHidden": 0
+        },
+        "Referral": {
+            "Link": "https://pr.tn/ref/ERBYvlX8SC4KOyb",
+            "Eligible": true
+        },
+        "DeviceRecovery": "1",
+        "Telemetry": "1",
+        "CrashReports": "1",
+        "HideSidePanel": "1",
+        "HighSecurity": {
+            "Eligible": 1,
+            "Value": 1
+        },
+        "SessionAccountRecovery": 1
+    },
+    "MailSettings": {
+        "DisplayName": "Put Chinese Here",
+        "Signature": "This is my signature",
+        "Theme": "<CSS>",
+        "AutoResponder": {
+            "StartTime": 0,
+            "Endtime": 0,
+            "Repeat": 0,
+            "DaysSelected": [
+                "string"
+            ],
+            "Subject": "Auto",
+            "Message": "",
+            "IsEnabled": null,
+            "Zone": "Europe/Zurich"
+        },
+        "AutoSaveContacts": 1,
+        "AutoWildcardSearch": 1,
+        "ComposerMode": 0,
+        "MessageButtons": 0,
+        "ShowImages": 2,
+        "ShowMoved": 0,
+        "AutoDeleteSpamAndTrashDays": null,
+        "AlmostAllMail": 0,
+        "NextMessageOnMove": 0,
+        "ViewMode": 0,
+        "ViewLayout": 0,
+        "SwipeLeft": 3,
+        "SwipeRight": 0,
+        "AlsoArchive": 0,
+        "Hotkeys": 0,
+        "Shortcuts": 1,
+        "PMSignature": 0,
+        "PMSignatureReferralLink": 0,
+        "ImageProxy": 0,
+        "NumMessagePerPage": 50,
+        "DraftMIMEType": "text/html",
+        "ReceiveMIMEType": "text/html",
+        "ShowMIMEType": "text/html",
+        "EnableFolderColor": 0,
+        "InheritParentFolderColor": 1,
+        "SubmissionAccess": 0,
+        "TLS": 0,
+        "RightToLeft": 0,
+        "AttachPublicKey": 0,
+        "Sign": 0,
+        "PGPScheme": 16,
+        "PromptPin": 0,
+        "Autocrypt": 0,
+        "StickyLabels": 0,
+        "ConfirmLink": 1,
+        "DelaySendSeconds": 10,
+        "KT": 0,
+        "FontSize": null,
+        "FontFace": null,
+        "SpamAction": null,
+        "BlockSenderConfirmation": null,
+        "MobileSettings": {
+            "MessageToolbar": {
+                "IsCustom": true,
+                "Actions": [
+                    "string"
+                ]
+            },
+            "ConversationToolbar": {
+                "IsCustom": true,
+                "Actions": [
+                    "string"
+                ]
+            },
+            "ListToolbar": {
+                "IsCustom": true,
+                "Actions": [
+                    "string"
+                ]
+            }
+        },
+        "HideEmbeddedImages": 1,
+        "HideRemoteImages": 1,
+        "HideSenderImages": 1
+    },
+    "VPNSettings": {
+        "GroupID": "test-group",
+        "Name": "9rXSJiW7xf59U/OqUTjHRJy/",
+        "Password": "sHwX8ye/ipCFfj5K0xuZYTlD",
+        "Status": 2,
+        "ExpirationTime": 0,
+        "BasePlan": "mail2022",
+        "PlanName": "vpnbiz2023",
+        "PlanTitle": "VPN Plus",
+        "MaxConnect": 10,
+        "MaxTier": 2,
+        "Groups": [
+            "vpn-paid"
+        ],
+        "NeedConnectionAllocation": false,
+        "BusinessEvents": false,
+        "BrowserExtension": false,
+        "BrowserExtensionPlan": "vpnpro2023"
+    },
+    "Invoices": [
+        {
+            "ID": "IlnTbqicN-...-4NvrrIc6GLvDv28aKYVRRrSgEFhR_zhlkA==",
+            "Action": 1,
+            "Invoice": {
+                "ID": "IlnTbqicN-2HfUGIn-ki8bqZfLqNj5ErUB0z24Qx5g-4NvrrIc6GLvEpj2EPfwGDv28aKYVRRrSgEFhR_zhlkA==",
+                "Type": 4,
+                "State": 1,
+                "Currency": "USD",
+                "AmountDue": 0,
+                "AmountCharged": 0,
+                "CreateTime": 1505758141,
+                "ModifyTime": 1506449824,
+                "AttemptTime": 1506449824,
+                "Attempts": 1
+            }
+        }
+    ],
+    "Members": [
+        {
+            "ID": "LO9aACXDmTaBub14w==",
+            "Action": 1,
+            "Member": {
+                "MemberID": "LO9aACXDmTaBub14w==",
+                "Role": 1,
+                "Private": 0,
+                "Type": 0,
+                "MaxSpace": 0,
+                "Name": "Jason",
+                "UsedSpace": 0,
+                "Addresses": [
+                    "string"
+                ]
+            }
+        }
+    ],
+    "Domains": [
+        {
+            "ID": "9aACXDmTaBub14w==",
+            "Action": 2,
+            "Domain": {
+                "ID": "BKiAUbkGnUPiy2c37zjon_g==",
+                "DomainName": "protonvpn.ch",
+                "Type": 3,
+                "State": 1,
+                "LastActiveTime": 1556136548,
+                "CheckTime": 1446095611,
+                "WarnTime": 1554807818,
+                "VerifyCode": "protonmail-verification=c701a28e2bdd3358c6dda71a3008b806e41950b0",
+                "VerifyState": 2,
+                "MxState": 3,
+                "SpfState": 3,
+                "DmarcState": 3,
+                "DKIM": {
+                    "State": 4,
+                    "Config": [
+                        {
+                            "Hostname": "protonmail2._domainkey",
+                            "CNAME": "protonmail2.domainkey.dhgge2q6ksokiqwomdn23r6nnjjwiwblsujm6bjdnj3hhaxlktpqa.domains.proton.ch.",
+                            "Key": {
+                                "ID": "BKiAUbkGnUPiy2c37zjon_g==",
+                                "Selector": "protonmail2",
+                                "PublicKey": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0zc0kqr7bnFOD1TmsjJmYthy41QeI1cqga5yU8...",
+                                "Algorithm": 1,
+                                "State": 2,
+                                "DNSState": 1,
+                                "CreateTime": 1687942995
+                            }
+                        }
+                    ]
+                },
+                "Flags": {
+                    "mail-intent": true,
+                    "sso-intent": true
+                }
+            }
+        }
+    ],
+    "Addresses": [
+        {
+            "ID": "qmhrlFY24BhSHiFplF0B7G_cMVLi1sokaWIhfNaee6dRtdIZPYnqgI4-MpAb8h3JhOOykKv8ZsuTH8X_SrUZSg==",
+            "DomainID": "l8vWAXHBQmv0u7OVtPbcqMa4iwQaBqowINSQjPrxAr-Da8fVPKUkUcqAq30_BCxj1X0nW70HQRmAa-rIvzmKUA==",
+            "Email": "jason@protonmail.dev",
+            "Send": 1,
+            "Receive": 1,
+            "Status": 1,
+            "Type": 1,
+            "Order": 1,
+            "DisplayName": "D L'u, P.D. 定超",
+            "Signature": "hi there",
+            "HasKeys": 1,
+            "CatchAll": false,
+            "ProtonMX": true,
+            "SignedKeyList": {
+                "MinEpochID": 125,
+                "MaxEpochID": 241,
+                "ExpectedMinEpochID": 265,
+                "Data": "[{\"\"Fingerprint\"\": \"\"c93f767df53b0ca8395cfde90483475164ec6353\"\",\"\"Primary\"\": 0,\"\"Flags\"\": 1},{\"\"Fingerprint\"\": \"\"fde90483475164ec6353c93f767df53b0ca8395c\"\",\"\"Primary\"\": 1,\"\"Flags\"\": 3}]",
+                "ObsolescenceToken": "000000006243460497f838b649439b5f29c4e73014b9da096d0fe3ed",
+                "Signature": "-----BEGIN PGP SIGNATURE-----.*-----END PGP SIGNATURE-----",
+                "Revision": 42
+            },
+            "Keys": [
+                {
+                    "ID": "G1MbEt3...Ol_6h==",
+                    "Version": 3,
+                    "PublicKey": "-----BEGIN PGP PUBLIC KEY BLOCK-----.*",
+                    "PrivateKey": "-----BEGIN PGP PRIVATE KEY BLOCK-----",
+                    "Token": "null or -----BEGIN PGP MESSAGE-----.*",
+                    "Signature": "null or -----BEGIN PGP SIGNATURE-----",
+                    "Fingerprint": "c93f767df53b0ca8395cfde90483475164ec6353",
+                    "Fingerprints": [
+                        "c93f767df53b0ca8395cfde90483475164ec6353"
+                    ],
+                    "Activation": "-----BEGIN PGP MESSAGE-----.*",
+                    "Primary": 1,
+                    "Active": 1,
+                    "Flags": 3,
+                    "AddressForwardingID": "fWIio823...j45sL==",
+                    "GroupMemberID": "fWIio823...j45sL=="
+                }
+            ],
+            "Flags": 48
+        }
+    ],
+    "SignedAddressList": {
+        "Data": "[{\"Email\": \"test@example.com\",\"Flags\": 1}]",
+        "Signature": "-----BEGIN PGP SIGNATURE-----.*-----END PGP SIGNATURE-----"
+    },
+    "IncomingAddressForwardings": [
+        {
+            "ID": "9aACXDmTaBub14w==",
+            "Action": 2,
+            "IncomingAddressForwarding": {
+                "ID": "string",
+                "Type": 1,
+                "State": 0,
+                "ForwarderEmail": "string",
+                "ForwardeeAddressID": "string",
+                "CreateTime": 0,
+                "ForwardingKeys": [
+                    {
+                        "ActivationToken": "string",
+                        "PrivateKey": "string"
+                    }
+                ],
+                "Filter": {
+                    "Tree": [
+                        {
+                            "List": [
+                                "string"
+                            ],
+                            "Type": "Require"
+                        }
+                    ],
+                    "Sieve": "string",
+                    "Version": 2
+                }
+            }
+        }
+    ],
+    "OutgoingAddressForwardings": [
+        {
+            "ID": "9aACXDmTaBub14w==",
+            "Action": 2,
+            "OutgoingAddressForwarding": {
+                "ID": "string",
+                "Type": 1,
+                "State": 0,
+                "ForwarderAddressID": "string",
+                "ForwardeeEmail": "string",
+                "CreateTime": 0,
+                "Filter": {
+                    "Tree": [
+                        {
+                            "List": [
+                                "string"
+                            ],
+                            "Type": "Require"
+                        }
+                    ],
+                    "Sieve": "string",
+                    "Version": 2
+                }
+            }
+        }
+    ],
+    "Organization": {
+        "Name": "E-Corp",
+        "DisplayName": "E-Corp",
+        "PlanName": "plus",
+        "PlanFlags": 1,
+        "TwoFactorGracePeriod": null,
+        "Theme": null,
+        "Email": "contact@e-corp.com",
+        "MaxDomains": 4,
+        "MaxAddresses": 20,
+        "MaxCalendars": 25,
+        "MaxSpace": 10000000000,
+        "MaxMembers": 15,
+        "MaxVPN": 5,
+        "Features": 0,
+        "Flags": 0,
+        "UsedDomains": 0,
+        "UsedAddresses": 0,
+        "UsedSpace": 81788997,
+        "AssignedSpace": 10000000000,
+        "UsedMembers": 1,
+        "UsedVPN": 5,
+        "HasKeys": 1
+    },
+    "MessageCounts": [
+        {
+            "LabelID": "0",
+            "Total": 15,
+            "Unread": 6
+        }
+    ],
+    "ConversationCounts": [
+        {
+            "LabelID": "0",
+            "Total": 4,
+            "Unread": 3
+        }
+    ],
+    "UsedSpace": 70376905,
+    "ProductUsedSpace": {
+        "Calendar": 0,
+        "Contact": 0,
+        "Drive": 0,
+        "Mail": 0,
+        "Pass": 0
+    },
+    "VPNProfiles": [
+        {
+            "ID": "q_9v-GXEPLagg81jsUz2mHQ==",
+            "Action": 2,
+            "VPNProfile": {}
+        }
+    ],
+    "LogicalServers": {
+        "ID": "-Bpgivr5H2qGDRiUQ4-7gm5YLf215MEgZCdzOtLW5psxgB8oNc8OnoFRykab4Z23EGEW1ka3GtQPF9xwx9-VUA==",
+        "Name": "ES#1",
+        "EntryCountry": "CH",
+        "ExitCountry": "CH",
+        "HostCountry": "CH",
+        "Domain": "es-05.protonvpn.com",
+        "Tier": 2,
+        "Features": 2,
+        "Status": 1,
+        "Region": null,
+        "City": "Stockholm",
+        "Servers": [
+            {
+                "ID": "l8vWAXHBQmv0u7OVtPbcqMa4iwQaBqowINSQjPrxAr-Da8fVPKUkUcqAq30_BCxj1X0nW70HQRmAa-rIvzmKUA==",
+                "EntryIP": "95.215.61.163",
+                "ExitIP": "95.215.61.164",
+                "Domain": "es-04.protonvpn.com",
+                "Status": 1,
+                "ServicesDown": 12,
+                "Generation": 0,
+                "ServicesDownReason": "Provisionning",
+                "Label": "us-va-01",
+                "X25519PublicKey": "-----BEGIN PUBLIC KEY----- ...",
+                "EntryPerProtocol": {
+                    "OpenVPNUDP": {
+                        "IPv4": "1.0.0.0",
+                        "Ports": [
+                            "443"
+                        ]
+                    },
+                    "OpenVPNTCP": {
+                        "IPv4": "1.0.0.0",
+                        "Ports": [
+                            "443"
+                        ]
+                    },
+                    "IKEv2": {
+                        "IPv4": "1.0.0.0",
+                        "Ports": [
+                            "443"
+                        ]
+                    },
+                    "WireGuardUDP": {
+                        "IPv4": "1.0.0.0",
+                        "Ports": [
+                            "443"
+                        ]
+                    },
+                    "WireGuardTCP": {
+                        "IPv4": "1.0.0.0",
+                        "Ports": [
+                            "443"
+                        ]
+                    },
+                    "WireGuardTLS": {
+                        "IPv4": "1.0.0.0",
+                        "Ports": [
+                            "443"
+                        ]
+                    }
+                }
+            }
+        ],
+        "Load": 0,
+        "Location": {
+            "Lat": "39.4667",
+            "Long": "-0.3667"
+        },
+        "Score": 3.615154888897451
+    },
+    "Calendars": [
+        {
+            "ID": "wSGAB7IOerWAaIItAfyAIbSWIaFSS==",
+            "Action": 1,
+            "Calendar": {
+                "ID": "wSGAB7IOerWAaIItAfyAIbSWIaFSS==",
+                "Name": "Organizational Calendar",
+                "Description": "This text describes the calendar",
+                "Flags": 1,
+                "Type": "0",
+                "Members": [
+                    {
+                        "ID": "wSGAB7IOerWAaIItAfyAIbSWIaFSS==",
+                        "Permissions": 63,
+                        "Email": "andy@pm.me",
+                        "AddressID": "wSGAB7IOerWAaIItAfyAIbSWIaFSS==",
+                        "CalendarID": "wSGAB7IOerWAaIItAfyAIbSWIaFSS==",
+                        "Name": "Organizational Calendar",
+                        "Description": "This text describes the calendar",
+                        "Color": "#8989AC",
+                        "Display": 1,
+                        "Priority": 1,
+                        "Flags": 1
+                    }
+                ]
+            }
+        }
+    ],
+    "CalendarMembers": [
+        {
+            "ID": "wSGAB7IOerWAaIItAfyAIbSWIaFSS==",
+            "Action": 1,
+            "Member": {
+                "ID": "wSGAB7IOerWAaIItAfyAIbSWIaFSS==",
+                "Permissions": 63,
+                "Email": "andy@pm.me",
+                "AddressID": "wSGAB7IOerWAaIItAfyAIbSWIaFSS==",
+                "CalendarID": "wSGAB7IOerWAaIItAfyAIbSWIaFSS==",
+                "Name": "Organizational Calendar",
+                "Description": "This text describes the calendar",
+                "Color": "#8989AC",
+                "Display": 1,
+                "Priority": 1,
+                "Flags": 1
+            }
+        }
+    ],
+    "Pushes": [
+        {
+            "PushID": "1H8EGg3J1QpSDL6K8hGs...hrHx6nnGQ==",
+            "ObjectID": "KPlISx5MiML3Xc...3MAOfsds-tfNw==",
+            "Type": "Messages"
+        }
+    ],
+    "Notifications": [
+        {
+            "ID": "1H8EGg3J1QpSDL6K8hGsTvwm...hrHx6nnGQ==",
+            "UserID": "1H8EGg3J1QpSDL6K8hGsTvwm...hrHx6nnGQ==",
+            "Type": "account_recovery",
+            "Time": null,
+            "Payload": {
+                "Title": "string",
+                "Subtitle": "string",
+                "Body": "string"
+            }
+        }
+    ],
+    "CalendarUserSettings": {
+        "WeekLength": 0,
+        "DisplayWeekNumber": 1,
+        "AutoDetectPrimaryTimezone": 0,
+        "PrimaryTimezone": "Antarctica/Macquarie",
+        "DisplaySecondaryTimezone": 0,
+        "SecondaryTimezone": null,
+        "ViewPreference": 1,
+        "DefaultCalendarID": "wSGAB7IOerWAaIItAfyAIbSWIaFSS==",
+        "ShowCancelled": 0,
+        "ShowDeclined": 0,
+        "AutoImportInvite": 0,
+        "ShareBusySchedule": 0
+    },
+    "Wallets": [
+        {
+            "ID": "wSGAB7IOerWAaIItAfyAIbSWIaFSS==",
+            "Action": 1,
+            "Wallet": {
+                "ID": "string",
+                "HasPassphrase": 0,
+                "IsImported": 0,
+                "Mnemonic": "<base64_encoded_mnemonic>",
+                "Fingerprint": "912914fb",
+                "Name": "string",
+                "Priority": 1,
+                "PublicKey": "<base64_encoded_publickey>",
+                "Status": 0,
+                "Type": 1
+            }
+        }
+    ],
+    "WalletAccounts": [
+        {
+            "ID": "wSGAB7IOerWAaIItAfyAIbSWIaFSS==",
+            "Action": 1,
+            "WalletAccount": {
+                "ID": "string",
+                "WalletID": "string",
+                "FiatCurrency": "CHF",
+                "DerivationPath": "m/44'/0'/0'",
+                "Label": "string",
+                "Priority": 1,
+                "ScriptType": 1,
+                "Addresses": [
+                ],
+                "LastUsedIndex": 0
+            }
+        }
+    ],
+    "WalletKeys": [
+        {
+            "ID": "wSGAB7IOerWAaIItAfyAIbSWIaFSS==",
+            "Action": 1,
+            "WalletKey": {
+                "ID": "string",
+                "WalletID": "string",
+                "UserKeyID": "string",
+                "WalletKey": "-----BEGIN PGP MESSAGE-----.*-----END PGP MESSAGE-----",
+                "WalletKeySignature": "-----BEGIN PGP SIGNATURE-----.*-----END PGP SIGNATURE-----"
+            }
+        }
+    ],
+    "WalletSettings": [
+        {
+            "ID": "wSGAB7IOerWAaIItAfyAIbSWIaFSS==",
+            "Action": 1,
+            "WalletSettings": {
+                "WalletID": "string",
+                "HideAccounts": 0,
+                "InvoiceDefaultDescription": "Lightning payment from John Doe.",
+                "InvoiceExpirationTime": 3600,
+                "MaxChannelOpeningFee": 5000,
+                "ShowWalletRecovery": false
+            }
+        }
+    ],
+    "WalletTransactions": [
+        {
+            "ID": "wSGAB7IOerWAaIItAfyAIbSWIaFSS==",
+            "Action": 1,
+            "WalletTransaction": {
+                "ID": "string",
+                "WalletID": "string",
+                "WalletAccountID": "string",
+                "TransactionID": "string",
+                "TransactionTime": "1707287982",
+                "Set to 1 if output amount is smaller than 1001 Sats, or output size is bigger than 20 blocks": 0,
+                "Set to 1 if user does not want to spend UTXO from this transaction": 0,
+                "Type": 1,
+                "HashedTransactionID": null,
+                "Label": null,
+                "ExchangeRate": null,
+                "Sender": null,
+                "ToList": null,
+                "Subject": null,
+                "Body": null,
+                "IsSuspicious": 1,
+                "IsPrivate": 1
+            }
+        }
+    ],
+    "WalletUserSettings": {
+        "BitcoinUnit": "BTC",
+        "FiatCurrency": "CHF",
+        "HideEmptyUsedAddresses": 1,
+        "TwoFactorAmountThreshold": 1000,
+        "ReceiveInviterNotification": 1,
+        "ReceiveEmailIntegrationNotification": 1,
+        "WalletCreated": 1
+    },
+    "Notices": [
+        "This is an announcement"
+    ]
+}

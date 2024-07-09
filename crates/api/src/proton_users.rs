@@ -55,6 +55,7 @@ pub struct ProtonUserSettings {
     HideSidePanel: u32,
     HighSecurity: HighSecuritySettings,
     SessionAccountRecovery: u32,
+    MnemonicStatus: u32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -114,36 +115,37 @@ pub struct ApiProtonUserResponse {
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(non_snake_case)]
 pub struct ProtonUser {
-    ID: String,
-    Name: String,
-    UsedSpace: u64,
-    Currency: String,
-    Credit: u32,
-    CreateTime: u64,
-    MaxSpace: u64,
-    MaxUpload: u64,
-    Role: u32,
-    Private: u32,
-    Subscribed: u32,
-    Services: u32,
-    Delinquent: u32,
-    OrganizationPrivateKey: Option<String>,
-    Email: String,
-    DisplayName: String,
-    Keys: Option<Vec<ProtonUserKey>>,
+    pub ID: String,
+    pub Name: String,
+    pub UsedSpace: u64,
+    pub Currency: String,
+    pub Credit: u32,
+    pub CreateTime: u64,
+    pub MaxSpace: u64,
+    pub MaxUpload: u64,
+    pub Role: u32,
+    pub Private: u32,
+    pub Subscribed: u32,
+    pub Services: u32,
+    pub Delinquent: u32,
+    pub OrganizationPrivateKey: Option<String>,
+    pub Email: String,
+    pub DisplayName: String,
+    pub Keys: Option<Vec<ProtonUserKey>>,
+    pub MnemonicStatus: u32,
 }
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(non_snake_case)]
 pub struct ProtonUserKey {
-    ID: String,
-    Version: u32,
-    PrivateKey: String,
-    RecoverySecret: Option<String>,
-    RecoverySecretSignature: Option<String>,
-    Token: Option<String>,
-    Fingerprint: String,
-    Primary: u32,
-    Active: u32,
+    pub ID: String,
+    pub Version: u32,
+    pub PrivateKey: String,
+    pub RecoverySecret: Option<String>,
+    pub RecoverySecretSignature: Option<String>,
+    pub Token: Option<String>,
+    pub Fingerprint: String,
+    pub Primary: u32,
+    pub Active: u32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -154,6 +156,62 @@ pub struct ApiUserInfo {
     pub Email: String,
     pub CanonicalEmail: String,
     pub IsProton: u32,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+pub struct GetAuthModulusResponse {
+    pub Code: u32,
+    pub Modulus: String,
+    pub ModulusID: String,
+}
+
+#[derive(Debug, Serialize)]
+#[allow(non_snake_case)]
+pub struct GetAuthInfoRequest {
+    pub Intent: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[allow(non_snake_case)]
+pub struct TwoFA {
+    #[allow(non_snake_case)]
+    pub Enabled: u8,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[allow(non_snake_case)]
+pub struct GetAuthInfoResponseBody {
+    pub Code: u32,
+    pub Modulus: String,
+    pub ServerEphemeral: String,
+    pub Version: u8,
+    pub Salt: String,
+    pub SRPSession: String,
+    #[serde(rename = "2FA")]
+    pub two_fa: TwoFA,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[allow(non_snake_case)]
+pub struct ProtonSrpClientProofs {
+    pub ClientEphemeral: String,
+    pub ClientProof: String,
+    pub SRPSession: String,
+    pub TwoFactorCode: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[allow(non_snake_case)]
+pub struct ProtonSrpServerProofs {
+    pub Code: u32,
+    pub ServerProof: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[allow(non_snake_case)]
+pub struct EmptyResponseBody {
+    pub Code: u32,
 }
 
 #[derive(Clone)]
@@ -176,6 +234,47 @@ impl ApiClient for ProtonUsersClient {
 }
 
 impl ProtonUsersClient {
+    pub async fn get_auth_modulus(&self) -> Result<GetAuthModulusResponse, Error> {
+        let request = self.get("auth/modulus");
+
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<GetAuthModulusResponse>()?;
+        Ok(parsed)
+    }
+
+    // this is spical endpoint. it is get data but with a post call
+    pub async fn get_auth_info(&self, req: GetAuthInfoRequest) -> Result<GetAuthInfoResponseBody, Error> {
+        let request: muon::http::HttpReq = self.post("auth/info").body_json(req)?;
+
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<GetAuthInfoResponseBody>()?;
+        Ok(parsed)
+    }
+
+    pub async fn unlock_password_change(&self, proofs: ProtonSrpClientProofs) -> Result<String, Error> {
+        let request = self.put("users/password").body_json(proofs)?;
+
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<ProtonSrpServerProofs>()?;
+        Ok(parsed.ServerProof)
+    }
+
+    pub async fn unlock_sensitive_settings(&self, proofs: ProtonSrpClientProofs) -> Result<String, Error> {
+        let request = self.put("users/unlock").body_json(proofs)?;
+
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<ProtonSrpServerProofs>()?;
+        Ok(parsed.ServerProof)
+    }
+
+    pub async fn lock_sensitive_settings(&self) -> Result<u32, Error> {
+        let request = self.put("users/lock");
+
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<EmptyResponseBody>()?;
+        Ok(parsed.Code)
+    }
+
     // get proton user info. This includes the user's keys.
     pub async fn get_user_info(&self) -> Result<ProtonUser, Error> {
         let request = self.get("users");
@@ -199,13 +298,14 @@ impl ProtonUsersClient {
 #[cfg(test)]
 mod tests {
     use wiremock::{
-        matchers::{method, path},
+        matchers::{body_json, method, path},
         Mock, MockServer, ResponseTemplate,
     };
 
     use super::ProtonUsersClient;
     use crate::{
         core::ApiClient,
+        proton_users::ProtonSrpClientProofs,
         tests::utils::{common_api_client, setup_test_connection_arc},
         BASE_CORE_API_V4,
     };
@@ -261,7 +361,8 @@ mod tests {
                             "Primary": 1,
                             "Active": 1,
                         }
-                    ]
+                    ],
+                    "MnemonicStatus": 4,
                 },
                 "Code": 1000
             }
@@ -379,7 +480,8 @@ mod tests {
                     "Eligible": 1,
                     "Value": 1
                   },
-                  "SessionAccountRecovery": 1
+                  "SessionAccountRecovery": 1,
+                  "MnemonicStatus": 4,
                 }
               }
         );
@@ -423,5 +525,178 @@ mod tests {
         let users_client = ProtonUsersClient::new(api_client);
         let user_settings = users_client.get_user_settings().await;
         assert!(user_settings.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_get_auth_modulus_1000() {
+        let json_body = serde_json::json!(
+        {
+            "Code": 1000,
+            "Modulus": "-----BEGIN PGP SIGNED MESSAGE-----.*-----END PGP SIGNATURE-----",
+            "ModulusID": "Oq_JB_IkrOx5WlpxzlRPocN3_NhJ80V7DGav77eRtSDkOtLxW2jfI3nUpEqANGpboOyN-GuzEFXadlpxgVp7_g=="
+        });
+        let req_path: String = format!("{}/auth/modulus", BASE_CORE_API_V4);
+        let response = ResponseTemplate::new(200).set_body_json(json_body);
+        let mock_server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path(req_path))
+            .respond_with(response)
+            .expect(1..)
+            .with_priority(1)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let users_client = ProtonUsersClient::new(api_client);
+        let modulus = users_client.get_auth_modulus().await.unwrap();
+
+        assert!(modulus.Code == 1000);
+        assert!(modulus.Modulus == "-----BEGIN PGP SIGNED MESSAGE-----.*-----END PGP SIGNATURE-----");
+        assert!(
+            modulus.ModulusID
+                == "Oq_JB_IkrOx5WlpxzlRPocN3_NhJ80V7DGav77eRtSDkOtLxW2jfI3nUpEqANGpboOyN-GuzEFXadlpxgVp7_g=="
+        );
+    }
+
+    #[tokio::test]
+    async fn test_get_auth_info_1000() {
+        let json_body = serde_json::json!(
+        {
+            "Code": 1000,
+            "Modulus": "-----BEGIN PGP SIGNED MESSAGE-----*-----END SIGNATURE-----",
+            "ServerEphemeral": "<base64_encoded_server_ephemeral>",
+            "Version": 4,
+            "Salt": "<base64_encoded_salt>",
+            "SRPSession": "<hex_encoded_session_key>",
+            "2FA": {
+                "Enabled": 3,
+                "FIDO2": {
+                    "AuthenticationOptions": { },
+                    "RegisteredKeys": []
+                }
+            }
+        });
+        let req_path: String = format!("{}/auth/info", BASE_CORE_API_V4);
+        let response = ResponseTemplate::new(200).set_body_json(json_body);
+        let mock_server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path(req_path))
+            .and(body_json(serde_json::json!(
+            {
+                "Intent": "Proton"
+            })))
+            .respond_with(response)
+            .expect(1..)
+            .with_priority(1)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let users_client = ProtonUsersClient::new(api_client);
+
+        let req = super::GetAuthInfoRequest {
+            Intent: "Proton".to_string(),
+        };
+        let auth_info = users_client.get_auth_info(req).await.unwrap();
+        assert!(auth_info.Code == 1000);
+        assert!(auth_info.Modulus == "-----BEGIN PGP SIGNED MESSAGE-----*-----END SIGNATURE-----");
+        assert!(auth_info.ServerEphemeral == "<base64_encoded_server_ephemeral>");
+        assert!(auth_info.Version == 4);
+        assert!(auth_info.Salt == "<base64_encoded_salt>");
+        assert!(auth_info.SRPSession == "<hex_encoded_session_key>");
+    }
+
+    #[tokio::test]
+    async fn test_unlock_password_change_1000() {
+        let json_body = serde_json::json!(
+        {
+            "Code": 1000,
+            "ServerProof": "<base64_encoded_proof>"
+        });
+        let req_path: String = format!("{}/users/password", BASE_CORE_API_V4);
+        let response = ResponseTemplate::new(200).set_body_json(json_body);
+        let mock_server = MockServer::start().await;
+        Mock::given(method("PUT"))
+            .and(path(req_path))
+            .and(body_json(serde_json::json!(
+            {
+                "ClientEphemeral": "<base64_encoded_ephemeral>",
+                "ClientProof": "<base64_encoded_proof>",
+                "SRPSession": "<hex_encoded_session_id>",
+                "TwoFactorCode": null,
+            })))
+            .respond_with(response)
+            .expect(1..)
+            .with_priority(1)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let users_client = ProtonUsersClient::new(api_client);
+
+        let proofs = ProtonSrpClientProofs {
+            ClientEphemeral: "<base64_encoded_ephemeral>".to_string(),
+            ClientProof: "<base64_encoded_proof>".to_string(),
+            SRPSession: "<hex_encoded_session_id>".to_string(),
+            TwoFactorCode: None,
+        };
+        let server_proofs = users_client.unlock_password_change(proofs).await.unwrap();
+        assert!(server_proofs == "<base64_encoded_proof>");
+    }
+
+    #[tokio::test]
+    async fn test_unlock_sensitive_settings_1000() {
+        let json_body = serde_json::json!(
+        {
+            "Code": 1000,
+            "ServerProof": "<base64_encoded_proof>"
+        });
+        let req_path: String = format!("{}/users/unlock", BASE_CORE_API_V4);
+        let response = ResponseTemplate::new(200).set_body_json(json_body);
+        let mock_server = MockServer::start().await;
+        Mock::given(method("PUT"))
+            .and(path(req_path))
+            .and(body_json(serde_json::json!(
+            {
+                "ClientEphemeral": "<base64_encoded_ephemeral>",
+                "ClientProof": "<base64_encoded_proof>",
+                "SRPSession": "<hex_encoded_session_id>",
+                "TwoFactorCode": null,
+            })))
+            .respond_with(response)
+            .expect(1..)
+            .with_priority(1)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let users_client = ProtonUsersClient::new(api_client);
+
+        let proofs = ProtonSrpClientProofs {
+            ClientEphemeral: "<base64_encoded_ephemeral>".to_string(),
+            ClientProof: "<base64_encoded_proof>".to_string(),
+            SRPSession: "<hex_encoded_session_id>".to_string(),
+            TwoFactorCode: None,
+        };
+        let server_proofs = users_client.unlock_sensitive_settings(proofs).await.unwrap();
+        assert!(server_proofs == "<base64_encoded_proof>");
+    }
+
+    #[tokio::test]
+    async fn test_lock_sensitive_settings_1000() {
+        let json_body = serde_json::json!(
+        {
+            "Code": 1000,
+        });
+        let req_path: String = format!("{}/users/lock", BASE_CORE_API_V4);
+        let response = ResponseTemplate::new(200).set_body_json(json_body);
+        let mock_server = MockServer::start().await;
+        Mock::given(method("PUT"))
+            .and(path(req_path))
+            .respond_with(response)
+            .expect(1..)
+            .with_priority(1)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let users_client = ProtonUsersClient::new(api_client);
+        let code = users_client.lock_sensitive_settings().await.unwrap();
+        assert!(code == 1000);
     }
 }

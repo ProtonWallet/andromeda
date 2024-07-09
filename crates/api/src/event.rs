@@ -4,11 +4,11 @@ use serde::Deserialize;
 
 use crate::{
     contacts::ApiContactEmails,
-    core::{ApiClient, ProtonResponseExt},
+    core::{ApiClient, ProtonResponseExt, ToProtonRequest},
     error::Error,
     settings::UserSettings,
     wallet::{ApiWallet, ApiWalletAccount, ApiWalletKey, ApiWalletSettings, ApiWalletTransaction},
-    ProtonWalletApiClient, BASE_CORE_API_V4,
+    ProtonWalletApiClient, BASE_CORE_API_V4, BASE_CORE_API_V5,
 };
 
 const MAX_EVENTS_PER_POLL: usize = 50;
@@ -152,7 +152,9 @@ impl EventClient {
     }
 
     pub async fn get_event(&self, latest_event_id: &str) -> Result<ApiProtonEvent, Error> {
-        let request = self.get(format!("events/{}", &latest_event_id));
+        let request = self
+            .build_request(BASE_CORE_API_V5, format!("events/{}", &latest_event_id))
+            .to_get_request();
 
         let response = self.api_client.send(request).await?;
         response.parse_response::<ApiProtonEvent>()
@@ -170,8 +172,19 @@ impl EventClient {
 
 #[cfg(test)]
 mod tests {
+
+    use wiremock::{
+        matchers::{method, path},
+        Mock, MockServer, ResponseTemplate,
+    };
+
     use super::EventClient;
-    use crate::{core::ApiClient, tests::utils::common_api_client};
+    use crate::{
+        core::ApiClient,
+        read_mock_file,
+        tests::utils::{common_api_client, setup_test_connection_arc},
+        BASE_CORE_API_V5,
+    };
 
     #[tokio::test]
     #[ignore]
@@ -197,5 +210,35 @@ mod tests {
             .await;
         println!("request done: {:?}", events);
         assert!(events.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_get_event_1000() {
+        let contents = read_mock_file!("get_events_1000_body");
+        assert!(!contents.is_empty());
+        let latest_event_id = "latest_event_id";
+        let req_path: String = format!("{}/events/{}", BASE_CORE_API_V5, latest_event_id);
+        let response = ResponseTemplate::new(200).set_body_string(contents);
+        let mock_server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path(req_path))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let event_client = EventClient::new(api_client);
+        let events = event_client.get_event(latest_event_id).await.unwrap();
+
+        assert_eq!(events.Code, 1000);
+        assert_eq!(events.EventID, "ACXDmTaBub14w==");
+        assert_eq!(events.Refresh, 0);
+        assert_eq!(events.More, 0);
+        assert!(events.ContactEmails.is_some());
+        assert!(events.Wallets.is_some());
+        assert!(events.WalletAccounts.is_some());
+        assert!(events.WalletKeys.is_some());
+        assert!(events.WalletSettings.is_some());
+        assert!(events.WalletTransactions.is_some());
+        assert!(events.WalletUserSettings.is_some());
     }
 }

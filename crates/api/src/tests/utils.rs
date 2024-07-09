@@ -34,3 +34,17 @@ pub async fn common_api_client() -> Arc<ProtonWalletApiClient> {
     api.login("pro", "pro").await.unwrap();
     Arc::new(api)
 }
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! read_mock_file {
+    ($filename:expr) => {{
+        use std::{fs::File, io::Read};
+
+        let mut file = File::open(format!("./src/tests/mocks/{}.json", $filename)).unwrap();
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).unwrap();
+
+        contents
+    }};
+}
