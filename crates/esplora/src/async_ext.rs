@@ -6,7 +6,7 @@ use bdk_chain::{
     collections::BTreeMap,
     local_chain::CheckPoint,
     spk_client::{FullScanRequest, FullScanResult, SyncRequest, SyncResult},
-    Anchor, BlockId, ConfirmationTimeHeightAnchor, TxGraph,
+    Anchor, BlockId, ConfirmationTimeHeightAnchor, Indexed, TxGraph,
 };
 use bitcoin::Amount;
 use futures::{stream::FuturesOrdered, TryStreamExt};
@@ -201,7 +201,7 @@ async fn chain_update<A: Anchor>(
 /// [`KeychainTxOutIndex`](bdk_chain::keychain::KeychainTxOutIndex).
 async fn full_scan_for_index_and_graph<K: Ord + Clone + Send>(
     client: &AsyncClient,
-    keychain_spks: BTreeMap<K, impl IntoIterator<IntoIter = impl Iterator<Item = (u32, ScriptBuf)> + Send> + Send>,
+    keychain_spks: BTreeMap<K, impl IntoIterator<IntoIter = impl Iterator<Item = Indexed<ScriptBuf>> + Send> + Send>,
     stop_gap: usize,
 ) -> Result<(TxGraph<ConfirmationTimeHeightAnchor>, BTreeMap<K, u32>), Error> {
     let mut graph = TxGraph::<ConfirmationTimeHeightAnchor>::default();
