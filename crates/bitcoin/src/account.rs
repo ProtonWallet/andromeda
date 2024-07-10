@@ -206,13 +206,28 @@ impl<P: WalletStore> Account<P> {
     ///
     /// If index is None, it will return last unused address of the account. So
     /// to avoid address reuse, we need to sync before calling this method.
+    ///
+    /// Additionally, it takes care of revealing addresses up to the peeked
+    /// index (or last unused address) and store the update
     pub async fn get_address(&self, index: Option<u32>) -> Result<AddressInfo, Error> {
-        if let Some(index) = index {
+        let address = if let Some(index) = index {
             // so far, there is no use-case to get internal keychain address
-            Ok(self.get_wallet().await.peek_address(EXTERNAL_KEYCHAIN, index))
+            self.get_wallet().await.peek_address(EXTERNAL_KEYCHAIN, index)
         } else {
-            Ok(self.get_wallet().await.next_unused_address(EXTERNAL_KEYCHAIN))
-        }
+            self.get_wallet().await.next_unused_address(EXTERNAL_KEYCHAIN)
+        };
+
+        // Here we only want to make sure we revealed addresses up to the peeked index
+        // so that we detect transactions on partial syncings
+        let _ = self
+            .get_wallet()
+            .await
+            .reveal_addresses_to(EXTERNAL_KEYCHAIN, address.index);
+
+        // We make sure the newly revealed addresses are stored
+        self.store_stage(&mut self.get_wallet().await).await?;
+
+        Ok(address)
     }
 
     /// Returns the last unused index from account

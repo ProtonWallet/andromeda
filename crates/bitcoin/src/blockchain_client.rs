@@ -81,13 +81,6 @@ impl BlockchainClient {
         let chain = wallet.local_chain();
         let chain_tip = chain.tip().block_id();
 
-        // Script pubkeys that are not used yet
-        let unused_spks = wallet
-            .spk_index()
-            .unused_spks()
-            .map(|((_k, _i), spk)| spk.to_owned())
-            .collect::<Vec<_>>();
-
         let utxos = wallet.list_unspent().map(|utxo| utxo.outpoint).collect::<Vec<_>>();
 
         let unconfirmed_txids = wallet
@@ -99,7 +92,6 @@ impl BlockchainClient {
 
         let request = wallet
             .start_sync_with_revealed_spks()
-            .chain_spks(unused_spks.into_iter())
             .chain_outpoints(utxos.into_iter())
             .chain_txids(unconfirmed_txids.into_iter());
 
