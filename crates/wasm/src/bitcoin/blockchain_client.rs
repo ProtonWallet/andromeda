@@ -94,10 +94,9 @@ impl WasmBlockchainClient {
     pub async fn full_sync(&self, account: &WasmAccount, stop_gap: Option<usize>) -> Result<(), js_sys::Error> {
         let account_inner = account.get_inner();
 
-        let wallet_lock = account_inner.get_wallet().await;
         let update = self
             .inner
-            .full_sync(wallet_lock, stop_gap)
+            .full_sync(&account_inner, stop_gap)
             .await
             .map_err(|e| e.to_js_error())?;
 

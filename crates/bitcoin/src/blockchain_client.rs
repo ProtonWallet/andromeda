@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use andromeda_api::{transaction::ExchangeRateOrTransactionTime, ProtonWalletApiClient};
 use andromeda_common::utils::now;
 use andromeda_esplora::{AsyncClient, EsploraAsyncExt};
-use async_std::sync::MutexGuard;
+use async_std::sync::RwLockReadGuard;
 use bdk_wallet::{
     bitcoin::{Script, Transaction, Txid},
     chain::spk_client::{FullScanResult, SyncResult},
@@ -11,7 +11,7 @@ use bdk_wallet::{
     KeychainKind,
 };
 
-use crate::error::Error;
+use crate::{account::Account, error::Error, storage::WalletStore};
 
 pub const DEFAULT_STOP_GAP: usize = 50;
 pub const PARALLEL_REQUESTS: usize = 5;
@@ -44,11 +44,14 @@ impl BlockchainClient {
     ///   hardcoded so far. We should soon offer to change the stop gap setting
     ///   for a given account, so that he can find transactions sent above the
     ///   previously defined one.
-    pub async fn full_sync<'a>(
+    pub async fn full_sync<'a, P>(
         &self,
-        wallet: MutexGuard<'a, BdkWallet>,
+        account: &Account<P>,
         stop_gap: Option<usize>,
-    ) -> Result<FullScanResult<KeychainKind>, Error> {
+    ) -> Result<FullScanResult<KeychainKind>, Error>
+    where
+        P: WalletStore,
+    {
         fn generate_inspect(kind: KeychainKind) -> impl FnMut(u32, &Script) + Send + Sync + 'static {
             let mut once = Some(());
             move |spk_i, _| {
@@ -59,7 +62,8 @@ impl BlockchainClient {
             }
         }
 
-        let request = wallet
+        let read_lock = account.get_wallet().await;
+        let request = read_lock
             .start_full_scan()
             .inspect_spks_for_keychain(KeychainKind::External, generate_inspect(KeychainKind::External))
             .inspect_spks_for_keychain(KeychainKind::Internal, generate_inspect(KeychainKind::Internal));
@@ -77,7 +81,7 @@ impl BlockchainClient {
     /// # Notes
     ///
     /// This has to be done on top of a full sync.
-    pub async fn partial_sync<'a>(&self, wallet: MutexGuard<'a, BdkWallet>) -> Result<SyncResult, Error> {
+    pub async fn partial_sync<'a>(&self, wallet: RwLockReadGuard<'a, BdkWallet>) -> Result<SyncResult, Error> {
         let chain = wallet.local_chain();
         let chain_tip = chain.tip().block_id();
 
@@ -104,7 +108,7 @@ impl BlockchainClient {
     }
 
     /// Returns whether or not the wallet needs to be synced again (new block)
-    pub async fn should_sync<'a>(&self, wallet: MutexGuard<'a, BdkWallet>) -> Result<bool, Error> {
+    pub async fn should_sync<'a>(&self, wallet: RwLockReadGuard<'a, BdkWallet>) -> Result<bool, Error> {
         let tip_hash = self.0.get_tip_hash().await?;
         let latest_chekpoint_hash = wallet.latest_checkpoint().hash();
 

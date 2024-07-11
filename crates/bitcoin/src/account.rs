@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, fmt::Debug, str::FromStr, sync::Arc};
 
 use andromeda_common::{utils::now, Network, ScriptType};
-use async_std::sync::{Mutex, MutexGuard};
+use async_std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use bdk_wallet::{
     bitcoin::{
         bip32::{ChildNumber, DerivationPath, Xpriv},
@@ -53,7 +53,7 @@ const EXTERNAL_KEYCHAIN: KeychainKind = KeychainKind::External;
 pub struct Account<P: WalletStore = ()> {
     derivation_path: DerivationPath,
     store: P,
-    wallet: Arc<Mutex<BdkWallet>>,
+    wallet: Arc<RwLock<BdkWallet>>,
 }
 
 type ReturnedDescriptor = (
@@ -138,9 +138,14 @@ impl<P: WalletStore> Account<P> {
         Self::build_wallet_with_descriptors(external_descriptor, internal_descriptor, network, store)
     }
 
-    /// Returns a reference to account's BdkWallet struct
-    pub async fn get_wallet(&self) -> MutexGuard<BdkWallet> {
-        self.wallet.lock().await
+    /// Returns a readable lock to account's BdkWallet struct
+    pub async fn get_wallet(&self) -> RwLockReadGuard<BdkWallet> {
+        self.wallet.read().await
+    }
+
+    /// Returns mutable lock a reference to account's BdkWallet struct
+    pub async fn get_mutable_wallet(&self) -> RwLockWriteGuard<BdkWallet> {
+        self.wallet.write().await
     }
 
     /// From a master private key, returns a bitcoin account (as defined in https://bips.dev/44/)
@@ -186,7 +191,7 @@ impl<P: WalletStore> Account<P> {
         Ok(Self {
             derivation_path,
             store: store.clone(),
-            wallet: Arc::new(Mutex::new(Self::build_wallet(
+            wallet: Arc::new(RwLock::new(Self::build_wallet(
                 account_xprv,
                 network,
                 script_type,
@@ -232,22 +237,21 @@ impl<P: WalletStore> Account<P> {
     /// Additionally, it takes care of revealing addresses up to the peeked
     /// index (or last unused address) and store the update
     pub async fn get_address(&self, index: Option<u32>) -> Result<AddressInfo, Error> {
+        let mut write_lock = self.get_mutable_wallet().await;
+
         let address = if let Some(index) = index {
             // so far, there is no use-case to get internal keychain address
-            self.get_wallet().await.peek_address(EXTERNAL_KEYCHAIN, index)
+            write_lock.peek_address(EXTERNAL_KEYCHAIN, index)
         } else {
-            self.get_wallet().await.next_unused_address(EXTERNAL_KEYCHAIN)
+            write_lock.next_unused_address(EXTERNAL_KEYCHAIN)
         };
 
         // Here we only want to make sure we revealed addresses up to the peeked index
         // so that we detect transactions on partial syncings
-        let _ = self
-            .get_wallet()
-            .await
-            .reveal_addresses_to(EXTERNAL_KEYCHAIN, address.index);
+        let _ = write_lock.reveal_addresses_to(EXTERNAL_KEYCHAIN, address.index);
 
         // We make sure the newly revealed addresses are stored
-        self.store_stage(&mut self.get_wallet().await)?;
+        self.store_stage(&mut write_lock)?;
 
         Ok(address)
     }
@@ -366,7 +370,7 @@ impl<P: WalletStore> Account<P> {
     /// Manually insert a transaction not confirmed yet
     /// It will be then be stored and synced until it gets confirmed
     pub async fn insert_unconfirmed_tx(&self, tx: Transaction) -> Result<(), Error> {
-        let mut wallet_lock = self.get_wallet().await;
+        let mut wallet_lock = self.get_mutable_wallet().await;
         wallet_lock.insert_tx(
             tx,
             ConfirmationTime::Unconfirmed {
@@ -380,7 +384,7 @@ impl<P: WalletStore> Account<P> {
     }
 
     pub async fn apply_update(&self, update: impl Into<Update>) -> Result<(), Error> {
-        let mut wallet_lock = self.get_wallet().await;
+        let mut wallet_lock = self.get_mutable_wallet().await;
         wallet_lock.apply_update(update)?;
 
         self.store_stage(&mut wallet_lock)?;
@@ -388,7 +392,7 @@ impl<P: WalletStore> Account<P> {
         Ok(())
     }
 
-    pub fn store_stage(&self, wallet_lock: &mut MutexGuard<'_, BdkWallet>) -> Result<(), Error> {
+    pub fn store_stage(&self, wallet_lock: &mut RwLockWriteGuard<'_, BdkWallet>) -> Result<(), Error> {
         if let Some(changeset) = wallet_lock.take_staged() {
             self.store.write(&changeset)?;
         }

@@ -1,7 +1,7 @@
 use std::{cmp::Ordering, sync::Arc};
 
 use andromeda_common::utils::now;
-use async_std::sync::MutexGuard;
+use async_std::sync::RwLockReadGuard;
 use bdk_wallet::{
     bitcoin::{bip32::DerivationPath, Address, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Txid, Witness},
     chain::{tx_graph::CanonicalTx, ChainPosition, ConfirmationTimeHeightAnchor},
@@ -101,12 +101,12 @@ pub trait ToTransactionDetails<A> {
     fn to_transaction_details(&self, account: A) -> Result<TransactionDetails, Error>;
 }
 
-impl<'a> ToTransactionDetails<(&MutexGuard<'a, BdkWallet>, DerivationPath)>
+impl<'a> ToTransactionDetails<(&RwLockReadGuard<'a, BdkWallet>, DerivationPath)>
     for CanonicalTx<'_, Arc<Transaction>, ConfirmationTimeHeightAnchor>
 {
     fn to_transaction_details(
         &self,
-        (wallet_lock, account_derivation_path): (&MutexGuard<'a, BdkWallet>, DerivationPath),
+        (wallet_lock, account_derivation_path): (&RwLockReadGuard<'a, BdkWallet>, DerivationPath),
     ) -> Result<TransactionDetails, Error> {
         let (sent, received) = wallet_lock.sent_and_received(&self.tx_node.tx);
 
