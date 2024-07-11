@@ -170,7 +170,7 @@ async fn sync_account(
 
     let chain = BlockchainClient::new(proton_api_client);
 
-    chain.full_sync(account.get_wallet().await, None).await.unwrap();
+    chain.full_sync(&account, None).await.unwrap();
 
     Ok(derivation_path)
 }

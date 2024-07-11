@@ -292,7 +292,11 @@ impl WasmTxBuilder {
 
     #[wasm_bindgen(js_name = createPsbt)]
     pub async fn create_pbst(&self, network: WasmNetwork) -> Result<WasmPsbt, js_sys::Error> {
-        let psbt = self.inner.create_psbt(false).await.map_err(|e| e.to_js_error())?;
+        let psbt = self
+            .inner
+            .create_psbt(false, false)
+            .await
+            .map_err(|e| e.to_js_error())?;
 
         WasmPsbt::from_psbt(&psbt, network.into())
     }

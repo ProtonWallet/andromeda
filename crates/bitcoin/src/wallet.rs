@@ -137,9 +137,7 @@ impl<P: WalletStore> Wallet<P> {
                 let account = Account::new(self.mprv, self.network, script_type, derivation_path.clone(), factory)
                     .expect("Account should be valid here");
 
-                client
-                    .full_sync(account.get_wallet().await, Some(discovery_address_stop_gap))
-                    .await?;
+                client.full_sync(&account, Some(discovery_address_stop_gap)).await?;
 
                 // If an account has at least one output, it means that it has already been used
                 if account.get_wallet().await.list_output().next().is_some() {
