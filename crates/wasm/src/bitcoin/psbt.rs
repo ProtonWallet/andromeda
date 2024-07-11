@@ -64,4 +64,9 @@ impl WasmPsbt {
 
         WasmPsbt::from_psbt(&mutable_psbt.into(), network.into())
     }
+
+    #[wasm_bindgen(js_name = computeTxSize)]
+    pub fn compute_tx_size(&self) -> Result<usize, js_sys::Error> {
+        self.inner.compute_tx_size().map_err(|e| e.to_js_error())
+    }
 }

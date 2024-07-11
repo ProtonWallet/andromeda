@@ -28,4 +28,8 @@ impl Psbt {
     pub fn fee(&self) -> Result<Amount, Error> {
         Ok(self.0.clone().fee()?)
     }
+
+    pub fn compute_tx_size(&self) -> Result<usize, Error> {
+        Ok(self.extract_tx()?.vsize())
+    }
 }
