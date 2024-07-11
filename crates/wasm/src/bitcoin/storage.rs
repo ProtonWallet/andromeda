@@ -34,17 +34,15 @@ impl WalletStore for WebOnchainStore {
     fn read(&self) -> Result<Option<ChangeSet>, Error> {
         let local_storage = get_storage().ok();
 
-        match local_storage {
-            Some(local_storage) => {
-                let serialized = local_storage.get_item(&self.changeset_key).ok().flatten();
+        if let Some(local_storage) = local_storage {
+            let serialized = local_storage.get_item(&self.changeset_key).ok().flatten();
 
-                match serialized {
-                    Some(serialized) => Ok(serde_json::from_str(&serialized).ok()),
-                    _ => Ok(None),
-                }
+            if let Some(serialized) = serialized {
+                return Ok(serde_json::from_str(&serialized).ok());
             }
-            _ => Ok(None),
         }
+
+        Ok(None)
     }
 
     fn write(&self, new_changeset: &ChangeSet) -> Result<(), Error> {
@@ -55,14 +53,25 @@ impl WalletStore for WebOnchainStore {
             serde_json::to_string(&prev_changeset).map_err(|_| anyhow!("Cannot serialize persisted data"))?;
 
         let local_storage = get_storage().ok();
-        if local_storage.is_some() {
+        if let Some(local_storage) = local_storage {
             local_storage
-                .unwrap()
                 .set(&self.changeset_key, &serialized)
                 .map_err(|_| anyhow!("Cannot persist data"))?;
         }
 
         return Ok(());
+    }
+
+    fn clear(&self) -> Result<(), Error> {
+        let local_storage = get_storage().ok();
+
+        if let Some(local_storage) = local_storage {
+            local_storage
+                .delete(&self.changeset_key)
+                .map_err(|_| anyhow!("Cannot delete data"))?;
+        }
+
+        Ok(())
     }
 }
 

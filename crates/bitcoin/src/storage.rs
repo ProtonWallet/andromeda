@@ -11,6 +11,8 @@ pub trait WalletStore: Clone {
     fn read(&self) -> Result<Option<ChangeSet>, Error>;
 
     fn write(&self, changeset: &ChangeSet) -> Result<(), Error>;
+
+    fn clear(&self) -> Result<(), Error>;
 }
 
 pub trait WalletStoreFactory<P>
@@ -30,6 +32,10 @@ impl WalletStore for () {
     }
 
     fn write(&self, _changeset: &ChangeSet) -> Result<(), Error> {
+        Ok(())
+    }
+
+    fn clear(&self) -> Result<(), Error> {
         Ok(())
     }
 }

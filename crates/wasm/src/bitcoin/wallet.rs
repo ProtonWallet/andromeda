@@ -163,4 +163,10 @@ impl WasmWallet {
     pub fn get_fingerprint(&self) -> String {
         self.inner.get_fingerprint()
     }
+
+    #[wasm_bindgen(js_name = clearStore)]
+    pub fn clear_store(&self) -> Result<(), js_sys::Error> {
+        self.inner.clear_store().map_err(|e| e.to_js_error())?;
+        Ok(())
+    }
 }

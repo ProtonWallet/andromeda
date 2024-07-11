@@ -80,8 +80,12 @@ impl<P: WalletStore> Wallet<P> {
         Ok(account)
     }
 
-    pub fn get_account(&mut self, derivation_path: &DerivationPath) -> Option<&Account<P>> {
+    pub fn get_account(&self, derivation_path: &DerivationPath) -> Option<&Account<P>> {
         self.accounts.get(derivation_path)
+    }
+
+    pub fn get_accounts(&self) -> Vec<&Account<P>> {
+        self.accounts.values().collect::<Vec<_>>()
     }
 
     pub async fn get_balance(&self) -> Result<Balance, Error> {
@@ -201,5 +205,13 @@ impl<P: WalletStore> Wallet<P> {
     pub fn get_fingerprint(&self) -> String {
         let secp = Secp256k1::new();
         self.mprv.fingerprint(&secp).to_string()
+    }
+
+    pub fn clear_store(&self) -> Result<(), Error> {
+        for a in self.get_accounts().into_iter() {
+            a.clear_store()?;
+        }
+
+        Ok(())
     }
 }

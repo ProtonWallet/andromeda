@@ -93,17 +93,15 @@ fn build_account_descriptors(
 }
 
 impl<P: WalletStore> Account<P> {
-    fn build_wallet(
-        account_xprv: Xpriv,
+    fn build_wallet_with_descriptors(
+        external_descriptor: ReturnedDescriptor,
+        internal_descriptor: ReturnedDescriptor,
         network: Network,
-        script_type: ScriptType,
-        storage: P,
+        store: P,
     ) -> Result<BdkWallet, Error> {
-        let (external_descriptor, internal_descriptor) = build_account_descriptors(account_xprv, script_type)?;
+        let store_content = store.read()?;
 
         let genesis_block_hash = genesis_block(Params::from(&network.into())).block_hash();
-
-        let store_content = storage.read()?;
 
         let wallet = BdkWallet::new_or_load_with_genesis_hash(
             external_descriptor,
@@ -113,7 +111,31 @@ impl<P: WalletStore> Account<P> {
             genesis_block_hash,
         )?;
 
-        Ok(wallet)
+        Ok::<BdkWallet, Error>(wallet)
+    }
+
+    fn build_wallet(
+        account_xprv: Xpriv,
+        network: Network,
+        script_type: ScriptType,
+        store: P,
+    ) -> Result<BdkWallet, Error> {
+        let (external_descriptor, internal_descriptor) = build_account_descriptors(account_xprv, script_type)?;
+
+        let wallet = Self::build_wallet_with_descriptors(
+            external_descriptor.clone(),
+            internal_descriptor.clone(),
+            network,
+            store.clone(),
+        )
+        .ok();
+
+        if let Some(wallet) = wallet {
+            return Ok(wallet);
+        }
+
+        store.clear()?;
+        Self::build_wallet_with_descriptors(external_descriptor, internal_descriptor, network, store)
     }
 
     /// Returns a reference to account's BdkWallet struct
@@ -128,7 +150,7 @@ impl<P: WalletStore> Account<P> {
     /// * master_secret_key : the master private key of the wallet
     /// * config : config of the account, including script_type, network and
     ///   index
-    /// * storage : storage to persist account wallet data
+    /// * store : store to persist account wallet data
     ///
     /// ```rust
     /// # use std::str::FromStr;
@@ -225,7 +247,7 @@ impl<P: WalletStore> Account<P> {
             .reveal_addresses_to(EXTERNAL_KEYCHAIN, address.index);
 
         // We make sure the newly revealed addresses are stored
-        self.store_stage(&mut self.get_wallet().await).await?;
+        self.store_stage(&mut self.get_wallet().await)?;
 
         Ok(address)
     }
@@ -352,7 +374,7 @@ impl<P: WalletStore> Account<P> {
             },
         )?;
 
-        self.store_stage(&mut wallet_lock).await?;
+        self.store_stage(&mut wallet_lock)?;
 
         Ok(())
     }
@@ -361,16 +383,21 @@ impl<P: WalletStore> Account<P> {
         let mut wallet_lock = self.get_wallet().await;
         wallet_lock.apply_update(update)?;
 
-        self.store_stage(&mut wallet_lock).await?;
+        self.store_stage(&mut wallet_lock)?;
 
         Ok(())
     }
 
-    pub async fn store_stage(&self, wallet_lock: &mut MutexGuard<'_, BdkWallet>) -> Result<(), Error> {
+    pub fn store_stage(&self, wallet_lock: &mut MutexGuard<'_, BdkWallet>) -> Result<(), Error> {
         if let Some(changeset) = wallet_lock.take_staged() {
             self.store.write(&changeset)?;
         }
 
+        Ok(())
+    }
+
+    pub fn clear_store(&self) -> Result<(), Error> {
+        self.store.clear()?;
         Ok(())
     }
 }
