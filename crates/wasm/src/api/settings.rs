@@ -314,6 +314,7 @@ pub struct WasmUserSettings {
     pub ReceiveInviterNotification: Option<u8>,
     pub ReceiveEmailIntegrationNotification: Option<u8>,
     pub WalletCreated: Option<u8>,
+    pub AcceptTermsAndConditions: Option<u8>,
 }
 
 impl From<UserSettings> for WasmUserSettings {
@@ -326,6 +327,7 @@ impl From<UserSettings> for WasmUserSettings {
             ReceiveInviterNotification: value.ReceiveInviterNotification,
             ReceiveEmailIntegrationNotification: value.ReceiveEmailIntegrationNotification,
             WalletCreated: value.WalletCreated,
+            AcceptTermsAndConditions: value.AcceptTermsAndConditions,
         }
     }
 }
@@ -389,6 +391,15 @@ impl WasmSettingsClient {
     ) -> Result<WasmUserSettingsData, js_sys::Error> {
         self.0
             .update_hide_empty_used_addresses(hide_empty_used_addresses)
+            .await
+            .map_err(|e| e.to_js_error())
+            .map(|settings| WasmUserSettingsData(settings.into()))
+    }
+
+    #[wasm_bindgen(js_name = "acceptTermsAndConditions")]
+    pub async fn accept_terms_and_conditions(&self) -> Result<WasmUserSettingsData, js_sys::Error> {
+        self.0
+            .accept_terms_and_conditions()
             .await
             .map_err(|e| e.to_js_error())
             .map(|settings| WasmUserSettingsData(settings.into()))
