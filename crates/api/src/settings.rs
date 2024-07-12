@@ -123,6 +123,7 @@ pub struct UserSettings {
     pub ReceiveInviterNotification: Option<u8>,
     pub ReceiveEmailIntegrationNotification: Option<u8>,
     pub WalletCreated: Option<u8>,
+    pub AcceptTermsAndConditions: Option<u8>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -231,6 +232,15 @@ impl SettingsClient {
             .body_json(UpdateHideEmptyUsedAddressesRequestBody {
                 HideEmptyUsedAddresses: hide_empty_used_addresses.into(),
             })?;
+
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<GetUserSettingsResponseBody>()?;
+
+        Ok(parsed.WalletUserSettings)
+    }
+
+    pub async fn accept_terms_and_conditions(&self) -> Result<UserSettings, Error> {
+        let request = self.put("settings/terms-and-conditions/accept");
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetUserSettingsResponseBody>()?;
