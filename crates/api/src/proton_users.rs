@@ -355,7 +355,8 @@ mod tests {
                         {
                             "ID": "IlnTbqicN-2HfUGIn-ki8bqZfLqNj5ErUB0z24Qx5g-4NvrrIc6GLvEpj2EPfwGDv28aKYVRRrSgEFhR_zhlkA==",
                             "Version": 3,
-                            "PrivateKey": "-----BEGIN PGP PRIVATE KEY BLOCK-----*-----END PGP PRIVATE KEY BLOCK-----",
+                            "PrivateKey": "-----BEGIN PGP PRIVATE KEY BLOCK-----*-----END PGP PRIVATE KEY BLOCK-----", //#gitleaks:allow
+
                             "Token": "-----BEGIN PGP MESSAGE-----.*-----END PGP MESSAGE-----",
                             "Fingerprint": "c93f767df53b0ca8395cfde90483475164ec6353",
                             "Primary": 1,
