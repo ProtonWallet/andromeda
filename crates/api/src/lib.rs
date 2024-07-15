@@ -95,7 +95,7 @@ pub struct ProtonWalletApiClient {
 #[derive(Debug)]
 pub struct ApiConfig {
     /// A tupple composed of `app_version` and `user_agent`
-    pub spec: Option<(String, String)>,
+    pub spec: (String, String),
     /// The api client initial auth data
     pub auth: Option<Auth>,
     /// An optional prefix to use on every api endpoint call
@@ -135,7 +135,7 @@ impl ProtonWalletApiClient {
     /// use muon::{Tokens, Auth};
     /// let auth = Auth::internal("uid", Tokens::access("acc_tok", "ref_tok", ["scopes"]));
     /// let config = ApiConfig {
-    ///     spec: Some((String::from("android-wallet/1.0.0"), String::from("ProtonWallet/plus-agent-details"))),
+    ///     spec: (String::from("android-wallet/1.0.0"), String::from("ProtonWallet/plus-agent-details")),
     ///     auth: Some(auth),
     ///     env: Some("atlas".to_string()),
     ///     url_prefix: None,
@@ -146,18 +146,15 @@ impl ProtonWalletApiClient {
     pub fn from_config(config: ApiConfig) -> Result<Self, Error> {
         let env: String = config.env.clone().unwrap_or("atlas".to_string());
 
-        let app_spec = if let Some((app_version, user_agent)) = config.spec {
-            App::new(app_version)?.with_user_agent(user_agent)
-        } else {
-            App::new("Other")?
-        };
+        let (app_version, user_agent) = config.spec;
+        let app = App::new(app_version)?.with_user_agent(user_agent);
 
         let session = if let Some(store) = config.store {
-            Client::new(app_spec, store)?
+            Client::new(app, store)?
         } else {
             let auth = config.auth.unwrap_or(Auth::None);
             let auth_store = WalletAuthStore::from_env_str(env, Arc::new(Mutex::new(auth)));
-            Client::new(app_spec, auth_store)?
+            Client::new(app, auth_store)?
         };
 
         Ok(Self {
@@ -279,10 +276,10 @@ impl Default for ProtonWalletApiClient {
     fn default() -> Self {
         let default_app = App::new("Other").unwrap();
         let config = ApiConfig {
-            spec: Some((
+            spec: (
                 default_app.app_version().to_string(),
                 default_app.user_agent().to_string(),
-            )),
+            ),
             url_prefix: None,
             env: None,
             store: None,

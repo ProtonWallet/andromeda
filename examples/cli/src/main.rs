@@ -77,7 +77,7 @@ fn require_account_lock(
     wallet: Arc<Mutex<Wallet<()>>>,
     derivation_path: &DerivationPath,
 ) -> Result<Account<()>, &'static str> {
-    let mut lock = wallet.lock().unwrap();
+    let lock = wallet.lock().unwrap();
     let account = lock.get_account(derivation_path).ok_or("ERROR: account not found")?;
 
     Ok(account.clone())
@@ -154,10 +154,10 @@ async fn sync_account(
     let account = require_account_lock(wallet, &derivation_path)?;
 
     let config = ApiConfig {
-        spec: Some((
-            String::from("web-wallet@1.0.0"),
+        spec: (
+            String::from("cli-wallet@0.0.1"),
             String::from("ProtonWallet/plus-agent-details"),
-        )),
+        ),
         auth: None,
         env: Some("atlas".to_string()),
         url_prefix: None,

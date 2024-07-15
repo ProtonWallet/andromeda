@@ -55,18 +55,20 @@ pub struct WasmApiClients {
 impl WasmProtonWalletApiClient {
     #[wasm_bindgen(constructor)]
     pub fn new(
+        app_version: String,
+        user_agent: String,
         uid_str: Option<String>,
         origin: Option<String>,
         url_prefix: Option<String>,
     ) -> Result<WasmProtonWalletApiClient, js_sys::Error> {
         let config = ApiConfig {
-            // TODO: add clients specs here
-            spec: None,
+            spec: (app_version, user_agent),
             auth: uid_str.map(|u| Auth::external(u)),
             env: origin,
             url_prefix,
             store: None,
         };
+
         let client = ProtonWalletApiClient::from_config(config).map_err(|e| e.to_js_error())?;
         Ok(WasmProtonWalletApiClient(client))
     }
@@ -90,6 +92,7 @@ impl WasmProtonWalletApiClient {
 
 #[cfg(test)]
 mod tests {
+    use andromeda_api::tests::utils::test_spec;
     use wasm_bindgen_test::wasm_bindgen_test;
 
     use super::WasmProtonWalletApiClient;
@@ -97,7 +100,7 @@ mod tests {
     #[wasm_bindgen_test]
     #[ignore]
     async fn should_create_pw_api_client() {
-        let client = WasmProtonWalletApiClient::new(None, None, None).unwrap();
+        let client = WasmProtonWalletApiClient::new(test_spec().0, test_spec().1, None, None, None).unwrap();
         client.0.login("pro", "pro").await.unwrap();
     }
 }
