@@ -31,40 +31,39 @@ pub struct ApiProtonUserSettingsResponse {
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(non_snake_case)]
 pub struct ProtonUserSettings {
-    Email: EmailSettings,
-    Password: Option<PasswordSettings>,
-    Phone: Option<PhoneSettings>,
+    pub Email: EmailSettings,
+    pub Password: Option<PasswordSettings>,
+    pub Phone: Option<PhoneSettings>,
     #[serde(rename = "2FA")]
-    two_fa: Option<TwoFASettings>,
-    News: u32,
-    Locale: String,
-    LogAuth: u32,
-    InvoiceText: String,
-    Density: u32,
-    WeekStart: u32,
-    DateFormat: u32,
-    TimeFormat: u32,
-    Welcome: u32,
-    WelcomeFlag: u32,
-    EarlyAccess: u32,
-    Flags: Option<FlagsSettings>,
-    Referral: Option<ReferralSettings>,
-    DeviceRecovery: u32,
-    Telemetry: u32,
-    CrashReports: u32,
-    HideSidePanel: u32,
-    HighSecurity: HighSecuritySettings,
-    SessionAccountRecovery: u32,
-    MnemonicStatus: u32,
+    pub two_fa: Option<TwoFASettings>,
+    pub News: u32,
+    pub Locale: String,
+    pub LogAuth: u32,
+    pub InvoiceText: String,
+    pub Density: u32,
+    pub WeekStart: u32,
+    pub DateFormat: u32,
+    pub TimeFormat: u32,
+    pub Welcome: u32,
+    pub WelcomeFlag: u32,
+    pub EarlyAccess: u32,
+    pub Flags: Option<FlagsSettings>,
+    pub Referral: Option<ReferralSettings>,
+    pub DeviceRecovery: u32,
+    pub Telemetry: u32,
+    pub CrashReports: u32,
+    pub HideSidePanel: u32,
+    pub HighSecurity: HighSecuritySettings,
+    pub SessionAccountRecovery: u32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(non_snake_case)]
 pub struct EmailSettings {
-    Value: String,
-    Status: u32,
-    Notify: u32,
-    Reset: u32,
+    pub Value: Option<String>,
+    pub Status: u32,
+    pub Notify: u32,
+    pub Reset: u32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -82,8 +81,8 @@ pub struct PhoneSettings {
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(non_snake_case)]
 pub struct TwoFASettings {
-    Enabled: u32,
-    Allowed: u32,
+    pub Enabled: u32,
+    pub Allowed: u32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -101,8 +100,8 @@ pub struct ReferralSettings {
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(non_snake_case)]
 pub struct HighSecuritySettings {
-    Eligible: u32,
-    Value: u32,
+    pub Eligible: u32,
+    pub Value: u32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
