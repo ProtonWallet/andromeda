@@ -8,7 +8,7 @@ pub fn test_spec() -> (String, String) {
 
 pub fn setup_test_connection(url: String) -> ProtonWalletApiClient {
     let config = ApiConfig {
-        spec: Some(test_spec()),
+        spec: test_spec(),
         url_prefix: None,
         env: Some(url),
         store: None,
@@ -24,7 +24,7 @@ pub fn setup_test_connection_arc(url: String) -> Arc<ProtonWalletApiClient> {
 
 pub async fn common_api_client() -> Arc<ProtonWalletApiClient> {
     let config = ApiConfig {
-        spec: Some(test_spec()),
+        spec: test_spec(),
         url_prefix: None,
         env: None,
         store: None,
