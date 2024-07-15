@@ -307,7 +307,7 @@ impl From<QuotesByProvider> for WasmQuotesByProvider {
 #[wasm_bindgen]
 impl WasmPaymentGatewayClient {
     #[wasm_bindgen(js_name = "getCountries")]
-    pub async fn get_countries(&self) -> Result<WasmCountriesByProvider, js_sys::Error> {
+    pub async fn get_countries(&self) -> Result<WasmCountriesByProvider, JsValue> {
         self.0
             .get_countries()
             .await
@@ -316,7 +316,7 @@ impl WasmPaymentGatewayClient {
     }
 
     #[wasm_bindgen(js_name = "getFiatCurrencies")]
-    pub async fn get_fiat_currencies(&self) -> Result<WasmFiatCurrenciesByProvider, js_sys::Error> {
+    pub async fn get_fiat_currencies(&self) -> Result<WasmFiatCurrenciesByProvider, JsValue> {
         self.0
             .get_fiat_currencies()
             .await
@@ -325,10 +325,7 @@ impl WasmPaymentGatewayClient {
     }
 
     #[wasm_bindgen(js_name = "getPaymentMethods")]
-    pub async fn get_payment_methods(
-        &self,
-        fiat_currency: String,
-    ) -> Result<WasmPaymentMethodsByProvider, js_sys::Error> {
+    pub async fn get_payment_methods(&self, fiat_currency: String) -> Result<WasmPaymentMethodsByProvider, JsValue> {
         self.0
             .get_payment_methods(fiat_currency)
             .await
@@ -343,7 +340,7 @@ impl WasmPaymentGatewayClient {
         fiat_currency: String,
         payment_method: Option<WasmPaymentMethod>,
         provider: Option<WasmGatewayProvider>,
-    ) -> Result<WasmQuotesByProvider, js_sys::Error> {
+    ) -> Result<WasmQuotesByProvider, JsValue> {
         self.0
             .get_quotes(
                 amount,
@@ -364,7 +361,7 @@ impl WasmPaymentGatewayClient {
         fiat_currency: String,
         payment_method: WasmPaymentMethod,
         provider: WasmGatewayProvider,
-    ) -> Result<String, js_sys::Error> {
+    ) -> Result<String, JsValue> {
         self.0
             .create_on_ramp_checkout(
                 amount,
@@ -378,12 +375,12 @@ impl WasmPaymentGatewayClient {
     }
 
     #[wasm_bindgen(js_name = "signUrl")]
-    pub async fn sign_url(&self, url: String, provider: WasmGatewayProvider) -> Result<String, js_sys::Error> {
+    pub async fn sign_url(&self, url: String, provider: WasmGatewayProvider) -> Result<String, JsValue> {
         self.0.sign_url(url, provider.into()).await.map_err(|e| e.to_js_error())
     }
 
     #[wasm_bindgen(js_name = "getPublicApiKey")]
-    pub async fn get_public_api_key(&self, provider: WasmGatewayProvider) -> Result<String, js_sys::Error> {
+    pub async fn get_public_api_key(&self, provider: WasmGatewayProvider) -> Result<String, JsValue> {
         self.0
             .get_public_api_key(provider.into())
             .await

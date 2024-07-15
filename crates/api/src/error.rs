@@ -3,7 +3,11 @@ use bitcoin::{
     consensus::encode::Error as BitcoinEncodingError,
     hashes::hex::{HexToArrayError, HexToBytesError},
 };
-use muon::{http::StatusErr, middleware::AuthErr, ParseAppVersionErr};
+use muon::{
+    http::{Status, StatusErr},
+    middleware::AuthErr,
+    ParseAppVersionErr,
+};
 use serde::Deserialize;
 use thiserror;
 
@@ -28,7 +32,7 @@ pub enum Error {
     #[error("HTTP error")]
     Http,
     #[error("HTTP Response error")]
-    ErrorCode(ResponseError),
+    ErrorCode(Status, ResponseError),
     #[error("Response parser error")]
     Deserialize(String),
 }

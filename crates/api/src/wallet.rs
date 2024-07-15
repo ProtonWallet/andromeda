@@ -1356,9 +1356,9 @@ mod tests {
         let res = client.create_wallet_account(wallet_id, payload).await;
         assert!(res.is_err());
         match res.unwrap_err() {
-            Error::ErrorCode(code) => {
-                assert!(code.Code == 2002);
-                assert!(code.Error == "Attribute DerivationPath is invalid: The data should be a valid BIP 44, 49, 84 or 86 derivation path.");
+            Error::ErrorCode(_, error) => {
+                assert!(error.Code == 2002);
+                assert!(error.Error == "Attribute DerivationPath is invalid: The data should be a valid BIP 44, 49, 84 or 86 derivation path.");
             }
             _ => {
                 panic!("Expected Ok variant but got Err.")

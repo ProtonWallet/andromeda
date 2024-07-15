@@ -39,14 +39,14 @@ impl WasmMnemonic {
     /// Generates a Mnemonic with a random entropy based on the given word
     /// count.
     #[wasm_bindgen(constructor)]
-    pub fn new(word_count: WasmWordCount) -> Result<WasmMnemonic, js_sys::Error> {
+    pub fn new(word_count: WasmWordCount) -> Result<WasmMnemonic, JsValue> {
         let mnemonic = Mnemonic::new(word_count.into()).map_err(|e| e.to_js_error())?;
         Ok(WasmMnemonic { inner: mnemonic })
     }
 
     /// Parse a Mnemonic with the given string.
     #[wasm_bindgen(js_name = fromString)]
-    pub fn from_string(mnemonic: &str) -> Result<WasmMnemonic, js_sys::Error> {
+    pub fn from_string(mnemonic: &str) -> Result<WasmMnemonic, JsValue> {
         Mnemonic::from_string(mnemonic.to_string())
             .map(|mnemonic| WasmMnemonic { inner: mnemonic.into() })
             .map_err(|e| e.to_js_error())
