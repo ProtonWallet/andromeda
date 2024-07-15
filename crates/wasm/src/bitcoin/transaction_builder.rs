@@ -291,7 +291,7 @@ impl WasmTxBuilder {
      */
 
     #[wasm_bindgen(js_name = createPsbt)]
-    pub async fn create_pbst(&self, network: WasmNetwork) -> Result<WasmPsbt, js_sys::Error> {
+    pub async fn create_pbst(&self, network: WasmNetwork) -> Result<WasmPsbt, JsValue> {
         let psbt = self
             .inner
             .create_psbt(false, false)
@@ -302,11 +302,7 @@ impl WasmTxBuilder {
     }
 
     #[wasm_bindgen(js_name = createDraftPsbt)]
-    pub async fn create_draft_psbt(
-        &self,
-        network: WasmNetwork,
-        allow_dust: Option<bool>,
-    ) -> Result<WasmPsbt, js_sys::Error> {
+    pub async fn create_draft_psbt(&self, network: WasmNetwork, allow_dust: Option<bool>) -> Result<WasmPsbt, JsValue> {
         let psbt = self
             .inner
             .create_draft_psbt(allow_dust.unwrap_or(false))

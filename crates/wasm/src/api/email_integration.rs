@@ -47,7 +47,7 @@ impl WasmEmailIntegrationClient {
     pub async fn lookup_bitcoin_address(
         &self,
         email: String,
-    ) -> Result<WasmApiWalletBitcoinAddressLookupData, js_sys::Error> {
+    ) -> Result<WasmApiWalletBitcoinAddressLookupData, JsValue> {
         self.0
             .lookup_bitcoin_address(email)
             .await
@@ -56,7 +56,7 @@ impl WasmEmailIntegrationClient {
     }
 
     #[wasm_bindgen(js_name = "createBitcoinAddressesRequest")]
-    pub async fn create_bitcoin_addresses_request(&self, email: String) -> Result<(), js_sys::Error> {
+    pub async fn create_bitcoin_addresses_request(&self, email: String) -> Result<(), JsValue> {
         self.0
             .create_bitcoin_addresses_request(email)
             .await

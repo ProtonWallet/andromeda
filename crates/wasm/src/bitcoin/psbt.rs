@@ -22,7 +22,7 @@ impl WasmPsbt {
         self.inner.clone()
     }
 
-    pub fn from_psbt(psbt: &Psbt, network: Network) -> Result<WasmPsbt, js_sys::Error> {
+    pub fn from_psbt(psbt: &Psbt, network: Network) -> Result<WasmPsbt, JsValue> {
         let psbt = WasmPsbt {
             inner: psbt.clone(),
             recipients: psbt
@@ -51,7 +51,7 @@ impl Into<Psbt> for &WasmPsbt {
 
 #[wasm_bindgen]
 impl WasmPsbt {
-    pub async fn sign(&mut self, wasm_account: &WasmAccount, network: WasmNetwork) -> Result<WasmPsbt, js_sys::Error> {
+    pub async fn sign(&mut self, wasm_account: &WasmAccount, network: WasmNetwork) -> Result<WasmPsbt, JsValue> {
         let inner = wasm_account.get_inner();
 
         let mut mutable_psbt = self.inner.inner().clone();
@@ -66,7 +66,7 @@ impl WasmPsbt {
     }
 
     #[wasm_bindgen(js_name = computeTxSize)]
-    pub fn compute_tx_size(&self) -> Result<usize, js_sys::Error> {
+    pub fn compute_tx_size(&self) -> Result<usize, JsValue> {
         self.inner.compute_tx_size().map_err(|e| e.to_js_error())
     }
 }

@@ -16,7 +16,7 @@ impl From<InviteClient> for WasmInviteClient {
 #[wasm_bindgen]
 impl WasmInviteClient {
     #[wasm_bindgen(js_name = "sendNewcomerInvite")]
-    pub async fn send_newcomer_invite(&self, invitee_email: String) -> Result<(), js_sys::Error> {
+    pub async fn send_newcomer_invite(&self, invitee_email: String) -> Result<(), JsValue> {
         self.0
             .send_newcomer_invite(invitee_email)
             .await
@@ -24,7 +24,7 @@ impl WasmInviteClient {
     }
 
     #[wasm_bindgen(js_name = "checkInviteStatus")]
-    pub async fn check_invite_status(&self, invitee_email: String) -> Result<(), js_sys::Error> {
+    pub async fn check_invite_status(&self, invitee_email: String) -> Result<(), JsValue> {
         self.0
             .check_invite_status(invitee_email)
             .await
@@ -32,7 +32,7 @@ impl WasmInviteClient {
     }
 
     #[wasm_bindgen(js_name = "sendEmailIntegrationInvite")]
-    pub async fn send_email_integration_invite(&self, invitee_email: String) -> Result<(), js_sys::Error> {
+    pub async fn send_email_integration_invite(&self, invitee_email: String) -> Result<(), JsValue> {
         self.0
             .send_email_integration_invite(invitee_email)
             .await

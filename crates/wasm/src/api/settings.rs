@@ -349,7 +349,7 @@ impl From<SettingsClient> for WasmSettingsClient {
 #[wasm_bindgen]
 impl WasmSettingsClient {
     #[wasm_bindgen(js_name = "getUserSettings")]
-    pub async fn get_user_settings(&self) -> Result<WasmUserSettingsData, js_sys::Error> {
+    pub async fn get_user_settings(&self) -> Result<WasmUserSettingsData, JsValue> {
         self.0
             .get_user_settings()
             .await
@@ -358,7 +358,7 @@ impl WasmSettingsClient {
     }
 
     #[wasm_bindgen(js_name = "setBitcoinUnit")]
-    pub async fn bitcoin_unit(&self, symbol: WasmBitcoinUnit) -> Result<WasmUserSettingsData, js_sys::Error> {
+    pub async fn bitcoin_unit(&self, symbol: WasmBitcoinUnit) -> Result<WasmUserSettingsData, JsValue> {
         self.0
             .update_bitcoin_unit(symbol.into())
             .await
@@ -367,7 +367,7 @@ impl WasmSettingsClient {
     }
 
     #[wasm_bindgen(js_name = "setFiatCurrency")]
-    pub async fn fiat_currency(&self, symbol: WasmFiatCurrencySymbol) -> Result<WasmUserSettingsData, js_sys::Error> {
+    pub async fn fiat_currency(&self, symbol: WasmFiatCurrencySymbol) -> Result<WasmUserSettingsData, JsValue> {
         self.0
             .update_fiat_currency(symbol.into())
             .await
@@ -376,7 +376,7 @@ impl WasmSettingsClient {
     }
 
     #[wasm_bindgen(js_name = "setTwoFaThreshold")]
-    pub async fn two_fa_threshold(&self, amount: u64) -> Result<WasmUserSettingsData, js_sys::Error> {
+    pub async fn two_fa_threshold(&self, amount: u64) -> Result<WasmUserSettingsData, JsValue> {
         self.0
             .update_two_fa_threshold(amount)
             .await
@@ -388,7 +388,7 @@ impl WasmSettingsClient {
     pub async fn hide_empty_used_addresses(
         &self,
         hide_empty_used_addresses: bool,
-    ) -> Result<WasmUserSettingsData, js_sys::Error> {
+    ) -> Result<WasmUserSettingsData, JsValue> {
         self.0
             .update_hide_empty_used_addresses(hide_empty_used_addresses)
             .await
@@ -397,7 +397,7 @@ impl WasmSettingsClient {
     }
 
     #[wasm_bindgen(js_name = "acceptTermsAndConditions")]
-    pub async fn accept_terms_and_conditions(&self) -> Result<WasmUserSettingsData, js_sys::Error> {
+    pub async fn accept_terms_and_conditions(&self) -> Result<WasmUserSettingsData, JsValue> {
         self.0
             .accept_terms_and_conditions()
             .await

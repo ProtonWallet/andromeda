@@ -19,7 +19,7 @@ impl ProtonResponseExt for ProtonResponse {
             Err(parsed_response_err) => {
                 // Attempt to parse the response into the error type.
                 if let Ok(res) = self.body_json::<ResponseError>() {
-                    return Err(Error::ErrorCode(res));
+                    return Err(Error::ErrorCode(self.status(), res));
                 }
 
                 // If parsing the known error type fails, check if the body can be read as a

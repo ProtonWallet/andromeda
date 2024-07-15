@@ -116,7 +116,7 @@ impl WasmBitcoinAddressClient {
         wallet_id: String,
         wallet_account_id: String,
         only_without_bitcoin_addresses: Option<u8>,
-    ) -> Result<WasmApiWalletBitcoinAddresses, js_sys::Error> {
+    ) -> Result<WasmApiWalletBitcoinAddresses, JsValue> {
         let addresses = self
             .0
             .get_bitcoin_addresses(wallet_id, wallet_account_id, only_without_bitcoin_addresses)
@@ -137,7 +137,7 @@ impl WasmBitcoinAddressClient {
         &self,
         wallet_id: String,
         wallet_account_id: String,
-    ) -> Result<u64, js_sys::Error> {
+    ) -> Result<u64, JsValue> {
         self.0
             .get_bitcoin_address_highest_index(wallet_id, wallet_account_id)
             .await
@@ -150,7 +150,7 @@ impl WasmBitcoinAddressClient {
         wallet_id: String,
         wallet_account_id: String,
         bitcoin_addresses: WasmApiBitcoinAddressesCreationPayload,
-    ) -> Result<WasmApiWalletBitcoinAddresses, js_sys::Error> {
+    ) -> Result<WasmApiWalletBitcoinAddresses, JsValue> {
         let addresses = self
             .0
             .add_bitcoin_addresses(
@@ -181,7 +181,7 @@ impl WasmBitcoinAddressClient {
         wallet_account_id: String,
         wallet_account_bitcoin_address_id: String,
         bitcoin_address: WasmApiBitcoinAddressCreationPayload,
-    ) -> Result<WasmApiWalletBitcoinAddressData, js_sys::Error> {
+    ) -> Result<WasmApiWalletBitcoinAddressData, JsValue> {
         let address = self
             .0
             .update_bitcoin_address(

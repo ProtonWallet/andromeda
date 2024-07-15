@@ -16,7 +16,7 @@ impl From<NetworkClient> for WasmNetworkClient {
 #[wasm_bindgen]
 impl WasmNetworkClient {
     #[wasm_bindgen(js_name = "getNetwork")]
-    pub async fn get_network(&self) -> Result<WasmNetwork, js_sys::Error> {
+    pub async fn get_network(&self) -> Result<WasmNetwork, JsValue> {
         self.0
             .get_network()
             .await

@@ -89,7 +89,7 @@ impl WasmExchangeRateClient {
         &self,
         fiat: WasmFiatCurrencySymbol,
         time: Option<u64>,
-    ) -> Result<WasmApiExchangeRateData, js_sys::Error> {
+    ) -> Result<WasmApiExchangeRateData, JsValue> {
         self.0
             .get_exchange_rate(fiat.into(), time)
             .await
@@ -98,7 +98,7 @@ impl WasmExchangeRateClient {
     }
 
     #[wasm_bindgen(js_name = "getAllFiatCurrencies")]
-    pub async fn get_all_fiat_currencies(&self) -> Result<WasmApiFiatCurrencies, js_sys::Error> {
+    pub async fn get_all_fiat_currencies(&self) -> Result<WasmApiFiatCurrencies, JsValue> {
         let currencies = self
             .0
             .get_all_fiat_currencies()

@@ -79,7 +79,7 @@ impl WasmBlockchainClient {
     /// Generates a Mnemonic with a random entropy based on the given word
     /// count.
     #[wasm_bindgen(constructor)]
-    pub fn new(proton_api_client: &WasmProtonWalletApiClient) -> Result<WasmBlockchainClient, js_sys::Error> {
+    pub fn new(proton_api_client: &WasmProtonWalletApiClient) -> Result<WasmBlockchainClient, JsValue> {
         let inner = BlockchainClient::new(proton_api_client.into());
         Ok(WasmBlockchainClient { inner })
     }
@@ -91,7 +91,7 @@ impl WasmBlockchainClient {
     }
 
     #[wasm_bindgen(js_name = fullSync)]
-    pub async fn full_sync(&self, account: &WasmAccount, stop_gap: Option<usize>) -> Result<(), js_sys::Error> {
+    pub async fn full_sync(&self, account: &WasmAccount, stop_gap: Option<usize>) -> Result<(), JsValue> {
         let account_inner = account.get_inner();
 
         let update = self
@@ -109,7 +109,7 @@ impl WasmBlockchainClient {
     }
 
     #[wasm_bindgen(js_name = partialSync)]
-    pub async fn partial_sync(&self, account: &WasmAccount) -> Result<(), js_sys::Error> {
+    pub async fn partial_sync(&self, account: &WasmAccount) -> Result<(), JsValue> {
         let account_inner = account.get_inner();
 
         let wallet_lock = account_inner.get_wallet().await;
@@ -128,7 +128,7 @@ impl WasmBlockchainClient {
     }
 
     #[wasm_bindgen(js_name = shouldSync)]
-    pub async fn should_sync(&self, account: &WasmAccount) -> Result<bool, js_sys::Error> {
+    pub async fn should_sync(&self, account: &WasmAccount) -> Result<bool, JsValue> {
         let account_inner = account.get_inner();
 
         let wallet_lock = account_inner.get_wallet().await;
@@ -144,7 +144,7 @@ impl WasmBlockchainClient {
         wallet_account_id: String,
         transaction_data: WasmTransactionData,
         email_integration: Option<WasmEmailIntegrationData>,
-    ) -> Result<String, js_sys::Error> {
+    ) -> Result<String, JsValue> {
         let tx = psbt.get_inner().extract_tx().map_err(|e| e.to_js_error())?;
 
         self.inner
