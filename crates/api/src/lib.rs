@@ -127,7 +127,7 @@ pub struct Clients {
 impl ProtonWalletApiClient {
     /// Builds a new api client from a config struct
     ///
-    /// env could be custmized url like localhost or 127.0.0.1 it reqires
+    /// env could be custmized url like localhost or 127.0.0.1 it requires
     /// `allow-dangerous-env` feature to be enabled
     ///
     /// ```rust

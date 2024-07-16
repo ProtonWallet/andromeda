@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt, sync::Arc};
+use std::{collections::HashMap, fmt, str, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
@@ -75,6 +75,7 @@ pub enum PaymentMethod {
     Card = 3,
     GooglePay = 4,
     InstantPayment = 5,
+    Paypal = 6,
     #[serde(other)]
     Unsupported,
 }
@@ -258,11 +259,32 @@ impl PaymentGatewayClient {
 
         Ok(parsed.PublicApiKey)
     }
+
+    pub async fn get_checkout_iframe_content(
+        &self,
+        amount: u32,
+        bitcoin_address: String,
+        fiat_currency: String,
+        payment_method: PaymentMethod,
+        provider: GatewayProvider,
+    ) -> Result<String, Error> {
+        let request = self
+            .get("payment-gateway/on-ramp/iframe")
+            .query(("Amount", amount))
+            .query(("BitcoinAddress", bitcoin_address))
+            .query(("FiatCurrency", fiat_currency.to_string()))
+            .query(("PaymentMethod", (payment_method as i32).to_string()))
+            .query(("Provider", provider.to_string()));
+
+        let response = self.api_client.send(request).await?;
+        let parsed = response.body();
+
+        Ok(str::from_utf8(parsed)?.to_string())
+    }
 }
 
 #[cfg(test)]
 mod tests {
-
     use wiremock::{
         matchers::{body_json, method, path, query_param},
         Mock, MockServer, ResponseTemplate,
@@ -604,7 +626,7 @@ mod tests {
             "Code": 1000,
             "PaymentMethods": {
                 "Banxa": [1],
-                "Ramp": [6]
+                "Ramp": [7]
             }
         });
         let req_path: String = format!("{}/payment-gateway/on-ramp/payment-methods", BASE_WALLET_API_V1);
@@ -909,5 +931,26 @@ mod tests {
             .unwrap();
 
         assert_eq!(public_api_key, "ABC");
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_get_checkout_iframe() {
+        let api_client = common_api_client().await;
+        let client = PaymentGatewayClient::new(api_client);
+
+        let iframe = client
+            .get_checkout_iframe_content(
+                100,
+                "tb1qvqfwwaeu3uem7y387cy6jk0hzy2dmpxfeg8uf6".to_string(),
+                "USD".to_string(),
+                PaymentMethod::Card,
+                GatewayProvider::MoonPay,
+            )
+            .await;
+
+        println!("request done: {:?}", iframe);
+
+        assert!(iframe.is_ok());
     }
 }

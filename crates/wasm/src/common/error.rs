@@ -60,6 +60,7 @@ impl ErrorExt for ApiError {
             ApiError::Deserialize(err) => JsValue::from(&err),
             ApiError::MuonAppVersion(err) => JsValue::from(&format!("MuonAppVersion occurred: {:?}", err.source())),
             ApiError::MuonStatus(err) => JsValue::from(&format!("MuonStatusError occurred: {:?}", err.source())),
+            ApiError::Utf8Error(err) => JsValue::from(&format!("Utf8Error occurred: {:?}", err.source())),
         }
     }
 }

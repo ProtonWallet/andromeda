@@ -1,3 +1,5 @@
+use std::str::Utf8Error;
+
 pub use ::muon::{Error as MuonError, ErrorKind as MuonErrorKind};
 use bitcoin::{
     consensus::encode::Error as BitcoinEncodingError,
@@ -35,6 +37,8 @@ pub enum Error {
     ErrorCode(Status, ResponseError),
     #[error("Response parser error")]
     Deserialize(String),
+    #[error("Utf8 parsing error")]
+    Utf8Error(#[from] Utf8Error),
 }
 
 impl From<MuonError> for Error {
