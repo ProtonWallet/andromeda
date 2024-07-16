@@ -173,6 +173,7 @@ pub enum WasmPaymentMethod {
     Card,
     GooglePay,
     InstantPayment,
+    Paypal,
     Unsupported,
 }
 
@@ -184,6 +185,7 @@ impl From<&PaymentMethod> for WasmPaymentMethod {
             PaymentMethod::Card => WasmPaymentMethod::Card,
             PaymentMethod::GooglePay => WasmPaymentMethod::GooglePay,
             PaymentMethod::InstantPayment => WasmPaymentMethod::InstantPayment,
+            PaymentMethod::Paypal => WasmPaymentMethod::Paypal,
             PaymentMethod::Unsupported => WasmPaymentMethod::Unsupported,
         }
     }
@@ -197,6 +199,7 @@ impl From<WasmPaymentMethod> for PaymentMethod {
             WasmPaymentMethod::Card => PaymentMethod::Card,
             WasmPaymentMethod::GooglePay => PaymentMethod::GooglePay,
             WasmPaymentMethod::InstantPayment => PaymentMethod::InstantPayment,
+            WasmPaymentMethod::Paypal => PaymentMethod::Paypal,
             WasmPaymentMethod::Unsupported => PaymentMethod::Unsupported,
         }
     }
@@ -383,6 +386,21 @@ impl WasmPaymentGatewayClient {
     pub async fn get_public_api_key(&self, provider: WasmGatewayProvider) -> Result<String, JsValue> {
         self.0
             .get_public_api_key(provider.into())
+            .await
+            .map_err(|e| e.to_js_error())
+    }
+
+    #[wasm_bindgen(js_name = "getCheckoutIframeContent")]
+    pub async fn get_checkout_iframe_content(
+        &self,
+        amount: u32,
+        address: String,
+        fiat_currency: String,
+        payment_method: WasmPaymentMethod,
+        provider: WasmGatewayProvider,
+    ) -> Result<String, JsValue> {
+        self.0
+            .get_checkout_iframe_content(amount, address, fiat_currency, payment_method.into(), provider.into())
             .await
             .map_err(|e| e.to_js_error())
     }
