@@ -91,7 +91,7 @@ impl ProtonSettingsClient {
     }
 
     pub async fn reactive_mnemonic_settings(&self, req: UpdateMnemonicSettingsRequestBody) -> Result<u32, Error> {
-        let request = self.put("settings/mnemonic/reactive").body_json(req)?;
+        let request = self.put("settings/mnemonic/reactivate").body_json(req)?;
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<EmptyResponseBody>()?;
