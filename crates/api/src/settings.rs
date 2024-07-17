@@ -3,12 +3,23 @@ use std::sync::Arc;
 
 use andromeda_common::BitcoinUnit;
 use serde::{Deserialize, Serialize};
+use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use crate::{
     core::{ApiClient, ProtonResponseExt},
     error::Error,
     ProtonWalletApiClient, BASE_WALLET_API_V1,
 };
+
+#[derive(Deserialize_repr, Serialize_repr, PartialEq, Debug)]
+#[repr(u8)]
+pub enum UserReceiveNotificationEmailTypes {
+    NotificationToInviter = 1,
+    EmailIntegration = 2,
+    TransactionalBvE = 4,
+    #[serde(other)]
+    Unsupported,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
 pub enum FiatCurrencySymbol {
@@ -159,6 +170,13 @@ struct UpdateHideEmptyUsedAddressesRequestBody {
     pub HideEmptyUsedAddresses: u8,
 }
 
+#[derive(Debug, Serialize)]
+#[allow(non_snake_case)]
+struct UpdateReceiveNotificationEmailRequestBody {
+    pub EmailType: UserReceiveNotificationEmailTypes,
+    pub IsEnabled: u8,
+}
+
 #[derive(Clone)]
 pub struct SettingsClient {
     api_client: Arc<ProtonWalletApiClient>,
@@ -239,6 +257,24 @@ impl SettingsClient {
         Ok(parsed.WalletUserSettings)
     }
 
+    pub async fn update_receive_notification_email(
+        &self,
+        email_type: UserReceiveNotificationEmailTypes,
+        is_enable: bool,
+    ) -> Result<UserSettings, Error> {
+        let request = self
+            .put("settings/notification-email")
+            .body_json(UpdateReceiveNotificationEmailRequestBody {
+                EmailType: email_type,
+                IsEnabled: is_enable.into(),
+            })?;
+
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<GetUserSettingsResponseBody>()?;
+
+        Ok(parsed.WalletUserSettings)
+    }
+
     pub async fn accept_terms_and_conditions(&self) -> Result<UserSettings, Error> {
         let request = self.put("settings/terms-and-conditions/accept");
 
@@ -307,6 +343,49 @@ mod tests {
         let client = SettingsClient::new(api_client);
 
         let settings = client.update_hide_empty_used_addresses(true).await;
+        println!("request done: {:?}", settings);
+        assert!(settings.is_ok());
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn should_update_receive_notification_email() {
+        let api_client = common_api_client().await;
+        let client = SettingsClient::new(api_client);
+
+        let settings = client
+            .update_receive_notification_email(
+                crate::settings::UserReceiveNotificationEmailTypes::NotificationToInviter,
+                true,
+            )
+            .await;
+        println!("request done: {:?}", settings);
+        assert!(settings.is_ok());
+
+        let settings = client
+            .update_receive_notification_email(
+                crate::settings::UserReceiveNotificationEmailTypes::NotificationToInviter,
+                false,
+            )
+            .await;
+        println!("request done: {:?}", settings);
+        assert!(settings.is_ok());
+
+        let settings = client
+            .update_receive_notification_email(
+                crate::settings::UserReceiveNotificationEmailTypes::EmailIntegration,
+                true,
+            )
+            .await;
+        println!("request done: {:?}", settings);
+        assert!(settings.is_ok());
+
+        let settings = client
+            .update_receive_notification_email(
+                crate::settings::UserReceiveNotificationEmailTypes::EmailIntegration,
+                false,
+            )
+            .await;
         println!("request done: {:?}", settings);
         assert!(settings.is_ok());
     }

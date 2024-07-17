@@ -1,9 +1,52 @@
-use andromeda_api::settings::{FiatCurrencySymbol, SettingsClient, UserSettings};
+use andromeda_api::settings::{FiatCurrencySymbol, SettingsClient, UserReceiveNotificationEmailTypes, UserSettings};
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
 use crate::common::{error::ErrorExt, types::WasmBitcoinUnit};
+
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub enum WasmUserReceiveNotificationEmailTypes {
+    NotificationToInviter,
+    EmailIntegration,
+    TransactionalBvE,
+    Unsupported,
+}
+
+impl From<UserReceiveNotificationEmailTypes> for WasmUserReceiveNotificationEmailTypes {
+    fn from(value: UserReceiveNotificationEmailTypes) -> Self {
+        match value {
+            UserReceiveNotificationEmailTypes::NotificationToInviter => {
+                WasmUserReceiveNotificationEmailTypes::NotificationToInviter
+            }
+            UserReceiveNotificationEmailTypes::EmailIntegration => {
+                WasmUserReceiveNotificationEmailTypes::EmailIntegration
+            }
+            UserReceiveNotificationEmailTypes::TransactionalBvE => {
+                WasmUserReceiveNotificationEmailTypes::TransactionalBvE
+            }
+            UserReceiveNotificationEmailTypes::Unsupported => WasmUserReceiveNotificationEmailTypes::Unsupported,
+        }
+    }
+}
+
+impl From<WasmUserReceiveNotificationEmailTypes> for UserReceiveNotificationEmailTypes {
+    fn from(value: WasmUserReceiveNotificationEmailTypes) -> Self {
+        match value {
+            WasmUserReceiveNotificationEmailTypes::NotificationToInviter => {
+                UserReceiveNotificationEmailTypes::NotificationToInviter
+            }
+            WasmUserReceiveNotificationEmailTypes::EmailIntegration => {
+                UserReceiveNotificationEmailTypes::EmailIntegration
+            }
+            WasmUserReceiveNotificationEmailTypes::TransactionalBvE => {
+                UserReceiveNotificationEmailTypes::TransactionalBvE
+            }
+            WasmUserReceiveNotificationEmailTypes::Unsupported => UserReceiveNotificationEmailTypes::Unsupported,
+        }
+    }
+}
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
@@ -391,6 +434,19 @@ impl WasmSettingsClient {
     ) -> Result<WasmUserSettingsData, JsValue> {
         self.0
             .update_hide_empty_used_addresses(hide_empty_used_addresses)
+            .await
+            .map_err(|e| e.to_js_error())
+            .map(|settings| WasmUserSettingsData(settings.into()))
+    }
+
+    #[wasm_bindgen(js_name = "setReceiveNotificationEmail")]
+    pub async fn receive_notification_email(
+        &self,
+        email_type: WasmUserReceiveNotificationEmailTypes,
+        is_enable: bool,
+    ) -> Result<WasmUserSettingsData, JsValue> {
+        self.0
+            .update_receive_notification_email(email_type.into(), is_enable)
             .await
             .map_err(|e| e.to_js_error())
             .map(|settings| WasmUserSettingsData(settings.into()))
