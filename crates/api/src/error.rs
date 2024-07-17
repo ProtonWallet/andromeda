@@ -61,7 +61,7 @@ impl From<MuonError> for Error {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 #[allow(non_snake_case)]
 pub struct ResponseError {
     pub Code: u16,

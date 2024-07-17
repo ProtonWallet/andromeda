@@ -1387,7 +1387,7 @@ mod tests {
         );
         let wallet_id = String::from("test_wallet_id");
         let req_path = format!("{}/wallets/{}/accounts", BASE_WALLET_API_V1, wallet_id);
-        let response = ResponseTemplate::new(400).set_body_json(response_body);
+        let response = ResponseTemplate::new(200).set_body_json(response_body);
         Mock::given(method("POST"))
             .and(path(req_path))
             .respond_with(response)
@@ -1402,14 +1402,14 @@ mod tests {
         };
         let res = client.create_wallet_account(wallet_id, payload).await;
         assert!(res.is_ok());
-        let walle_account = res.unwrap();
-        assert!(walle_account.DerivationPath == "m/44'/0'/0'");
-        assert!(walle_account.Label == "string");
-        assert!(walle_account.ScriptType == 1);
-        assert!(walle_account.Priority == 23);
-        assert!(walle_account.WalletID == "string");
-        assert!(walle_account.ID == "string");
-        assert!(walle_account.LastUsedIndex == 666);
+        let wallet_account = res.unwrap();
+        assert_eq!(wallet_account.DerivationPath, "m/44'/0'/0'");
+        assert_eq!(wallet_account.Label, "string");
+        assert_eq!(wallet_account.ScriptType, 1);
+        assert_eq!(wallet_account.Priority, 23);
+        assert_eq!(wallet_account.WalletID, "string");
+        assert_eq!(wallet_account.ID, "string");
+        assert_eq!(wallet_account.LastUsedIndex, 666);
     }
 
     #[tokio::test]
