@@ -24,8 +24,8 @@ use crate::{
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(non_snake_case)]
 pub struct ApiProtonUserSettingsResponse {
-    Code: u32,
-    UserSettings: ProtonUserSettings,
+    pub Code: u32,
+    pub UserSettings: ProtonUserSettings,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
