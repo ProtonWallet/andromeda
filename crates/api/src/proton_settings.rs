@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     core::{ApiClient, ProtonResponseExt},
     error::Error,
-    proton_users::{EmptyResponseBody, ProtonSrpClientProofs},
+    proton_users::{ApiProtonUserSettingsResponse, EmptyResponseBody, ProtonSrpClientProofs, ProtonUserSettings},
     ProtonWalletApiClient, BASE_CORE_API_V4,
 };
 
@@ -53,6 +53,21 @@ pub struct UpdateMnemonicSettingsRequestBody {
     pub MnemonicUserKeys: Vec<MnemonicUserKey>,
     pub MnemonicSalt: String,
     pub MnemonicAuth: MnemonicAuth,
+}
+
+#[derive(Serialize, Debug)]
+#[allow(non_snake_case)]
+pub struct SetTwoFaTOTPRequestBody {
+    pub TOTPConfirmation: String,
+    pub TOTPSharedSecret: String,
+}
+
+#[derive(Deserialize, Debug)]
+#[allow(non_snake_case)]
+pub struct SetTwoFaTOTPResponseBody {
+    pub Code: u32,
+    pub TwoFactorRecoveryCodes: Vec<String>,
+    pub UserSettings: ProtonUserSettings,
 }
 
 #[derive(Clone)]
@@ -104,6 +119,22 @@ impl ProtonSettingsClient {
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateMnemonicSettingsResponseBody>()?;
         Ok(parsed.ServerProof)
+    }
+
+    pub async fn enable_2fa_totp(&self, req: SetTwoFaTOTPRequestBody) -> Result<SetTwoFaTOTPResponseBody, Error> {
+        let request = self.post("settings/2fa/totp").body_json(req)?;
+
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<SetTwoFaTOTPResponseBody>()?;
+        Ok(parsed)
+    }
+
+    pub async fn disable_2fa_totp(&self, req: ProtonSrpClientProofs) -> Result<ProtonUserSettings, Error> {
+        let request = self.put("settings/2fa/totp").body_json(req)?;
+
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<ApiProtonUserSettingsResponse>()?;
+        Ok(parsed.UserSettings)
     }
 }
 
