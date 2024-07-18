@@ -23,7 +23,7 @@ use crate::{
     utils::SortOrder,
 };
 
-const ACCOUNT_DISCOVERY_STOP_GAP: u32 = 10;
+const ACCOUNT_DISCOVERY_STOP_GAP: u32 = 2;
 const ADDRESS_DISCOVERY_STOP_GAP: usize = 10;
 
 #[derive(Debug)]
@@ -124,23 +124,29 @@ impl<P: WalletStore> Wallet<P> {
         F: WalletStoreFactory<P> + Copy,
     {
         let client = BlockchainClient::new(proton_api_client);
-        let mut index = 0;
-        let mut last_active_index = 0;
+        let mut index: u32;
+        let mut last_active_index: u32;
         let mut discovered_accounts: Vec<(ScriptType, u32, DerivationPath)> = Vec::new();
 
         let discovery_address_stop_gap = discovery_address_stop_gap.unwrap_or(ADDRESS_DISCOVERY_STOP_GAP);
         let discovery_account_stop_gap = discovery_account_stop_gap.unwrap_or(ACCOUNT_DISCOVERY_STOP_GAP);
 
         for script_type in ScriptType::values() {
+            // Resets indexes for each script type
+            index = 0;
+            last_active_index = 0;
+
             loop {
                 let derivation_path = DerivationPath::from_parts(script_type, self.network, index);
                 let account = Account::new(self.mprv, self.network, script_type, derivation_path.clone(), factory)
                     .expect("Account should be valid here");
 
-                client.full_sync(&account, Some(discovery_address_stop_gap)).await?;
+                let exists = client
+                    .check_account_existence(account.get_wallet().await, discovery_address_stop_gap)
+                    .await?;
 
                 // If an account has at least one output, it means that it has already been used
-                if account.get_wallet().await.list_output().next().is_some() {
+                if exists {
                     discovered_accounts.push((script_type, index, derivation_path));
                     last_active_index = index;
                 }

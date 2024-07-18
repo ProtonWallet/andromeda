@@ -211,8 +211,22 @@ async fn full_scan_for_index_and_graph<K: Ord + Clone + Send>(
         let mut spks_to_fetch = Ord::min(stop_gap, MAX_SPKS_PER_REQUESTS);
 
         let mut spks = spks.into_iter();
-        let mut last_index = Option::<u32>::None;
-        let mut last_active_index = Option::<u32>::None;
+
+        let mut last_index: Option<i32> = None;
+
+        // last_active_index is -1 by default, so that if we don't find any
+        // active index, we'll still have a gap taking into account first index
+        // (at index 0)
+        //
+        // Example:
+        // - let's say that my stop_gap is 10, last_index is 9 (we fetched first 10
+        //   indexes) and we didn't find any active index
+        // - then we have: count_until_stop_gap = stop_gap -
+        // (last_index - last_active_index) = 10 - (9 - (-1)) = 10 - 10 = 0
+        //
+        // On the other hand, it doesn't affect other result since
+        // last_active_index will be then set to the index
+        let mut last_active_index = -1;
 
         loop {
             let req_spks = spks.by_ref().take(spks_to_fetch).collect::<Vec<(u32, ScriptBuf)>>();
@@ -232,12 +246,12 @@ async fn full_scan_for_index_and_graph<K: Ord + Clone + Send>(
             sorted_handles.sort_by(|(a_index, _), (b_index, _)| a_index.partial_cmp(b_index).unwrap());
 
             for (index, txs) in sorted_handles.iter() {
-                let index = *index;
+                let index = *index as i32;
                 let txs = txs.clone();
 
                 last_index = Some(index);
                 if !txs.is_empty() {
-                    last_active_index = Some(index);
+                    last_active_index = index;
                 }
 
                 for tx in txs {
@@ -266,8 +280,8 @@ async fn full_scan_for_index_and_graph<K: Ord + Clone + Send>(
                 }
             }
 
-            let last_index = last_index.expect("Must be set since handles wasn't empty.");
-            let count_until_stop_gap = stop_gap.saturating_sub((last_index - last_active_index.unwrap_or(0)) as usize);
+            let current_gap = last_index.expect("Should be set when handles is not empty") - last_active_index;
+            let count_until_stop_gap = stop_gap.saturating_sub(current_gap as usize);
 
             if count_until_stop_gap == 0 {
                 break;
@@ -276,8 +290,8 @@ async fn full_scan_for_index_and_graph<K: Ord + Clone + Send>(
             spks_to_fetch = Ord::min(count_until_stop_gap, MAX_SPKS_PER_REQUESTS);
         }
 
-        if let Some(last_active_index) = last_active_index {
-            last_active_indexes.insert(keychain, last_active_index);
+        if last_active_index > -1 {
+            last_active_indexes.insert(keychain, last_active_index.try_into().unwrap_or(0));
         }
     }
 
