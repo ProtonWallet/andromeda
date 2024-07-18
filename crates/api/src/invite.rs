@@ -39,6 +39,20 @@ pub struct SendInviteResponseBody {
     pub Code: u16,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+#[allow(non_snake_case)]
+pub struct RemainingMonthlyInvitations {
+    pub Used: u8,
+    pub Available: u8,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+pub struct GetRemainingMonthlyInvitationsResponseBody {
+    pub Code: u16,
+    pub RemainingInvitations: RemainingMonthlyInvitations,
+}
+
 #[derive(Clone)]
 pub struct InviteClient {
     api_client: Arc<ProtonWalletApiClient>,
@@ -106,6 +120,15 @@ impl InviteClient {
         response.parse_response::<SendInviteResponseBody>()?;
 
         Ok(())
+    }
+
+    pub async fn get_remaining_monthly_invitation(&self) -> Result<RemainingMonthlyInvitations, Error> {
+        let request = self.get("invites/remaining");
+        let response = self.api_client.send(request).await?;
+
+        let parsed = response.parse_response::<GetRemainingMonthlyInvitationsResponseBody>()?;
+
+        Ok(parsed.RemainingInvitations)
     }
 }
 
@@ -248,5 +271,35 @@ mod tests {
             Ok(_) => return,
             Err(_) => panic!("Expected Ok variant but got Err."),
         }
+    }
+
+    #[tokio::test]
+    async fn test_get_remaining_monthly_invitation() {
+        let mock_server = MockServer::start().await;
+        let response_body = serde_json::json!(
+            {
+                "Code": 1000,
+                "RemainingInvitations": {
+                    "Used": 2,
+                    "Available": 1
+                }
+            }
+        );
+        let req_path: String = format!("{}/invites/remaining", BASE_WALLET_API_V1);
+        let response = ResponseTemplate::new(200).set_body_json(response_body);
+
+        Mock::given(method("GET"))
+            .and(path(req_path))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+
+        let api_client = setup_test_connection(mock_server.uri());
+        let client = InviteClient::new(Arc::new(api_client));
+
+        let result = client.get_remaining_monthly_invitation().await.unwrap();
+
+        assert_eq!(result.clone().Available, 1);
+        assert_eq!(result.clone().Used, 2);
     }
 }

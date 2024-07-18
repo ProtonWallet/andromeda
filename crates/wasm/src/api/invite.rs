@@ -1,4 +1,4 @@
-use andromeda_api::invite::{InviteClient, InviteNotificationType};
+use andromeda_api::invite::{InviteClient, InviteNotificationType, RemainingMonthlyInvitations};
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
@@ -29,6 +29,21 @@ impl From<WasmInviteNotificationType> for InviteNotificationType {
             WasmInviteNotificationType::Newcomer => InviteNotificationType::Newcomer,
             WasmInviteNotificationType::EmailIntegration => InviteNotificationType::EmailIntegration,
             WasmInviteNotificationType::Unsupported => InviteNotificationType::Unsupported,
+        }
+    }
+}
+#[wasm_bindgen]
+#[allow(non_snake_case)]
+pub struct WasmRemainingMonthlyInvitations {
+    pub Available: u8,
+    pub Used: u8,
+}
+
+impl From<RemainingMonthlyInvitations> for WasmRemainingMonthlyInvitations {
+    fn from(value: RemainingMonthlyInvitations) -> Self {
+        Self {
+            Available: value.Available,
+            Used: value.Used,
         }
     }
 }
@@ -76,5 +91,14 @@ impl WasmInviteClient {
             .send_email_integration_invite(invitee_email, inviter_address_id)
             .await
             .map_err(|e| e.to_js_error())
+    }
+
+    #[wasm_bindgen(js_name = "getRemainingMonthlyInvitation")]
+    pub async fn get_remaining_monthly_invitation(&self) -> Result<WasmRemainingMonthlyInvitations, JsValue> {
+        self.0
+            .get_remaining_monthly_invitation()
+            .await
+            .map_err(|e| e.to_js_error())
+            .map(|i| i.into())
     }
 }
