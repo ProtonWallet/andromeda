@@ -6,7 +6,10 @@ use andromeda_esplora::{AsyncClient, EsploraAsyncExt};
 use async_std::sync::RwLockReadGuard;
 use bdk_wallet::{
     bitcoin::{Script, Transaction, Txid},
-    chain::spk_client::{FullScanResult, SyncResult},
+    chain::{
+        spk_client::{FullScanResult, SyncRequest, SyncResult},
+        SpkIterator,
+    },
     wallet::Wallet as BdkWallet,
     KeychainKind,
 };
@@ -52,21 +55,8 @@ impl BlockchainClient {
     where
         P: WalletStore,
     {
-        fn generate_inspect(kind: KeychainKind) -> impl FnMut(u32, &Script) + Send + Sync + 'static {
-            let mut once = Some(());
-            move |spk_i, _| {
-                match once.take() {
-                    Some(_) => print!("\nScanning keychain [{:?}]", kind),
-                    None => print!(" {:<3}", spk_i),
-                };
-            }
-        }
-
         let read_lock = account.get_wallet().await;
-        let request = read_lock
-            .start_full_scan()
-            .inspect_spks_for_keychain(KeychainKind::External, generate_inspect(KeychainKind::External))
-            .inspect_spks_for_keychain(KeychainKind::Internal, generate_inspect(KeychainKind::Internal));
+        let request = read_lock.start_full_scan();
 
         let mut update = self.0.full_scan(request, stop_gap.unwrap_or(DEFAULT_STOP_GAP)).await?;
         let _ = update.graph_update.update_last_seen_unconfirmed(now().as_secs());
@@ -105,6 +95,28 @@ impl BlockchainClient {
         let _ = update.graph_update.update_last_seen_unconfirmed(now().as_secs());
 
         Ok(update)
+    }
+
+    /// Special minimal sync to check account existence
+    pub async fn check_account_existence<'a>(
+        &self,
+        wallet: RwLockReadGuard<'a, BdkWallet>,
+        stop_gap: usize,
+    ) -> Result<bool, Error> {
+        let spks = wallet.spk_index().all_unbounded_spk_iters();
+        let external_keychain_spks = spks.get(&KeychainKind::External);
+
+        let spks = external_keychain_spks
+            .map(|spks| spks.clone().take(stop_gap).collect::<Vec<_>>())
+            .unwrap_or(Vec::new());
+
+        let results = self.0.many_scripthash_txs(spks).await.ok();
+
+        if let Some(results) = results {
+            return Ok(results.values().any(|(_index, txs)| !txs.is_empty()));
+        };
+
+        Ok(false)
     }
 
     /// Returns whether or not the wallet needs to be synced again (new block)
