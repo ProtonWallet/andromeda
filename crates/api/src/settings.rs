@@ -177,6 +177,13 @@ struct UpdateReceiveNotificationEmailRequestBody {
     pub IsEnabled: u8,
 }
 
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+struct GetUserWalletEligibilityResponseBody {
+    pub Code: u16,
+    pub IsEligible: u8,
+}
+
 #[derive(Clone)]
 pub struct SettingsClient {
     api_client: Arc<ProtonWalletApiClient>,
@@ -282,6 +289,15 @@ impl SettingsClient {
         let parsed = response.parse_response::<GetUserSettingsResponseBody>()?;
 
         Ok(parsed.WalletUserSettings)
+    }
+
+    pub async fn get_user_wallet_eligibility(&self) -> Result<u8, Error> {
+        let request = self.get("settings/eligible");
+
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<GetUserWalletEligibilityResponseBody>()?;
+
+        Ok(parsed.IsEligible)
     }
 }
 
