@@ -390,18 +390,16 @@ impl WasmPaymentGatewayClient {
             .map_err(|e| e.to_js_error())
     }
 
-    #[wasm_bindgen(js_name = "getCheckoutIframeContent")]
-    pub async fn get_checkout_iframe_content(
+    #[wasm_bindgen(js_name = "getCheckoutIframeSrc")]
+    pub fn get_checkout_iframe_src(
         &self,
         amount: u32,
         address: String,
         fiat_currency: String,
         payment_method: WasmPaymentMethod,
         provider: WasmGatewayProvider,
-    ) -> Result<String, JsValue> {
+    ) -> String {
         self.0
-            .get_checkout_iframe_content(amount, address, fiat_currency, payment_method.into(), provider.into())
-            .await
-            .map_err(|e| e.to_js_error())
+            .get_checkout_iframe_src(amount, address, fiat_currency, payment_method.into(), provider.into())
     }
 }
