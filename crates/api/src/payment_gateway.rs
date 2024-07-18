@@ -260,26 +260,26 @@ impl PaymentGatewayClient {
         Ok(parsed.PublicApiKey)
     }
 
-    pub async fn get_checkout_iframe_content(
+    pub fn get_checkout_iframe_src(
         &self,
         amount: u32,
         bitcoin_address: String,
         fiat_currency: String,
         payment_method: PaymentMethod,
         provider: GatewayProvider,
-    ) -> Result<String, Error> {
-        let request = self
-            .get("payment-gateway/on-ramp/iframe")
-            .query(("Amount", amount))
-            .query(("BitcoinAddress", bitcoin_address))
-            .query(("FiatCurrency", fiat_currency.to_string()))
-            .query(("PaymentMethod", (payment_method as i32).to_string()))
-            .query(("Provider", provider.to_string()));
+    ) -> String {
+        let url = format!(
+            "{}?Amount={}&BitcoinAddress={}&FiatCurrency={}&PaymentMethod={}&Provider={}",
+            self.api_client
+                .build_full_url(self.base_url(), "payment-gateway/on-ramp/iframe"),
+            amount,
+            bitcoin_address,
+            fiat_currency.to_string(),
+            (payment_method as i32).to_string(),
+            provider.to_string()
+        );
 
-        let response = self.api_client.send(request).await?;
-        let parsed = response.body();
-
-        Ok(str::from_utf8(parsed)?.to_string())
+        return url;
     }
 }
 
@@ -934,23 +934,18 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     async fn test_get_checkout_iframe() {
         let api_client = common_api_client().await;
         let client = PaymentGatewayClient::new(api_client);
 
-        let iframe = client
-            .get_checkout_iframe_content(
-                100,
-                "tb1qvqfwwaeu3uem7y387cy6jk0hzy2dmpxfeg8uf6".to_string(),
-                "USD".to_string(),
-                PaymentMethod::Card,
-                GatewayProvider::MoonPay,
-            )
-            .await;
+        let iframe = client.get_checkout_iframe_src(
+            100,
+            "tb1qvqfwwaeu3uem7y387cy6jk0hzy2dmpxfeg8uf6".to_string(),
+            "USD".to_string(),
+            PaymentMethod::Card,
+            GatewayProvider::MoonPay,
+        );
 
-        println!("request done: {:?}", iframe);
-
-        assert!(iframe.is_ok());
+        assert_eq!(iframe, String::from("/wallet/v1/payment-gateway/on-ramp/iframe?Amount=100&BitcoinAddress=tb1qvqfwwaeu3uem7y387cy6jk0hzy2dmpxfeg8uf6&FiatCurrency=USD&PaymentMethod=3&Provider=MoonPay"));
     }
 }
