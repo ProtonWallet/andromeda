@@ -115,7 +115,7 @@ pub struct ApiProtonUserResponse {
 #[allow(non_snake_case)]
 pub struct ProtonUser {
     pub ID: String,
-    pub Name: String,
+    pub Name: Option<String>,
     pub UsedSpace: u64,
     pub Currency: String,
     pub Credit: u32,
@@ -129,7 +129,7 @@ pub struct ProtonUser {
     pub Delinquent: u32,
     pub OrganizationPrivateKey: Option<String>,
     pub Email: String,
-    pub DisplayName: String,
+    pub DisplayName: Option<String>,
     pub Keys: Option<Vec<ProtonUserKey>>,
     pub MnemonicStatus: u32,
 }
@@ -379,8 +379,8 @@ mod tests {
         let user_info = users_client.get_user_info().await;
         match user_info {
             Ok(value) => {
-                assert!(value.DisplayName == "abc");
-                assert!(value.Name == "abc");
+                assert!(value.DisplayName.unwrap() == "abc");
+                assert!(value.Name.unwrap() == "abc");
                 assert!(!value.Keys.unwrap().is_empty());
             }
             Err(e) => {
