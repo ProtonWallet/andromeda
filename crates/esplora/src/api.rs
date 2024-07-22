@@ -48,7 +48,10 @@ impl From<andromeda_api::address::ApiVin> for Vin {
             vout: api_vin.Vout,
             prevout: Some(api_vin.Prevout.into()),
             scriptsig: ScriptBuf::from_hex(&api_vin.ScriptSig).unwrap(),
-            witness: api_vin.Witness.into_iter().map(|s| s.into_bytes()).collect(),
+            witness: match api_vin.Witness {
+                Some(witnesses) => witnesses.into_iter().map(|s| s.into_bytes()).collect(),
+                None => Vec::new(),
+            },
             sequence: api_vin.Sequence,
             is_coinbase: api_vin.IsCoinbase != 0,
         }
