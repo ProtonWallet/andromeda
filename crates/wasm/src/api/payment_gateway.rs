@@ -114,6 +114,7 @@ impl From<CountriesByProvider> for WasmCountriesByProvider {
 pub struct WasmApiSimpleFiatCurrency {
     pub Symbol: String,
     pub Name: String,
+    pub MinimumAmount: Option<String>,
 }
 
 impl From<&ApiSimpleFiatCurrency> for WasmApiSimpleFiatCurrency {
@@ -121,6 +122,7 @@ impl From<&ApiSimpleFiatCurrency> for WasmApiSimpleFiatCurrency {
         WasmApiSimpleFiatCurrency {
             Symbol: value.Symbol.clone(),
             Name: value.Name.clone(),
+            MinimumAmount: value.MinimumAmount.clone(),
         }
     }
 }

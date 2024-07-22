@@ -56,6 +56,7 @@ pub struct GetFiatCurrenciesResponseBody {
 pub struct ApiSimpleFiatCurrency {
     pub Name: String,
     pub Symbol: String,
+    pub MinimumAmount: Option<String>,
 }
 
 pub type PaymentMethodsByProvider = HashMap<GatewayProvider, Vec<PaymentMethod>>;
@@ -350,19 +351,22 @@ mod tests {
                 "Banxa": [
                     {
                         "Name": "Australian Dollar",
-                        "Symbol": "AUD"
+                        "Symbol": "AUD",
+                        "MinimumAmount": "30",
                     }
                 ],
                 "Ramp": [
                     {
                         "Name": "Australian Dollar",
-                        "Symbol": "AUD"
+                        "Symbol": "AUD",
+                        "MinimumAmount": null,
                     }
                 ],
                 "MoonPay": [
                     {
                         "Name": "Australian Dollar",
-                        "Symbol": "AUD"
+                        "Symbol": "AUD",
+                        "MinimumAmount": "20",
                     }
                 ]
             }
@@ -373,10 +377,19 @@ mod tests {
         assert!(response.FiatCurrencies.get(&GatewayProvider::Banxa).unwrap().len() == 1);
         assert!(response.FiatCurrencies.get(&GatewayProvider::Banxa).unwrap()[0].Symbol == "AUD");
         assert!(response.FiatCurrencies.get(&GatewayProvider::Banxa).unwrap()[0].Name == "Australian Dollar");
+        assert!(
+            response.FiatCurrencies.get(&GatewayProvider::Banxa).unwrap()[0].MinimumAmount == Some("30".to_owned())
+        );
         assert!(response.FiatCurrencies.get(&GatewayProvider::Ramp).unwrap()[0].Symbol == "AUD");
         assert!(response.FiatCurrencies.get(&GatewayProvider::Ramp).unwrap()[0].Name == "Australian Dollar");
+        assert!(response.FiatCurrencies.get(&GatewayProvider::Ramp).unwrap()[0]
+            .MinimumAmount
+            .is_none());
         assert!(response.FiatCurrencies.get(&GatewayProvider::MoonPay).unwrap()[0].Symbol == "AUD");
         assert!(response.FiatCurrencies.get(&GatewayProvider::MoonPay).unwrap()[0].Name == "Australian Dollar");
+        assert!(
+            response.FiatCurrencies.get(&GatewayProvider::MoonPay).unwrap()[0].MinimumAmount == Some("20".to_owned())
+        );
     }
 
     #[tokio::test]
