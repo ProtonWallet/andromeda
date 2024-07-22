@@ -35,7 +35,7 @@ pub struct ApiAllKeyAddressKey {
 #[allow(non_snake_case)]
 pub struct ApiProtonAddress {
     pub ID: String,
-    pub DomainID: String,
+    pub DomainID: Option<String>,
     pub Email: String,
     pub Status: u32,
     pub Type: u32,
