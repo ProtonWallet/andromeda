@@ -426,16 +426,19 @@
         "Subscribed": 5,
         "Services": 5,
         "Delinquent": 0,
-        "Keys": {
-            "ID": "IlnTbqicN-2HfUGIn-ki8bqZfLqNj5ErUB0z24Qx5g-4NvrrIc6GLvEpj2EPfwGDv28aKYVRRrSgEFhR_zhlkA==",
-            "Version": 3,
-            "PrivateKey": "-----BEGIN PGP PRIVATE KEY BLOCK-----*-----END PGP PRIVATE KEY BLOCK-----",
-            "Fingerprint": "c93f767df53b0ca8395cfde90483475164ec6353",
-            "Primary": 1,
-            "Active": 1,
-            "RecoverySecret": "1H8EGg3J1...Qwk243hf",
-            "RecoverySecretSignature": "-----BEGIN PGP SIGNATURE-----..."
-        },
+        "Donetime": 0,
+        "Keys": [
+            {
+                "ID": "IlnTbqicN-2HfUGIn-ki8bqZfLqNj5ErUB0z24Qx5g-4NvrrIc6GLvEpj2EPfwGDv28aKYVRRrSgEFhR_zhlkA==",
+                "Version": 3,
+                "PrivateKey": "-----BEGIN PGP PRIVATE KEY BLOCK-----*-----END PGP PRIVATE KEY BLOCK-----",
+                "Fingerprint": "c93f767df53b0ca8395cfde90483475164ec6353",
+                "Primary": 1,
+                "Active": 1,
+                "RecoverySecret": "1H8EGg3J1...Qwk243hf",
+                "RecoverySecretSignature": "-----BEGIN PGP SIGNATURE-----..."
+            }
+        ],
         "Flags": {
             "protected": true,
             "onboard-checklist-storage-granted": true,
@@ -502,9 +505,9 @@
         "WeekStart": 1,
         "DateFormat": 1,
         "TimeFormat": 1,
-        "Welcome": "1",
-        "WelcomeFlag": "1",
-        "EarlyAccess": "1",
+        "Welcome": 1,
+        "WelcomeFlag": 1,
+        "EarlyAccess": 1,
         "Flags": {
             "Welcomed": 0,
             "InAppPromosHidden": 0
@@ -514,9 +517,9 @@
             "Eligible": true
         },
         "DeviceRecovery": "1",
-        "Telemetry": "1",
-        "CrashReports": "1",
-        "HideSidePanel": "1",
+        "Telemetry": 1,
+        "CrashReports": 1,
+        "HideSidePanel": 1,
         "HighSecurity": {
             "Eligible": 1,
             "Value": 1
@@ -1045,8 +1048,7 @@
                 "Label": "string",
                 "Priority": 1,
                 "ScriptType": 1,
-                "Addresses": [
-                ],
+                "Addresses": [],
                 "LastUsedIndex": 0
             }
         }

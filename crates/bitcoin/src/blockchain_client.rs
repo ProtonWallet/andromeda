@@ -5,11 +5,8 @@ use andromeda_common::utils::now;
 use andromeda_esplora::{AsyncClient, EsploraAsyncExt};
 use async_std::sync::RwLockReadGuard;
 use bdk_wallet::{
-    bitcoin::{Script, Transaction, Txid},
-    chain::{
-        spk_client::{FullScanResult, SyncRequest, SyncResult},
-        SpkIterator,
-    },
+    bitcoin::{Transaction, Txid},
+    chain::spk_client::{FullScanResult, SyncResult},
     wallet::Wallet as BdkWallet,
     KeychainKind,
 };
