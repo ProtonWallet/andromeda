@@ -49,7 +49,7 @@ pub struct ApiVin {
     pub Prevout: ApiVout,
     pub ScriptSig: String,
     pub ScriptSigAsm: String,
-    pub Witness: Vec<String>,
+    pub Witness: Option<Vec<String>>,
     pub InnerWitnessScriptAsm: Option<String>,
     pub IsCoinbase: u8,
     pub Sequence: u32,
