@@ -49,11 +49,10 @@ pub struct ProtonUserSettings {
     pub EarlyAccess: u32,
     pub Flags: Option<FlagsSettings>,
     pub Referral: Option<ReferralSettings>,
-    pub DeviceRecovery: u32,
     pub Telemetry: u32,
     pub CrashReports: u32,
     pub HideSidePanel: u32,
-    pub HighSecurity: HighSecuritySettings,
+    pub HighSecurity: Option<HighSecuritySettings>,
     pub SessionAccountRecovery: u32,
 }
 
@@ -472,7 +471,6 @@ mod tests {
                     "Link": "https://pr.tn/ref/ERBYvlX8SC4KOyb",
                     "Eligible": true
                   },
-                  "DeviceRecovery": 1,
                   "Telemetry": 1,
                   "CrashReports": 1,
                   "HideSidePanel": 1,

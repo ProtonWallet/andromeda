@@ -6,6 +6,7 @@ use crate::{
     contacts::ApiContactEmails,
     core::{ApiClient, ProtonResponseExt, ToProtonRequest},
     error::Error,
+    proton_users::{ProtonUser, ProtonUserSettings},
     settings::UserSettings,
     wallet::{ApiWallet, ApiWalletAccount, ApiWalletKey, ApiWalletSettings, ApiWalletTransaction},
     ProtonWalletApiClient, BASE_CORE_API_V4, BASE_CORE_API_V5,
@@ -34,6 +35,8 @@ pub struct ApiProtonEvent {
     pub WalletSettings: Option<Vec<ApiWalletSettingsEvent>>,
     pub WalletTransactions: Option<Vec<ApiWalletTransactionsEvent>>,
     pub WalletUserSettings: Option<UserSettings>,
+    pub User: Option<ProtonUser>,
+    pub UserSettings: Option<ProtonUserSettings>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -122,6 +125,8 @@ impl EventClient {
             WalletSettings: event.WalletSettings,
             WalletTransactions: event.WalletTransactions,
             WalletUserSettings: event.WalletUserSettings,
+            User: event.User,
+            UserSettings: event.UserSettings,
         });
         let mut num_collected = 0_usize;
 
@@ -146,6 +151,8 @@ impl EventClient {
                 WalletSettings: event.WalletSettings,
                 WalletTransactions: event.WalletTransactions,
                 WalletUserSettings: event.WalletUserSettings,
+                User: event.User,
+                UserSettings: event.UserSettings,
             });
         }
         Ok(events)
