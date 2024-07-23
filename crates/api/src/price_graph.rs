@@ -1,0 +1,348 @@
+use std::{str, sync::Arc};
+
+use andromeda_common::BitcoinUnit;
+use serde::Deserialize;
+use serde_repr::{Deserialize_repr, Serialize_repr};
+
+use crate::{
+    core::{ApiClient, ProtonResponseExt},
+    error::Error,
+    settings::FiatCurrencySymbol,
+    ProtonWalletApiClient, BASE_WALLET_API_V1,
+};
+
+#[derive(Deserialize_repr, Serialize_repr, PartialEq, Debug)]
+#[repr(u8)]
+pub enum Timeframe {
+    OneDay = 1,
+    OneWeek = 2,
+    OneMonth = 3,
+    // A fallback value to handle potential failures resulting from changes in the server value.
+    #[serde(other)]
+    Unsupported,
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
+#[allow(non_snake_case)]
+pub struct DataPoint {
+    pub ExchangeRate: u32,
+    pub Timestamp: u64,
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
+#[allow(non_snake_case)]
+pub struct PriceGraph {
+    pub FiatCurrencySymbol: FiatCurrencySymbol,
+    pub BitcoinUnitSymbol: BitcoinUnit,
+    pub GraphData: Vec<DataPoint>,
+}
+
+#[derive(Deserialize, Debug)]
+#[allow(non_snake_case)]
+pub struct GetGraphDataResponseBody {
+    pub Code: i32,
+    pub PriceGraph: PriceGraph,
+}
+
+#[derive(Clone)]
+pub struct PriceGraphClient {
+    api_client: Arc<ProtonWalletApiClient>,
+}
+
+impl ApiClient for PriceGraphClient {
+    fn api_client(&self) -> &Arc<ProtonWalletApiClient> {
+        &self.api_client
+    }
+
+    fn base_url(&self) -> &str {
+        BASE_WALLET_API_V1
+    }
+
+    fn new(api_client: Arc<ProtonWalletApiClient>) -> Self {
+        Self { api_client }
+    }
+}
+
+impl PriceGraphClient {
+    pub async fn get_graph_data(
+        &self,
+        fiat_currency: FiatCurrencySymbol,
+        timeframe: Timeframe,
+    ) -> Result<PriceGraph, Error> {
+        let request = self
+            .get("graph")
+            .query(("FiatCurrency", fiat_currency))
+            .query(("Type", (timeframe as u8).to_string()));
+
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<GetGraphDataResponseBody>()?;
+        Ok(parsed.PriceGraph)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use andromeda_common::BitcoinUnit;
+    use wiremock::{
+        matchers::{body_json, method, path, query_param},
+        Mock, MockServer, ResponseTemplate,
+    };
+
+    use crate::{
+        core::ApiClient,
+        price_graph::{DataPoint, PriceGraph, PriceGraphClient, Timeframe},
+        settings::FiatCurrencySymbol,
+        tests::utils::setup_test_connection_arc,
+        BASE_WALLET_API_V1,
+    };
+
+    #[tokio::test]
+    async fn test_get_price_data() {
+        let mock_server = MockServer::start().await;
+        let json_body = serde_json::json!(
+        {
+            "Code": 1000,
+            "PriceGraph": {
+                "FiatCurrencySymbol": "EUR",
+                "BitcoinUnitSymbol": "BTC",
+                "GraphData": [
+                    {
+                        "ExchangeRate": 6189900,
+                        "Timestamp": 1721632020
+                    },
+                    {
+                        "ExchangeRate": 6170200,
+                        "Timestamp": 1721635680
+                    },
+                    {
+                        "ExchangeRate": 6171400,
+                        "Timestamp": 1721639340
+                    },
+                    {
+                        "ExchangeRate": 6190200,
+                        "Timestamp": 1721643000
+                    },
+                    {
+                        "ExchangeRate": 6183400,
+                        "Timestamp": 1721646660
+                    },
+                    {
+                        "ExchangeRate": 6195100,
+                        "Timestamp": 1721650320
+                    },
+                    {
+                        "ExchangeRate": 6236800,
+                        "Timestamp": 1721653980
+                    },
+                    {
+                        "ExchangeRate": 6182500,
+                        "Timestamp": 1721657640
+                    },
+                    {
+                        "ExchangeRate": 6132200,
+                        "Timestamp": 1721661300
+                    },
+                    {
+                        "ExchangeRate": 6171500,
+                        "Timestamp": 1721664960
+                    },
+                    {
+                        "ExchangeRate": 6164900,
+                        "Timestamp": 1721668620
+                    },
+                    {
+                        "ExchangeRate": 6199300,
+                        "Timestamp": 1721672280
+                    },
+                    {
+                        "ExchangeRate": 6218400,
+                        "Timestamp": 1721675940
+                    },
+                    {
+                        "ExchangeRate": 6247800,
+                        "Timestamp": 1721679600
+                    },
+                    {
+                        "ExchangeRate": 6236400,
+                        "Timestamp": 1721683260
+                    },
+                    {
+                        "ExchangeRate": 6203700,
+                        "Timestamp": 1721686920
+                    },
+                    {
+                        "ExchangeRate": 6190700,
+                        "Timestamp": 1721690580
+                    },
+                    {
+                        "ExchangeRate": 6202400,
+                        "Timestamp": 1721692800
+                    },
+                    {
+                        "ExchangeRate": 6203400,
+                        "Timestamp": 1721696460
+                    },
+                    {
+                        "ExchangeRate": 6190500,
+                        "Timestamp": 1721700120
+                    },
+                    {
+                        "ExchangeRate": 6214100,
+                        "Timestamp": 1721703780
+                    },
+                    {
+                        "ExchangeRate": 6193900,
+                        "Timestamp": 1721707440
+                    },
+                    {
+                        "ExchangeRate": 6141500,
+                        "Timestamp": 1721711100
+                    },
+                    {
+                        "ExchangeRate": 6125900,
+                        "Timestamp": 1721714760
+                    },
+                    {
+                        "ExchangeRate": 6111600,
+                        "Timestamp": 1721718420
+                    },
+                    {
+                        "ExchangeRate": 6111600,
+                        "Timestamp": 1721718194
+                    }
+                ]
+            }
+        });
+
+        let req_path: String = format!("{}/graph", BASE_WALLET_API_V1);
+        let response = ResponseTemplate::new(200).set_body_json(json_body);
+        Mock::given(method("GET"))
+            .and(path(req_path))
+            .and(query_param("FiatCurrency", "EUR"))
+            .and(query_param("Type", "1"))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let gateway_client = PriceGraphClient::new(api_client);
+        let graph_data = gateway_client
+            .get_graph_data(FiatCurrencySymbol::EUR, Timeframe::OneDay)
+            .await;
+
+        println!("graph_datagraph_datagraph_data:{:?}", graph_data);
+        assert_eq!(
+            graph_data.unwrap(),
+            PriceGraph {
+                FiatCurrencySymbol: FiatCurrencySymbol::EUR,
+                BitcoinUnitSymbol: BitcoinUnit::BTC,
+                GraphData: vec![
+                    DataPoint {
+                        ExchangeRate: 6189900,
+                        Timestamp: 1721632020
+                    },
+                    DataPoint {
+                        ExchangeRate: 6170200,
+                        Timestamp: 1721635680
+                    },
+                    DataPoint {
+                        ExchangeRate: 6171400,
+                        Timestamp: 1721639340
+                    },
+                    DataPoint {
+                        ExchangeRate: 6190200,
+                        Timestamp: 1721643000
+                    },
+                    DataPoint {
+                        ExchangeRate: 6183400,
+                        Timestamp: 1721646660
+                    },
+                    DataPoint {
+                        ExchangeRate: 6195100,
+                        Timestamp: 1721650320
+                    },
+                    DataPoint {
+                        ExchangeRate: 6236800,
+                        Timestamp: 1721653980
+                    },
+                    DataPoint {
+                        ExchangeRate: 6182500,
+                        Timestamp: 1721657640
+                    },
+                    DataPoint {
+                        ExchangeRate: 6132200,
+                        Timestamp: 1721661300
+                    },
+                    DataPoint {
+                        ExchangeRate: 6171500,
+                        Timestamp: 1721664960
+                    },
+                    DataPoint {
+                        ExchangeRate: 6164900,
+                        Timestamp: 1721668620
+                    },
+                    DataPoint {
+                        ExchangeRate: 6199300,
+                        Timestamp: 1721672280
+                    },
+                    DataPoint {
+                        ExchangeRate: 6218400,
+                        Timestamp: 1721675940
+                    },
+                    DataPoint {
+                        ExchangeRate: 6247800,
+                        Timestamp: 1721679600
+                    },
+                    DataPoint {
+                        ExchangeRate: 6236400,
+                        Timestamp: 1721683260
+                    },
+                    DataPoint {
+                        ExchangeRate: 6203700,
+                        Timestamp: 1721686920
+                    },
+                    DataPoint {
+                        ExchangeRate: 6190700,
+                        Timestamp: 1721690580
+                    },
+                    DataPoint {
+                        ExchangeRate: 6202400,
+                        Timestamp: 1721692800
+                    },
+                    DataPoint {
+                        ExchangeRate: 6203400,
+                        Timestamp: 1721696460
+                    },
+                    DataPoint {
+                        ExchangeRate: 6190500,
+                        Timestamp: 1721700120
+                    },
+                    DataPoint {
+                        ExchangeRate: 6214100,
+                        Timestamp: 1721703780
+                    },
+                    DataPoint {
+                        ExchangeRate: 6193900,
+                        Timestamp: 1721707440
+                    },
+                    DataPoint {
+                        ExchangeRate: 6141500,
+                        Timestamp: 1721711100
+                    },
+                    DataPoint {
+                        ExchangeRate: 6125900,
+                        Timestamp: 1721714760
+                    },
+                    DataPoint {
+                        ExchangeRate: 6111600,
+                        Timestamp: 1721718420
+                    },
+                    DataPoint {
+                        ExchangeRate: 6111600,
+                        Timestamp: 1721718194
+                    }
+                ]
+            }
+        )
+    }
+}
