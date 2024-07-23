@@ -20,6 +20,7 @@ pub use muon::{
 };
 use network::NetworkClient;
 use payment_gateway::PaymentGatewayClient;
+use price_graph::PriceGraphClient;
 use proton_email_address::ProtonEmailAddressClient;
 pub use proton_users::ProtonUsersClient;
 use settings::SettingsClient;
@@ -57,6 +58,7 @@ pub mod exchange_rate;
 pub mod invite;
 pub mod network;
 pub mod payment_gateway;
+pub mod price_graph;
 pub mod settings;
 pub mod transaction;
 pub mod wallet;
@@ -116,6 +118,7 @@ pub struct Clients {
     pub event: EventClient,
     pub address: AddressClient,
     pub payment_gateway: PaymentGatewayClient,
+    pub price_graph: PriceGraphClient,
     pub proton_email_address: ProtonEmailAddressClient,
     pub exchange_rate: ExchangeRateClient,
     pub bitcoin_address: BitcoinAddressClient,
@@ -176,6 +179,7 @@ impl ProtonWalletApiClient {
             event: EventClient::new(api_client.clone()),
             address: AddressClient::new(api_client.clone()),
             payment_gateway: PaymentGatewayClient::new(api_client.clone()),
+            price_graph: PriceGraphClient::new(api_client.clone()),
             proton_email_address: ProtonEmailAddressClient::new(api_client.clone()),
             exchange_rate: ExchangeRateClient::new(api_client.clone()),
             bitcoin_address: BitcoinAddressClient::new(api_client.clone()),

@@ -18,6 +18,7 @@ mod exchange_rate;
 mod invite;
 mod network;
 mod payment_gateway;
+mod price_graph;
 mod settings;
 mod wallet;
 
