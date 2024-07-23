@@ -5,6 +5,7 @@ use exchange_rate::WasmExchangeRateClient;
 use invite::WasmInviteClient;
 use network::WasmNetworkClient;
 use payment_gateway::WasmPaymentGatewayClient;
+use price_graph::WasmPriceGraphClient;
 use settings::WasmSettingsClient;
 use wallet::WasmWalletClient;
 use wasm_bindgen::prelude::*;
@@ -46,6 +47,7 @@ pub struct WasmApiClients {
     pub email_integration: WasmEmailIntegrationClient,
     pub bitcoin_address: WasmBitcoinAddressClient,
     pub payment_gateway: WasmPaymentGatewayClient,
+    pub price_graph: WasmPriceGraphClient,
     pub settings: WasmSettingsClient,
     pub network: WasmNetworkClient,
     pub invite: WasmInviteClient,
@@ -83,6 +85,7 @@ impl WasmProtonWalletApiClient {
             email_integration: WasmEmailIntegrationClient::from(clients.email_integration),
             bitcoin_address: WasmBitcoinAddressClient::from(clients.bitcoin_address),
             payment_gateway: WasmPaymentGatewayClient::from(clients.payment_gateway),
+            price_graph: WasmPriceGraphClient::from(clients.price_graph),
             settings: WasmSettingsClient::from(clients.settings),
             network: WasmNetworkClient::from(clients.network),
             invite: WasmInviteClient::from(clients.invite),

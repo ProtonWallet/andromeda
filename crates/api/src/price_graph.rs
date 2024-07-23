@@ -26,14 +26,15 @@ pub enum Timeframe {
 #[allow(non_snake_case)]
 pub struct DataPoint {
     pub ExchangeRate: u32,
+    pub Cents: u8,
     pub Timestamp: u64,
 }
 
 #[derive(Deserialize, Debug, PartialEq)]
 #[allow(non_snake_case)]
 pub struct PriceGraph {
-    pub FiatCurrencySymbol: FiatCurrencySymbol,
-    pub BitcoinUnitSymbol: BitcoinUnit,
+    pub FiatCurrency: FiatCurrencySymbol,
+    pub BitcoinUnit: BitcoinUnit,
     pub GraphData: Vec<DataPoint>,
 }
 
@@ -84,7 +85,7 @@ impl PriceGraphClient {
 mod tests {
     use andromeda_common::BitcoinUnit;
     use wiremock::{
-        matchers::{body_json, method, path, query_param},
+        matchers::{method, path, query_param},
         Mock, MockServer, ResponseTemplate,
     };
 
@@ -103,111 +104,137 @@ mod tests {
         {
             "Code": 1000,
             "PriceGraph": {
-                "FiatCurrencySymbol": "EUR",
-                "BitcoinUnitSymbol": "BTC",
+                "FiatCurrency": "EUR",
+                "BitcoinUnit": "BTC",
                 "GraphData": [
                     {
                         "ExchangeRate": 6189900,
+                        "Cents": 100,
                         "Timestamp": 1721632020
                     },
                     {
                         "ExchangeRate": 6170200,
+                        "Cents": 100,
                         "Timestamp": 1721635680
                     },
                     {
                         "ExchangeRate": 6171400,
+                        "Cents": 100,
                         "Timestamp": 1721639340
                     },
                     {
                         "ExchangeRate": 6190200,
+                        "Cents": 100,
                         "Timestamp": 1721643000
                     },
                     {
                         "ExchangeRate": 6183400,
+                        "Cents": 100,
                         "Timestamp": 1721646660
                     },
                     {
                         "ExchangeRate": 6195100,
+                        "Cents": 100,
                         "Timestamp": 1721650320
                     },
                     {
                         "ExchangeRate": 6236800,
+                        "Cents": 100,
                         "Timestamp": 1721653980
                     },
                     {
                         "ExchangeRate": 6182500,
+                        "Cents": 100,
                         "Timestamp": 1721657640
                     },
                     {
                         "ExchangeRate": 6132200,
+                        "Cents": 100,
                         "Timestamp": 1721661300
                     },
                     {
                         "ExchangeRate": 6171500,
+                        "Cents": 100,
                         "Timestamp": 1721664960
                     },
                     {
                         "ExchangeRate": 6164900,
+                        "Cents": 100,
                         "Timestamp": 1721668620
                     },
                     {
                         "ExchangeRate": 6199300,
+                        "Cents": 100,
                         "Timestamp": 1721672280
                     },
                     {
                         "ExchangeRate": 6218400,
+                        "Cents": 100,
                         "Timestamp": 1721675940
                     },
                     {
                         "ExchangeRate": 6247800,
+                        "Cents": 100,
                         "Timestamp": 1721679600
                     },
                     {
                         "ExchangeRate": 6236400,
+                        "Cents": 100,
                         "Timestamp": 1721683260
                     },
                     {
                         "ExchangeRate": 6203700,
+                        "Cents": 100,
                         "Timestamp": 1721686920
                     },
                     {
                         "ExchangeRate": 6190700,
+                        "Cents": 100,
                         "Timestamp": 1721690580
                     },
                     {
                         "ExchangeRate": 6202400,
+                        "Cents": 100,
                         "Timestamp": 1721692800
                     },
                     {
                         "ExchangeRate": 6203400,
+                        "Cents": 100,
                         "Timestamp": 1721696460
                     },
                     {
                         "ExchangeRate": 6190500,
+                        "Cents": 100,
                         "Timestamp": 1721700120
                     },
                     {
                         "ExchangeRate": 6214100,
+                        "Cents": 100,
                         "Timestamp": 1721703780
                     },
                     {
                         "ExchangeRate": 6193900,
+                        "Cents": 100,
                         "Timestamp": 1721707440
                     },
                     {
                         "ExchangeRate": 6141500,
+                        "Cents": 100,
                         "Timestamp": 1721711100
                     },
                     {
                         "ExchangeRate": 6125900,
+                        "Cents": 100,
                         "Timestamp": 1721714760
                     },
                     {
                         "ExchangeRate": 6111600,
+                        "Cents": 100,
                         "Timestamp": 1721718420
                     },
                     {
                         "ExchangeRate": 6111600,
+                        "Cents": 100,
                         "Timestamp": 1721718194
                     }
                 ]
@@ -234,111 +261,137 @@ mod tests {
         assert_eq!(
             graph_data.unwrap(),
             PriceGraph {
-                FiatCurrencySymbol: FiatCurrencySymbol::EUR,
-                BitcoinUnitSymbol: BitcoinUnit::BTC,
+                FiatCurrency: FiatCurrencySymbol::EUR,
+                BitcoinUnit: BitcoinUnit::BTC,
                 GraphData: vec![
                     DataPoint {
                         ExchangeRate: 6189900,
+                        Cents: 100,
                         Timestamp: 1721632020
                     },
                     DataPoint {
                         ExchangeRate: 6170200,
+                        Cents: 100,
                         Timestamp: 1721635680
                     },
                     DataPoint {
                         ExchangeRate: 6171400,
+                        Cents: 100,
                         Timestamp: 1721639340
                     },
                     DataPoint {
                         ExchangeRate: 6190200,
+                        Cents: 100,
                         Timestamp: 1721643000
                     },
                     DataPoint {
                         ExchangeRate: 6183400,
+                        Cents: 100,
                         Timestamp: 1721646660
                     },
                     DataPoint {
                         ExchangeRate: 6195100,
+                        Cents: 100,
                         Timestamp: 1721650320
                     },
                     DataPoint {
                         ExchangeRate: 6236800,
+                        Cents: 100,
                         Timestamp: 1721653980
                     },
                     DataPoint {
                         ExchangeRate: 6182500,
+                        Cents: 100,
                         Timestamp: 1721657640
                     },
                     DataPoint {
                         ExchangeRate: 6132200,
+                        Cents: 100,
                         Timestamp: 1721661300
                     },
                     DataPoint {
                         ExchangeRate: 6171500,
+                        Cents: 100,
                         Timestamp: 1721664960
                     },
                     DataPoint {
                         ExchangeRate: 6164900,
+                        Cents: 100,
                         Timestamp: 1721668620
                     },
                     DataPoint {
                         ExchangeRate: 6199300,
+                        Cents: 100,
                         Timestamp: 1721672280
                     },
                     DataPoint {
                         ExchangeRate: 6218400,
+                        Cents: 100,
                         Timestamp: 1721675940
                     },
                     DataPoint {
                         ExchangeRate: 6247800,
+                        Cents: 100,
                         Timestamp: 1721679600
                     },
                     DataPoint {
                         ExchangeRate: 6236400,
+                        Cents: 100,
                         Timestamp: 1721683260
                     },
                     DataPoint {
                         ExchangeRate: 6203700,
+                        Cents: 100,
                         Timestamp: 1721686920
                     },
                     DataPoint {
                         ExchangeRate: 6190700,
+                        Cents: 100,
                         Timestamp: 1721690580
                     },
                     DataPoint {
                         ExchangeRate: 6202400,
+                        Cents: 100,
                         Timestamp: 1721692800
                     },
                     DataPoint {
                         ExchangeRate: 6203400,
+                        Cents: 100,
                         Timestamp: 1721696460
                     },
                     DataPoint {
                         ExchangeRate: 6190500,
+                        Cents: 100,
                         Timestamp: 1721700120
                     },
                     DataPoint {
                         ExchangeRate: 6214100,
+                        Cents: 100,
                         Timestamp: 1721703780
                     },
                     DataPoint {
                         ExchangeRate: 6193900,
+                        Cents: 100,
                         Timestamp: 1721707440
                     },
                     DataPoint {
                         ExchangeRate: 6141500,
+                        Cents: 100,
                         Timestamp: 1721711100
                     },
                     DataPoint {
                         ExchangeRate: 6125900,
+                        Cents: 100,
                         Timestamp: 1721714760
                     },
                     DataPoint {
                         ExchangeRate: 6111600,
+                        Cents: 100,
                         Timestamp: 1721718420
                     },
                     DataPoint {
                         ExchangeRate: 6111600,
+                        Cents: 100,
                         Timestamp: 1721718194
                     }
                 ]

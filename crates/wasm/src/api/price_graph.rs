@@ -41,6 +41,7 @@ impl Into<Timeframe> for WasmTimeframe {
 #[allow(non_snake_case)]
 pub struct WasmDataPoint {
     pub ExchangeRate: u32,
+    pub Cents: u8,
     pub Timestamp: u64,
 }
 
@@ -48,21 +49,22 @@ pub struct WasmDataPoint {
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[allow(non_snake_case)]
 pub struct WasmPriceGraph {
-    pub FiatCurrencySymbol: WasmFiatCurrencySymbol,
-    pub BitcoinUnitSymbol: WasmBitcoinUnit,
+    pub FiatCurrency: WasmFiatCurrencySymbol,
+    pub BitcoinUnit: WasmBitcoinUnit,
     pub GraphData: Vec<WasmDataPoint>,
 }
 
 impl From<PriceGraph> for WasmPriceGraph {
     fn from(value: PriceGraph) -> Self {
         WasmPriceGraph {
-            FiatCurrencySymbol: value.FiatCurrencySymbol.into(),
-            BitcoinUnitSymbol: value.BitcoinUnitSymbol.into(),
+            FiatCurrency: value.FiatCurrency.into(),
+            BitcoinUnit: value.BitcoinUnit.into(),
             GraphData: value
                 .GraphData
                 .into_iter()
                 .map(|d| WasmDataPoint {
                     ExchangeRate: d.ExchangeRate,
+                    Cents: d.Cents,
                     Timestamp: d.Timestamp,
                 })
                 .collect::<Vec<_>>(),
