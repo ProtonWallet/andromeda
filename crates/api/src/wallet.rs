@@ -137,10 +137,11 @@ pub struct ApiWalletAccount {
     pub FiatCurrency: FiatCurrencySymbol,
     pub DerivationPath: String,
     pub Label: String,
+    pub LastUsedIndex: u32,
+    pub PoolSize: u32,
     pub Priority: u32,
     pub ScriptType: u8,
     pub Addresses: Vec<ApiEmailAddress>,
-    pub LastUsedIndex: u32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -1377,11 +1378,12 @@ mod tests {
                     "WalletID": "string",
                     "DerivationPath": "m/44'/0'/0'",
                     "Label": "string",
+                    "LastUsedIndex": 666,
+                    "PoolSize": 12,
                     "Priority": 23,
                     "ScriptType": 1,
                     "Addresses": [],
                     "FiatCurrency": "USD",
-                    "LastUsedIndex": 666,
                 }
             }
         );
@@ -1410,6 +1412,7 @@ mod tests {
         assert_eq!(wallet_account.WalletID, "string");
         assert_eq!(wallet_account.ID, "string");
         assert_eq!(wallet_account.LastUsedIndex, 666);
+        assert_eq!(wallet_account.PoolSize, 12);
     }
 
     #[tokio::test]

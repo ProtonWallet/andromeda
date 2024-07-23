@@ -1046,6 +1046,7 @@
                 "FiatCurrency": "CHF",
                 "DerivationPath": "m/44'/0'/0'",
                 "Label": "string",
+                "PoolSize": 10,
                 "Priority": 1,
                 "ScriptType": 1,
                 "Addresses": [],

@@ -143,10 +143,11 @@ pub struct WasmApiWalletAccount {
     pub ID: String,
     pub DerivationPath: String,
     pub Label: String,
+    pub LastUsedIndex: u32,
+    pub PoolSize: u32,
     pub Priority: u32,
     pub ScriptType: u8,
     pub Addresses: Vec<WasmApiEmailAddress>,
-    pub LastUsedIndex: u32,
 }
 
 // We need this wrapper because unfortunately, tsify doesn't support
@@ -165,11 +166,12 @@ impl From<ApiWalletAccount> for WasmApiWalletAccount {
             FiatCurrency: value.FiatCurrency.into(),
             ID: value.ID,
             Label: value.Label,
+            LastUsedIndex: value.LastUsedIndex,
+            PoolSize: value.PoolSize,
             Priority: value.Priority,
             DerivationPath: value.DerivationPath,
             ScriptType: value.ScriptType,
             Addresses: value.Addresses.into_iter().map(|a| a.into()).collect::<Vec<_>>(),
-            LastUsedIndex: value.LastUsedIndex,
         }
     }
 }
