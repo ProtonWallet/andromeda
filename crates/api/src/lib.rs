@@ -206,15 +206,10 @@ impl ProtonWalletApiClient {
 
         let req = GET!("/core/v4/users");
         let res = req.send_with(&c).await?;
-        info!("Getting response");
         let user: CoreAPI::v4::users::GetRes = res.ok()?.into_body_json()?;
-        info!("User: {:?}", user);
         let keysalt_req = GET!("/core/v4/keys/salts");
         let keysalt_res = keysalt_req.send_with(&c).await?;
-        info!("Getting response");
         let key_salt: CoreAPI::v4::keys::salts::GetRes = keysalt_res.ok()?.into_body_json()?;
-        info!("KeySalt: {:?}", key_salt);
-
         Ok(UserData {
             user: user.user,
             key_salts: key_salt.key_salts,

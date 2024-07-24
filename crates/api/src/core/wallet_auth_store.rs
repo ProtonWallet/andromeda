@@ -65,14 +65,12 @@ impl Store for WalletAuthStore {
 
     fn get_auth(&self) -> Result<Auth, StoreReadErr> {
         let auth = self.auth.lock().unwrap().clone();
-        info!("get_auth: {:?}", auth);
         Ok(auth.clone())
     }
 
     fn set_auth(&mut self, auth: Auth) -> Result<Auth, StoreWriteErr> {
         let mut old_auth = self.auth.lock().unwrap();
         *old_auth = auth.clone();
-        info!("set_auth: {:?}", auth);
         Ok(auth)
     }
 }
