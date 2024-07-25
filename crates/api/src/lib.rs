@@ -5,6 +5,7 @@ use address::AddressClient;
 use bitcoin_address::BitcoinAddressClient;
 use block::BlockClient;
 use contacts::ContactsClient;
+use discovery_content::DiscoverContentClient;
 use email_integration::EmailIntegrationClient;
 use error::Error;
 use event::EventClient;
@@ -51,6 +52,7 @@ pub mod address;
 pub mod bitcoin_address;
 pub mod block;
 pub mod contacts;
+pub mod discovery_content;
 pub mod email_integration;
 pub mod error;
 pub mod event;
@@ -125,6 +127,7 @@ pub struct Clients {
     pub contacts: ContactsClient,
     pub email_integration: EmailIntegrationClient,
     pub invite: InviteClient,
+    pub discover_content: DiscoverContentClient,
 }
 
 impl ProtonWalletApiClient {
@@ -186,6 +189,7 @@ impl ProtonWalletApiClient {
             contacts: ContactsClient::new(api_client.clone()),
             email_integration: EmailIntegrationClient::new(api_client.clone()),
             invite: InviteClient::new(api_client.clone()),
+            discover_content: DiscoverContentClient::new(api_client.clone()),
         }
     }
 
