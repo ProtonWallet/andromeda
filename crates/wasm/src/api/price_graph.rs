@@ -40,7 +40,7 @@ impl Into<Timeframe> for WasmTimeframe {
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[allow(non_snake_case)]
 pub struct WasmDataPoint {
-    pub ExchangeRate: u32,
+    pub ExchangeRate: u64,
     pub Cents: u8,
     pub Timestamp: u64,
 }

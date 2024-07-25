@@ -25,7 +25,7 @@ pub enum Timeframe {
 #[derive(Deserialize, Debug, PartialEq)]
 #[allow(non_snake_case)]
 pub struct DataPoint {
-    pub ExchangeRate: u32,
+    pub ExchangeRate: u64,
     pub Cents: u8,
     pub Timestamp: u64,
 }
