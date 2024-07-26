@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 
 use andromeda_esplora::error::Error as EsploraClientError;
+pub use bdk_wallet::wallet::{coin_selection::Error as CoinSelectionError, error::CreateTxError};
 use bdk_wallet::{
     bitcoin::{
         address::ParseError as BitcoinAddressParseError,
@@ -12,7 +13,7 @@ use bdk_wallet::{
     descriptor::DescriptorError,
     keys::bip39::Error as Bip39Error,
     wallet::{
-        error::{BuildFeeBumpError, CreateTxError, MiniscriptPsbtError},
+        error::{BuildFeeBumpError, MiniscriptPsbtError},
         signer::SignerError,
         tx_builder::AddUtxoError,
         InsertTxError, NewOrLoadError,
@@ -26,13 +27,13 @@ pub enum Error {
     AccountNotFound,
     #[error("An error occured when trying to load or create wallet: \n\t{0}")]
     NewOrLoadWallet(#[from] NewOrLoadError),
-    #[error("An error related to BIP32 occured: \n\t{0}")]
+    #[error("An error related to Miniscript occured: \n\t{0}")]
     MiniscriptPsbt(#[from] MiniscriptPsbtError),
-    #[error("An error related to BIP32 occured: \n\t{0:?}")]
+    #[error("An error occured when creating tx: \n\t{0:?}")]
     CreateTx(#[from] CreateTxError),
-    #[error("An error related to BIP32 occured: \n\t{0}")]
+    #[error("An error occured when bumping fees: \n\t{0}")]
     BuildFeeBump(#[from] BuildFeeBumpError),
-    #[error("An error related to BIP32 occured: \n\t{0}")]
+    #[error("An error occured when adding UTXO: \n\t{0}")]
     AddUtxo(#[from] AddUtxoError),
     #[error("An error occured when signing the transaction: \n\t{0}")]
     Signer(#[from] SignerError),

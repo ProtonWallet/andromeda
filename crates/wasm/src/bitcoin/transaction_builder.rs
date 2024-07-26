@@ -89,13 +89,14 @@ impl WasmTxBuilder {
     }
 
     #[wasm_bindgen(js_name = setAccount)]
-    pub async fn set_account(&self, account: &WasmAccount) -> Result<WasmTxBuilder, js_sys::Error> {
-        let inner = self
-            .inner
-            .set_account(account.get_inner())
-            .await
-            .map_err(|e| e.to_js_error())?;
+    pub fn set_account(&self, account: &WasmAccount) -> WasmTxBuilder {
+        let inner = self.inner.set_account(account.get_inner());
+        WasmTxBuilder { inner }
+    }
 
+    #[wasm_bindgen(js_name = constrainRecipientAmounts)]
+    pub async fn constrain_recipient_amounts(&self) -> Result<WasmTxBuilder, js_sys::Error> {
+        let inner = self.inner.constrain_recipient_amounts().await;
         Ok(WasmTxBuilder { inner })
     }
 
@@ -118,24 +119,20 @@ impl WasmTxBuilder {
     }
 
     #[wasm_bindgen(js_name = updateRecipient)]
-    pub async fn update_recipient(
+    pub fn update_recipient(
         &self,
         index: usize,
         address_str: Option<String>,
         amount: Option<u64>,
     ) -> Result<WasmTxBuilder, js_sys::Error> {
-        let inner = self.inner.update_recipient(index, (address_str, amount)).await;
+        let inner = self.inner.update_recipient(index, (address_str, amount));
 
         Ok(WasmTxBuilder { inner })
     }
 
     #[wasm_bindgen(js_name = updateRecipientAmountToMax)]
     pub async fn update_recipient_amount_to_max(&self, index: usize) -> Result<WasmTxBuilder, js_sys::Error> {
-        let inner = self
-            .inner
-            .update_recipient_amount_to_max(index)
-            .await
-            .map_err(|e| e.to_js_error())?;
+        let inner = self.inner.update_recipient_amount_to_max(index).await;
 
         Ok(WasmTxBuilder { inner })
     }
@@ -251,8 +248,8 @@ impl WasmTxBuilder {
      */
 
     #[wasm_bindgen(js_name = setFeeRate)]
-    pub async fn set_fee_rate(&self, sat_per_vb: u64) -> WasmTxBuilder {
-        let inner = self.inner.set_fee_rate(sat_per_vb).await;
+    pub fn set_fee_rate(&self, sat_per_vb: u64) -> WasmTxBuilder {
+        let inner = self.inner.set_fee_rate(sat_per_vb);
         WasmTxBuilder { inner }
     }
 

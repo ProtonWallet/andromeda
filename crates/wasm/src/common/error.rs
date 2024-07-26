@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use andromeda_api::error::Error as ApiError;
-use andromeda_bitcoin::error::Error as BitcoinError;
+use andromeda_bitcoin::error::{CoinSelectionError, CreateTxError, Error as BitcoinError};
 use andromeda_common::error::Error as CommonError;
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -20,10 +20,28 @@ pub fn json_to_jsvalue(json: Value) -> JsValue {
 
 impl ErrorExt for BitcoinError {
     fn to_js_error(self) -> JsValue {
-        JsValue::from(
+        let common_error = JsValue::from(
             &format!("Wasm error occured in Bitcoin: {}", self),
             // json!(self), TODO: fix this to have more detailled errors
-        )
+        );
+
+        match self {
+            BitcoinError::CreateTx(error) => match error {
+                CreateTxError::CoinSelection(CoinSelectionError::InsufficientFunds { needed, available }) => {
+                    json_to_jsvalue(json!({
+                        "kind": "InsufficientFunds",
+                        "needed": needed,
+                        "available": available,
+                    }))
+                }
+                CreateTxError::OutputBelowDustLimit(limit) => json_to_jsvalue(json!({
+                    "kind": "OutputBelowDustLimit",
+                    "limit": limit,
+                })),
+                _ => common_error,
+            },
+            _ => common_error,
+        }
     }
 }
 
