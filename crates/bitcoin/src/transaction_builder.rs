@@ -170,25 +170,19 @@ impl<P: WalletStore> TxBuilder<P> {
         }
     }
 
-    /// Sets the account to be used to finalise the transaction. It is also used
-    /// to constrain transaction outputs to not oversize balance
+    /// Sets the account to be used to finalise the transaction.
     ///
     /// ```rust, ignore
     /// let tx_builder = TxBuilder::new();
     /// let account = Account::new(master_priv_key, config, ());
     /// # ...
-    /// let updated = tx_builder.set_account(account).await.unwrap();
+    /// let updated = tx_builder.set_account(account);
     /// ```
-    pub async fn set_account(&self, account: Account<P>) -> Result<Self, Error> {
-        let balance = &account.get_balance().await;
-
-        let tx_builder = TxBuilder {
+    pub fn set_account(&self, account: Account<P>) -> Self {
+        TxBuilder {
             account: Some(account.clone()),
-            recipients: allocate_amount_to_recipients(self.recipients.clone(), balance.confirmed),
             ..self.clone()
-        };
-
-        Ok(tx_builder.constrain_recipient_amounts().await)
+        }
     }
 
     /// Clears internal recipient list
@@ -250,7 +244,7 @@ impl<P: WalletStore> TxBuilder<P> {
         }
     }
 
-    async fn constrain_recipient_amounts(&self) -> Self {
+    pub async fn constrain_recipient_amounts(&self) -> Self {
         if self.account.is_some() {
             let result = self.create_draft_psbt(true).await;
 
@@ -272,17 +266,13 @@ impl<P: WalletStore> TxBuilder<P> {
     }
 
     /// Update either recipient's address or amount at provided index
-    ///
-    /// # Notes
-    ///
-    /// If amount is too high (higher than balance-expected fees), it will be
-    /// constrained     
+    ///  
     /// ```rust, ignore
     /// let tx_builder = TxBuilder::new();
     /// ...
     /// let updated = tx_builder.update_recipient(1usize, Some("bc1..."), Some(18788.0), Some(BitcoinUnit::SATS)).unwrap();
     /// ```
-    pub async fn update_recipient(&self, index: usize, update: (Option<String>, Option<u64>)) -> Self {
+    pub fn update_recipient(&self, index: usize, update: (Option<String>, Option<u64>)) -> Self {
         let mut recipients = self.recipients.clone();
         let TmpRecipient(uuid, prev_script, prev_amount) = recipients[index].clone();
 
@@ -292,17 +282,15 @@ impl<P: WalletStore> TxBuilder<P> {
             update.1.map_or(prev_amount, Amount::from_sat),
         );
 
-        let tx_builder = TxBuilder {
+        TxBuilder {
             recipients,
             ..self.clone()
-        };
-
-        tx_builder.constrain_recipient_amounts().await
+        }
     }
 
     /// Update one recipient's amount to max, meaning it sets remaining balance
     /// to him.
-    pub async fn update_recipient_amount_to_max(&self, index: usize) -> Result<Self, Error> {
+    pub async fn update_recipient_amount_to_max(&self, index: usize) -> Self {
         let mut recipients = self.recipients.clone();
         let TmpRecipient(uuid, script, prev_amount) = recipients[index].clone();
 
@@ -314,14 +302,10 @@ impl<P: WalletStore> TxBuilder<P> {
 
         recipients[index] = TmpRecipient(uuid, script, max_amount);
 
-        let tx_builder = TxBuilder {
+        TxBuilder {
             recipients,
             ..self.clone()
-        };
-
-        let updated = tx_builder.constrain_recipient_amounts().await;
-
-        Ok(updated)
+        }
     }
 
     /// Adds an outpoint to the list of outpoints to spend.
@@ -408,13 +392,11 @@ impl<P: WalletStore> TxBuilder<P> {
     }
 
     /// Set a custom fee rate.
-    pub async fn set_fee_rate(&self, sat_per_vb: u64) -> Self {
-        let tx_builder = TxBuilder {
+    pub fn set_fee_rate(&self, sat_per_vb: u64) -> Self {
+        TxBuilder {
             fee_rate: FeeRate::from_sat_per_vb(sat_per_vb),
             ..self.clone()
-        };
-
-        tx_builder.constrain_recipient_amounts().await
+        }
     }
 
     fn commit_utxos<'a, Cs: CoinSelectionAlgorithm>(
@@ -646,11 +628,11 @@ mod tests {
         assert_eq!(updated.change_policy, ChangeSpendPolicy::ChangeForbidden);
     }
 
-    #[tokio::test]
-    async fn should_change_fee_rate() {
+    #[test]
+    fn should_change_fee_rate() {
         let tx_builder = TxBuilder::<()>::new();
 
-        let updated = tx_builder.set_fee_rate(15).await;
+        let updated = tx_builder.set_fee_rate(15);
         assert_eq!(updated.fee_rate, FeeRate::from_sat_per_vb(15));
     }
 
@@ -666,14 +648,12 @@ mod tests {
     async fn should_update_recipient() {
         let tx_builder = TxBuilder::<()>::new();
 
-        let updated = tx_builder
-            .update_recipient(0, (Some("tb1...xyz".to_string()), Some(15837)))
-            .await;
+        let updated = tx_builder.update_recipient(0, (Some("tb1...xyz".to_string()), Some(15837)));
 
         assert_eq!(updated.recipients[0].1, "tb1...xyz".to_string());
         assert_eq!(updated.recipients[0].2, Amount::from_sat(15837));
 
-        let updated = tx_builder.update_recipient(0, (None, Some(668932))).await;
+        let updated = tx_builder.update_recipient(0, (None, Some(668932)));
         assert_eq!(updated.recipients[0].2, Amount::from_sat(668932));
     }
 }
