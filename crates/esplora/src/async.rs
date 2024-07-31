@@ -154,8 +154,9 @@ impl AsyncClient {
         label: Option<String>,
         exchange_rate_or_transaction_time: ExchangeRateOrTransactionTime,
         address_id: Option<String>,
-        subject: Option<String>,
         body: Option<String>,
+        recipients: Option<HashMap<String, String>>,
+        is_anonymous: Option<u8>,
     ) -> Result<(), Error> {
         self.transaction
             .broadcast_raw_transaction(
@@ -165,8 +166,9 @@ impl AsyncClient {
                 label,
                 exchange_rate_or_transaction_time,
                 address_id,
-                subject,
                 body,
+                recipients,
+                is_anonymous,
             )
             .await?;
 

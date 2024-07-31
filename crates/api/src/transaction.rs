@@ -19,8 +19,9 @@ struct BroadcastRawTransactionRequestBody {
     ExchangeRateID: Option<String>,
     AddressID: Option<String>,
     TransactionTime: Option<String>,
-    Subject: Option<String>,
     Body: Option<String>,
+    Recipients: Option<HashMap<String, String>>,
+    IsAnonymous: u8,
 }
 
 #[derive(Debug, Deserialize)]
@@ -137,8 +138,9 @@ impl TransactionClient {
         label: Option<String>,
         exchange_rate_or_transaction_time: ExchangeRateOrTransactionTime,
         address_id: Option<String>,
-        subject: Option<String>,
         body: Option<String>,
+        recipients: Option<HashMap<String, String>>,
+        is_anonymous: Option<u8>,
     ) -> Result<String, Error> {
         let (exchange_rate_id, transaction_time) = match exchange_rate_or_transaction_time {
             ExchangeRateOrTransactionTime::ExchangeRate(exchange_rate) => (Some(exchange_rate), None),
@@ -153,8 +155,9 @@ impl TransactionClient {
             ExchangeRateID: exchange_rate_id,
             TransactionTime: transaction_time,
             AddressID: address_id,
-            Subject: subject,
             Body: body,
+            Recipients: recipients,
+            IsAnonymous: is_anonymous.unwrap_or(0),
         };
 
         let request = self.post("transactions").body_json(body)?;

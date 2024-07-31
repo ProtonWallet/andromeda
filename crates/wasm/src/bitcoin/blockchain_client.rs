@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use andromeda_api::transaction::ExchangeRateOrTransactionTime;
 use andromeda_bitcoin::{
     blockchain_client::{self, BlockchainClient},
@@ -66,12 +68,13 @@ pub struct WasmTransactionData {
     exchange_rate_or_transaction_time: WasmExchangeRateOrTransactionTime,
 }
 
-#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[derive(Tsify, Serialize, Deserialize, Clone, Default)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct WasmEmailIntegrationData {
     address_id: Option<String>,
-    subject: Option<String>,
     body: Option<String>,
+    recipients: Option<HashMap<String, String>>,
+    is_anonymous: Option<u8>,
 }
 
 #[wasm_bindgen]
@@ -147,6 +150,8 @@ impl WasmBlockchainClient {
     ) -> Result<String, JsValue> {
         let tx = psbt.get_inner().extract_tx().map_err(|e| e.to_js_error())?;
 
+        let email_integration_data = email_integration.unwrap_or_default();
+
         self.inner
             .broadcast(
                 tx.clone(),
@@ -154,9 +159,10 @@ impl WasmBlockchainClient {
                 wallet_account_id,
                 transaction_data.label,
                 transaction_data.exchange_rate_or_transaction_time.into(),
-                email_integration.clone().map(|e| e.address_id).flatten(),
-                email_integration.clone().map(|e| e.subject).flatten(),
-                email_integration.clone().map(|e| e.body).flatten(),
+                email_integration_data.address_id,
+                email_integration_data.body,
+                email_integration_data.recipients,
+                email_integration_data.is_anonymous,
             )
             .await
             .map_err(|e| e.to_js_error())?;

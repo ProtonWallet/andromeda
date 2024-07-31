@@ -140,8 +140,9 @@ impl BlockchainClient {
         label: Option<String>,
         exchange_rate_or_transaction_time: ExchangeRateOrTransactionTime,
         address_id: Option<String>,
-        subject: Option<String>,
         body: Option<String>,
+        recipients: Option<HashMap<String, String>>,
+        is_anonymous: Option<u8>,
     ) -> Result<(), Error> {
         self.0
             .broadcast(
@@ -151,8 +152,9 @@ impl BlockchainClient {
                 label,
                 exchange_rate_or_transaction_time,
                 address_id,
-                subject,
                 body,
+                recipients,
+                is_anonymous,
             )
             .await?;
 
