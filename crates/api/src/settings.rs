@@ -180,6 +180,7 @@ struct UpdateReceiveNotificationEmailRequestBody {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct GetUserWalletEligibilityResponseBody {
+    #[allow(dead_code)]
     pub Code: u16,
     pub IsEligible: u8,
 }

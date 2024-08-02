@@ -1,7 +1,6 @@
 use std::sync::{Arc, Mutex};
 
 use cfg_if::cfg_if;
-use log::info;
 use muon::{common::IntoDyn, Auth, Env, EnvId, Store, StoreReadErr, StoreWriteErr};
 #[cfg(feature = "allow-dangerous-env")]
 use {
