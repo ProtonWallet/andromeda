@@ -121,7 +121,7 @@ impl<P: WalletStore> Wallet<P> {
         discovery_address_stop_gap: Option<usize>,
     ) -> Result<Vec<(ScriptType, u32, DerivationPath)>, Error>
     where
-        F: WalletStoreFactory<P> + Copy,
+        F: WalletStoreFactory<P> + Clone,
     {
         let client = BlockchainClient::new(proton_api_client);
         let mut index: u32;
@@ -138,8 +138,14 @@ impl<P: WalletStore> Wallet<P> {
 
             loop {
                 let derivation_path = DerivationPath::from_parts(script_type, self.network, index);
-                let account = Account::new(self.mprv, self.network, script_type, derivation_path.clone(), factory)
-                    .expect("Account should be valid here");
+                let account = Account::new(
+                    self.mprv,
+                    self.network,
+                    script_type,
+                    derivation_path.clone(),
+                    factory.clone(),
+                )
+                .expect("Account should be valid here");
 
                 let exists = client
                     .check_account_existence(account.get_wallet().await, discovery_address_stop_gap)
