@@ -37,7 +37,7 @@ pub struct ApiVout {
     pub ScriptPubKey: String,
     pub ScriptPubKeyAsm: String,
     pub ScriptPubKeyType: String,
-    pub ScriptPubKeyAddress: String,
+    pub ScriptPubKeyAddress: Option<String>,
     pub Value: u64,
 }
 
