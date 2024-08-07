@@ -159,6 +159,13 @@ pub struct WasmWalletAccountData {
     pub Data: WasmApiWalletAccount,
 }
 
+#[wasm_bindgen(getter_with_clone)]
+#[derive(Clone)]
+#[allow(non_snake_case)]
+pub struct WasmWalletAccountAddressData {
+    pub Data: WasmApiEmailAddress,
+}
+
 impl From<ApiWalletAccount> for WasmApiWalletAccount {
     fn from(value: ApiWalletAccount) -> Self {
         WasmApiWalletAccount {
@@ -297,6 +304,9 @@ pub struct WasmApiWalletsData(pub Vec<WasmApiWalletData>);
 pub struct WasmApiWalletAccounts(pub Vec<WasmWalletAccountData>);
 
 #[wasm_bindgen(getter_with_clone)]
+pub struct WasmApiWalletAccountAddresses(pub Vec<WasmWalletAccountAddressData>);
+
+#[wasm_bindgen(getter_with_clone)]
 pub struct WasmApiWalletTransactions(pub Vec<WasmApiWalletTransactionData>);
 
 #[wasm_bindgen]
@@ -389,6 +399,26 @@ impl WasmWalletClient {
             .collect();
 
         Ok(WasmApiWalletAccounts(wallet_accounts?))
+    }
+
+    #[wasm_bindgen(js_name = "getWalletAccountAddresses")]
+    pub async fn get_wallet_account_addresses(
+        &self,
+        wallet_id: String,
+        wallet_account_id: String,
+    ) -> Result<WasmApiWalletAccountAddresses, JsValue> {
+        let wallet_account_addresses = self
+            .0
+            .get_wallet_account_addresses(wallet_id, wallet_account_id)
+            .await
+            .map_err(|e| e.to_js_error())?;
+
+        let wallet_account_addresses: Result<Vec<WasmWalletAccountAddressData>, JsValue> = wallet_account_addresses
+            .into_iter()
+            .map(|address| Ok(WasmWalletAccountAddressData { Data: address.into() }))
+            .collect();
+
+        Ok(WasmApiWalletAccountAddresses(wallet_account_addresses?))
     }
 
     #[wasm_bindgen(js_name = "createWalletAccount")]

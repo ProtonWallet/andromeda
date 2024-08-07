@@ -159,6 +159,14 @@ struct GetWalletAccountsResponseBody {
     pub Accounts: Vec<ApiWalletAccount>,
 }
 
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+struct GetWalletAccountAddressesResponseBody {
+    #[allow(dead_code)]
+    pub Code: u16,
+    pub Addresses: Vec<ApiEmailAddress>,
+}
+
 #[derive(Debug, Serialize)]
 #[allow(non_snake_case)]
 pub struct CreateWalletAccountRequestBody {
@@ -414,6 +422,21 @@ impl WalletClient {
         let parsed = response.parse_response::<GetWalletAccountsResponseBody>()?;
 
         Ok(parsed.Accounts)
+    }
+
+    pub async fn get_wallet_account_addresses(
+        &self,
+        wallet_id: String,
+        wallet_account_id: String,
+    ) -> Result<Vec<ApiEmailAddress>, Error> {
+        let request = self.get(format!(
+            "wallets/{}/accounts/{}/addresses",
+            wallet_id, wallet_account_id
+        ));
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<GetWalletAccountAddressesResponseBody>()?;
+
+        Ok(parsed.Addresses)
     }
 
     pub async fn create_wallet_account(
@@ -881,6 +904,28 @@ mod tests {
             .get_wallet_accounts(String::from(
                 "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
             ))
+            .await;
+
+        println!("request done: {:?}", res);
+        assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn should_get_wallet_account_addresses() {
+        let api_client = common_api_client().await;
+        let client = WalletClient::new(api_client);
+
+        let res = client
+            .get_wallet_account_addresses(
+                String::from(
+                    "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
+                ),
+                // replace the account id with the one you want to delete
+                String::from(
+                    "_gsDVeX4osuFvPSlszWb-hGvo7d9poBm58MNxvvC2mmG2F1rfM72IqG3hJvGlgMqRHAMyXGgJCI0J8gfukLlXQ==",
+                ),
+            )
             .await;
 
         println!("request done: {:?}", res);
@@ -1492,5 +1537,48 @@ mod tests {
         assert!(wallet_transaction.Body == None);
         assert!(wallet_transaction.ToList == None);
         assert!(wallet_transaction.Sender == None);
+    }
+
+    #[tokio::test]
+    async fn test_get_wallet_accounts_addresses_1000() {
+        let mock_server = MockServer::start().await;
+        let response_body = serde_json::json!(
+            {
+                "Code": 1000,
+                "Addresses": [
+                    {
+                        "ID":"h3fiHve6jGce6SiAB14JJpusSHlRZT01jQWI-DK6Cc4aY8w_4qqyL8eNS021UNUJAZmT3XT5XnhQWIW97XYkpw==",
+                        "Email":"test@protonmail.dev",
+                    }
+                ],
+            }
+        );
+        let wallet_id =
+            String::from("pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==");
+        let wallet_account_id =
+            String::from("lY2ZCYkVNfl_osze70PRoqzg34MQI64mE3-pLc-yMp_6KXthkV1paUsyS276OdNwucz9zKoWKZL_TgtKxOPb0w==");
+
+        let req_path = format!(
+            "{}/wallets/{}/accounts/{}/addresses",
+            BASE_WALLET_API_V1, wallet_id, wallet_account_id
+        );
+        let response = ResponseTemplate::new(200).set_body_json(response_body);
+        Mock::given(method("GET"))
+            .and(path(req_path))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let client = WalletClient::new(api_client);
+
+        let res = client.get_wallet_account_addresses(wallet_id, wallet_account_id).await;
+        assert!(res.is_ok());
+        let wallet_account_addresses = res.unwrap();
+        assert_eq!(wallet_account_addresses.len(), 1);
+        assert_eq!(
+            wallet_account_addresses[0].ID,
+            "h3fiHve6jGce6SiAB14JJpusSHlRZT01jQWI-DK6Cc4aY8w_4qqyL8eNS021UNUJAZmT3XT5XnhQWIW97XYkpw=="
+        );
+        assert_eq!(wallet_account_addresses[0].Email, "test@protonmail.dev");
     }
 }
