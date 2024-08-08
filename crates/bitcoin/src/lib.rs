@@ -8,6 +8,7 @@ pub mod transaction_builder;
 pub mod transactions;
 pub mod utils;
 pub mod wallet;
+pub mod wallet_ext;
 
 pub mod storage;
 

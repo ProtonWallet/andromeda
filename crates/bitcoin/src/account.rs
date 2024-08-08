@@ -24,6 +24,7 @@ use crate::{
     storage::{WalletStore, WalletStoreFactory},
     transactions::{ToTransactionDetails, TransactionDetails},
     utils::SortOrder,
+    wallet_ext::BdkWalletExt,
 };
 
 const EXTERNAL_KEYCHAIN: KeychainKind = KeychainKind::External;
@@ -227,69 +228,50 @@ impl<P: WalletStore> Account<P> {
         self.get_wallet().await.list_unspent().collect::<Vec<_>>()
     }
 
-    /// Returns a bitcoin address (as defined in https://bips.dev/44/)
+    /// Marks a range of receive addresses (external keychain) as used and
+    /// persists the changes.
     ///
-    /// # Note
+    /// Acquires a mutable wallet lock, marks addresses from `from` to `to`
+    /// (exclusive) as used, and persists the changes. If `to` is `None`, it
+    /// defaults to `from + 1`.
     ///
-    /// If index is None, it will return last unused address of the account. So
-    /// to avoid address reuse, we need to sync before calling this method.
-    ///
-    /// Additionally, it takes care of revealing addresses up to the peeked
-    /// index (or last unused address) and store the update
-    pub async fn get_address(&self, index: Option<u32>) -> Result<AddressInfo, Error> {
+    /// # Parameters
+    /// - `from`: Starting index of addresses to mark as used.
+    /// - `to`: Optional ending index (exclusive).
+    pub async fn mark_receive_addresses_used_to(&self, from: u32, to: Option<u32>) -> Result<(), Error> {
         let mut write_lock = self.get_mutable_wallet().await;
 
-        let address = if let Some(index) = index {
-            // so far, there is no use-case to get internal keychain address
-            write_lock.peek_address(EXTERNAL_KEYCHAIN, index)
-        } else {
-            write_lock.next_unused_address(EXTERNAL_KEYCHAIN)
-        };
+        write_lock.mark_used_to(EXTERNAL_KEYCHAIN, from, to);
 
-        // Here we only want to make sure we revealed addresses up to the peeked index
-        // so that we detect transactions on partial syncings
-        let _ = write_lock.reveal_addresses_to(EXTERNAL_KEYCHAIN, address.index);
+        Ok(())
+    }
 
-        // We make sure the newly revealed addresses are stored
-        self.store_stage(&mut write_lock)?;
+    /// Returns the next address to be used to receive coins and marks it as
+    /// used
+    ///
+    /// Note:
+    /// The following should be done prior to calling this function:
+    /// - Syncing chain data
+    /// - Mark indexes up to LastUsedIndex (returned from API) as used
+    /// - BvE pool bitcoin addresses must be marked as used
+    pub async fn get_next_receive_address(&self) -> Result<AddressInfo, Error> {
+        let mut write_lock = self.get_mutable_wallet().await;
+
+        let address = write_lock.next_unused_address(EXTERNAL_KEYCHAIN);
+        write_lock.mark_used(EXTERNAL_KEYCHAIN, address.index);
 
         Ok(address)
     }
 
-    /// Returns the last unused index from account
-    ///
-    /// # Note
-    ///
-    /// You need to take care of syncing the account before call this
-    #[deprecated(
-        note = "this fn returns next unused spk after of last unused. please use `get_index_after_last_used_address` instead"
-    )]
-    pub async fn get_last_unused_address_index(&self) -> Option<u32> {
-        // so far, there is no use-case to get internal keychain address
+    /// Peeks a specific address to be used to receive coins and marks it as
+    /// used
+    pub async fn peek_receive_address(&self, index: u32) -> Result<AddressInfo, Error> {
+        let mut write_lock = self.get_mutable_wallet().await;
 
-        let wallet_lock = self.get_wallet();
-        let mut spks = wallet_lock.await.spk_index().clone();
+        let address = write_lock.peek_address(EXTERNAL_KEYCHAIN, index);
+        write_lock.mark_used(EXTERNAL_KEYCHAIN, address.index);
 
-        spks.next_unused_spk(&EXTERNAL_KEYCHAIN).map(|spk| {
-            let ((index, _), _) = spk;
-            index
-        })
-    }
-
-    /// Returns the index directly after last used address
-    ///
-    /// # Note
-    ///
-    /// You need to take care of syncing the account before call this
-    pub async fn get_index_after_last_used_address(&self) -> u32 {
-        // so far, there is no use-case to get internal keychain address
-
-        let wallet_lock = self.get_wallet();
-        let spks = wallet_lock.await.spk_index().clone();
-
-        spks.last_used_index(&EXTERNAL_KEYCHAIN)
-            .map(|index| index + 1)
-            .unwrap_or(0)
+        Ok(address)
     }
 
     /// Returns a boolean indicating whether or not the account owns the
@@ -301,12 +283,13 @@ impl<P: WalletStore> Account<P> {
     /// Returns a bitcoin uri as defined in https://bips.dev/21/
     pub async fn get_bitcoin_uri(
         &mut self,
-        index: Option<u32>,
         amount: Option<u64>,
         label: Option<String>,
         message: Option<String>,
     ) -> Result<PaymentLink, Error> {
-        PaymentLink::new_bitcoin_uri(self, index, amount, label, message).await
+        let address = self.get_next_receive_address().await?;
+
+        Ok(PaymentLink::new_bitcoin_uri(address.address, amount, label, message))
     }
 
     /// Returns a list of transactions, optionnally paginated. Maybe later we
@@ -432,8 +415,10 @@ mod tests {
     #[tokio::test]
     async fn get_address_by_index_legacy() {
         let account = set_test_account(ScriptType::Legacy, "m/44'/1'/0'");
+        account.mark_receive_addresses_used_to(0, Some(13)).await.unwrap();
+
         assert_eq!(
-            account.get_address(Some(13)).await.unwrap().to_string(),
+            account.get_next_receive_address().await.unwrap().to_string(),
             "mvqqkX5UmaqPvzS4Aa1gMhj4NFntGmju2N".to_string()
         );
     }
@@ -441,8 +426,10 @@ mod tests {
     #[tokio::test]
     async fn get_address_by_index_nested_segwit() {
         let account = set_test_account(ScriptType::NestedSegwit, "m/49'/1'/0'");
+        account.mark_receive_addresses_used_to(0, Some(13)).await.unwrap();
+
         assert_eq!(
-            account.get_address(Some(13)).await.unwrap().to_string(),
+            account.get_next_receive_address().await.unwrap().to_string(),
             "2MzYfE5Bt1g2A9zDBocPtcDjRqpFfdCeqe3".to_string()
         );
     }
@@ -450,17 +437,26 @@ mod tests {
     #[tokio::test]
     async fn get_address_by_index_native_segwit() {
         let account = set_test_account(ScriptType::NativeSegwit, "m/84'/1'/0'");
+        account.mark_receive_addresses_used_to(0, Some(13)).await.unwrap();
+
         assert_eq!(
-            account.get_address(Some(13)).await.unwrap().to_string(),
+            account.get_next_receive_address().await.unwrap().to_string(),
             "tb1qre68v280t3t5mdy0hcu86fnx3h289h0arfe6lr".to_string()
+        );
+
+        assert_eq!(
+            account.get_next_receive_address().await.unwrap().to_string(),
+            "tb1qgpqu7j420k9yq2ua7q577unxd8lnw79er59tdx".to_string()
         );
     }
 
     #[tokio::test]
     async fn get_address_by_index_taproot() {
         let account = set_test_account(ScriptType::Taproot, "m/86'/1'/0'");
+        account.mark_receive_addresses_used_to(0, Some(13)).await.unwrap();
+
         assert_eq!(
-            account.get_address(Some(13)).await.unwrap().to_string(),
+            account.get_next_receive_address().await.unwrap().to_string(),
             "tb1ppanhpmq38z6738s0mwnd9h0z2j5jv7q4x4pc2wxqu8jw0gwmf69qx3zpaf".to_string()
         );
     }
@@ -468,8 +464,9 @@ mod tests {
     #[tokio::test]
     async fn get_last_unused_address() {
         let account = set_test_account(ScriptType::Taproot, "m/86'/1'/0'");
+
         assert_eq!(
-            account.get_address(None).await.unwrap().to_string(),
+            account.get_next_receive_address().await.unwrap().to_string(),
             "tb1pvv0tcny86mz4lsx97p03fvkkc09cg5nx5nvnxc7c323jv5sr6wnshfu377".to_string()
         );
     }
@@ -477,9 +474,11 @@ mod tests {
     #[tokio::test]
     async fn get_bitcoin_uri_with_params() {
         let mut account = set_test_account(ScriptType::NativeSegwit, "m/84'/1'/0'");
+        account.mark_receive_addresses_used_to(0, Some(5)).await.unwrap();
+
         assert_eq!(
             account
-                .get_bitcoin_uri(Some(5), Some(788927), Some("Hello world".to_string()), None)
+                .get_bitcoin_uri(Some(788927), Some("Hello world".to_string()), None)
                 .await
                 .unwrap()
                 .to_string(),
@@ -491,7 +490,7 @@ mod tests {
     async fn get_is_address_owned_by_account() {
         let account = set_test_account(ScriptType::Taproot, "m/86'/1'/0'");
 
-        let address = account.get_address(None).await.unwrap();
+        let address = account.get_next_receive_address().await.unwrap();
         assert!(account.owns(&address).await);
 
         assert!(

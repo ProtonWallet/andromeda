@@ -5,8 +5,7 @@ use andromeda_common::{BitcoinUnit, Network};
 use bitcoin::Address;
 use urlencoding::{decode, encode};
 
-use super::account::Account;
-use crate::{error::Error, storage::WalletStore, utils::convert_amount};
+use crate::{error::Error, utils::convert_amount};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum PaymentLink {
@@ -148,28 +147,18 @@ impl PaymentLink {
         Ok(PaymentLink::BitcoinAddress(address))
     }
 
-    pub async fn new_bitcoin_address<P: WalletStore>(
-        account: &mut Account<P>,
-        index: Option<u32>,
-    ) -> Result<PaymentLink, Error> {
-        Ok(PaymentLink::BitcoinAddress(account.get_address(index).await?.address))
-    }
-
-    pub async fn new_bitcoin_uri<P: WalletStore>(
-        account: &mut Account<P>,
-        index: Option<u32>,
+    pub fn new_bitcoin_uri(
+        address: Address,
         amount: Option<u64>,
         label: Option<String>,
         message: Option<String>,
-    ) -> Result<PaymentLink, Error> {
-        let address = account.get_address(index).await?.address;
-
-        Ok(PaymentLink::BitcoinURI {
+    ) -> PaymentLink {
+        PaymentLink::BitcoinURI {
             address,
             amount,
             label,
             message,
-        })
+        }
     }
 }
 
