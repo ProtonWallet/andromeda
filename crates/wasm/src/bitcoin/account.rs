@@ -2,7 +2,6 @@ use andromeda_bitcoin::account::Account;
 use wasm_bindgen::prelude::*;
 
 use super::{
-    payment_link::WasmPaymentLink,
     psbt::WasmPsbt,
     storage::{WebOnchainStore, WebOnchainStoreFactory},
     types::{
@@ -51,12 +50,24 @@ impl WasmAccount {
         Ok(WasmAccount { inner: account })
     }
 
-    #[wasm_bindgen(js_name = getAddress)]
-    pub async fn get_address(&self, index: Option<u32>) -> Result<WasmAddressInfo, js_sys::Error> {
+    #[wasm_bindgen(js_name = markReceiveAddressesUsedTo)]
+    pub async fn mark_receive_addresses_used_to(&mut self, from: u32, to: Option<u32>) -> Result<(), js_sys::Error> {
+        let account_inner = self.get_inner();
+
+        account_inner
+            .mark_receive_addresses_used_to(from, to)
+            .await
+            .map_err(|e| e.to_js_error())?;
+
+        Ok(())
+    }
+
+    #[wasm_bindgen(js_name = getNextReceiveAddress)]
+    pub async fn get_next_receive_address(&self) -> Result<WasmAddressInfo, js_sys::Error> {
         let account_inner = self.get_inner();
 
         let address = account_inner
-            .get_address(index)
+            .get_next_receive_address()
             .await
             .map_err(|e| e.to_js_error())
             .map(|a| a.into())?;
@@ -64,29 +75,17 @@ impl WasmAccount {
         Ok(address)
     }
 
-    #[wasm_bindgen(js_name = getIndexAfterLastUsedAddress)]
-    pub async fn get_index_after_last_used_address(&self) -> u32 {
+    #[wasm_bindgen(js_name = peekReceiveAddress)]
+    pub async fn peek_receive_address(&self, index: u32) -> Result<WasmAddressInfo, js_sys::Error> {
         let account_inner = self.get_inner();
-        account_inner.get_index_after_last_used_address().await
-    }
 
-    #[wasm_bindgen(js_name = getBitcoinUri)]
-    pub async fn get_bitcoin_uri(
-        &mut self,
-        index: Option<u32>,
-        amount: Option<u64>,
-        label: Option<String>,
-        message: Option<String>,
-    ) -> Result<WasmPaymentLink, js_sys::Error> {
-        let mut account_inner = self.get_inner();
-
-        let payment_link: WasmPaymentLink = account_inner
-            .get_bitcoin_uri(index, amount, label, message)
+        let address = account_inner
+            .peek_receive_address(index)
             .await
-            .map_err(|e| e.to_js_error())?
-            .into();
+            .map_err(|e| e.to_js_error())
+            .map(|a| a.into())?;
 
-        Ok(payment_link)
+        Ok(address)
     }
 
     #[wasm_bindgen]
