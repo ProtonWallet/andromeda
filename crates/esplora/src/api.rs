@@ -46,7 +46,7 @@ impl From<andromeda_api::address::ApiVin> for Vin {
         Vin {
             txid: Txid::from_str(&api_vin.TransactionID).unwrap(),
             vout: api_vin.Vout,
-            prevout: Some(api_vin.Prevout.into()),
+            prevout: api_vin.Prevout.map(|o| o.into()),
             scriptsig: ScriptBuf::from_hex(&api_vin.ScriptSig).unwrap(),
             witness: match api_vin.Witness {
                 Some(witnesses) => witnesses.into_iter().map(|s| s.into_bytes()).collect(),

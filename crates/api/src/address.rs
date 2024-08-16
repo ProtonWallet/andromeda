@@ -46,7 +46,7 @@ pub struct ApiVout {
 pub struct ApiVin {
     pub TransactionID: String,
     pub Vout: u32,
-    pub Prevout: ApiVout,
+    pub Prevout: Option<ApiVout>,
     pub ScriptSig: String,
     pub ScriptSigAsm: String,
     pub Witness: Option<Vec<String>>,
