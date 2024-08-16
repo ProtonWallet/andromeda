@@ -19,7 +19,7 @@ serde = { version = "1.0.144", features = ["derive"] }
 
 async-std = "1.10"
 
-bitcoin = { version = "=0.32.0", default-features = false, features = [
+bitcoin = { version = "=0.32.2", default-features = false, features = [
   "serde",
   "secp-recovery",
   "rand",
@@ -29,7 +29,7 @@ bdk_wallet = { version = "=1.0.0-alpha.13", default-features = false, features =
   "std",
   "keys-bip39",
 ] }
-bdk_esplora = { version = "=0.9.0", default-features = false, features = [
+bdk_esplora = { version = "=0.15.0", default-features = false, features = [
   "async-https-rustls",
 ] }
 

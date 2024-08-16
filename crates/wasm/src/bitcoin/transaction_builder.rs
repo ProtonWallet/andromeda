@@ -13,6 +13,7 @@ use super::{
 use crate::common::{error::ErrorExt, types::WasmNetwork};
 
 #[wasm_bindgen]
+#[derive(Clone)]
 pub struct WasmTxBuilder {
     inner: TxBuilder<WebOnchainStore>,
 }
@@ -79,6 +80,9 @@ impl Into<WasmChangeSpendPolicy> for ChangeSpendPolicy {
 #[wasm_bindgen(getter_with_clone)]
 pub struct WasmRecipient(pub String, pub String, pub u64);
 
+#[wasm_bindgen(getter_with_clone)]
+pub struct WasmPsbtAndTxBuilder(pub WasmPsbt, pub WasmTxBuilder);
+
 #[wasm_bindgen]
 impl WasmTxBuilder {
     #[wasm_bindgen(constructor)]
@@ -95,7 +99,7 @@ impl WasmTxBuilder {
     }
 
     #[wasm_bindgen(js_name = constrainRecipientAmounts)]
-    pub async fn constrain_recipient_amounts(&self) -> Result<WasmTxBuilder, js_sys::Error> {
+    pub async fn constrain_recipient_amounts(&mut self) -> Result<WasmTxBuilder, js_sys::Error> {
         let inner = self.inner.constrain_recipient_amounts().await;
         Ok(WasmTxBuilder { inner })
     }
@@ -288,7 +292,7 @@ impl WasmTxBuilder {
      */
 
     #[wasm_bindgen(js_name = createPsbt)]
-    pub async fn create_pbst(&self, network: WasmNetwork) -> Result<WasmPsbt, JsValue> {
+    pub async fn create_pbst(&mut self, network: WasmNetwork) -> Result<WasmPsbt, JsValue> {
         let psbt = self
             .inner
             .create_psbt(false, false)
@@ -299,7 +303,11 @@ impl WasmTxBuilder {
     }
 
     #[wasm_bindgen(js_name = createDraftPsbt)]
-    pub async fn create_draft_psbt(&self, network: WasmNetwork, allow_dust: Option<bool>) -> Result<WasmPsbt, JsValue> {
+    pub async fn create_draft_psbt(
+        &mut self,
+        network: WasmNetwork,
+        allow_dust: Option<bool>,
+    ) -> Result<WasmPsbt, JsValue> {
         let psbt = self
             .inner
             .create_draft_psbt(allow_dust.unwrap_or(false))
