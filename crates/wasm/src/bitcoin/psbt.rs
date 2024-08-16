@@ -10,6 +10,7 @@ use crate::common::{error::ErrorExt, types::WasmNetwork};
 pub struct WasmPsbtRecipient(pub String, pub u64);
 
 #[wasm_bindgen(getter_with_clone)]
+#[derive(Clone)]
 pub struct WasmPsbt {
     inner: Psbt,
 

@@ -1,4 +1,4 @@
-use std::{fmt::Debug, str::FromStr};
+use std::{collections::HashMap, fmt::Debug, str::FromStr};
 
 use bdk_wallet::{
     bitcoin::{absolute::LockTime, script::PushBytesBuf, Address, Amount, FeeRate, OutPoint, ScriptBuf},
@@ -10,12 +10,17 @@ use bdk_wallet::{
         error::CreateTxError,
         tx_builder::{ChangeSpendPolicy, TxBuilder as BdkTxBuilder},
     },
+    LocalOutput,
 };
 use hashbrown::HashSet;
 use uuid::Uuid;
 
 use super::account::Account;
-use crate::{error::Error, psbt::Psbt, storage::WalletStore};
+use crate::{
+    error::Error,
+    psbt::{Psbt, TemplatePsbtCoinSelection},
+    storage::WalletStore,
+};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum CoinSelection {
@@ -45,17 +50,42 @@ pub struct TmpRecipient(pub String, pub String, pub Amount);
 /// (bitcoin:tb1....?amount=x&label=y)
 #[derive(Debug)]
 pub struct TxBuilder<P: WalletStore = ()> {
+    /// The account associated with the transaction, if any.
     account: Option<Account<P>>,
-
+    /// The optional partially signed Bitcoin transaction (PSBT) to be used as
+    /// template for inputs.
+    ///
+    /// It should be set every time a PSBT is created from this tx builder, so
+    /// that next one use the same input selection. On inputs selection change,
+    /// either by coin selection method change or manual utxo selection,
+    /// `template_psbt` should be reset to `None` because we expect new coins to
+    /// be selected then.
+    template_psbt: Option<Psbt>,
+    /// A list of recipients for the transaction, including a uuid, their
+    /// addresses and the amounts to send.
     pub recipients: Vec<TmpRecipient>,
+    /// A set of unspent transaction outputs (UTXOs) that are selected to be
+    /// spent in the transaction.
     pub utxos_to_spend: HashSet<OutPoint>,
+    /// The policy dictating how change from the transaction should be handled.
     pub change_policy: ChangeSpendPolicy,
+    /// The fee rate to be used for the transaction, if specified.
     pub fee_rate: Option<FeeRate>,
+    /// A flag indicating whether the entire wallet balance should be drained
+    /// into this transaction.
     pub drain_wallet: bool,
+    /// An optional script to which any leftover funds should be sent, if
+    /// `drain_wallet` is enabled.
     pub drain_to: Option<ScriptBuf>,
+    /// A flag indicating whether Replace-By-Fee (RBF) is enabled for this
+    /// transaction.
     pub rbf_enabled: bool,
+    /// Any additional data to be included in the transaction.
     pub data: Vec<u8>,
+    /// The coin selection strategy to use for choosing UTXOs.
     pub coin_selection: CoinSelection,
+    /// The locktime (block height or timestamp) at which this transaction can
+    /// be included in a block, if specified.
     pub locktime: Option<LockTime>,
 }
 
@@ -63,6 +93,7 @@ impl<P: WalletStore> Clone for TxBuilder<P> {
     fn clone(&self) -> Self {
         TxBuilder {
             account: self.account.clone(),
+            template_psbt: self.template_psbt.clone(),
             recipients: self.recipients.clone(),
             utxos_to_spend: self.utxos_to_spend.clone(),
             change_policy: self.change_policy,
@@ -157,6 +188,7 @@ impl<P: WalletStore> TxBuilder<P> {
     pub fn new() -> Self {
         TxBuilder {
             account: None,
+            template_psbt: None,
             recipients: vec![TmpRecipient(Uuid::new_v4().to_string(), String::new(), Amount::ZERO)],
             utxos_to_spend: HashSet::new(),
             change_policy: ChangeSpendPolicy::ChangeAllowed,
@@ -183,6 +215,13 @@ impl<P: WalletStore> TxBuilder<P> {
             account: Some(account.clone()),
             ..self.clone()
         }
+    }
+
+    /// Sets the PSBT to use as template for inputs selection
+    pub fn set_template(&mut self, psbt: &Psbt) -> &mut Self {
+        self.template_psbt = Some(psbt.clone());
+
+        self
     }
 
     /// Clears internal recipient list
@@ -244,7 +283,7 @@ impl<P: WalletStore> TxBuilder<P> {
         }
     }
 
-    pub async fn constrain_recipient_amounts(&self) -> Self {
+    pub async fn constrain_recipient_amounts(&mut self) -> Self {
         if self.account.is_some() {
             let result = self.create_draft_psbt(true).await;
 
@@ -314,6 +353,7 @@ impl<P: WalletStore> TxBuilder<P> {
         utxos_to_spend.insert(*utxo_to_spend);
 
         TxBuilder {
+            template_psbt: None,
             utxos_to_spend,
             ..self.clone()
         }
@@ -325,6 +365,7 @@ impl<P: WalletStore> TxBuilder<P> {
         utxos_to_spend.remove(utxo_to_spend);
 
         TxBuilder {
+            template_psbt: None,
             utxos_to_spend,
             ..self.clone()
         }
@@ -333,6 +374,7 @@ impl<P: WalletStore> TxBuilder<P> {
     /// Empty the list of outpoints to spend
     pub fn clear_utxos_to_spend(&self) -> Self {
         TxBuilder {
+            template_psbt: None,
             utxos_to_spend: HashSet::new(),
             ..self.clone()
         }
@@ -341,6 +383,7 @@ impl<P: WalletStore> TxBuilder<P> {
     /// Sets the selected coin selection algorithm
     pub fn set_coin_selection(&self, coin_selection: CoinSelection) -> Self {
         TxBuilder {
+            template_psbt: None,
             coin_selection,
             ..self.clone()
         }
@@ -413,7 +456,7 @@ impl<P: WalletStore> TxBuilder<P> {
     }
 
     fn finish_tx<Cs: CoinSelectionAlgorithm>(
-        &self,
+        &mut self,
         mut tx_builder: BdkTxBuilder<Cs>,
         allow_dust: bool,
     ) -> Result<Psbt, Error> {
@@ -445,50 +488,73 @@ impl<P: WalletStore> TxBuilder<P> {
             tx_builder.add_data(&buf.as_push_bytes());
         }
 
-        let psbt = tx_builder.finish()?;
+        let psbt = Psbt::new(tx_builder.finish()?);
 
-        Ok(Psbt::new(psbt))
+        self.set_template(&psbt);
+
+        Ok(psbt)
     }
 
     /// Creates a PSBT from current TxBuilder
     ///
     /// The resulting psbt can then be provided to Account.sign() method
-    pub async fn create_psbt(&self, allow_dust: bool, draft: bool) -> Result<Psbt, Error> {
+    pub async fn create_psbt(&mut self, allow_dust: bool, draft: bool) -> Result<Psbt, Error> {
         let account = self.account.clone().ok_or(Error::AccountNotFound)?;
-        let mut wallet = account.get_mutable_wallet().await;
+        let mut write_lock = account.get_mutable_wallet().await;
 
-        let psbt = match self.coin_selection {
-            CoinSelection::BranchAndBound => {
-                let tx_builder = wallet.build_tx().coin_selection(BranchAndBoundCoinSelection::default());
-                self.finish_tx(tx_builder, allow_dust)
-            }
-            CoinSelection::LargestFirst => {
-                let tx_builder = wallet.build_tx().coin_selection(LargestFirstCoinSelection);
-                self.finish_tx(tx_builder, allow_dust)
-            }
-            CoinSelection::OldestFirst => {
-                let tx_builder = wallet.build_tx().coin_selection(OldestFirstCoinSelection);
-                self.finish_tx(tx_builder, allow_dust)
-            }
-            CoinSelection::Manual => {
-                let mut tx_builder = wallet.build_tx().coin_selection(BranchAndBoundCoinSelection::default());
+        let available_utxos = write_lock
+            .list_unspent()
+            .map(|utxo| {
+                let keychain = utxo.keychain;
+                (
+                    utxo.outpoint.to_string(),
+                    (utxo, {
+                        write_lock
+                            .get_descriptor_for_keychain(keychain)
+                            .max_weight_to_satisfy()
+                            .unwrap()
+                            .to_wu() as usize
+                    }),
+                )
+            })
+            .collect::<HashMap<String, (LocalOutput, usize)>>();
 
-                tx_builder = self.commit_utxos(tx_builder)?;
-                self.finish_tx(tx_builder, allow_dust)
+        let psbt = {
+            if let Some(template_psbt) = self.template_psbt.clone() {
+                let tx_builder = write_lock
+                    .build_tx()
+                    .coin_selection(TemplatePsbtCoinSelection(template_psbt, available_utxos));
+
+                return self.finish_tx(tx_builder, allow_dust);
+            }
+
+            let tx_builder = write_lock
+                .build_tx()
+                .coin_selection(BranchAndBoundCoinSelection::default());
+
+            match self.coin_selection {
+                CoinSelection::BranchAndBound => self.finish_tx(tx_builder, allow_dust),
+                CoinSelection::LargestFirst => {
+                    self.finish_tx(tx_builder.coin_selection(LargestFirstCoinSelection), allow_dust)
+                }
+                CoinSelection::OldestFirst => {
+                    self.finish_tx(tx_builder.coin_selection(OldestFirstCoinSelection), allow_dust)
+                }
+                CoinSelection::Manual => self.finish_tx(self.commit_utxos(tx_builder)?, allow_dust),
             }
         }?;
 
         if draft {
-            wallet.cancel_tx(&psbt.extract_tx()?);
+            write_lock.cancel_tx(&psbt.extract_tx()?);
         }
 
         Ok(psbt)
     }
 
     /// Creates a draft PSBT from current TxBuilder to check if it is valid and
-    /// return potential errors. PSBTs returned from this methods should not
+    /// return potential errors. PSBTs returned from this method should not
     /// be broadcasted since indexes are not updated
-    pub async fn create_draft_psbt(&self, allow_dust: bool) -> Result<Psbt, Error> {
+    pub async fn create_draft_psbt(&mut self, allow_dust: bool) -> Result<Psbt, Error> {
         let psbt = self.create_psbt(allow_dust, true).await?;
         Ok(psbt)
     }
