@@ -137,7 +137,7 @@ pub struct ApiWalletAccount {
     pub FiatCurrency: FiatCurrencySymbol,
     pub DerivationPath: String,
     pub Label: String,
-    pub LastUsedIndex: Option<u32>,
+    pub LastUsedIndex: u32,
     pub PoolSize: u32,
     pub Priority: u32,
     pub ScriptType: u8,
@@ -1413,54 +1413,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_create_wallet_account_with_null_last_used_index_1000() {
-        let mock_server = MockServer::start().await;
-        let response_body = serde_json::json!(
-            {
-                "Code": 1000,
-                "Account": {
-                    "ID": "string",
-                    "WalletID": "string",
-                    "DerivationPath": "m/44'/0'/0'",
-                    "Label": "string",
-                    "LastUsedIndex": null,
-                    "PoolSize": 12,
-                    "Priority": 23,
-                    "ScriptType": 1,
-                    "Addresses": [],
-                    "FiatCurrency": "USD",
-                }
-            }
-        );
-        let wallet_id = String::from("test_wallet_id");
-        let req_path = format!("{}/wallets/{}/accounts", BASE_WALLET_API_V1, wallet_id);
-        let response = ResponseTemplate::new(200).set_body_json(response_body);
-        Mock::given(method("POST"))
-            .and(path(req_path))
-            .respond_with(response)
-            .mount(&mock_server)
-            .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
-        let client = WalletClient::new(api_client);
-        let payload = CreateWalletAccountRequestBody {
-            DerivationPath: DerivationPath::from_str("m/44'/1'/0'").unwrap().to_string(),
-            Label: String::from("test_label_id"),
-            ScriptType: ScriptType::NativeSegwit.into(),
-        };
-        let res = client.create_wallet_account(wallet_id, payload).await;
-        assert!(res.is_ok());
-        let wallet_account = res.unwrap();
-        assert_eq!(wallet_account.DerivationPath, "m/44'/0'/0'");
-        assert_eq!(wallet_account.Label, "string");
-        assert_eq!(wallet_account.ScriptType, 1);
-        assert_eq!(wallet_account.Priority, 23);
-        assert_eq!(wallet_account.WalletID, "string");
-        assert_eq!(wallet_account.ID, "string");
-        assert!(wallet_account.LastUsedIndex.is_none());
-        assert_eq!(wallet_account.PoolSize, 12);
-    }
-
-    #[tokio::test]
     async fn test_create_wallet_account_1000() {
         let mock_server = MockServer::start().await;
         let response_body = serde_json::json!(
@@ -1504,7 +1456,7 @@ mod tests {
         assert_eq!(wallet_account.Priority, 23);
         assert_eq!(wallet_account.WalletID, "string");
         assert_eq!(wallet_account.ID, "string");
-        assert_eq!(wallet_account.LastUsedIndex, Some(666));
+        assert_eq!(wallet_account.LastUsedIndex, 666);
         assert_eq!(wallet_account.PoolSize, 12);
     }
 
