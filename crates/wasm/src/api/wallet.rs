@@ -39,6 +39,7 @@ pub struct WasmApiWallet {
     pub Mnemonic: Option<String>,
     pub Fingerprint: Option<String>,
     pub PublicKey: Option<String>,
+    pub MigrationRequired: Option<u8>,
 }
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
@@ -86,6 +87,7 @@ impl From<ApiWalletData> for WasmApiWalletData {
                 Mnemonic: value.Wallet.Mnemonic,
                 PublicKey: value.Wallet.PublicKey,
                 Fingerprint: value.Wallet.Fingerprint,
+                MigrationRequired: value.Wallet.MigrationRequired,
             },
             WalletKey: WasmApiWalletKey {
                 WalletID: value.WalletKey.WalletID,
