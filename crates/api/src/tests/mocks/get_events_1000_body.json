@@ -516,7 +516,7 @@
             "Link": "https://pr.tn/ref/ERBYvlX8SC4KOyb",
             "Eligible": true
         },
-        "DeviceRecovery": "1",
+        "DeviceRecovery": 1,
         "Telemetry": 1,
         "CrashReports": 1,
         "HideSidePanel": 1,
