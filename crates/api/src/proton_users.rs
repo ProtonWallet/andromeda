@@ -49,7 +49,7 @@ pub struct ProtonUserSettings {
     pub EarlyAccess: u32,
     pub Flags: Option<FlagsSettings>,
     pub Referral: Option<ReferralSettings>,
-    pub DeviceRecovery: u32,
+    pub DeviceRecovery: Option<u32>,
     pub Telemetry: u32,
     pub CrashReports: u32,
     pub HideSidePanel: u32,
@@ -499,7 +499,10 @@ mod tests {
         match user_settings {
             Ok(value) => {
                 assert!(value.HideSidePanel == 1, "Expected hide_side_panel to be 1.");
-                assert!(value.DeviceRecovery == 1, "Expected device_recovery to be 1.");
+                assert!(
+                    value.DeviceRecovery.unwrap_or(0) == 1,
+                    "Expected device_recovery to be 1."
+                );
                 assert!(value.Locale == "en_US", "Expected locale to be en_US.");
                 assert!(value.News == 244, "Expected news to be 244.");
                 assert!(value.Phone.is_some(), "Expected phone to be Some.");
