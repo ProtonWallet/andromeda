@@ -218,11 +218,11 @@ impl<P: WalletStore> TxBuilder<P> {
     }
 
     /// Sets the PSBT to use as template for inputs selection
-    pub fn set_template(&mut self, psbt: &Psbt) -> &mut Self {
-        self.template_psbt = Some(psbt.clone());
-
-        self
-    }
+    // pub fn set_template(&mut self, psbt: &Psbt) -> &mut Self {
+    //     self.template_psbt = Some(psbt.clone());
+    //
+    //     self
+    // }
 
     /// Clears internal recipient list
     ///
@@ -283,7 +283,7 @@ impl<P: WalletStore> TxBuilder<P> {
         }
     }
 
-    pub async fn constrain_recipient_amounts(&mut self) -> Self {
+    pub async fn constrain_recipient_amounts(&self) -> Self {
         if self.account.is_some() {
             let result = self.create_draft_psbt(true).await;
 
@@ -456,7 +456,7 @@ impl<P: WalletStore> TxBuilder<P> {
     }
 
     fn finish_tx<Cs: CoinSelectionAlgorithm>(
-        &mut self,
+        &self,
         mut tx_builder: BdkTxBuilder<Cs>,
         allow_dust: bool,
     ) -> Result<Psbt, Error> {
@@ -490,7 +490,7 @@ impl<P: WalletStore> TxBuilder<P> {
 
         let psbt = Psbt::new(tx_builder.finish()?);
 
-        self.set_template(&psbt);
+        // self.set_template(&psbt);
 
         Ok(psbt)
     }
@@ -498,7 +498,7 @@ impl<P: WalletStore> TxBuilder<P> {
     /// Creates a PSBT from current TxBuilder
     ///
     /// The resulting psbt can then be provided to Account.sign() method
-    pub async fn create_psbt(&mut self, allow_dust: bool, draft: bool) -> Result<Psbt, Error> {
+    pub async fn create_psbt(&self, allow_dust: bool, draft: bool) -> Result<Psbt, Error> {
         let account = self.account.clone().ok_or(Error::AccountNotFound)?;
         let mut write_lock = account.get_mutable_wallet().await;
 
@@ -554,7 +554,7 @@ impl<P: WalletStore> TxBuilder<P> {
     /// Creates a draft PSBT from current TxBuilder to check if it is valid and
     /// return potential errors. PSBTs returned from this method should not
     /// be broadcasted since indexes are not updated
-    pub async fn create_draft_psbt(&mut self, allow_dust: bool) -> Result<Psbt, Error> {
+    pub async fn create_draft_psbt(&self, allow_dust: bool) -> Result<Psbt, Error> {
         let psbt = self.create_psbt(allow_dust, true).await?;
         Ok(psbt)
     }
