@@ -363,6 +363,59 @@ struct UpdateWalletSettingsResponseBody {
     pub WalletSettings: ApiWalletSettings,
 }
 
+#[derive(Debug, Serialize)]
+#[allow(non_snake_case)]
+pub struct MigratedWallet {
+    /// Name of the wallet, encrypted
+    pub Name: String,
+    /// Encrypted user Id
+    pub UserKeyID: String,
+    /// Base64 encoded binary data
+    pub WalletKey: String,
+    /// Detached signature of the encrypted AES-GCM 256 key used to encrypt the
+    /// mnemonic or public key, as armored PGP
+    pub WalletKeySignature: String,
+    /// Wallet mnemonic encrypted with the WalletKey, in base64 format
+    pub Mnemonic: String,
+    pub Fingerprint: String,
+}
+
+#[derive(Debug, Serialize)]
+#[allow(non_snake_case)]
+pub struct MigratedWalletAccount {
+    // Wallet account ID
+    pub ID: String,
+    // Encrypted Label
+    pub Label: String,
+}
+
+#[derive(Debug, Serialize)]
+#[allow(non_snake_case)]
+pub struct MigratedWalletTransaction {
+    // Wallet ID
+    pub ID: String,
+    pub WalletAccountID: String,
+    // encrypted transaction ID
+    pub HashedTransactionID: String,
+    // encrypted label
+    pub Label: String,
+}
+
+#[derive(Debug, Serialize)]
+#[allow(non_snake_case)]
+pub struct WalletMigrateRequestBody {
+    pub Wallet: MigratedWallet,
+    pub WalletAccounts: Vec<MigratedWalletAccount>,
+    pub WalletTransactions: Vec<MigratedWalletTransaction>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+struct WalletMigrateResponseBody {
+    #[allow(dead_code)]
+    pub Code: u16,
+}
+
 #[derive(Clone)]
 pub struct WalletClient {
     api_client: Arc<ProtonWalletApiClient>,
@@ -402,6 +455,13 @@ impl WalletClient {
         })
     }
 
+    pub async fn migrate(&self, wallet_id: String, payload: WalletMigrateRequestBody) -> Result<(), Error> {
+        let request = self.post(format!("wallets/{}/migrate", wallet_id)).body_json(payload)?;
+        let response = self.api_client.send(request).await?;
+        response.parse_response::<WalletMigrateResponseBody>()?;
+        Ok(())
+    }
+
     pub async fn update_wallet_name(&self, wallet_id: String, name: String) -> Result<ApiWallet, Error> {
         let payload = UpdateWalletNameRequestBody { Name: name };
         let request = self.put(format!("wallets/{}/name", wallet_id)).body_json(payload)?;
@@ -414,7 +474,6 @@ impl WalletClient {
         let request = self.delete(format!("wallets/{}", wallet_id));
         let response = self.api_client.send(request).await?;
         response.parse_response::<DeleteWalletAccountResponseBody>()?;
-
         Ok(())
     }
 
@@ -788,7 +847,7 @@ mod tests {
     use andromeda_common::ScriptType;
     use bitcoin::bip32::DerivationPath;
     use wiremock::{
-        matchers::{method, path},
+        matchers::{body_json, method, path},
         Mock, MockServer, ResponseTemplate,
     };
 
@@ -799,6 +858,7 @@ mod tests {
         core::ApiClient,
         error::Error,
         tests::utils::{common_api_client, setup_test_connection_arc},
+        wallet::{MigratedWallet, MigratedWalletAccount, MigratedWalletTransaction, WalletMigrateRequestBody},
         BASE_WALLET_API_V1,
     };
 
@@ -1460,6 +1520,82 @@ mod tests {
         assert_eq!(wallet_account.ID, "string");
         assert_eq!(wallet_account.LastUsedIndex, 666);
         assert_eq!(wallet_account.PoolSize, 12);
+    }
+
+    #[tokio::test]
+    async fn test_migrate_wallet_1000() {
+        let mock_server = MockServer::start().await;
+        let response_body = serde_json::json!(
+            {
+                "Code": 1000,
+            }
+        );
+        let request_check_body = serde_json::json!(
+            {
+                "Wallet": {
+                    "Name": "RW5jcnlwdGVkTmFtZXN0cmluZw==",
+                    "UserKeyID": "lY2ZCYkVNfl_osze70PRoqzg34MQI64mE3-pLc-yMp_6KXthkV1paUsyS276OdNwucz9zKoWKZL_TgtKxOPb0w==",
+                    "WalletKey": "-----BEGIN PGP MESSAGE-----.*-----END PGP MESSAGE-----",
+                    "WalletKeySignature": "-----BEGIN PGP SIGNATURE-----.*-----END PGP SIGNATURE-----",
+                    "Mnemonic": "RW5jcnlwdGVkTW5lbW9uaWNzdHJpbmc=",
+                    "Fingerprint": "912914fb"
+                },
+                "WalletAccounts": [
+                    {
+                        "ID": "lY2ZCYkVNfl_osze70PRoqzg34MQI64mE3-pLc-yMp_6KXthkV1paUsyS276OdNwucz9zKoWKZL_TgtKxOPb0w==",
+                        "Label": "QW5jcnlwdGVkTW5lbW9uaWNzdHJpbmc="
+                    }
+                ],
+                "WalletTransactions": [
+                    {
+                        "ID": "h3fiHve6jGce6SiAB14JJpusSHlRZT01jQWI-DK6Cc4aY8w_4qqyL8eNS021UNUJAZmT3XT5XnhQWIW97XYkpw==",
+                        "WalletAccountID": "lY2ZCYkVNfl_osze70PRoqzg34MQI64mE3-pLc-yMp_6KXthkV1paUsyS276OdNwucz9zKoWKZL_TgtKxOPb0w==",
+                        "HashedTransactionID": "wjjzwpjE4N8tA4tKnLOwifTfSW8T8VNe5DOtig/1W50=",
+                        "Label": "OW5jcnlwdGVkTW5lbW9uaWNzdHJpbmc="
+                    }
+                ]
+            }
+        );
+
+        let wallet_id =
+            String::from("pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==");
+        let wallet_account_id =
+            String::from("lY2ZCYkVNfl_osze70PRoqzg34MQI64mE3-pLc-yMp_6KXthkV1paUsyS276OdNwucz9zKoWKZL_TgtKxOPb0w==");
+        let transaction_id =
+            String::from("h3fiHve6jGce6SiAB14JJpusSHlRZT01jQWI-DK6Cc4aY8w_4qqyL8eNS021UNUJAZmT3XT5XnhQWIW97XYkpw==");
+        let req_path: String = format!("{}/wallets/{}/migrate", BASE_WALLET_API_V1, wallet_id,);
+        let response = ResponseTemplate::new(200).set_body_json(response_body);
+        Mock::given(method("POST"))
+            .and(path(req_path))
+            .and(body_json(request_check_body))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let client = WalletClient::new(api_client);
+        let payload = WalletMigrateRequestBody {
+            Wallet: MigratedWallet {
+                Name: "RW5jcnlwdGVkTmFtZXN0cmluZw==".to_string(),
+                UserKeyID: "lY2ZCYkVNfl_osze70PRoqzg34MQI64mE3-pLc-yMp_6KXthkV1paUsyS276OdNwucz9zKoWKZL_TgtKxOPb0w=="
+                    .to_string(),
+                WalletKey: String::from("-----BEGIN PGP MESSAGE-----.*-----END PGP MESSAGE-----"),
+                WalletKeySignature: String::from("-----BEGIN PGP SIGNATURE-----.*-----END PGP SIGNATURE-----"),
+                Mnemonic: String::from("RW5jcnlwdGVkTW5lbW9uaWNzdHJpbmc="),
+                Fingerprint: String::from("912914fb"),
+            },
+            WalletAccounts: vec![MigratedWalletAccount {
+                ID: wallet_account_id.clone(),
+                Label: String::from("QW5jcnlwdGVkTW5lbW9uaWNzdHJpbmc="),
+            }],
+            WalletTransactions: vec![MigratedWalletTransaction {
+                ID: transaction_id,
+                WalletAccountID: wallet_account_id.clone(),
+                HashedTransactionID: String::from("wjjzwpjE4N8tA4tKnLOwifTfSW8T8VNe5DOtig/1W50="),
+                Label: String::from("OW5jcnlwdGVkTW5lbW9uaWNzdHJpbmc="),
+            }],
+        };
+        let res = client.migrate(wallet_id, payload).await;
+        assert!(res.is_ok());
     }
 
     #[tokio::test]
