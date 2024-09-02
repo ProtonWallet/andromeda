@@ -1,6 +1,7 @@
 use andromeda_api::wallet::{
     ApiEmailAddress, ApiWalletAccount, ApiWalletData, ApiWalletTransaction, CreateWalletAccountRequestBody,
-    CreateWalletRequestBody, CreateWalletTransactionRequestBody, TransactionType, WalletClient, WalletTransactionFlag,
+    CreateWalletRequestBody, CreateWalletTransactionRequestBody, MigratedWallet, MigratedWalletAccount,
+    MigratedWalletTransaction, TransactionType, WalletClient, WalletMigrateRequestBody, WalletTransactionFlag,
 };
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
@@ -290,6 +291,97 @@ impl From<WasmCreateWalletTransactionPayload> for CreateWalletTransactionRequest
     }
 }
 
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+#[allow(non_snake_case)]
+pub struct WasmMigratedWallet {
+    /// Name of the wallet, encrypted
+    pub Name: String,
+    /// Encrypted user Id
+    pub UserKeyID: String,
+    /// Base64 encoded binary data
+    pub WalletKey: String,
+    /// Detached signature of the encrypted AES-GCM 256 key used to encrypt the
+    /// mnemonic or public key, as armored PGP
+    pub WalletKeySignature: String,
+    /// Wallet mnemonic encrypted with the WalletKey, in base64 format
+    pub Mnemonic: String,
+    pub Fingerprint: String,
+}
+
+impl From<WasmMigratedWallet> for MigratedWallet {
+    fn from(value: WasmMigratedWallet) -> Self {
+        MigratedWallet {
+            Name: value.Name,
+            UserKeyID: value.UserKeyID,
+            WalletKey: value.WalletKey,
+            WalletKeySignature: value.WalletKeySignature,
+            Mnemonic: value.Mnemonic,
+            Fingerprint: value.Fingerprint,
+        }
+    }
+}
+
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+#[allow(non_snake_case)]
+pub struct WasmMigratedWalletAccount {
+    // Wallet account ID
+    pub ID: String,
+    // Encrypted Label
+    pub Label: String,
+}
+
+impl From<WasmMigratedWalletAccount> for MigratedWalletAccount {
+    fn from(value: WasmMigratedWalletAccount) -> Self {
+        MigratedWalletAccount {
+            ID: value.ID,
+            Label: value.Label,
+        }
+    }
+}
+
+#[wasm_bindgen(getter_with_clone)]
+#[derive(Clone)]
+#[allow(non_snake_case)]
+pub struct WasmMigratedWalletAccountData {
+    pub Data: WasmMigratedWalletAccount,
+}
+#[wasm_bindgen(getter_with_clone)]
+pub struct WasmMigratedWalletAccounts(pub Vec<WasmMigratedWalletAccountData>);
+
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+#[allow(non_snake_case)]
+pub struct WasmMigratedWalletTransaction {
+    // Wallet ID
+    pub ID: String,
+    pub WalletAccountID: String,
+    // encrypted transaction ID
+    pub HashedTransactionID: String,
+    // encrypted label
+    pub Label: String,
+}
+
+impl From<WasmMigratedWalletTransaction> for MigratedWalletTransaction {
+    fn from(value: WasmMigratedWalletTransaction) -> Self {
+        MigratedWalletTransaction {
+            ID: value.ID,
+            WalletAccountID: value.WalletAccountID,
+            HashedTransactionID: value.HashedTransactionID,
+            Label: value.Label,
+        }
+    }
+}
+#[wasm_bindgen(getter_with_clone)]
+#[derive(Clone)]
+#[allow(non_snake_case)]
+pub struct WasmMigratedWalletTransactionData {
+    pub Data: WasmMigratedWalletTransaction,
+}
+#[wasm_bindgen(getter_with_clone)]
+pub struct WasmMigratedWalletTransactions(pub Vec<WasmMigratedWalletTransactionData>);
+
 // We need this wrapper because unfortunately, tsify doesn't support
 // VectoIntoWasmAbi yet
 #[wasm_bindgen(getter_with_clone)]
@@ -356,6 +448,31 @@ impl WasmWalletClient {
 
         self.0
             .create_wallet(payload)
+            .await
+            .map_err(|e| e.to_js_error())
+            .map(|wallet| wallet.into())
+    }
+
+    #[wasm_bindgen(js_name = "migrate")]
+    pub async fn migrate(
+        &self,
+        wallet_id: String,
+        migrated_wallet: WasmMigratedWallet,
+        migrated_wallet_accounts: WasmMigratedWalletAccounts,
+        migrated_wallet_transactions: WasmMigratedWalletTransactions,
+    ) -> Result<(), JsValue> {
+        let payload = WalletMigrateRequestBody {
+            Wallet: migrated_wallet.into(),
+            WalletAccounts: migrated_wallet_accounts.0.into_iter().map(|v| v.Data.into()).collect(),
+            WalletTransactions: migrated_wallet_transactions
+                .0
+                .into_iter()
+                .map(|v| v.Data.into())
+                .collect(),
+        };
+
+        self.0
+            .migrate(wallet_id, payload)
             .await
             .map_err(|e| e.to_js_error())
             .map(|wallet| wallet.into())
