@@ -358,9 +358,9 @@ pub struct WasmMigratedWalletTransaction {
     pub ID: String,
     pub WalletAccountID: String,
     // encrypted transaction ID
-    pub HashedTransactionID: String,
+    pub HashedTransactionID: Option<String>,
     // encrypted label
-    pub Label: String,
+    pub Label: Option<String>,
 }
 
 impl From<WasmMigratedWalletTransaction> for MigratedWalletTransaction {
