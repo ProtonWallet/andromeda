@@ -396,9 +396,9 @@ pub struct MigratedWalletTransaction {
     pub ID: String,
     pub WalletAccountID: String,
     // encrypted transaction ID
-    pub HashedTransactionID: String,
+    pub HashedTransactionID: Option<String>,
     // encrypted label
-    pub Label: String,
+    pub Label: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -1590,8 +1590,8 @@ mod tests {
             WalletTransactions: vec![MigratedWalletTransaction {
                 ID: transaction_id,
                 WalletAccountID: wallet_account_id.clone(),
-                HashedTransactionID: String::from("wjjzwpjE4N8tA4tKnLOwifTfSW8T8VNe5DOtig/1W50="),
-                Label: String::from("OW5jcnlwdGVkTW5lbW9uaWNzdHJpbmc="),
+                HashedTransactionID: Some(String::from("wjjzwpjE4N8tA4tKnLOwifTfSW8T8VNe5DOtig/1W50=")),
+                Label: Some(String::from("OW5jcnlwdGVkTW5lbW9uaWNzdHJpbmc=")),
             }],
         };
         let res = client.migrate(wallet_id, payload).await;
