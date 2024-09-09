@@ -347,8 +347,21 @@ impl From<WasmMigratedWalletAccount> for MigratedWalletAccount {
 pub struct WasmMigratedWalletAccountData {
     pub Data: WasmMigratedWalletAccount,
 }
+
 #[wasm_bindgen(getter_with_clone)]
 pub struct WasmMigratedWalletAccounts(pub Vec<WasmMigratedWalletAccountData>);
+
+#[wasm_bindgen]
+impl WasmMigratedWalletAccounts {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Self {
+        Self(vec![])
+    }
+
+    pub fn push(&mut self, account_data: WasmMigratedWalletAccount) {
+        self.0.push(WasmMigratedWalletAccountData { Data: account_data })
+    }
+}
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
@@ -379,8 +392,21 @@ impl From<WasmMigratedWalletTransaction> for MigratedWalletTransaction {
 pub struct WasmMigratedWalletTransactionData {
     pub Data: WasmMigratedWalletTransaction,
 }
+
 #[wasm_bindgen(getter_with_clone)]
 pub struct WasmMigratedWalletTransactions(pub Vec<WasmMigratedWalletTransactionData>);
+
+#[wasm_bindgen]
+impl WasmMigratedWalletTransactions {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Self {
+        Self(vec![])
+    }
+
+    pub fn push(&mut self, account_data: WasmMigratedWalletTransaction) {
+        self.0.push(WasmMigratedWalletTransactionData { Data: account_data })
+    }
+}
 
 // We need this wrapper because unfortunately, tsify doesn't support
 // VectoIntoWasmAbi yet
