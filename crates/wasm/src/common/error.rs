@@ -3,6 +3,7 @@ use std::error::Error;
 use andromeda_api::error::Error as ApiError;
 use andromeda_bitcoin::error::{CoinSelectionError, CreateTxError, Error as BitcoinError};
 use andromeda_common::error::Error as CommonError;
+use andromeda_esplora::error::Error as EsploraError;
 use serde::Serialize;
 use serde_json::{json, Value};
 use serde_wasm_bindgen::Serializer;
@@ -18,33 +19,6 @@ pub fn json_to_jsvalue(json: Value) -> JsValue {
     json.serialize(&serializer).unwrap()
 }
 
-impl ErrorExt for BitcoinError {
-    fn to_js_error(self) -> JsValue {
-        let common_error = JsValue::from(
-            &format!("Wasm error occured in Bitcoin: {}", self),
-            // json!(self), TODO: fix this to have more detailled errors
-        );
-
-        match self {
-            BitcoinError::CreateTx(error) => match error {
-                CreateTxError::CoinSelection(CoinSelectionError::InsufficientFunds { needed, available }) => {
-                    json_to_jsvalue(json!({
-                        "kind": "InsufficientFunds",
-                        "needed": needed,
-                        "available": available,
-                    }))
-                }
-                CreateTxError::OutputBelowDustLimit(limit) => json_to_jsvalue(json!({
-                    "kind": "OutputBelowDustLimit",
-                    "limit": limit,
-                })),
-                _ => common_error,
-            },
-            _ => common_error,
-        }
-    }
-}
-
 impl ErrorExt for ApiError {
     fn to_js_error(self) -> JsValue {
         match self {
@@ -54,6 +28,16 @@ impl ErrorExt for ApiError {
             ApiError::AuthRefresh(kind) => JsValue::from(&format!(
                 "AuthRefresh: A muon {kind} error was caused by a failed auth refresh"
             )),
+            ApiError::ForkAuthSession => JsValue::from(
+                &"ForkAuthSession: A muon error was caused by a failed auth via forked session".to_string(),
+            ),
+            ApiError::ForkSession => {
+                JsValue::from(&"ForkSession: A muon error was caused by a failed fork session".to_string())
+            }
+            ApiError::LoginError => JsValue::from(&"LoginError: A muon error was caused by a failed login".to_string()),
+            ApiError::UnsupportedTwoFactor => {
+                JsValue::from(&"UnsupportedTwoFactor: A muon error was caused by unsupported TwoFactor".to_string())
+            }
             ApiError::MuonError(me) => JsValue::from(&format!(
                 "MuonError: {me} (caused by: {source:?})",
                 source = me.source(),
@@ -79,6 +63,37 @@ impl ErrorExt for ApiError {
             ApiError::MuonAppVersion(err) => JsValue::from(&format!("MuonAppVersion occurred: {:?}", err.source())),
             ApiError::MuonStatus(err) => JsValue::from(&format!("MuonStatusError occurred: {:?}", err.source())),
             ApiError::Utf8Error(err) => JsValue::from(&format!("Utf8Error occurred: {:?}", err.source())),
+        }
+    }
+}
+
+impl ErrorExt for BitcoinError {
+    fn to_js_error(self) -> JsValue {
+        let common_error = JsValue::from(
+            &format!("Wasm error occured in Bitcoin: {}", self),
+            // json!(self), TODO: fix this to have more detailled errors
+        );
+
+        match self {
+            BitcoinError::CreateTx(error) => match error {
+                CreateTxError::CoinSelection(CoinSelectionError::InsufficientFunds { needed, available }) => {
+                    json_to_jsvalue(json!({
+                        "kind": "InsufficientFunds",
+                        "needed": needed,
+                        "available": available,
+                    }))
+                }
+                CreateTxError::OutputBelowDustLimit(limit) => json_to_jsvalue(json!({
+                    "kind": "OutputBelowDustLimit",
+                    "limit": limit,
+                })),
+                _ => common_error,
+            },
+            BitcoinError::EsploraClient(error) => match error {
+                EsploraError::ApiError(error) => error.to_js_error(),
+                _ => common_error,
+            },
+            _ => common_error,
         }
     }
 }

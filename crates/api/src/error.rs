@@ -1,15 +1,15 @@
 use std::str::Utf8Error;
 
-pub use ::muon::{Error as MuonError, ErrorKind as MuonErrorKind};
 use bitcoin::{
     consensus::encode::Error as BitcoinEncodingError,
     hashes::hex::{HexToArrayError, HexToBytesError},
 };
 use muon::{
-    http::{Status, StatusErr},
-    middleware::AuthErr,
-    ParseAppVersionErr,
+    client::middleware::AuthErr,
+    error::{ParseAppVersionErr, StatusErr},
+    Status,
 };
+pub use muon::{error::ErrorKind as MuonErrorKind, Error as MuonError};
 use serde::Deserialize;
 use thiserror;
 
@@ -19,6 +19,14 @@ pub enum Error {
     AuthSession(MuonErrorKind),
     #[error("A muon {0} error was caused by a failed auth refresh")]
     AuthRefresh(MuonErrorKind),
+    #[error("A muon error was caused by a failed auth via forked session")]
+    ForkAuthSession,
+    #[error("A muon error was caused by a failed fork session")]
+    ForkSession,
+    #[error("A muon error was caused by a failed login")]
+    LoginError,
+    #[error("A muon error was caused by unsupported TwoFactor")]
+    UnsupportedTwoFactor,
     #[error("An error occurred in the Muon App Version parser: \n\t{0}")]
     MuonAppVersion(#[from] ParseAppVersionErr),
     #[error("An error from Muon status: \n\t{0}")]

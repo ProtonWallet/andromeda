@@ -12,12 +12,15 @@ use event::EventClient;
 use exchange_rate::ExchangeRateClient;
 use invite::InviteClient;
 use log::info;
+use muon::client::flow::ForkFlowResult;
 pub use muon::{
-    flow::LoginFlow,
-    http::{HttpReq as ProtonRequest, HttpReqExt, HttpRes as ProtonResponse},
+    app::Product,
+    client::{flow::LoginFlow, Auth, Tokens},
+    env::EnvId,
     rest::core as CoreAPI,
-    App, Auth, Client, DynStore, Env, EnvId, Error as MuonError, Product, Store, StoreReadErr, StoreWriteErr, Tokens,
-    GET,
+    store::{DynStore, Store, StoreFailure},
+    util::ProtonRequestExt,
+    App, Client, Error as MuonError, ProtonRequest, ProtonResponse, GET,
 };
 use network::NetworkClient;
 use payment_gateway::PaymentGatewayClient;
@@ -138,7 +141,7 @@ impl ProtonWalletApiClient {
     ///
     /// ```rust
     /// use andromeda_api::{ProtonWalletApiClient, ApiConfig, WalletAuthStore};
-    /// use muon::{Tokens, Auth};
+    /// use muon::client::{Auth, Tokens};
     /// let auth = Auth::internal("uid", Tokens::access("acc_tok", "ref_tok", ["scopes"]));
     /// let config = ApiConfig {
     ///     spec: (String::from("android-wallet/1.0.0"), String::from("ProtonWallet/plus-agent-details")),
@@ -193,7 +196,7 @@ impl ProtonWalletApiClient {
         }
     }
 
-    /// Performs an http request to authenticate the session used in the api
+    /// Performs a http request to authenticate the session used in the api
     /// client. Mutates the underlying session.
     ///
     /// ```rust
@@ -203,9 +206,11 @@ impl ProtonWalletApiClient {
     /// ```
     pub async fn login(&self, username: &str, password: &str) -> Result<UserData, Error> {
         info!("login start");
-        let LoginFlow::Ok(c) = self.session.clone().auth().login(username, password).await? else {
-            panic!("unexpected auth flow");
-        };
+        let c = match self.session.clone().auth().login(username, password).await {
+            LoginFlow::Ok(c) => Ok(c),
+            LoginFlow::Failed { client: _, reason: _ } => Err(Error::LoginError),
+            _ => Err(Error::UnsupportedTwoFactor),
+        }?;
         info!("login successful");
 
         let req = GET!("/core/v4/users");
@@ -222,16 +227,19 @@ impl ProtonWalletApiClient {
 
     /// fork session, client must be authenticated first
     pub async fn fork(&self) -> Result<ChildSession, Error> {
-        use muon::flow::WithSelectorFlow;
+        use muon::client::flow::WithSelectorFlow;
 
         // Fork the session
-        let selector = self
+        let ForkFlowResult::Success(_client, selector) = self
             .session
             .clone()
             .fork("ios-wallet")
             .payload(b"hello world")
             .send()
-            .await?;
+            .await
+        else {
+            return Err(Error::ForkSession);
+        };
         // Create a new client.
         let store_env: String = self.env.clone().unwrap_or("atlas".to_string());
         let store = WalletAuthStore::from_env_str(store_env, Arc::new(Mutex::new(Auth::None)));
@@ -240,7 +248,9 @@ impl ProtonWalletApiClient {
         let app_spec = App::new(app_version)?.with_user_agent(user_agentuser_agent);
         let child = Client::new(app_spec, store.clone())?;
         // Authenticate the child client via the fork.
-        let WithSelectorFlow::Ok(_, payload) = child.auth().from_fork().with_selector(selector).await?;
+        let WithSelectorFlow::Ok(_, payload) = child.auth().from_fork().with_selector(selector).await else {
+            return Err(Error::ForkAuthSession);
+        };
         // The payload is the data sent by the parent client.
         if payload.as_deref() == Some(b"hello world".as_ref()) {
             let auth = store.auth.lock().unwrap();

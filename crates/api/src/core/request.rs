@@ -1,4 +1,4 @@
-use muon::http::{HttpReq as ProtonRequest, Method};
+use muon::{Method, ProtonRequest};
 
 pub trait ToProtonRequest {
     fn to_get_request(&self) -> ProtonRequest;

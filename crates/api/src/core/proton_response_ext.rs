@@ -1,4 +1,4 @@
-use muon::{http::HttpRes as ProtonResponse, Error as MuonError};
+use muon::{Error as MuonError, ProtonResponse};
 use serde::de::DeserializeOwned;
 
 use crate::error::{Error, ResponseError};

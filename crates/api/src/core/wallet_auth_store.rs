@@ -1,13 +1,18 @@
 use std::sync::{Arc, Mutex};
 
 use cfg_if::cfg_if;
-use muon::{common::IntoDyn, Auth, Env, EnvId, Store, StoreReadErr, StoreWriteErr};
+use muon::{
+    client::Auth,
+    common::IntoDyn,
+    env::{Env, EnvId},
+    store::{Store, StoreFailure},
+};
 #[cfg(feature = "allow-dangerous-env")]
 use {
     muon::{
+        app::AppVersion,
         common::{Endpoint, Server},
         tls::TlsPinSet,
-        AppVersion,
     },
     std::str::FromStr,
 };
@@ -62,12 +67,12 @@ impl Store for WalletAuthStore {
         self.env.clone()
     }
 
-    fn get_auth(&self) -> Result<Auth, StoreReadErr> {
+    fn get_auth(&self) -> Auth {
         let auth = self.auth.lock().unwrap().clone();
-        Ok(auth.clone())
+        auth.clone()
     }
 
-    fn set_auth(&mut self, auth: Auth) -> Result<Auth, StoreWriteErr> {
+    fn set_auth(&mut self, auth: Auth) -> Result<Auth, StoreFailure> {
         let mut old_auth = self.auth.lock().unwrap();
         *old_auth = auth.clone();
         Ok(auth)
@@ -113,13 +118,13 @@ cfg_if! {
 #[cfg(test)]
 mod tests {
 
-    use muon::EnvId;
+    use muon::env::EnvId;
 
     #[test]
     fn test_build_wallet_auth_store() {
         use std::sync::{Arc, Mutex};
 
-        use muon::Auth;
+        use muon::client::Auth;
 
         use crate::WalletAuthStore;
 

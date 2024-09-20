@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use muon::http::HttpReq as ProtonRequest;
+use muon::ProtonRequest;
 
 use super::ToProtonRequest;
 use crate::ProtonWalletApiClient;

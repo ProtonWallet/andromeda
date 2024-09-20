@@ -6,7 +6,7 @@ use bitcoin::{BlockHash, Txid};
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("An error related to andromeda occured: \n\t{0}")]
-    AndromedaError(#[from] andromeda_api::error::Error),
+    ApiError(#[from] andromeda_api::error::Error),
     #[error("An error related to muon occured: \n\t{0}")]
     MuonError(#[from] andromeda_api::MuonError),
     #[error("An error related to BIP32 occured: \n\t{0}")]

@@ -88,9 +88,10 @@ impl WasmBlockchainClient {
     }
 
     #[wasm_bindgen(js_name = getFeesEstimation)]
-    pub async fn get_fees_estimation(&mut self) -> FeeRateByBlockEstimation {
-        let fees_estimation = self.inner.get_fees_estimation().await.unwrap_or_default();
-        serde_wasm_bindgen::to_value(&fees_estimation).unwrap().into()
+    pub async fn get_fees_estimation(&mut self) -> Result<FeeRateByBlockEstimation, JsValue> {
+        let fees_estimation = self.inner.get_fees_estimation().await.map_err(|e| e.to_js_error())?;
+
+        Ok(serde_wasm_bindgen::to_value(&fees_estimation).unwrap().into())
     }
 
     #[wasm_bindgen(js_name = fullSync)]
