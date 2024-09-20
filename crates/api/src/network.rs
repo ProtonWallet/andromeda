@@ -56,7 +56,7 @@ impl NetworkClient {
 
 #[cfg(test)]
 mod tests {
-    use muon::EnvId;
+    use muon::env::EnvId;
     use wiremock::{
         matchers::{method, path},
         Mock, MockServer, ResponseTemplate,

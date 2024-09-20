@@ -5,7 +5,7 @@ members = [
   "crates/common",
   "crates/bitcoin",
   "crates/esplora",
-  "crates/wasm",    # Muon wasm depends on Muon
+  "crates/wasm",
   "examples/cli",
 ]
 [profile.release]
@@ -29,6 +29,7 @@ bdk_wallet = { version = "=1.0.0-alpha.13", default-features = false, features =
   "std",
   "keys-bip39",
 ] }
+
 bdk_esplora = { version = "=0.15.0", default-features = false, features = [
   "async-https-rustls",
 ] }

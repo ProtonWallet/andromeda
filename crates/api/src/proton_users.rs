@@ -243,7 +243,7 @@ impl ProtonUsersClient {
 
     // this is spical endpoint. it is get data but with a post call
     pub async fn get_auth_info(&self, req: GetAuthInfoRequest) -> Result<GetAuthInfoResponseBody, Error> {
-        let request: muon::http::HttpReq = self.post("auth/info").body_json(req)?;
+        let request: muon::ProtonRequest = self.post("auth/info").body_json(req)?;
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetAuthInfoResponseBody>()?;
