@@ -1,4 +1,5 @@
 pub mod account;
+pub mod bdk_wallet_ext;
 pub mod blockchain_client;
 pub mod error;
 pub mod mnemonic;
@@ -8,9 +9,11 @@ pub mod transaction_builder;
 pub mod transactions;
 pub mod utils;
 pub mod wallet;
-pub mod wallet_ext;
 
 pub mod storage;
+
+#[cfg(feature = "sqlite")]
+pub use bdk_wallet::rusqlite::Connection;
 
 #[doc(hidden)]
 pub use bdk_wallet::{
@@ -25,11 +28,11 @@ pub use bdk_wallet::{
         Address, Amount, BlockHash, Network as BdkNetwork, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut,
         Witness,
     },
-    chain::{Append, ConfirmationTime, ConfirmationTimeHeightAnchor},
+    chain::{ConfirmationBlockTime, ConfirmationTime},
     keys::{
         bip39::{Language as BdkLanguage, Mnemonic as BdkMnemonic, MnemonicWithPassphrase, WordCount},
         DerivableKey, ExtendedKey,
     },
-    wallet::{tx_builder::ChangeSpendPolicy, AddressInfo, Balance, ChangeSet},
-    KeychainKind, LocalOutput, SignOptions,
+    tx_builder::ChangeSpendPolicy,
+    AddressInfo, Balance, ChangeSet, KeychainKind, LocalOutput, SignOptions,
 };

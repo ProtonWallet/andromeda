@@ -18,7 +18,7 @@ impl ProtonResponseExt for ProtonResponse {
 
         let handle_error = |response_parse_error: Option<MuonError>| -> Result<T, Error> {
             // Attempt to parse the response into the error type.
-            if let Some(parsed_error_payload) = self.body_json::<ResponseError>().ok() {
+            if let Ok(parsed_error_payload) = self.body_json::<ResponseError>() {
                 return Err(Error::ErrorCode(response_status, parsed_error_payload));
             }
 

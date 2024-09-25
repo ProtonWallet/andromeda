@@ -7,7 +7,7 @@ use wasm_bindgen::prelude::*;
 use super::{
     account::WasmAccount,
     psbt::WasmPsbt,
-    storage::WebOnchainStore,
+    storage::{WalletWebConnector, WalletWebPersister},
     types::{locktime::WasmLockTime, transaction::WasmOutPoint},
 };
 use crate::common::{error::ErrorExt, types::WasmNetwork};
@@ -15,7 +15,7 @@ use crate::common::{error::ErrorExt, types::WasmNetwork};
 #[wasm_bindgen]
 #[derive(Clone)]
 pub struct WasmTxBuilder {
-    inner: TxBuilder<WebOnchainStore>,
+    inner: TxBuilder<WalletWebConnector, WalletWebPersister>,
 }
 
 #[wasm_bindgen]

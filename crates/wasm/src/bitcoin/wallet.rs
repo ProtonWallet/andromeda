@@ -6,7 +6,7 @@ use wasm_bindgen::prelude::*;
 
 use super::{
     account::WasmAccount,
-    storage::{WebOnchainStore, WebOnchainStoreFactory},
+    storage::{WalletWebConnector, WalletWebPersister, WalletWebPersisterFactory},
     types::{
         balance::WasmBalance,
         derivation_path::WasmDerivationPath,
@@ -24,7 +24,7 @@ use crate::{
 
 #[wasm_bindgen]
 pub struct WasmWallet {
-    inner: Wallet<WebOnchainStore>,
+    inner: Wallet<WalletWebConnector, WalletWebPersister>,
 }
 
 #[wasm_bindgen]
@@ -34,7 +34,7 @@ extern "C" {
 }
 
 impl WasmWallet {
-    pub fn get_inner(&self) -> &Wallet<WebOnchainStore> {
+    pub fn get_inner(&self) -> &Wallet<WalletWebConnector, WalletWebPersister> {
         &self.inner
     }
 }
@@ -63,7 +63,7 @@ impl WasmWallet {
 
     #[wasm_bindgen(js_name = addAccount)]
     pub fn add_account(&mut self, script_type: u8, derivation_path: String) -> Result<WasmAccount, js_sys::Error> {
-        let factory = WebOnchainStoreFactory::new();
+        let factory = WalletWebPersisterFactory;
 
         // In a multi-wallet context, an account must be defined by the BIP32 masterkey
         // (fingerprint), and its derivation path (unique)
@@ -77,7 +77,7 @@ impl WasmWallet {
             .add_account(script_type, derivation_path.clone(), factory)
             .map_err(|e| BitcoinError::from(e).to_js_error())?;
 
-        Ok((&account_arc).into())
+        Ok(account_arc.into())
     }
 
     #[wasm_bindgen(js_name = discoverAccounts)]
@@ -85,7 +85,7 @@ impl WasmWallet {
         &self,
         api_client: &WasmProtonWalletApiClient,
     ) -> Result<WasmDiscoveredAccounts, js_sys::Error> {
-        let factory = WebOnchainStoreFactory::new();
+        let factory = WalletWebPersisterFactory;
 
         let accounts = self
             .inner

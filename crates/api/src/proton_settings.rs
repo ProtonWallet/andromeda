@@ -173,7 +173,7 @@ mod tests {
         let response: GetMnemonicSettingsResponseBody = serde_json::from_str(json_data).unwrap();
         assert!(response.Code == 1000);
         assert!(!response.MnemonicUserKeys.is_empty());
-        let mnemonic_user_key = response.MnemonicUserKeys.get(0).unwrap();
+        let mnemonic_user_key = response.MnemonicUserKeys.first().unwrap();
 
         assert_eq!(mnemonic_user_key.ID, "1H8EGg3J1QpSDL...k0uhrHx6nnGQ==");
         assert_eq!(mnemonic_user_key.PrivateKey, "-----BEGIN PGP PRIVATE KEY BLOCK ...");
@@ -255,7 +255,7 @@ mod tests {
         let userkeys = settings_client.get_mnemonic_settings().await.unwrap();
 
         assert!(!userkeys.is_empty());
-        let mnemonic_user_key = userkeys.get(0).unwrap();
+        let mnemonic_user_key = userkeys.first().unwrap();
         assert_eq!(mnemonic_user_key.ID, "1H8EGg3J1QpSDL...k0uhrHx6nnGQ==");
         assert_eq!(mnemonic_user_key.PrivateKey, "-----BEGIN PGP PRIVATE KEY BLOCK ...");
         assert_eq!(mnemonic_user_key.Salt, "1H8EGg3J1Qwk243hf==");
@@ -349,6 +349,6 @@ mod tests {
             TwoFactorCode: None,
         };
         let server_proofs = settings_client.disable_mnemonic_settings(req).await.unwrap();
-        assert!(server_proofs == "<base64_encoded_proof>".to_string());
+        assert!(server_proofs == *"<base64_encoded_proof>");
     }
 }

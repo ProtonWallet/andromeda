@@ -1,25 +1,24 @@
-use std::{collections::HashMap, fmt::Debug, str::FromStr};
+use std::{fmt::Debug, str::FromStr, sync::Arc};
 
 use bdk_wallet::{
     bitcoin::{absolute::LockTime, script::PushBytesBuf, Address, Amount, FeeRate, OutPoint, ScriptBuf},
-    wallet::{
-        coin_selection::{
-            BranchAndBoundCoinSelection, CoinSelectionAlgorithm, Error as CoinSelectionError,
-            LargestFirstCoinSelection, OldestFirstCoinSelection,
-        },
-        error::CreateTxError,
-        tx_builder::{ChangeSpendPolicy, TxBuilder as BdkTxBuilder},
+    coin_selection::{
+        BranchAndBoundCoinSelection, CoinSelectionAlgorithm, InsufficientFunds, LargestFirstCoinSelection,
+        OldestFirstCoinSelection, SingleRandomDraw,
     },
-    LocalOutput,
+    error::CreateTxError,
+    tx_builder::{ChangeSpendPolicy, TxBuilder as BdkTxBuilder},
+    WalletPersister,
 };
+use bitcoin::key::rand::RngCore;
 use hashbrown::HashSet;
 use uuid::Uuid;
 
 use super::account::Account;
 use crate::{
     error::Error,
-    psbt::{Psbt, TemplatePsbtCoinSelection},
-    storage::WalletStore,
+    psbt::Psbt,
+    storage::{MemoryPersisted, WalletPersisterConnector},
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -28,6 +27,32 @@ pub enum CoinSelection {
     LargestFirst,
     OldestFirst,
     Manual,
+}
+
+struct FixedRng(pub u32);
+
+impl RngCore for FixedRng {
+    fn next_u32(&mut self) -> u32 {
+        self.0
+    }
+
+    fn next_u64(&mut self) -> u64 {
+        self.0 as u64
+    }
+
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        for chunk in dest.chunks_mut(4) {
+            let bytes = self.0.to_le_bytes();
+            for (i, byte) in chunk.iter_mut().enumerate() {
+                *byte = bytes[i];
+            }
+        }
+    }
+
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand_core::Error> {
+        self.fill_bytes(dest);
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -49,18 +74,12 @@ pub struct TmpRecipient(pub String, pub String, pub Amount);
 /// raw transaction building and bitcoin URI processing
 /// (bitcoin:tb1....?amount=x&label=y)
 #[derive(Debug)]
-pub struct TxBuilder<P: WalletStore = ()> {
+pub struct TxBuilder<C: WalletPersisterConnector<P>, P: WalletPersister = MemoryPersisted> {
     /// The account associated with the transaction, if any.
-    account: Option<Account<P>>,
-    /// The optional partially signed Bitcoin transaction (PSBT) to be used as
-    /// template for inputs.
-    ///
-    /// It should be set every time a PSBT is created from this tx builder, so
-    /// that next one use the same input selection. On inputs selection change,
-    /// either by coin selection method change or manual utxo selection,
-    /// `template_psbt` should be reset to `None` because we expect new coins to
-    /// be selected then.
-    template_psbt: Option<Psbt>,
+    account: Option<Arc<Account<C, P>>>,
+    // A random number set on each tx builder instance to randomize coin selection on BNB fallback algorithm, while
+    // keeping deterministic inside the same txbuilder
+    random_number: u32,
     /// A list of recipients for the transaction, including a uuid, their
     /// addresses and the amounts to send.
     pub recipients: Vec<TmpRecipient>,
@@ -89,11 +108,11 @@ pub struct TxBuilder<P: WalletStore = ()> {
     pub locktime: Option<LockTime>,
 }
 
-impl<P: WalletStore> Clone for TxBuilder<P> {
+impl<C: WalletPersisterConnector<P>, P: WalletPersister> Clone for TxBuilder<C, P> {
     fn clone(&self) -> Self {
         TxBuilder {
             account: self.account.clone(),
-            template_psbt: self.template_psbt.clone(),
+            random_number: self.random_number,
             recipients: self.recipients.clone(),
             utxos_to_spend: self.utxos_to_spend.clone(),
             change_policy: self.change_policy,
@@ -116,35 +135,6 @@ pub struct ScriptAmount {
 struct AllocateBalanceAcc {
     remaining: Amount,
     recipients: Vec<TmpRecipient>,
-}
-
-/// This functions allocates a given balance accross the provided recipients.
-/// If recipients total amount is greater than provided balance, the last
-/// recipients will be allocated less than initially. "First come, first served"
-fn allocate_amount_to_recipients(recipients: Vec<TmpRecipient>, amount: Amount) -> Vec<TmpRecipient> {
-    let acc_result: AllocateBalanceAcc = recipients.into_iter().fold(
-        AllocateBalanceAcc {
-            remaining: amount,
-            recipients: Vec::new(),
-        },
-        |acc, current| {
-            // If remainingAmount = 123 and recipient's amount is 100, we'll allocate 100
-            // If remainingAmount = 73 and recipient's amount is 100, we'll allocate only 73
-            let amount_to_allocate = acc.remaining.min(current.2);
-            let next_remaining = acc.remaining - amount_to_allocate;
-
-            let mut next_recipients = acc.recipients.clone();
-
-            next_recipients.extend(vec![TmpRecipient(current.0, current.1, amount_to_allocate)]);
-
-            AllocateBalanceAcc {
-                remaining: next_remaining,
-                recipients: next_recipients,
-            }
-        },
-    );
-
-    acc_result.recipients
 }
 
 /// This function remove allocated amount from the last recipient to the first
@@ -178,17 +168,17 @@ fn correct_recipients_amounts(recipients: Vec<TmpRecipient>, amount_to_remove: A
     acc_result.recipients
 }
 
-impl<P: WalletStore> Default for TxBuilder<P> {
+impl<C: WalletPersisterConnector<P>, P: WalletPersister> Default for TxBuilder<C, P> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<P: WalletStore> TxBuilder<P> {
+impl<C: WalletPersisterConnector<P>, P: WalletPersister> TxBuilder<C, P> {
     pub fn new() -> Self {
         TxBuilder {
             account: None,
-            template_psbt: None,
+            random_number: bitcoin::key::rand::thread_rng().next_u32(),
             recipients: vec![TmpRecipient(Uuid::new_v4().to_string(), String::new(), Amount::ZERO)],
             utxos_to_spend: HashSet::new(),
             change_policy: ChangeSpendPolicy::ChangeAllowed,
@@ -210,9 +200,12 @@ impl<P: WalletStore> TxBuilder<P> {
     /// # ...
     /// let updated = tx_builder.set_account(account);
     /// ```
-    pub fn set_account(&self, account: Account<P>) -> Self {
+    pub fn set_account(&self, account: Arc<Account<C, P>>) -> Self
+    where
+        C: WalletPersisterConnector<P>,
+    {
         TxBuilder {
-            account: Some(account.clone()),
+            account: Some(account),
             ..self.clone()
         }
     }
@@ -287,10 +280,7 @@ impl<P: WalletStore> TxBuilder<P> {
         if self.account.is_some() {
             let result = self.create_draft_psbt(true).await;
 
-            if let Err(Error::CreateTx(CreateTxError::CoinSelection(CoinSelectionError::InsufficientFunds {
-                needed,
-                available,
-            }))) = result
+            if let Err(Error::CreateTx(CreateTxError::CoinSelection(InsufficientFunds { needed, available }))) = result
             {
                 let amount_to_remove = needed - available;
 
@@ -353,7 +343,6 @@ impl<P: WalletStore> TxBuilder<P> {
         utxos_to_spend.insert(*utxo_to_spend);
 
         TxBuilder {
-            template_psbt: None,
             utxos_to_spend,
             ..self.clone()
         }
@@ -365,7 +354,6 @@ impl<P: WalletStore> TxBuilder<P> {
         utxos_to_spend.remove(utxo_to_spend);
 
         TxBuilder {
-            template_psbt: None,
             utxos_to_spend,
             ..self.clone()
         }
@@ -374,7 +362,6 @@ impl<P: WalletStore> TxBuilder<P> {
     /// Empty the list of outpoints to spend
     pub fn clear_utxos_to_spend(&self) -> Self {
         TxBuilder {
-            template_psbt: None,
             utxos_to_spend: HashSet::new(),
             ..self.clone()
         }
@@ -383,7 +370,6 @@ impl<P: WalletStore> TxBuilder<P> {
     /// Sets the selected coin selection algorithm
     pub fn set_coin_selection(&self, coin_selection: CoinSelection) -> Self {
         TxBuilder {
-            template_psbt: None,
             coin_selection,
             ..self.clone()
         }
@@ -488,7 +474,7 @@ impl<P: WalletStore> TxBuilder<P> {
             tx_builder.add_data(&buf.as_push_bytes());
         }
 
-        let psbt = Psbt::new(tx_builder.finish()?);
+        let psbt = Psbt::new(tx_builder.finish_with_aux_rand(&mut FixedRng(self.random_number))?);
 
         // self.set_template(&psbt);
 
@@ -502,38 +488,14 @@ impl<P: WalletStore> TxBuilder<P> {
         let account = self.account.clone().ok_or(Error::AccountNotFound)?;
         let mut write_lock = account.get_mutable_wallet().await;
 
-        let available_utxos = write_lock
-            .list_unspent()
-            .map(|utxo| {
-                let keychain = utxo.keychain;
-                (
-                    utxo.outpoint.to_string(),
-                    (utxo, {
-                        write_lock
-                            .get_descriptor_for_keychain(keychain)
-                            .max_weight_to_satisfy()
-                            .unwrap()
-                            .to_wu() as usize
-                    }),
-                )
-            })
-            .collect::<HashMap<String, (LocalOutput, usize)>>();
-
         let psbt = {
-            if let Some(template_psbt) = self.template_psbt.clone() {
-                let tx_builder = write_lock
-                    .build_tx()
-                    .coin_selection(TemplatePsbtCoinSelection(template_psbt, available_utxos));
-
-                return self.finish_tx(tx_builder, allow_dust);
-            }
-
-            let tx_builder = write_lock
-                .build_tx()
-                .coin_selection(BranchAndBoundCoinSelection::default());
+            let tx_builder = write_lock.build_tx();
 
             match self.coin_selection {
-                CoinSelection::BranchAndBound => self.finish_tx(tx_builder, allow_dust),
+                CoinSelection::BranchAndBound => self.finish_tx(
+                    tx_builder.coin_selection(BranchAndBoundCoinSelection::<SingleRandomDraw>::default()),
+                    allow_dust,
+                ),
                 CoinSelection::LargestFirst => {
                     self.finish_tx(tx_builder.coin_selection(LargestFirstCoinSelection), allow_dust)
                 }
@@ -564,41 +526,11 @@ impl<P: WalletStore> TxBuilder<P> {
 mod tests {
     use bdk_wallet::{
         bitcoin::{absolute::LockTime, Amount, FeeRate},
-        wallet::tx_builder::ChangeSpendPolicy,
+        tx_builder::ChangeSpendPolicy,
     };
 
     use super::{super::transaction_builder::CoinSelection, correct_recipients_amounts, TmpRecipient, TxBuilder};
-    use crate::transaction_builder::allocate_amount_to_recipients;
-
-    #[test]
-    fn should_allocate_amount_when_no_amount_is_set() {
-        let recipients: Vec<TmpRecipient> = vec![TmpRecipient("1".to_string(), "addr1".to_string(), Amount::ZERO)];
-        let updated = allocate_amount_to_recipients(recipients, Amount::from_sat(3400));
-
-        assert_eq!(
-            updated,
-            vec![TmpRecipient("1".to_string(), "addr1".to_string(), Amount::ZERO),]
-        );
-    }
-
-    #[test]
-    fn should_allocate_amount() {
-        let recipients: Vec<TmpRecipient> = vec![
-            TmpRecipient("1".to_string(), "addr1".to_string(), Amount::from_sat(3500)),
-            TmpRecipient("2".to_string(), "addr2".to_string(), Amount::from_sat(2100)),
-            TmpRecipient("3".to_string(), "addr3".to_string(), Amount::from_sat(3000)),
-        ];
-        let updated = allocate_amount_to_recipients(recipients, Amount::from_sat(4800));
-
-        assert_eq!(
-            updated,
-            vec![
-                TmpRecipient("1".to_string(), "addr1".to_string(), Amount::from_sat(3500)),
-                TmpRecipient("2".to_string(), "addr2".to_string(), Amount::from_sat(1300)),
-                TmpRecipient("3".to_string(), "addr3".to_string(), Amount::ZERO)
-            ]
-        );
-    }
+    use crate::storage::MemoryPersisted;
 
     #[test]
     fn should_remove_correct_amount() {
@@ -652,7 +584,7 @@ mod tests {
 
     #[test]
     fn should_set_enable_rbf() {
-        let tx_builder = TxBuilder::<()>::new();
+        let tx_builder = TxBuilder::<MemoryPersisted>::new();
 
         let updated = tx_builder.enable_rbf();
         assert!(updated.rbf_enabled);
@@ -663,7 +595,7 @@ mod tests {
 
     #[test]
     fn should_set_locktime() {
-        let tx_builder = TxBuilder::<()>::new();
+        let tx_builder = TxBuilder::<MemoryPersisted>::new();
 
         let updated = tx_builder.add_locktime(LockTime::from_consensus(788373));
         assert_eq!(updated.locktime, Some(LockTime::from_consensus(788373)));
@@ -674,7 +606,7 @@ mod tests {
 
     #[test]
     fn should_set_coin_selection() {
-        let tx_builder = TxBuilder::<()>::new();
+        let tx_builder = TxBuilder::<MemoryPersisted>::new();
 
         let updated = tx_builder.set_coin_selection(CoinSelection::LargestFirst);
         assert_eq!(updated.coin_selection, CoinSelection::LargestFirst);
@@ -685,7 +617,7 @@ mod tests {
 
     #[test]
     fn should_set_change_policy() {
-        let tx_builder = TxBuilder::<()>::new();
+        let tx_builder = TxBuilder::<MemoryPersisted>::new();
 
         let updated = tx_builder.set_change_policy(ChangeSpendPolicy::ChangeAllowed);
         assert_eq!(updated.change_policy, ChangeSpendPolicy::ChangeAllowed);
@@ -696,7 +628,7 @@ mod tests {
 
     #[test]
     fn should_change_fee_rate() {
-        let tx_builder = TxBuilder::<()>::new();
+        let tx_builder = TxBuilder::<MemoryPersisted>::new();
 
         let updated = tx_builder.set_fee_rate(15);
         assert_eq!(updated.fee_rate, FeeRate::from_sat_per_vb(15));
@@ -704,7 +636,7 @@ mod tests {
 
     #[test]
     fn should_add_recipient() {
-        let tx_builder = TxBuilder::<()>::new();
+        let tx_builder = TxBuilder::<MemoryPersisted>::new();
 
         let updated = tx_builder.add_recipient(None);
         assert_eq!(updated.recipients.len(), 2);
@@ -712,7 +644,7 @@ mod tests {
 
     #[tokio::test]
     async fn should_update_recipient() {
-        let tx_builder = TxBuilder::<()>::new();
+        let tx_builder = TxBuilder::<MemoryPersisted>::new();
 
         let updated = tx_builder.update_recipient(0, (Some("tb1...xyz".to_string()), Some(15837)));
 

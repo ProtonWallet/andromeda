@@ -1,41 +1,45 @@
-use bdk_wallet::{
-    chain::{CombinedChangeSet, ConfirmationTimeHeightAnchor},
-    KeychainKind,
-};
+use std::{convert::Infallible, fmt::Debug};
 
-use crate::error::Error;
+pub use bdk_wallet::{chain::Merge, ChangeSet, WalletPersister};
 
-pub type ChangeSet = CombinedChangeSet<KeychainKind, ConfirmationTimeHeightAnchor>;
-
-pub trait WalletStore: Clone {
-    fn read(&self) -> Result<Option<ChangeSet>, Error>;
-
-    fn write(&self, changeset: &ChangeSet) -> Result<(), Error>;
-
-    fn clear(&self) -> Result<(), Error>;
-}
-
-pub trait WalletStoreFactory<P>
+pub trait WalletConnectorFactory<C, P>: Clone + Debug
 where
-    P: WalletStore,
+    C: WalletPersisterConnector<P>,
+    P: WalletPersister,
 {
-    fn build(self, key: String) -> P;
+    fn build(self, key: String) -> C;
 }
 
-impl WalletStoreFactory<()> for () {
-    fn build(self, _key: String) {}
+impl WalletConnectorFactory<MemoryPersisted, MemoryPersisted> for MemoryPersisted {
+    fn build(self, _key: String) -> MemoryPersisted {
+        MemoryPersisted {}
+    }
 }
 
-impl WalletStore for () {
-    fn read(&self) -> Result<Option<ChangeSet>, Error> {
-        Ok(None)
+pub trait WalletPersisterConnector<P>: Clone + Debug
+where
+    P: WalletPersister,
+{
+    fn connect(&self) -> P;
+}
+
+impl WalletPersisterConnector<MemoryPersisted> for MemoryPersisted {
+    fn connect(&self) -> MemoryPersisted {
+        MemoryPersisted {}
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct MemoryPersisted;
+
+impl WalletPersister for MemoryPersisted {
+    type Error = Infallible;
+
+    fn initialize(_persister: &mut Self) -> Result<ChangeSet, Self::Error> {
+        Ok(ChangeSet::default())
     }
 
-    fn write(&self, _changeset: &ChangeSet) -> Result<(), Error> {
-        Ok(())
-    }
-
-    fn clear(&self) -> Result<(), Error> {
+    fn persist(_persister: &mut Self, _changeset: &ChangeSet) -> Result<(), Self::Error> {
         Ok(())
     }
 }

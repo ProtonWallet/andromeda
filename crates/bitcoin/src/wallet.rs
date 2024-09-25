@@ -1,5 +1,5 @@
 use core::fmt::Debug;
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use andromeda_api::ProtonWalletApiClient;
 use andromeda_common::{FromParts, Network, ScriptType};
@@ -9,7 +9,7 @@ use bdk_wallet::{
         secp256k1::Secp256k1,
         Amount, NetworkKind,
     },
-    wallet::Balance,
+    Balance, WalletPersister,
 };
 use futures::future::try_join_all;
 
@@ -18,7 +18,7 @@ use crate::{
     blockchain_client::BlockchainClient,
     error::Error,
     mnemonic::Mnemonic,
-    storage::{WalletStore, WalletStoreFactory},
+    storage::{WalletConnectorFactory, WalletPersisterConnector},
     transactions::{ToTransactionDetails, TransactionDetails},
     utils::SortOrder,
 };
@@ -27,13 +27,13 @@ const ACCOUNT_DISCOVERY_STOP_GAP: u32 = 2;
 const ADDRESS_DISCOVERY_STOP_GAP: usize = 10;
 
 #[derive(Debug)]
-pub struct Wallet<P: WalletStore> {
+pub struct Wallet<C: WalletPersisterConnector<P>, P: WalletPersister> {
     mprv: Xpriv,
-    accounts: HashMap<DerivationPath, Account<P>>,
+    accounts: HashMap<DerivationPath, Arc<Account<C, P>>>,
     network: Network,
 }
 
-impl<P: WalletStore> Wallet<P> {
+impl<C: WalletPersisterConnector<P>, P: WalletPersister> Wallet<C, P> {
     pub fn new(network: Network, bip39_mnemonic: String, bip38_passphrase: Option<String>) -> Result<Self, Error> {
         let mnemonic = Mnemonic::from_string(bip39_mnemonic)?;
 
@@ -67,25 +67,27 @@ impl<P: WalletStore> Wallet<P> {
         script_type: ScriptType,
         derivation_path: DerivationPath,
         factory: F,
-    ) -> Result<Account<P>, Error>
+    ) -> Result<Arc<Account<C, P>>, Error>
     where
-        F: WalletStoreFactory<P>,
+        F: WalletConnectorFactory<C, P>,
     {
         let account = Account::new(self.mprv, self.network, script_type, derivation_path, factory)?;
 
         let derivation_path = account.get_derivation_path();
 
-        self.accounts.insert(derivation_path.clone(), account.clone());
+        let account_arc = Arc::new(account);
 
-        Ok(account)
+        self.accounts.insert(derivation_path.clone(), account_arc.clone());
+
+        Ok(account_arc)
     }
 
-    pub fn get_account(&self, derivation_path: &DerivationPath) -> Option<&Account<P>> {
-        self.accounts.get(derivation_path)
+    pub fn get_account(&self, derivation_path: &DerivationPath) -> Option<Arc<Account<C, P>>> {
+        self.accounts.get(derivation_path).cloned()
     }
 
-    pub fn get_accounts(&self) -> Vec<&Account<P>> {
-        self.accounts.values().collect::<Vec<_>>()
+    pub fn get_accounts(&self) -> Vec<Arc<Account<C, P>>> {
+        self.accounts.values().cloned().collect::<Vec<_>>()
     }
 
     pub async fn get_balance(&self) -> Result<Balance, Error> {
@@ -121,7 +123,7 @@ impl<P: WalletStore> Wallet<P> {
         discovery_address_stop_gap: Option<usize>,
     ) -> Result<Vec<(ScriptType, u32, DerivationPath)>, Error>
     where
-        F: WalletStoreFactory<P> + Clone,
+        F: WalletConnectorFactory<C, P>,
     {
         let client = BlockchainClient::new(proton_api_client);
         let mut index: u32;
