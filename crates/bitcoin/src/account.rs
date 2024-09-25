@@ -10,21 +10,19 @@ use bdk_wallet::{
         secp256k1::Secp256k1,
         Address, Network as BdkNetwork, Transaction, Txid,
     },
-    chain::ConfirmationTime,
-    descriptor,
-    wallet::{AddressInfo, Balance as BdkBalance, Update},
-    KeychainKind, LocalOutput as LocalUtxo, SignOptions, Wallet as BdkWallet,
+    descriptor, AddressInfo, Balance as BdkBalance, ChangeSet, KeychainKind, LocalOutput as LocalUtxo, PersistedWallet,
+    SignOptions, Update, Wallet as BdkWallet, WalletPersister,
 };
 use bitcoin::params::Params;
 use miniscript::{descriptor::DescriptorSecretKey, DescriptorPublicKey};
 
 use super::{payment_link::PaymentLink, transactions::Pagination, utils::sort_and_paginate_txs};
 use crate::{
+    bdk_wallet_ext::BdkWalletExt,
     error::Error,
-    storage::{WalletStore, WalletStoreFactory},
+    storage::{WalletConnectorFactory, WalletPersisterConnector},
     transactions::{ToTransactionDetails, TransactionDetails},
     utils::SortOrder,
-    wallet_ext::BdkWalletExt,
 };
 
 const EXTERNAL_KEYCHAIN: KeychainKind = KeychainKind::External;
@@ -51,10 +49,10 @@ const EXTERNAL_KEYCHAIN: KeychainKind = KeychainKind::External;
 /// Wallet generated from mnemonic, derived into an Account that instantiates a
 /// BDK Wallet.
 #[derive(Debug, Clone)]
-pub struct Account<P: WalletStore = ()> {
+pub struct Account<C: WalletPersisterConnector<P>, P: WalletPersister> {
     derivation_path: DerivationPath,
-    store: P,
-    wallet: Arc<RwLock<BdkWallet>>,
+    wallet: Arc<RwLock<PersistedWallet<P>>>,
+    persister_connector: C,
 }
 
 type ReturnedDescriptor = (
@@ -93,41 +91,55 @@ fn build_account_descriptors(
     Ok((external, internal))
 }
 
-impl<P: WalletStore> Account<P> {
+impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
     fn build_wallet_with_descriptors(
         external_descriptor: ReturnedDescriptor,
         internal_descriptor: ReturnedDescriptor,
         network: Network,
-        store: P,
-    ) -> Result<BdkWallet, Error> {
-        let store_content = store.read()?;
-
+        persister: &mut P,
+    ) -> Result<PersistedWallet<P>, Error>
+    where
+        C: WalletPersisterConnector<P>,
+        P: WalletPersister,
+    {
         let genesis_block_hash = genesis_block(Params::from(&network.into())).block_hash();
 
-        let wallet = BdkWallet::new_or_load_with_genesis_hash(
-            external_descriptor,
-            internal_descriptor,
-            store_content,
-            network.into(),
-            genesis_block_hash,
-        )?;
+        let wallet_opt = BdkWallet::load()
+            .descriptor(KeychainKind::External, Some(external_descriptor.clone()))
+            .descriptor(KeychainKind::Internal, Some(internal_descriptor.clone()))
+            .extract_keys()
+            .check_network(network.into())
+            .check_genesis_hash(genesis_block_hash)
+            .load_wallet(persister)
+            // If we have an error loading wallet, we just create a new one
+            .ok()
+            .flatten();
 
-        Ok::<BdkWallet, Error>(wallet)
+        let wallet = match wallet_opt {
+            Some(wallet) => wallet,
+            None => BdkWallet::create(external_descriptor, internal_descriptor)
+                .network(network.into())
+                .genesis_hash(genesis_block_hash)
+                .create_wallet(persister)
+                .map_err(|_e| Error::CreateWithPersistError)?,
+        };
+
+        Ok(wallet)
     }
 
     fn build_wallet(
         account_xprv: Xpriv,
         network: Network,
         script_type: ScriptType,
-        store: P,
-    ) -> Result<BdkWallet, Error> {
+        persister: &mut P,
+    ) -> Result<PersistedWallet<P>, Error> {
         let (external_descriptor, internal_descriptor) = build_account_descriptors(account_xprv, script_type)?;
 
         let wallet = Self::build_wallet_with_descriptors(
             external_descriptor.clone(),
             internal_descriptor.clone(),
             network,
-            store.clone(),
+            persister,
         )
         .ok();
 
@@ -135,17 +147,16 @@ impl<P: WalletStore> Account<P> {
             return Ok(wallet);
         }
 
-        store.clear()?;
-        Self::build_wallet_with_descriptors(external_descriptor, internal_descriptor, network, store)
+        Self::build_wallet_with_descriptors(external_descriptor, internal_descriptor, network, persister)
     }
 
     /// Returns a readable lock to account's BdkWallet struct
-    pub async fn get_wallet(&self) -> RwLockReadGuard<BdkWallet> {
+    pub async fn get_wallet(&self) -> RwLockReadGuard<PersistedWallet<P>> {
         self.wallet.read().await
     }
 
     /// Returns mutable lock a reference to account's BdkWallet struct
-    pub async fn get_mutable_wallet(&self) -> RwLockWriteGuard<BdkWallet> {
+    pub async fn get_mutable_wallet(&self) -> RwLockWriteGuard<PersistedWallet<P>> {
         self.wallet.write().await
     }
 
@@ -164,12 +175,13 @@ impl<P: WalletStore> Account<P> {
     /// #
     /// # use andromeda_bitcoin::account::{Account};
     /// # use andromeda_bitcoin::mnemonic::Mnemonic;
+    /// # use andromeda_bitcoin::storage::MemoryPersisted;
     /// # use andromeda_common::{Network, ScriptType};
     /// # tokio_test::block_on(async {
     /// #
     /// let mnemonic = Mnemonic::from_string(String::from("desk prevent enhance husband hungry idle member vessel room moment simple behave")).unwrap();
     /// let mprv = Xpriv::new_master(NetworkKind::Test, &mnemonic.inner().to_seed("")).unwrap();
-    /// let account = Account::new(mprv, Network::Testnet, ScriptType::NativeSegwit, DerivationPath::from_str("m/86'/1'/0'").unwrap(), ());
+    /// let account = Account::new(mprv, Network::Testnet, ScriptType::NativeSegwit, DerivationPath::from_str("m/86'/1'/0'").unwrap(), MemoryPersisted);
     /// # })
     /// ```
     pub fn new<F>(
@@ -180,23 +192,25 @@ impl<P: WalletStore> Account<P> {
         factory: F,
     ) -> Result<Self, Error>
     where
-        F: WalletStoreFactory<P>,
+        F: WalletConnectorFactory<C, P>,
     {
         let secp = Secp256k1::new();
 
         let account_xprv = master_secret_key.derive_priv(&secp, &derivation_path)?;
 
         let store_key = format!("{}_{}", master_secret_key.fingerprint(&secp), derivation_path);
-        let store = factory.build(store_key);
+
+        let connector = factory.build(store_key);
+        let mut persister = connector.connect();
 
         Ok(Self {
             derivation_path,
-            store: store.clone(),
+            persister_connector: connector.clone(),
             wallet: Arc::new(RwLock::new(Self::build_wallet(
                 account_xprv,
                 network,
                 script_type,
-                store,
+                &mut persister,
             )?)),
         })
     }
@@ -277,7 +291,7 @@ impl<P: WalletStore> Account<P> {
     /// Returns a boolean indicating whether or not the account owns the
     /// provided address
     pub async fn owns(&self, address: &Address) -> bool {
-        self.get_wallet().await.is_mine(&address.script_pubkey())
+        self.get_wallet().await.is_mine(address.script_pubkey())
     }
 
     /// Returns a bitcoin uri as defined in https://bips.dev/21/
@@ -354,37 +368,35 @@ impl<P: WalletStore> Account<P> {
     /// It will be then be stored and synced until it gets confirmed
     pub async fn insert_unconfirmed_tx(&self, tx: Transaction) -> Result<(), Error> {
         let mut wallet_lock = self.get_mutable_wallet().await;
-        wallet_lock.insert_tx(
-            tx,
-            ConfirmationTime::Unconfirmed {
-                last_seen: now().as_secs(),
-            },
-        )?;
+        wallet_lock.insert_tx(tx);
 
-        self.store_stage(&mut wallet_lock)?;
+        self.persist(wallet_lock).await?;
 
         Ok(())
     }
 
     pub async fn apply_update(&self, update: impl Into<Update>) -> Result<(), Error> {
         let mut wallet_lock = self.get_mutable_wallet().await;
-        wallet_lock.apply_update(update)?;
+        wallet_lock.apply_update_at(update, Some(now().as_secs()))?;
 
-        self.store_stage(&mut wallet_lock)?;
+        self.persist(wallet_lock).await?;
 
         Ok(())
     }
 
-    pub fn store_stage(&self, wallet_lock: &mut RwLockWriteGuard<'_, BdkWallet>) -> Result<(), Error> {
-        if let Some(changeset) = wallet_lock.take_staged() {
-            self.store.write(&changeset)?;
-        }
+    async fn persist(&self, mut wallet_lock: RwLockWriteGuard<'_, PersistedWallet<P>>) -> Result<(), Error> {
+        let mut persister = self.persister_connector.connect();
+
+        wallet_lock.persist(&mut persister).map_err(|_e| Error::PersistError)?;
+        drop(wallet_lock);
 
         Ok(())
     }
 
     pub fn clear_store(&self) -> Result<(), Error> {
-        self.store.clear()?;
+        let mut persister = self.persister_connector.connect();
+
+        P::persist(&mut persister, &ChangeSet::default()).map_err(|_e| Error::PersistError)?;
         Ok(())
     }
 }
@@ -400,16 +412,23 @@ mod tests {
     };
 
     use super::{Account, ScriptType};
-    use crate::mnemonic::Mnemonic;
+    use crate::{mnemonic::Mnemonic, storage::MemoryPersisted};
 
-    fn set_test_account(script_type: ScriptType, derivation_path: &str) -> Account<()> {
+    fn set_test_account(script_type: ScriptType, derivation_path: &str) -> Account<MemoryPersisted, MemoryPersisted> {
         let network = NetworkKind::Test;
         let mnemonic = Mnemonic::from_string("category law logic swear involve banner pink room diesel fragile sunset remove whale lounge captain code hobby lesson material current moment funny vast fade".to_string()).unwrap();
         let master_secret_key = Xpriv::new_master(network, &mnemonic.inner().to_seed("")).unwrap();
 
         let derivation_path = DerivationPath::from_str(derivation_path).unwrap();
 
-        Account::new(master_secret_key, Network::Testnet, script_type, derivation_path, ()).unwrap()
+        Account::new(
+            master_secret_key,
+            Network::Testnet,
+            script_type,
+            derivation_path,
+            MemoryPersisted {},
+        )
+        .unwrap()
     }
 
     #[tokio::test]

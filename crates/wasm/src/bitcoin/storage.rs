@@ -1,12 +1,11 @@
 use andromeda_bitcoin::{
     error::Error,
-    storage::{ChangeSet, WalletStore, WalletStoreFactory},
-    Append,
+    storage::{ChangeSet, Merge, WalletConnectorFactory, WalletPersister, WalletPersisterConnector},
 };
 use anyhow::anyhow;
 
 #[derive(Clone, Debug)]
-pub struct WebOnchainStore {
+pub struct WalletWebPersister {
     changeset_key: String,
 }
 
@@ -22,35 +21,29 @@ fn get_storage() -> Result<web_sys::Storage, js_sys::Error> {
     Ok(local_storage)
 }
 
-impl WebOnchainStore {
+impl WalletWebPersister {
     pub fn new(key: String) -> Self {
         Self {
             changeset_key: format!("{}_{}", CHANGESET_KEY_BASE, key),
         }
     }
-}
 
-impl WalletStore for WebOnchainStore {
-    fn read(&self) -> Result<Option<ChangeSet>, Error> {
+    fn get(&self) -> Option<ChangeSet> {
         let local_storage = get_storage().ok();
 
         if let Some(local_storage) = local_storage {
             let serialized = local_storage.get_item(&self.changeset_key).ok().flatten();
 
             if let Some(serialized) = serialized {
-                return Ok(serde_json::from_str(&serialized).ok());
+                return serde_json::from_str(&serialized).ok();
             }
         }
 
-        Ok(None)
+        None
     }
 
-    fn write(&self, new_changeset: &ChangeSet) -> Result<(), Error> {
-        let mut prev_changeset = self.read()?.clone().unwrap_or_default();
-        prev_changeset.append(new_changeset.clone());
-
-        let serialized =
-            serde_json::to_string(&prev_changeset).map_err(|_| anyhow!("Cannot serialize persisted data"))?;
+    fn set(&self, changeset: ChangeSet) -> Result<(), Error> {
+        let serialized = serde_json::to_string(&changeset).map_err(|_| anyhow!("Cannot serialize persisted data"))?;
 
         let local_storage = get_storage().ok();
         if let Some(local_storage) = local_storage {
@@ -59,33 +52,41 @@ impl WalletStore for WebOnchainStore {
                 .map_err(|_| anyhow!("Cannot persist data"))?;
         }
 
-        return Ok(());
-    }
-
-    fn clear(&self) -> Result<(), Error> {
-        let local_storage = get_storage().ok();
-
-        if let Some(local_storage) = local_storage {
-            local_storage
-                .delete(&self.changeset_key)
-                .map_err(|_| anyhow!("Cannot delete data"))?;
-        }
-
         Ok(())
     }
 }
 
-#[derive(Clone, Copy)]
-pub struct WebOnchainStoreFactory();
+impl WalletPersister for WalletWebPersister {
+    type Error = Error;
 
-impl WebOnchainStoreFactory {
-    pub fn new() -> Self {
-        Self()
+    fn initialize(persister: &mut Self) -> Result<ChangeSet, Error> {
+        Ok(persister.get().unwrap_or_default())
+    }
+
+    fn persist(persister: &mut Self, new_changeset: &ChangeSet) -> Result<(), Error> {
+        let mut prev_changeset = persister.get().unwrap_or_default();
+        prev_changeset.merge(new_changeset.clone());
+
+        persister.set(prev_changeset)
     }
 }
 
-impl WalletStoreFactory<WebOnchainStore> for WebOnchainStoreFactory {
-    fn build(self, key: String) -> WebOnchainStore {
-        WebOnchainStore::new(key)
+#[derive(Debug, Clone)]
+pub struct WalletWebConnector {
+    key: String,
+}
+
+impl WalletPersisterConnector<WalletWebPersister> for WalletWebConnector {
+    fn connect(&self) -> WalletWebPersister {
+        WalletWebPersister::new(self.key.clone())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct WalletWebPersisterFactory;
+
+impl WalletConnectorFactory<WalletWebConnector, WalletWebPersister> for WalletWebPersisterFactory {
+    fn build(self, key: String) -> WalletWebConnector {
+        WalletWebConnector { key }
     }
 }

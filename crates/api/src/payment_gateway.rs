@@ -275,12 +275,12 @@ impl PaymentGatewayClient {
                 .build_full_url(self.base_url(), "payment-gateway/on-ramp/iframe"),
             amount,
             bitcoin_address,
-            fiat_currency.to_string(),
-            (payment_method as i32).to_string(),
-            provider.to_string()
+            fiat_currency,
+            (payment_method as i32),
+            provider
         );
 
-        return url;
+        url
     }
 }
 
@@ -948,9 +948,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_checkout_iframe() {
-        let api_client = common_api_client().await;
-        let client = PaymentGatewayClient::new(api_client);
-
+        let api = setup_test_connection_arc("atlas".to_owned());
+        let client = PaymentGatewayClient::new(api);
         let iframe = client.get_checkout_iframe_src(
             100,
             "tb1qvqfwwaeu3uem7y387cy6jk0hzy2dmpxfeg8uf6".to_string(),

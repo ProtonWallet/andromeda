@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use andromeda_api::error::Error as ApiError;
-use andromeda_bitcoin::error::{CoinSelectionError, CreateTxError, Error as BitcoinError};
+use andromeda_bitcoin::error::{CreateTxError, Error as BitcoinError, InsufficientFundsError};
 use andromeda_common::error::Error as CommonError;
 use andromeda_esplora::error::Error as EsploraError;
 use serde::Serialize;
@@ -76,23 +76,18 @@ impl ErrorExt for BitcoinError {
 
         match self {
             BitcoinError::CreateTx(error) => match error {
-                CreateTxError::CoinSelection(CoinSelectionError::InsufficientFunds { needed, available }) => {
-                    json_to_jsvalue(json!({
-                        "kind": "InsufficientFunds",
-                        "needed": needed,
-                        "available": available,
-                    }))
-                }
+                CreateTxError::CoinSelection(InsufficientFundsError { needed, available }) => json_to_jsvalue(json!({
+                    "kind": "InsufficientFunds",
+                    "needed": needed,
+                    "available": available,
+                })),
                 CreateTxError::OutputBelowDustLimit(limit) => json_to_jsvalue(json!({
                     "kind": "OutputBelowDustLimit",
                     "limit": limit,
                 })),
                 _ => common_error,
             },
-            BitcoinError::EsploraClient(error) => match error {
-                EsploraError::ApiError(error) => error.to_js_error(),
-                _ => common_error,
-            },
+            BitcoinError::EsploraClient(EsploraError::ApiError(error)) => error.to_js_error(),
             _ => common_error,
         }
     }

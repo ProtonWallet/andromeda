@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 
 use andromeda_esplora::error::Error as EsploraClientError;
-pub use bdk_wallet::wallet::{coin_selection::Error as CoinSelectionError, error::CreateTxError};
 use bdk_wallet::{
     bitcoin::{
         address::ParseError as BitcoinAddressParseError,
@@ -11,22 +10,24 @@ use bdk_wallet::{
     },
     chain::local_chain::CannotConnectError,
     descriptor::DescriptorError,
+    error::{BuildFeeBumpError, MiniscriptPsbtError},
     keys::bip39::Error as Bip39Error,
-    wallet::{
-        error::{BuildFeeBumpError, MiniscriptPsbtError},
-        signer::SignerError,
-        tx_builder::AddUtxoError,
-        InsertTxError, NewOrLoadError,
-    },
+    signer::SignerError,
+    tx_builder::AddUtxoError,
 };
+pub use bdk_wallet::{coin_selection::InsufficientFunds as InsufficientFundsError, error::CreateTxError};
 use bitcoin::address::FromScriptError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("Account wasn't found")]
     AccountNotFound,
-    #[error("An error occured when trying to load or create wallet: \n\t{0}")]
-    NewOrLoadWallet(#[from] NewOrLoadError),
+    #[error("An error occured when trying to create persisted wallet")]
+    CreateWithPersistError, /* (#[from] CreateWithPersistError) */
+    #[error("An error occured when trying to load persisted wallet")]
+    LoadWithPersistError,
+    #[error("Could not persist changes")]
+    PersistError,
     #[error("An error related to Miniscript occured: \n\t{0}")]
     MiniscriptPsbt(#[from] MiniscriptPsbtError),
     #[error("An error occured when creating tx: \n\t{0:?}")]
@@ -37,8 +38,6 @@ pub enum Error {
     AddUtxo(#[from] AddUtxoError),
     #[error("An error occured when signing the transaction: \n\t{0}")]
     Signer(#[from] SignerError),
-    #[error("An error occured when inserting the transaction: \n\t{0}")]
-    InsertTx(#[from] InsertTxError),
     #[error("Cannot connect update: update does not have a common checkpoint with the original chain.: \n\t{0}")]
     CannotConnect(#[from] CannotConnectError),
     #[error("An error related to BIP32 occured: \n\t{0}")]

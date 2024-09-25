@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{error::Error, BASE_WALLET_API_V1};
 use crate::{
+    address::ApiTx,
     core::{ApiClient, ProtonResponseExt},
     ProtonWalletApiClient,
 };
@@ -56,6 +57,13 @@ struct GetTransactionStatusResponseBody {
     pub TransactionStatus: ApiTransactionStatus,
 }
 
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+struct GetTransactionInfoResponseBody {
+    #[allow(dead_code)]
+    pub Code: u16,
+    pub Transaction: ApiTx,
+}
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 pub struct TransactionMerkleProof {
@@ -184,6 +192,15 @@ impl TransactionClient {
         let parsed = response.parse_response::<GetTransactionStatusResponseBody>()?;
 
         Ok(parsed.TransactionStatus)
+    }
+
+    pub async fn get_transaction_info(&self, txid: String) -> Result<ApiTx, Error> {
+        let request = self.get(format!("transactions/{}", txid));
+
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<GetTransactionInfoResponseBody>()?;
+
+        Ok(parsed.Transaction)
     }
 
     pub async fn get_transaction_merkle_proof(&self, txid: String) -> Result<TransactionMerkleProof, Error> {

@@ -21,7 +21,8 @@ bitcoin = { workspace = true, features = [
     "std",
 ], default-features = false }
 
-bdk_chain = { version = "0.16.0", default-features = false }
+bdk_chain = { workspace = true }
+bdk_core = { version = "0.2.0", default-features = false }
 
 [dev-dependencies]
 serde_json = { workspace = true }

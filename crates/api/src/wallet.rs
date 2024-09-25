@@ -782,10 +782,7 @@ impl WalletClient {
     ) -> Result<ApiWalletTransaction, Error> {
         let request = self.put(format!(
             "wallets/{}/accounts/{}/transactions/{}/{}",
-            wallet_id,
-            wallet_account_id,
-            wallet_transaction_id,
-            flag.to_string()
+            wallet_id, wallet_account_id, wallet_transaction_id, flag
         ));
 
         let response = self.api_client.send(request).await?;
@@ -803,10 +800,7 @@ impl WalletClient {
     ) -> Result<ApiWalletTransaction, Error> {
         let request = self.delete(format!(
             "wallets/{}/accounts/{}/transactions/{}/{}",
-            wallet_id,
-            wallet_account_id,
-            wallet_transaction_id,
-            flag.to_string()
+            wallet_id, wallet_account_id, wallet_transaction_id, flag
         ));
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletTransactionResponseBody>()?;
@@ -1671,10 +1665,10 @@ mod tests {
         );
         assert!(wallet_transaction.IsSuspicious == 1);
         assert!(wallet_transaction.IsPrivate == 1);
-        assert!(wallet_transaction.Subject == None);
-        assert!(wallet_transaction.Body == None);
-        assert!(wallet_transaction.ToList == None);
-        assert!(wallet_transaction.Sender == None);
+        assert!(wallet_transaction.Subject.is_none());
+        assert!(wallet_transaction.Body.is_none());
+        assert!(wallet_transaction.ToList.is_none());
+        assert!(wallet_transaction.Sender.is_none());
     }
 
     #[tokio::test]

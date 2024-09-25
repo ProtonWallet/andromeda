@@ -25,14 +25,17 @@ impl BdkWalletExt for Wallet {
     /// # Example
     ///
     /// ```rust
-    /// use andromeda_bitcoin::wallet_ext::BdkWalletExt;
+    /// use andromeda_bitcoin::bdk_wallet_ext::BdkWalletExt;
     /// use bdk_wallet::{bitcoin::{Network, secp256k1::Secp256k1}, KeychainKind, Wallet};
     /// use miniscript::descriptor::Descriptor;
     ///
     /// let secp = Secp256k1::new();
     /// let (external_descriptor, _external_keymap) = Descriptor::parse_descriptor(&secp, "wpkh(tprv8ZgxMBicQKsPdy6LMhUtFHAgpocR8GC6QmwMSFpZs7h6Eziw3SpThFfczTDh5rW2krkqffa11UpX3XkeTTB2FvzZKWXqPY54Y6Rq4AQ5R8L/84'/1'/0'/0/*)").unwrap();
     /// let (internal_descriptor, _internal_keymap) = Descriptor::parse_descriptor(&secp, "wpkh(tprv8ZgxMBicQKsPdy6LMhUtFHAgpocR8GC6QmwMSFpZs7h6Eziw3SpThFfczTDh5rW2krkqffa11UpX3XkeTTB2FvzZKWXqPY54Y6Rq4AQ5R8L/84'/1'/0'/1/*)").unwrap();
-    /// let mut wallet = Wallet::new(external_descriptor, internal_descriptor, Network::Testnet).unwrap();
+    /// let mut wallet = Wallet::create(external_descriptor, internal_descriptor)
+    ///            .network(Network::Testnet)
+    ///            .create_wallet_no_persist()
+    ///            .unwrap();
     ///
     /// // This will mark addresses 10, 11, 12, 13, and 14 as used in the External keychain.
     /// wallet.mark_used_to(KeychainKind::External, 10, Some(15));

@@ -3,12 +3,12 @@ use std::{cmp::Ordering, sync::Arc};
 use andromeda_common::utils::now;
 use async_std::sync::RwLockReadGuard;
 use bdk_wallet::{
-    bitcoin::{bip32::DerivationPath, Address, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Txid, Witness},
-    chain::{tx_graph::CanonicalTx, ChainPosition, ConfirmationTimeHeightAnchor},
-    Wallet as BdkWallet,
+    bitcoin::{bip32::DerivationPath, Address, ScriptBuf, Sequence, TxIn, TxOut, Txid, Witness},
+    chain::{ChainPosition, ConfirmationBlockTime},
+    PersistedWallet, Wallet as BdkWallet, WalletPersister, WalletTx,
 };
 
-use crate::{account::Account, error::Error, psbt::Psbt, storage::WalletStore};
+use crate::{account::Account, error::Error, psbt::Psbt, storage::WalletPersisterConnector};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TransactionTime {
@@ -88,7 +88,7 @@ fn get_detailled_outputs(txout: Vec<TxOut>, wallet: &BdkWallet) -> Result<Vec<De
     Ok(outputs)
 }
 
-fn get_time(chain_position: ChainPosition<&ConfirmationTimeHeightAnchor>) -> TransactionTime {
+fn get_time(chain_position: ChainPosition<&ConfirmationBlockTime>) -> TransactionTime {
     match chain_position {
         ChainPosition::Confirmed(anchor) => TransactionTime::Confirmed {
             confirmation_time: anchor.confirmation_time,
@@ -101,12 +101,13 @@ pub trait ToTransactionDetails<A> {
     fn to_transaction_details(&self, account: A) -> Result<TransactionDetails, Error>;
 }
 
-impl<'a> ToTransactionDetails<(&RwLockReadGuard<'a, BdkWallet>, DerivationPath)>
-    for CanonicalTx<'_, Arc<Transaction>, ConfirmationTimeHeightAnchor>
+impl<'a, P> ToTransactionDetails<(&RwLockReadGuard<'a, PersistedWallet<P>>, DerivationPath)> for WalletTx<'a>
+where
+    P: WalletPersister,
 {
     fn to_transaction_details(
         &self,
-        (wallet_lock, account_derivation_path): (&RwLockReadGuard<'a, BdkWallet>, DerivationPath),
+        (wallet_lock, account_derivation_path): (&RwLockReadGuard<'a, PersistedWallet<P>>, DerivationPath),
     ) -> Result<TransactionDetails, Error> {
         let (sent, received) = wallet_lock.sent_and_received(&self.tx_node.tx);
 
@@ -132,7 +133,10 @@ impl<'a> ToTransactionDetails<(&RwLockReadGuard<'a, BdkWallet>, DerivationPath)>
 }
 
 impl TransactionDetails {
-    pub async fn from_psbt<P: WalletStore>(psbt: &Psbt, account: Account<P>) -> Result<Self, Error> {
+    pub async fn from_psbt<C: WalletPersisterConnector<P>, P: WalletPersister>(
+        psbt: &Psbt,
+        account: Arc<Account<C, P>>,
+    ) -> Result<Self, Error> {
         let tx = psbt.extract_tx()?;
 
         let wallet_lock = account.get_wallet().await;
@@ -203,8 +207,8 @@ impl DetailledTxOutput {
     pub fn from_txout(output: TxOut, wallet: &BdkWallet) -> Result<DetailledTxOutput, Error> {
         Ok(DetailledTxOutput {
             value: output.value.to_sat(),
-            is_mine: wallet.is_mine(&output.script_pubkey),
-            address: Address::from_script(&output.script_pubkey, wallet.network())?,
+            is_mine: wallet.is_mine(output.script_pubkey.clone()),
+            address: Address::from_script(output.script_pubkey.as_script(), wallet.network())?,
             script_pubkey: output.script_pubkey,
         })
     }

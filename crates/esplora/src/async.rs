@@ -24,7 +24,7 @@ use bitcoin::{
     consensus::{deserialize, serialize},
     hashes::{hex::FromHex, sha256, Hash},
     hex::DisplayHex,
-    Block, BlockHash, MerkleBlock, Script, ScriptBuf, Transaction, Txid,
+    Block, BlockHash, MerkleBlock, ScriptBuf, Transaction, Txid,
 };
 #[allow(unused_imports)]
 use log::{debug, error, info, trace};
@@ -81,6 +81,12 @@ impl AsyncClient {
     pub async fn get_tx_status(&self, txid: &Txid) -> Result<TxStatus, Error> {
         let status = self.transaction.get_transaction_status(txid.to_string()).await?;
         Ok(status.into())
+    }
+
+    /// Get transaction info given it's [`Txid`].
+    pub async fn get_tx_info(&self, txid: &Txid) -> Result<Option<Tx>, Error> {
+        let info = self.transaction.get_transaction_info(txid.to_string()).await?;
+        Ok(Some(info.into()))
     }
 
     #[deprecated(
@@ -190,29 +196,19 @@ impl AsyncClient {
         Ok(self.block.get_block_hash(block_height).await?)
     }
 
-    /// Get confirmed transaction history for the specified address/scripthash,
-    /// sorted with newest first. Returns 25 transactions per page.
-    /// More can be requested by specifying the last txid seen by the previous
-    /// query.
-    pub async fn scripthash_txs(&self, script: &Script, last_seen: Option<Txid>) -> Result<Vec<Tx>, Error> {
-        let script_hash = sha256::Hash::hash(script.as_bytes());
-
-        let txs = match last_seen {
-            Some(last_seen) => {
-                self.address
-                    .get_scripthash_transactions_at_transaction_id(script_hash.to_string(), last_seen.to_string())
-                    .await?
-            }
-            None => {
-                self.address
-                    .get_scripthash_transactions(script_hash.to_string())
-                    .await?
-            }
-        };
-
-        Ok(txs.into_iter().map(|tx| tx.into()).collect())
-    }
-
+    /// Fetch transactions and associated [`ConfirmationBlockTime`]s by scanning
+    /// `keychain_spks` against Esplora.
+    ///
+    /// `keychain_spks` is an *unbounded* indexed-[`ScriptBuf`] iterator that
+    /// represents scripts derived from a keychain. The scanning logic stops
+    /// after a `stop_gap` number of consecutive scripts with no transaction
+    /// history is reached. `parallel_requests` specifies the maximum number
+    /// of HTTP requests to make in parallel.
+    ///
+    /// A [`TxGraph`] (containing the fetched transactions and anchors) and the
+    /// last active keychain index (if any) is returned. The last active
+    /// keychain index is the keychain's last script pubkey that contains a
+    /// non-empty transaction history.
     pub async fn many_scripthash_txs(
         &self,
         scripts: Vec<(u32, ScriptBuf)>,

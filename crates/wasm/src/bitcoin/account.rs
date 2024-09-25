@@ -1,9 +1,11 @@
+use std::sync::Arc;
+
 use andromeda_bitcoin::account::Account;
 use wasm_bindgen::prelude::*;
 
 use super::{
     psbt::WasmPsbt,
-    storage::{WebOnchainStore, WebOnchainStoreFactory},
+    storage::{WalletWebConnector, WalletWebPersister, WalletWebPersisterFactory},
     types::{
         address::WasmAddress,
         address_info::WasmAddressInfo,
@@ -16,18 +18,19 @@ use super::{
     wallet::WasmWallet,
 };
 use crate::common::{error::ErrorExt, types::WasmScriptType};
+
 #[wasm_bindgen]
 pub struct WasmAccount {
-    inner: Account<WebOnchainStore>,
+    inner: Arc<Account<WalletWebConnector, WalletWebPersister>>,
 }
 
 impl WasmAccount {
-    pub fn get_inner(&self) -> Account<WebOnchainStore> {
+    pub fn get_inner(&self) -> Arc<Account<WalletWebConnector, WalletWebPersister>> {
         self.inner.clone()
     }
 }
 
-impl Into<WasmAccount> for &Account<WebOnchainStore> {
+impl Into<WasmAccount> for Arc<Account<WalletWebConnector, WalletWebPersister>> {
     fn into(self) -> WasmAccount {
         WasmAccount { inner: self.clone() }
     }
@@ -41,13 +44,13 @@ impl WasmAccount {
         script_type: WasmScriptType,
         derivation_path: WasmDerivationPath,
     ) -> Result<WasmAccount, js_sys::Error> {
-        let factory = WebOnchainStoreFactory::new();
+        let factory = WalletWebPersisterFactory;
 
         let (mprv, network) = wallet.get_inner().mprv();
         let account = Account::new(mprv, network, script_type.into(), (&derivation_path).into(), factory)
             .map_err(|e| e.to_js_error())?;
 
-        Ok(WasmAccount { inner: account })
+        Ok(Arc::new(account).into())
     }
 
     #[wasm_bindgen(js_name = markReceiveAddressesUsedTo)]
