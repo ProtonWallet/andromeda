@@ -1,7 +1,10 @@
-use andromeda_api::wallet::{
-    ApiEmailAddress, ApiWalletAccount, ApiWalletData, ApiWalletTransaction, CreateWalletAccountRequestBody,
-    CreateWalletRequestBody, CreateWalletTransactionRequestBody, MigratedWallet, MigratedWalletAccount,
-    MigratedWalletTransaction, TransactionType, WalletClient, WalletMigrateRequestBody, WalletTransactionFlag,
+use andromeda_api::{
+    wallet::{
+        ApiEmailAddress, ApiWalletAccount, ApiWalletData, ApiWalletTransaction, CreateWalletAccountRequestBody,
+        CreateWalletRequestBody, CreateWalletTransactionRequestBody, MigratedWallet, MigratedWalletAccount,
+        MigratedWalletTransaction, TransactionType, WalletClient, WalletMigrateRequestBody, WalletTransactionFlag,
+    },
+    wallet_ext::WalletClientExt,
 };
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;

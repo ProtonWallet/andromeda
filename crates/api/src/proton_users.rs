@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use async_trait::async_trait;
 use muon::rest::core::v4::{keys::salts::KeySalt, users::User};
 use serde::{Deserialize, Serialize};
 
@@ -28,7 +29,7 @@ pub struct ApiProtonUserSettingsResponse {
     pub UserSettings: ProtonUserSettings,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 #[allow(non_snake_case)]
 pub struct ProtonUserSettings {
     pub Email: EmailSettings,
@@ -57,7 +58,7 @@ pub struct ProtonUserSettings {
     pub SessionAccountRecovery: u32,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 #[allow(non_snake_case)]
 pub struct EmailSettings {
     pub Value: Option<String>,
@@ -66,38 +67,38 @@ pub struct EmailSettings {
     pub Reset: u32,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 #[allow(non_snake_case)]
 pub struct PasswordSettings {
     // PasswordSettings is empty here we need it in the parser but we don't use it yet in our implementation
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 #[allow(non_snake_case)]
 pub struct PhoneSettings {
     // PhoneSettings is empty here we need it in the parser but we don't use it yet in our implementation
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 #[allow(non_snake_case)]
 pub struct TwoFASettings {
     pub Enabled: u32,
     pub Allowed: u32,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 #[allow(non_snake_case)]
 pub struct FlagsSettings {
     // FlagsSettings is empty here we need it in the parser but we don't use it yet in our implementation
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 #[allow(non_snake_case)]
 pub struct ReferralSettings {
     // ReferralSettings is empty here we need it in the parser but we don't use it yet in our implementation
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 #[allow(non_snake_case)]
 pub struct HighSecuritySettings {
     pub Eligible: u32,
@@ -111,7 +112,7 @@ pub struct ApiProtonUserResponse {
     User: ProtonUser,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 #[allow(non_snake_case)]
 pub struct ProtonUser {
     pub ID: String,
@@ -157,7 +158,7 @@ pub struct ApiUserInfo {
     pub IsProton: u32,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 #[allow(non_snake_case)]
 pub struct GetAuthModulusResponse {
     pub Code: u32,
@@ -165,7 +166,7 @@ pub struct GetAuthModulusResponse {
     pub ModulusID: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Default)]
 #[allow(non_snake_case)]
 pub struct GetAuthInfoRequest {
     pub Intent: String,
@@ -213,6 +214,26 @@ pub struct EmptyResponseBody {
     pub Code: u32,
 }
 
+#[async_trait]
+pub trait ProtonUsersClientExt {
+    async fn get_auth_modulus(&self) -> Result<GetAuthModulusResponse, Error>;
+
+    // this is spical endpoint. it is get data but with a post call
+    async fn get_auth_info(&self, req: GetAuthInfoRequest) -> Result<GetAuthInfoResponseBody, Error>;
+
+    async fn unlock_password_change(&self, proofs: ProtonSrpClientProofs) -> Result<String, Error>;
+
+    async fn unlock_sensitive_settings(&self, proofs: ProtonSrpClientProofs) -> Result<String, Error>;
+
+    async fn lock_sensitive_settings(&self) -> Result<u32, Error>;
+
+    // get proton user info. This includes the user's keys.
+    async fn get_user_info(&self) -> Result<ProtonUser, Error>;
+    // get proton user settings.
+    //  used for 2fa settings and password recovery etc..
+    async fn get_user_settings(&self) -> Result<ProtonUserSettings, Error>;
+}
+
 #[derive(Clone)]
 pub struct ProtonUsersClient {
     api_client: Arc<ProtonWalletApiClient>,
@@ -232,8 +253,9 @@ impl ApiClient for ProtonUsersClient {
     }
 }
 
-impl ProtonUsersClient {
-    pub async fn get_auth_modulus(&self) -> Result<GetAuthModulusResponse, Error> {
+#[async_trait]
+impl ProtonUsersClientExt for ProtonUsersClient {
+    async fn get_auth_modulus(&self) -> Result<GetAuthModulusResponse, Error> {
         let request = self.get("auth/modulus");
 
         let response = self.api_client.send(request).await?;
@@ -242,15 +264,15 @@ impl ProtonUsersClient {
     }
 
     // this is spical endpoint. it is get data but with a post call
-    pub async fn get_auth_info(&self, req: GetAuthInfoRequest) -> Result<GetAuthInfoResponseBody, Error> {
-        let request: muon::ProtonRequest = self.post("auth/info").body_json(req)?;
+    async fn get_auth_info(&self, req: GetAuthInfoRequest) -> Result<GetAuthInfoResponseBody, Error> {
+        let request = self.post("auth/info").body_json(req)?;
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetAuthInfoResponseBody>()?;
         Ok(parsed)
     }
 
-    pub async fn unlock_password_change(&self, proofs: ProtonSrpClientProofs) -> Result<String, Error> {
+    async fn unlock_password_change(&self, proofs: ProtonSrpClientProofs) -> Result<String, Error> {
         let request = self.put("users/password").body_json(proofs)?;
 
         let response = self.api_client.send(request).await?;
@@ -258,7 +280,7 @@ impl ProtonUsersClient {
         Ok(parsed.ServerProof)
     }
 
-    pub async fn unlock_sensitive_settings(&self, proofs: ProtonSrpClientProofs) -> Result<String, Error> {
+    async fn unlock_sensitive_settings(&self, proofs: ProtonSrpClientProofs) -> Result<String, Error> {
         let request = self.put("users/unlock").body_json(proofs)?;
 
         let response = self.api_client.send(request).await?;
@@ -266,7 +288,7 @@ impl ProtonUsersClient {
         Ok(parsed.ServerProof)
     }
 
-    pub async fn lock_sensitive_settings(&self) -> Result<u32, Error> {
+    async fn lock_sensitive_settings(&self) -> Result<u32, Error> {
         let request = self.put("users/lock");
 
         let response = self.api_client.send(request).await?;
@@ -275,7 +297,7 @@ impl ProtonUsersClient {
     }
 
     // get proton user info. This includes the user's keys.
-    pub async fn get_user_info(&self) -> Result<ProtonUser, Error> {
+    async fn get_user_info(&self) -> Result<ProtonUser, Error> {
         let request = self.get("users");
 
         let response = self.api_client.send(request).await?;
@@ -285,7 +307,7 @@ impl ProtonUsersClient {
 
     // get proton user settings.
     //  used for 2fa settings and password recovery etc..
-    pub async fn get_user_settings(&self) -> Result<ProtonUserSettings, Error> {
+    async fn get_user_settings(&self) -> Result<ProtonUserSettings, Error> {
         let request = self.get("settings");
 
         let response = self.api_client.send(request).await?;
@@ -304,7 +326,7 @@ mod tests {
     use super::ProtonUsersClient;
     use crate::{
         core::ApiClient,
-        proton_users::ProtonSrpClientProofs,
+        proton_users::{ProtonSrpClientProofs, ProtonUsersClientExt},
         tests::utils::{common_api_client, setup_test_connection_arc},
         BASE_CORE_API_V4,
     };
