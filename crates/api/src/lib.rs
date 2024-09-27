@@ -73,6 +73,7 @@ pub mod proton_settings;
 pub mod proton_users;
 
 pub mod core;
+pub mod wallet_ext;
 
 pub const BASE_WALLET_API_V1: &str = "wallet/v1";
 pub const BASE_CORE_API_V4: &str = "core/v4";

@@ -1,6 +1,7 @@
 use core::fmt;
 use std::sync::Arc;
 
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
@@ -10,10 +11,11 @@ use crate::{
     error::Error,
     exchange_rate::ApiExchangeRate,
     settings::FiatCurrencySymbol,
+    wallet_ext::WalletClientExt,
     ProtonWalletApiClient,
 };
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Default)]
 #[allow(non_snake_case)]
 pub struct ApiWallet {
     pub ID: String,
@@ -41,7 +43,7 @@ pub struct ApiWallet {
     pub MigrationRequired: Option<u8>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Default)]
 #[allow(non_snake_case)]
 pub struct CreateWalletRequestBody {
     /// Name of the wallet
@@ -73,7 +75,7 @@ pub struct CreateWalletRequestBody {
     pub IsAutoCreated: u8,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 #[allow(non_snake_case)]
 pub struct ApiWalletKey {
     pub WalletID: String,
@@ -82,7 +84,7 @@ pub struct ApiWalletKey {
     pub WalletKeySignature: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 #[allow(non_snake_case)]
 pub struct ApiWalletSettings {
     pub WalletID: String,
@@ -93,7 +95,7 @@ pub struct ApiWalletSettings {
     pub ShowWalletRecovery: Option<bool>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 #[allow(non_snake_case)]
 pub struct ApiWalletData {
     pub Wallet: ApiWallet,
@@ -131,7 +133,7 @@ struct UpdateWalletNameResponseBody {
     pub Wallet: ApiWallet,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 #[allow(non_snake_case)]
 pub struct ApiWalletAccount {
     pub ID: String,
@@ -146,7 +148,7 @@ pub struct ApiWalletAccount {
     pub Addresses: Vec<ApiEmailAddress>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 #[allow(non_snake_case)]
 pub struct ApiEmailAddress {
     pub ID: String,
@@ -169,7 +171,7 @@ struct GetWalletAccountAddressesResponseBody {
     pub Addresses: Vec<ApiEmailAddress>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Default)]
 #[allow(non_snake_case)]
 pub struct CreateWalletAccountRequestBody {
     pub DerivationPath: String,
@@ -250,7 +252,7 @@ pub enum TransactionType {
     Unsupported,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 #[allow(non_snake_case)]
 pub struct ApiWalletTransaction {
     pub ID: String,
@@ -295,7 +297,7 @@ struct GetWalletTransactionsResponseBody {
     pub WalletTransactions: Vec<ApiWalletTransaction>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Default)]
 #[allow(non_snake_case)]
 pub struct CreateWalletTransactionRequestBody {
     /// Encrypted with user key
@@ -363,7 +365,7 @@ struct UpdateWalletSettingsResponseBody {
     pub WalletSettings: ApiWalletSettings,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Default)]
 #[allow(non_snake_case)]
 pub struct MigratedWallet {
     /// Name of the wallet, encrypted
@@ -380,7 +382,7 @@ pub struct MigratedWallet {
     pub Fingerprint: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Default)]
 #[allow(non_snake_case)]
 pub struct MigratedWalletAccount {
     // Wallet account ID
@@ -389,7 +391,7 @@ pub struct MigratedWalletAccount {
     pub Label: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Default)]
 #[allow(non_snake_case)]
 pub struct MigratedWalletTransaction {
     // Wallet ID
@@ -401,7 +403,7 @@ pub struct MigratedWalletTransaction {
     pub Label: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Default)]
 #[allow(non_snake_case)]
 pub struct WalletMigrateRequestBody {
     pub Wallet: MigratedWallet,
@@ -435,15 +437,16 @@ impl ApiClient for WalletClient {
     }
 }
 
-impl WalletClient {
-    pub async fn get_wallets(&self) -> Result<Vec<ApiWalletData>, Error> {
+#[async_trait]
+impl WalletClientExt for WalletClient {
+    async fn get_wallets(&self) -> Result<Vec<ApiWalletData>, Error> {
         let request = self.get("wallets");
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetWalletsResponseBody>()?;
         Ok(parsed.Wallets)
     }
 
-    pub async fn create_wallet(&self, payload: CreateWalletRequestBody) -> Result<ApiWalletData, Error> {
+    async fn create_wallet(&self, payload: CreateWalletRequestBody) -> Result<ApiWalletData, Error> {
         let request = self.post("wallets").body_json(payload)?;
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<CreateWalletResponseBody>()?;
@@ -455,14 +458,14 @@ impl WalletClient {
         })
     }
 
-    pub async fn migrate(&self, wallet_id: String, payload: WalletMigrateRequestBody) -> Result<(), Error> {
+    async fn migrate(&self, wallet_id: String, payload: WalletMigrateRequestBody) -> Result<(), Error> {
         let request = self.post(format!("wallets/{}/migrate", wallet_id)).body_json(payload)?;
         let response = self.api_client.send(request).await?;
         response.parse_response::<WalletMigrateResponseBody>()?;
         Ok(())
     }
 
-    pub async fn update_wallet_name(&self, wallet_id: String, name: String) -> Result<ApiWallet, Error> {
+    async fn update_wallet_name(&self, wallet_id: String, name: String) -> Result<ApiWallet, Error> {
         let payload = UpdateWalletNameRequestBody { Name: name };
         let request = self.put(format!("wallets/{}/name", wallet_id)).body_json(payload)?;
         let response = self.api_client.send(request).await?;
@@ -470,14 +473,14 @@ impl WalletClient {
         Ok(parsed.Wallet)
     }
 
-    pub async fn delete_wallet(&self, wallet_id: String) -> Result<(), Error> {
+    async fn delete_wallet(&self, wallet_id: String) -> Result<(), Error> {
         let request = self.delete(format!("wallets/{}", wallet_id));
         let response = self.api_client.send(request).await?;
         response.parse_response::<DeleteWalletAccountResponseBody>()?;
         Ok(())
     }
 
-    pub async fn get_wallet_accounts(&self, wallet_id: String) -> Result<Vec<ApiWalletAccount>, Error> {
+    async fn get_wallet_accounts(&self, wallet_id: String) -> Result<Vec<ApiWalletAccount>, Error> {
         let request = self.get(format!("wallets/{}/accounts", wallet_id));
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetWalletAccountsResponseBody>()?;
@@ -485,7 +488,7 @@ impl WalletClient {
         Ok(parsed.Accounts)
     }
 
-    pub async fn get_wallet_account_addresses(
+    async fn get_wallet_account_addresses(
         &self,
         wallet_id: String,
         wallet_account_id: String,
@@ -500,7 +503,7 @@ impl WalletClient {
         Ok(parsed.Addresses)
     }
 
-    pub async fn create_wallet_account(
+    async fn create_wallet_account(
         &self,
         wallet_id: String,
         payload: CreateWalletAccountRequestBody,
@@ -515,7 +518,7 @@ impl WalletClient {
         Ok(parsed.Account)
     }
 
-    pub async fn update_wallet_account_fiat_currency(
+    async fn update_wallet_account_fiat_currency(
         &self,
         wallet_id: String,
         wallet_account_id: String,
@@ -537,7 +540,7 @@ impl WalletClient {
         Ok(parsed.Account)
     }
 
-    pub async fn update_wallet_account_label(
+    async fn update_wallet_account_label(
         &self,
         wallet_id: String,
         wallet_account_id: String,
@@ -555,7 +558,7 @@ impl WalletClient {
         Ok(parsed.Account)
     }
 
-    pub async fn update_wallet_accounts_order(
+    async fn update_wallet_accounts_order(
         &self,
         wallet_id: String,
         wallet_account_ids: Vec<String>,
@@ -574,7 +577,7 @@ impl WalletClient {
         Ok(parsed.Accounts)
     }
 
-    pub async fn add_email_address(
+    async fn add_email_address(
         &self,
         wallet_id: String,
         wallet_account_id: String,
@@ -595,7 +598,7 @@ impl WalletClient {
         Ok(parsed.Account)
     }
 
-    pub async fn update_wallet_account_last_used_index(
+    async fn update_wallet_account_last_used_index(
         &self,
         wallet_id: String,
         wallet_account_id: String,
@@ -618,7 +621,7 @@ impl WalletClient {
         Ok(parsed.Account)
     }
 
-    pub async fn remove_email_address(
+    async fn remove_email_address(
         &self,
         wallet_id: String,
         wallet_account_id: String,
@@ -635,7 +638,7 @@ impl WalletClient {
         Ok(parsed.Account)
     }
 
-    pub async fn delete_wallet_account(&self, wallet_id: String, wallet_account_id: String) -> Result<(), Error> {
+    async fn delete_wallet_account(&self, wallet_id: String, wallet_account_id: String) -> Result<(), Error> {
         let request = self.delete(format!("wallets/{}/accounts/{}", wallet_id, wallet_account_id));
         let response = self.api_client.send(request).await?;
         response.parse_response::<DeleteWalletAccountResponseBody>()?;
@@ -643,7 +646,7 @@ impl WalletClient {
         Ok(())
     }
 
-    pub async fn get_wallet_transactions(
+    async fn get_wallet_transactions(
         &self,
         wallet_id: String,
         wallet_account_id: Option<String>,
@@ -665,7 +668,7 @@ impl WalletClient {
         Ok(parsed.WalletTransactions)
     }
 
-    pub async fn get_wallet_transactions_to_hash(
+    async fn get_wallet_transactions_to_hash(
         &self,
         wallet_id: String,
         wallet_account_id: Option<String>,
@@ -686,7 +689,7 @@ impl WalletClient {
         Ok(parsed.WalletTransactions)
     }
 
-    pub async fn create_wallet_transaction(
+    async fn create_wallet_transaction(
         &self,
         wallet_id: String,
         wallet_account_id: String,
@@ -705,7 +708,7 @@ impl WalletClient {
         Ok(parsed.WalletTransaction)
     }
 
-    pub async fn update_wallet_transaction_label(
+    async fn update_wallet_transaction_label(
         &self,
         wallet_id: String,
         wallet_account_id: String,
@@ -727,7 +730,7 @@ impl WalletClient {
         Ok(parsed.WalletTransaction)
     }
 
-    pub async fn update_wallet_transaction_hashed_txid(
+    async fn update_wallet_transaction_hashed_txid(
         &self,
         wallet_id: String,
         wallet_account_id: String,
@@ -751,7 +754,7 @@ impl WalletClient {
         Ok(parsed.WalletTransaction)
     }
 
-    pub async fn update_external_wallet_transaction_sender(
+    async fn update_external_wallet_transaction_sender(
         &self,
         wallet_id: String,
         wallet_account_id: String,
@@ -773,7 +776,7 @@ impl WalletClient {
         Ok(parsed.WalletTransaction)
     }
 
-    pub async fn set_wallet_transaction_flag(
+    async fn set_wallet_transaction_flag(
         &self,
         wallet_id: String,
         wallet_account_id: String,
@@ -791,7 +794,7 @@ impl WalletClient {
         Ok(parsed.WalletTransaction)
     }
 
-    pub async fn delete_wallet_transaction_flag(
+    async fn delete_wallet_transaction_flag(
         &self,
         wallet_id: String,
         wallet_account_id: String,
@@ -808,7 +811,7 @@ impl WalletClient {
         Ok(parsed.WalletTransaction)
     }
 
-    pub async fn delete_wallet_transactions(
+    async fn delete_wallet_transactions(
         &self,
         wallet_id: String,
         wallet_account_id: String,
@@ -824,7 +827,7 @@ impl WalletClient {
         Ok(())
     }
 
-    pub async fn disable_show_wallet_recovery(&self, wallet_id: String) -> Result<ApiWalletSettings, Error> {
+    async fn disable_show_wallet_recovery(&self, wallet_id: String) -> Result<ApiWalletSettings, Error> {
         let request = self.put(format!("wallets/{}/settings/show-wallet-recovery/disable", wallet_id));
 
         let response = self.api_client.send(request).await?;
@@ -852,7 +855,9 @@ mod tests {
         core::ApiClient,
         error::Error,
         tests::utils::{common_api_client, setup_test_connection_arc},
-        wallet::{MigratedWallet, MigratedWalletAccount, MigratedWalletTransaction, WalletMigrateRequestBody},
+        wallet::{
+            MigratedWallet, MigratedWalletAccount, MigratedWalletTransaction, WalletClientExt, WalletMigrateRequestBody,
+        },
         BASE_WALLET_API_V1,
     };
 

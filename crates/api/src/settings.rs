@@ -21,7 +21,7 @@ pub enum UserReceiveNotificationEmailTypes {
     Unsupported,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize, Default)]
 pub enum FiatCurrencySymbol {
     ALL,
     DZD,
@@ -112,6 +112,7 @@ pub enum FiatCurrencySymbol {
     UGX,
     UAH,
     AED,
+    #[default]
     USD,
     UYU,
     UZS,
