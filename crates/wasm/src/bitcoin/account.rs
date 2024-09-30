@@ -17,7 +17,10 @@ use super::{
     },
     wallet::WasmWallet,
 };
-use crate::common::{error::ErrorExt, types::WasmScriptType};
+use crate::common::{
+    error::ErrorExt,
+    types::{WasmNetwork, WasmScriptType},
+};
 
 #[wasm_bindgen]
 pub struct WasmAccount {
@@ -167,6 +170,24 @@ impl WasmAccount {
             .map_err(|e| e.to_js_error())?;
 
         Ok(())
+    }
+
+    #[wasm_bindgen(js_name = bumpTransactionsFees)]
+    pub async fn bump_transactions_fees(
+        &self,
+        network: WasmNetwork,
+        txid: String,
+        fees: u64,
+    ) -> Result<WasmPsbt, js_sys::Error> {
+        let psbt = self
+            .inner
+            .bump_transactions_fees(txid, fees)
+            .await
+            .map_err(|e| e.to_js_error())?;
+
+        let wasm_psbt = WasmPsbt::from_psbt(&psbt, network.into())?;
+
+        Ok(wasm_psbt)
     }
 
     #[wasm_bindgen(js_name = clearStore)]

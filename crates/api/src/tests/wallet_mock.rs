@@ -144,7 +144,7 @@ pub mod mock_utils {
                 flag: WalletTransactionFlag,
             ) -> Result<ApiWalletTransaction, Error>;
 
-            async fn delete_wallet_transactions(
+            async fn delete_wallet_transaction(
                 &self,
                 wallet_id: String,
                 wallet_account_id: String,

@@ -811,7 +811,7 @@ impl WalletClientExt for WalletClient {
         Ok(parsed.WalletTransaction)
     }
 
-    async fn delete_wallet_transactions(
+    async fn delete_wallet_transaction(
         &self,
         wallet_id: String,
         wallet_account_id: String,
@@ -1401,7 +1401,7 @@ mod tests {
         let client = WalletClient::new(api_client);
 
         let res = client
-            .delete_wallet_transactions(
+            .delete_wallet_transaction(
                 String::from(
                     "pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
                 ),

@@ -194,13 +194,17 @@ impl TransactionClient {
         Ok(parsed.TransactionStatus)
     }
 
-    pub async fn get_transaction_info(&self, txid: String) -> Result<ApiTx, Error> {
-        let request = self.get(format!("transactions/{}", txid));
+    pub async fn get_transaction_info(&self, txid: String) -> Result<Option<ApiTx>, Error> {
+        let request = self.get(format!("transactions/{}/info", txid));
 
         let response = self.api_client.send(request).await?;
-        let parsed = response.parse_response::<GetTransactionInfoResponseBody>()?;
+        let parsed = response.parse_response::<GetTransactionInfoResponseBody>();
 
-        Ok(parsed.Transaction)
+        match parsed {
+            Ok(parsed) => Ok(Some(parsed.Transaction)),
+            Err(Error::ErrorCode(_, error)) if error.Code == 2001 => Ok(None),
+            Err(err) => Err(err),
+        }
     }
 
     pub async fn get_transaction_merkle_proof(&self, txid: String) -> Result<TransactionMerkleProof, Error> {

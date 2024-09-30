@@ -6,20 +6,21 @@ use bdk_wallet::{
     bitcoin::{
         bip32::{ChildNumber, DerivationPath, Xpriv},
         constants::genesis_block,
-        psbt::Psbt,
+        psbt::Psbt as BdkPsbt,
         secp256k1::Secp256k1,
         Address, Network as BdkNetwork, Transaction, Txid,
     },
     descriptor, AddressInfo, Balance as BdkBalance, ChangeSet, KeychainKind, LocalOutput as LocalUtxo, PersistedWallet,
     SignOptions, Update, Wallet as BdkWallet, WalletPersister,
 };
-use bitcoin::params::Params;
+use bitcoin::{params::Params, Amount};
 use miniscript::{descriptor::DescriptorSecretKey, DescriptorPublicKey};
 
 use super::{payment_link::PaymentLink, transactions::Pagination, utils::sort_and_paginate_txs};
 use crate::{
     bdk_wallet_ext::BdkWalletExt,
     error::Error,
+    psbt::Psbt,
     storage::{WalletConnectorFactory, WalletPersisterConnector},
     transactions::{ToTransactionDetails, TransactionDetails},
     utils::SortOrder,
@@ -350,7 +351,7 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
 
     /// Given a mutable reference to a PSBT, and sign options, tries to sign
     /// inputs elligible
-    pub async fn sign(&self, psbt: &mut Psbt, sign_options: Option<SignOptions>) -> Result<(), Error> {
+    pub async fn sign(&self, psbt: &mut BdkPsbt, sign_options: Option<SignOptions>) -> Result<(), Error> {
         let sign_options = sign_options.unwrap_or_default();
         self.get_wallet().await.sign(psbt, sign_options)?;
 
@@ -373,6 +374,18 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
         self.persist(wallet_lock).await?;
 
         Ok(())
+    }
+
+    pub async fn bump_transactions_fees(&self, txid: String, fees: u64) -> Result<Psbt, Error> {
+        let mut wallet_lock: RwLockWriteGuard<'_, PersistedWallet<P>> = self.get_mutable_wallet().await;
+        let mut fee_bump_tx = wallet_lock.build_fee_bump(Txid::from_str(&txid)?)?;
+
+        fee_bump_tx.enable_rbf();
+        fee_bump_tx.fee_absolute(Amount::from_sat(fees));
+
+        let psbt = fee_bump_tx.finish()?;
+
+        Ok(psbt.into())
     }
 
     pub async fn apply_update(&self, update: impl Into<Update>) -> Result<(), Error> {
