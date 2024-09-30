@@ -31,7 +31,7 @@ impl Psbt {
         Ok(self.0.clone().fee()?)
     }
 
-    pub fn compute_tx_size(&self) -> Result<usize, Error> {
-        Ok(self.extract_tx()?.total_size())
+    pub fn compute_tx_vbytes(&self) -> Result<u64, Error> {
+        Ok(self.extract_tx()?.weight().to_vbytes_ceil())
     }
 }

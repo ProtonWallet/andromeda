@@ -833,14 +833,14 @@ impl WasmWalletClient {
     }
 
     #[wasm_bindgen(js_name = "deleteWalletTransaction")]
-    pub async fn delete_wallet_transactions(
+    pub async fn delete_wallet_transaction(
         &self,
         wallet_id: String,
         wallet_account_id: String,
         wallet_transaction_id: String,
     ) -> Result<(), JsValue> {
         self.0
-            .delete_wallet_transactions(wallet_id, wallet_account_id, wallet_transaction_id)
+            .delete_wallet_transaction(wallet_id, wallet_account_id, wallet_transaction_id)
             .await
             .map_err(|e| e.to_js_error())
     }

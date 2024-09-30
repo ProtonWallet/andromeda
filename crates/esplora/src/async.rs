@@ -86,7 +86,7 @@ impl AsyncClient {
     /// Get transaction info given it's [`Txid`].
     pub async fn get_tx_info(&self, txid: &Txid) -> Result<Option<Tx>, Error> {
         let info = self.transaction.get_transaction_info(txid.to_string()).await?;
-        Ok(Some(info.into()))
+        Ok(info.map(|i| i.into()))
     }
 
     #[deprecated(

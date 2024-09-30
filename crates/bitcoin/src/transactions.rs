@@ -56,6 +56,10 @@ pub struct TransactionDetails {
     /// with an Electrum Server backend, but it could be `None` with a
     /// Bitcoin RPC node without txindex that receive funds while offline.
     pub fees: Option<u64>,
+    /// Transaction size in vbytes.
+    /// Can be used to compute feerate for transaction given an absolute fee
+    /// amount
+    pub vbytes_size: u64,
     /// If the transaction is confirmed, contains height and Unix timestamp of
     /// the block containing the transaction, unconfirmed transaction
     /// contains `None`.
@@ -122,6 +126,7 @@ where
             sent: sent.to_sat(),
             fees: wallet_lock.calculate_fee(&self.tx_node.tx).ok().map(|a| a.to_sat()),
 
+            vbytes_size: self.tx_node.weight().to_vbytes_ceil(),
             time,
 
             inputs,
@@ -152,6 +157,7 @@ impl TransactionDetails {
             sent: sent.to_sat(),
 
             fees: wallet_lock.calculate_fee(&tx).ok().map(|a| a.to_sat()),
+            vbytes_size: tx.weight().to_vbytes_ceil(),
 
             time: TransactionTime::Unconfirmed {
                 last_seen: now().as_secs(),

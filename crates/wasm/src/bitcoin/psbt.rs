@@ -66,8 +66,8 @@ impl WasmPsbt {
         WasmPsbt::from_psbt(&mutable_psbt.into(), network.into())
     }
 
-    #[wasm_bindgen(js_name = computeTxSize)]
-    pub fn compute_tx_size(&self) -> Result<usize, JsValue> {
-        self.inner.compute_tx_size().map_err(|e| e.to_js_error())
+    #[wasm_bindgen(js_name = computeTxVbytes)]
+    pub fn compute_tx_vbytes(&self) -> Result<u64, JsValue> {
+        self.inner.compute_tx_vbytes().map_err(|e| e.to_js_error())
     }
 }
