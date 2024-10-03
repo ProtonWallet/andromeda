@@ -437,7 +437,7 @@ impl ApiClient for WalletClient {
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl WalletClientExt for WalletClient {
     async fn get_wallets(&self) -> Result<Vec<ApiWalletData>, Error> {
         let request = self.get("wallets");

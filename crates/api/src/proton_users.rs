@@ -214,7 +214,7 @@ pub struct EmptyResponseBody {
     pub Code: u32,
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 pub trait ProtonUsersClientExt {
     async fn get_auth_modulus(&self) -> Result<GetAuthModulusResponse, Error>;
 
@@ -253,7 +253,7 @@ impl ApiClient for ProtonUsersClient {
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl ProtonUsersClientExt for ProtonUsersClient {
     async fn get_auth_modulus(&self) -> Result<GetAuthModulusResponse, Error> {
         let request = self.get("auth/modulus");
