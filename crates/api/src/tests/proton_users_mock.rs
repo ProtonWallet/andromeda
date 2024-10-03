@@ -1,5 +1,6 @@
 #[cfg(feature = "mocking")]
 pub mod mock_utils {
+    use async_trait::async_trait;
     use mockall::mock;
 
     use crate::{
@@ -13,7 +14,7 @@ pub mod mock_utils {
     mock! {
         pub ProtonUsersClient {}
 
-        #[async_trait::async_trait]
+        #[async_trait(?Send)]
         impl ProtonUsersClientExt for ProtonUsersClient {
             async fn get_auth_modulus(&self) -> Result<GetAuthModulusResponse, Error>;
 

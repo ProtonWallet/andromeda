@@ -1,5 +1,6 @@
 #[cfg(feature = "mocking")]
 pub mod mock_utils {
+    use async_trait::async_trait;
     use mockall::mock;
 
     use crate::{
@@ -15,7 +16,7 @@ pub mod mock_utils {
     mock! {
         pub WalletClient {}
 
-        #[async_trait::async_trait]
+        #[async_trait(?Send)]
         impl WalletClientExt for WalletClient {
             async fn get_wallets(&self) -> Result<Vec<ApiWalletData>, Error>;
 
