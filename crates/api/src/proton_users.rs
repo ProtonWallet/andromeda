@@ -214,7 +214,8 @@ pub struct EmptyResponseBody {
     pub Code: u32,
 }
 
-#[async_trait(?Send)]
+#[cfg_attr(target_arch = "wasm32", async_trait::async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait::async_trait)]
 pub trait ProtonUsersClientExt {
     async fn get_auth_modulus(&self) -> Result<GetAuthModulusResponse, Error>;
 
@@ -253,7 +254,8 @@ impl ApiClient for ProtonUsersClient {
     }
 }
 
-#[async_trait(?Send)]
+#[cfg_attr(target_arch = "wasm32", async_trait::async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait::async_trait)]
 impl ProtonUsersClientExt for ProtonUsersClient {
     async fn get_auth_modulus(&self) -> Result<GetAuthModulusResponse, Error> {
         let request = self.get("auth/modulus");

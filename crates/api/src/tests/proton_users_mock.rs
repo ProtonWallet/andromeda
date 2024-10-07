@@ -14,7 +14,26 @@ pub mod mock_utils {
     mock! {
         pub ProtonUsersClient {}
 
-        #[async_trait(?Send)]
+        #[cfg(target_arch = "wasm32")]
+        #[async_trait::async_trait(?Send)]
+        impl ProtonUsersClientExt for ProtonUsersClient {
+            async fn get_auth_modulus(&self) -> Result<GetAuthModulusResponse, Error>;
+
+            async fn get_auth_info(&self, req: GetAuthInfoRequest) -> Result<GetAuthInfoResponseBody, Error>;
+
+            async fn unlock_password_change(&self, proofs: ProtonSrpClientProofs) -> Result<String, Error>;
+
+            async fn unlock_sensitive_settings(&self, proofs: ProtonSrpClientProofs) -> Result<String, Error>;
+
+            async fn lock_sensitive_settings(&self) -> Result<u32, Error>;
+
+            async fn get_user_info(&self) -> Result<ProtonUser, Error>;
+
+            async fn get_user_settings(&self) -> Result<ProtonUserSettings, Error>;
+        }
+
+        #[cfg(not(target_arch = "wasm32"))]
+        #[async_trait::async_trait]
         impl ProtonUsersClientExt for ProtonUsersClient {
             async fn get_auth_modulus(&self) -> Result<GetAuthModulusResponse, Error>;
 
