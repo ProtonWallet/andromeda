@@ -16,7 +16,8 @@ use crate::{
 /// Note: when adding new methods to this trait, make sure to implement them in
 ///  crates/api/src/tests/wallet_mock.rs
 ///  crates/api/src/wallet.rs
-#[async_trait(?Send)]
+#[cfg_attr(target_arch = "wasm32", async_trait::async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait::async_trait)]
 pub trait WalletClientExt {
     async fn get_wallets(&self) -> Result<Vec<ApiWalletData>, Error>;
 
