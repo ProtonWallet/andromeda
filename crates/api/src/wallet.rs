@@ -77,7 +77,7 @@ pub struct CreateWalletRequestBody {
     pub IsAutoCreated: u8,
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Clone, Deserialize, Default)]
 #[allow(non_snake_case)]
 pub struct ApiWalletKey {
     pub WalletID: String,
