@@ -94,6 +94,18 @@ impl WasmBlockchainClient {
         Ok(serde_wasm_bindgen::to_value(&fees_estimation).unwrap().into())
     }
 
+    #[wasm_bindgen(js_name = getMempoolMinFee)]
+    /// Return mempool minimum fee in sat/vB instead of BTC/kB
+    pub async fn get_mempool_min_fee(&mut self) -> Result<f32, JsValue> {
+        let mempool_min_fee = self
+            .inner
+            .get_mempool_minimum_fee()
+            .await
+            .map_err(|e| e.to_js_error())?;
+
+        Ok(mempool_min_fee * 100000.0)
+    }
+
     #[wasm_bindgen(js_name = fullSync)]
     pub async fn full_sync(&self, account: &WasmAccount, stop_gap: Option<usize>) -> Result<(), JsValue> {
         let account_inner = account.get_inner();

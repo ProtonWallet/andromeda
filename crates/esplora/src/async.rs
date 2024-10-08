@@ -13,6 +13,8 @@
 
 use std::{collections::HashMap, str::FromStr};
 
+use crate::{BlockStatus, BlockSummary, Error, MerkleProof, OutputStatus, Tx, TxStatus};
+use andromeda_api::transaction::MempoolInfo;
 use andromeda_api::{
     address::{AddressClient, ScriptHashTransactionsPayload},
     block::BlockClient,
@@ -28,8 +30,6 @@ use bitcoin::{
 };
 #[allow(unused_imports)]
 use log::{debug, error, info, trace};
-
-use crate::{BlockStatus, BlockSummary, Error, MerkleProof, OutputStatus, Tx, TxStatus};
 
 pub struct AsyncClient {
     transaction: TransactionClient,
@@ -261,6 +261,11 @@ impl AsyncClient {
     /// blocks) and the value is the estimated feerate (in sat/vB).
     pub async fn get_fee_estimates(&self) -> Result<HashMap<String, f64>, Error> {
         Ok(self.transaction.get_fee_estimates().await?)
+    }
+
+    /// Get mempool info.
+    pub async fn get_mempool_info(&self) -> Result<MempoolInfo, Error> {
+        Ok(self.transaction.get_mempool_info().await?)
     }
 
     /// Gets some recent block summaries starting at the tip or at `height` if

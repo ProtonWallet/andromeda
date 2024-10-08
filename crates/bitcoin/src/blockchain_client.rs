@@ -131,6 +131,13 @@ impl BlockchainClient {
         Ok(tip_hash != latest_chekpoint_hash)
     }
 
+    /// Returns mempool minimum fee
+    pub async fn get_mempool_minimum_fee(&self) -> Result<f32, Error> {
+        let mempool_info = self.0.get_mempool_info().await?;
+
+        Ok(mempool_info.MempoolMinFee)
+    }
+
     /// Returns fee estimations in a Map
     pub async fn get_fees_estimation(&self) -> Result<HashMap<String, f64>, Error> {
         let fees = self.0.get_fee_estimates().await?;

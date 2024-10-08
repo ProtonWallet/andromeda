@@ -113,6 +113,28 @@ struct GetFeeEstimateResponseBody {
     pub FeeEstimates: HashMap<String, f64>,
 }
 
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+pub struct MempoolInfo {
+    pub Loaded: u8,
+    pub Size: u32,
+    pub Bytes: u32,
+    pub Usage: u32,
+    pub MaxMempool: u32,
+    pub MempoolMinFee: f32,
+    pub MinRelayTxFee: f32,
+    pub UnbroadcastCount: u8,
+    pub FullRbf: u8,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+struct GetMempoolInfoResponseBody {
+    #[allow(dead_code)]
+    pub Code: u16,
+    pub MempoolInfo: MempoolInfo,
+}
+
 pub enum ExchangeRateOrTransactionTime {
     ExchangeRate(String),
     TransactionTime(String),
@@ -246,6 +268,15 @@ impl TransactionClient {
 
         Ok(parsed.FeeEstimates)
     }
+
+    pub async fn get_mempool_info(&self) -> Result<MempoolInfo, Error> {
+        let request = self.get("mempool/info");
+
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<GetMempoolInfoResponseBody>()?;
+
+        Ok(parsed.MempoolInfo)
+    }
 }
 
 #[cfg(test)]
@@ -338,5 +369,17 @@ mod tests {
 
         println!("request done: {:?}", fee_estimates);
         assert!(fee_estimates.is_ok());
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn should_get_mempool_info() {
+        let api_client = common_api_client().await;
+        let client = TransactionClient::new(api_client);
+
+        let mempool_info = client.get_mempool_info().await;
+
+        println!("request done: {:?}", mempool_info);
+        assert!(mempool_info.is_ok());
     }
 }
