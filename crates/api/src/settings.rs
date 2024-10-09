@@ -128,14 +128,22 @@ impl fmt::Display for FiatCurrencySymbol {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 pub struct UserSettings {
+    /// Flag if user had accepted terms and conditions, 0: no, 1: yes
+    pub AcceptTermsAndConditions: Option<u8>,
     pub BitcoinUnit: BitcoinUnit,
     pub FiatCurrency: FiatCurrencySymbol,
+    /// Hide empty used addresses, 0: disabled, 1: enabled
     pub HideEmptyUsedAddresses: u8,
+    /// Ask for 2FA verification when an amount threshold is reached
     pub TwoFactorAmountThreshold: Option<u64>,
+    /// Receive inviter notification, 0: disabled, 1: enabled
     pub ReceiveInviterNotification: Option<u8>,
+    /// Receive email integration notification, 0: disabled, 1: enabled
     pub ReceiveEmailIntegrationNotification: Option<u8>,
+    /// Receive transaction notification, 0: disabled, 1: enabled
+    pub ReceiveTransactionNotification: Option<u8>,
+    /// User has already created a wallet once, 0: no, 1: yes
     pub WalletCreated: Option<u8>,
-    pub AcceptTermsAndConditions: Option<u8>,
 }
 
 #[derive(Debug, Deserialize)]
