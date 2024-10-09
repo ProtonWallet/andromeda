@@ -1619,6 +1619,7 @@ mod tests {
                         "ID":"pIJGEYyNFsPEb61otAc47_X8eoSeAfMSokny6dmg3jg2JrcdohiRuWSN2i1rgnkEnZmolVx4Np96IcwxJh1WNw==",
                         "BitcoinUnit":"BTC",
                         "FiatCurrency":"EUR",
+                        "Sign": "€",
                         "ExchangeRateTime":"1714553312",
                         "ExchangeRate":5334511,
                         "Cents":100,

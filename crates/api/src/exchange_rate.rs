@@ -19,6 +19,8 @@ pub struct ApiExchangeRate {
     pub BitcoinUnit: BitcoinUnit,
     /// Fiat currency of the exchange rate
     pub FiatCurrency: FiatCurrencySymbol,
+    /// Sign of the fiat currency (e.g. € for EUR)
+    pub Sign: Option<String>,
     /// string <date-time>
     pub ExchangeRateTime: String,
     /// Exchange rate BitcoinUnit/FiatCurrency
