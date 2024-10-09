@@ -13,10 +13,12 @@ use crate::{
 pub struct Content {
     #[serde(alias = "title")]
     pub Title: String,
+    /// Article http link
     #[serde(alias = "link")]
     pub Link: String,
     #[serde(alias = "description")]
     pub Description: String,
+    /// Article publish date in unix timestamp
     #[serde(alias = "pubDate")]
     pub PubDate: i64,
     #[serde(alias = "author")]
