@@ -1113,6 +1113,7 @@
         "TwoFactorAmountThreshold": 1000,
         "ReceiveInviterNotification": 1,
         "ReceiveEmailIntegrationNotification": 1,
+        "ReceiveTransactionNotification": 1,
         "WalletCreated": 1
     },
     "Notices": [

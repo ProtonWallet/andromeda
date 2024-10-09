@@ -350,27 +350,29 @@ impl From<WasmFiatCurrencySymbol> for FiatCurrencySymbol {
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[allow(non_snake_case)]
 pub struct WasmUserSettings {
+    pub AcceptTermsAndConditions: Option<u8>,
     pub BitcoinUnit: WasmBitcoinUnit,
     pub FiatCurrency: WasmFiatCurrencySymbol,
     pub HideEmptyUsedAddresses: u8,
     pub TwoFactorAmountThreshold: Option<u64>,
     pub ReceiveInviterNotification: Option<u8>,
     pub ReceiveEmailIntegrationNotification: Option<u8>,
+    pub ReceiveTransactionNotification: Option<u8>,
     pub WalletCreated: Option<u8>,
-    pub AcceptTermsAndConditions: Option<u8>,
 }
 
 impl From<UserSettings> for WasmUserSettings {
     fn from(value: UserSettings) -> Self {
         Self {
+            AcceptTermsAndConditions: value.AcceptTermsAndConditions,
             BitcoinUnit: value.BitcoinUnit.into(),
             FiatCurrency: value.FiatCurrency.into(),
             HideEmptyUsedAddresses: value.HideEmptyUsedAddresses,
             TwoFactorAmountThreshold: value.TwoFactorAmountThreshold,
             ReceiveInviterNotification: value.ReceiveInviterNotification,
             ReceiveEmailIntegrationNotification: value.ReceiveEmailIntegrationNotification,
+            ReceiveTransactionNotification: value.ReceiveTransactionNotification,
             WalletCreated: value.WalletCreated,
-            AcceptTermsAndConditions: value.AcceptTermsAndConditions,
         }
     }
 }
