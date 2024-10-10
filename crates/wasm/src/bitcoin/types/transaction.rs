@@ -136,7 +136,7 @@ pub struct WasmTxOut {
     pub value: u64,
     pub script_pubkey: WasmScript,
     pub is_mine: bool,
-    pub address: String,
+    pub address: Option<String>,
 }
 
 impl Into<WasmTxOut> for DetailledTxOutput {
@@ -144,7 +144,7 @@ impl Into<WasmTxOut> for DetailledTxOutput {
         WasmTxOut {
             value: self.value,
             script_pubkey: self.script_pubkey.into(),
-            address: self.address.to_string(),
+            address: self.address.map(|a| a.to_string()),
             is_mine: self.is_mine,
         }
     }

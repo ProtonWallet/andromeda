@@ -204,7 +204,7 @@ impl DetailledTxIn {
 #[derive(Clone, Debug)]
 pub struct DetailledTxOutput {
     pub value: u64,
-    pub address: Address,
+    pub address: Option<Address>,
     pub script_pubkey: ScriptBuf,
     pub is_mine: bool,
 }
@@ -214,7 +214,7 @@ impl DetailledTxOutput {
         Ok(DetailledTxOutput {
             value: output.value.to_sat(),
             is_mine: wallet.is_mine(output.script_pubkey.clone()),
-            address: Address::from_script(output.script_pubkey.as_script(), wallet.network())?,
+            address: Address::from_script(output.script_pubkey.as_script(), wallet.network()).ok(),
             script_pubkey: output.script_pubkey,
         })
     }
