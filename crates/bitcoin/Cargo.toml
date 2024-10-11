@@ -8,7 +8,6 @@ andromeda-api = { version = "0.1.0", path = "../api" }
 andromeda-common = { version = "0.1.0", path = "../common" }
 andromeda-esplora = { version = "0.1.0", path = "../esplora" }
 
-serde = { workspace = true }
 uuid = { version = "1.6.1", features = ["v4", "fast-rng"] }
 urlencoding = "2.1.3"
 querystring = "1.1.0"
@@ -20,8 +19,6 @@ bitcoin = { workspace = true }
 miniscript = { version = "12.0.0", default-features = false }
 
 bdk_wallet = { workspace = true }
-bdk_esplora = { workspace = true }
-bdk_chain = { workspace = true }
 
 thiserror = { workspace = true }
 anyhow = { workspace = true }
