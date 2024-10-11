@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use async_trait::async_trait;
 use muon::rest::core::v4::{keys::salts::KeySalt, users::User};
 use serde::{Deserialize, Serialize};
 

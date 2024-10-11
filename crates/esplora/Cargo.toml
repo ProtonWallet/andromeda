@@ -6,10 +6,8 @@ edition = "2021"
 
 [dependencies]
 thiserror = { workspace = true }
-anyhow = { workspace = true }
 
 andromeda-api = { version = "0.1.0", path = "../api" }
-andromeda-common = { version = "0.1.0", path = "../common" }
 
 async-trait = { version = "0.1.66" }
 futures = { version = "0.3.26" }

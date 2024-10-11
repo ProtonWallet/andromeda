@@ -8,6 +8,5 @@ serde = { workspace = true }
 thiserror = { workspace = true }
 
 bitcoin = { workspace = true }
-bdk_wallet = { workspace = true }
 
 instant = { version = "0.1", features = ["wasm-bindgen"] }
