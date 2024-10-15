@@ -2,11 +2,13 @@ use std::{cmp::Ordering, sync::Arc};
 
 use andromeda_common::utils::now;
 use async_std::sync::RwLockReadGuard;
+use bdk_chain::tx_graph::TxNode;
 use bdk_wallet::{
     bitcoin::{bip32::DerivationPath, Address, ScriptBuf, Sequence, TxIn, TxOut, Txid, Witness},
     chain::{ChainPosition, ConfirmationBlockTime},
     PersistedWallet, Wallet as BdkWallet, WalletPersister, WalletTx,
 };
+use bitcoin::Transaction;
 
 use crate::{account::Account, error::Error, psbt::Psbt, storage::WalletPersisterConnector};
 
@@ -92,12 +94,18 @@ fn get_detailled_outputs(txout: Vec<TxOut>, wallet: &BdkWallet) -> Result<Vec<De
     Ok(outputs)
 }
 
-fn get_time(chain_position: ChainPosition<&ConfirmationBlockTime>) -> TransactionTime {
-    match chain_position {
-        ChainPosition::Confirmed(anchor) => TransactionTime::Confirmed {
-            confirmation_time: anchor.confirmation_time,
-        },
-        ChainPosition::Unconfirmed(last_seen) => TransactionTime::Unconfirmed { last_seen },
+fn get_time(chain_position: Option<ChainPosition<&ConfirmationBlockTime>>) -> TransactionTime {
+    if let Some(chain_position) = chain_position {
+        return match chain_position {
+            ChainPosition::Confirmed(anchor) => TransactionTime::Confirmed {
+                confirmation_time: anchor.confirmation_time,
+            },
+            ChainPosition::Unconfirmed(last_seen) => TransactionTime::Unconfirmed { last_seen },
+        };
+    }
+
+    TransactionTime::Unconfirmed {
+        last_seen: now().as_secs(),
     }
 }
 
@@ -115,7 +123,7 @@ where
     ) -> Result<TransactionDetails, Error> {
         let (sent, received) = wallet_lock.sent_and_received(&self.tx_node.tx);
 
-        let time = get_time(self.chain_position);
+        let time = get_time(Some(self.chain_position));
         let outputs = get_detailled_outputs(self.tx_node.output.clone(), wallet_lock)?;
         let inputs = get_detailled_inputs(self.tx_node.input.clone(), wallet_lock)?;
 
@@ -127,6 +135,50 @@ where
             fees: wallet_lock.calculate_fee(&self.tx_node.tx).ok().map(|a| a.to_sat()),
 
             vbytes_size: self.tx_node.weight().to_vbytes_ceil(),
+            time,
+
+            inputs,
+            outputs,
+
+            account_derivation_path,
+        })
+    }
+}
+
+impl<'a, P, A> ToTransactionDetails<(&RwLockReadGuard<'a, PersistedWallet<P>>, DerivationPath)>
+    for TxNode<'_, Arc<Transaction>, A>
+where
+    P: WalletPersister,
+{
+    fn to_transaction_details(
+        &self,
+        (wallet_lock, account_derivation_path): (&RwLockReadGuard<'a, PersistedWallet<P>>, DerivationPath),
+    ) -> Result<TransactionDetails, Error> {
+        let (sent, received) = wallet_lock.sent_and_received(&self.tx);
+
+        let time = get_time(
+            wallet_lock
+                .tx_graph()
+                .try_get_chain_position(
+                    wallet_lock.local_chain(),
+                    wallet_lock.local_chain().tip().block_id(),
+                    self.compute_txid(),
+                )
+                .ok()
+                .flatten(),
+        );
+
+        let outputs = get_detailled_outputs(self.output.clone(), wallet_lock)?;
+        let inputs = get_detailled_inputs(self.input.clone(), wallet_lock)?;
+
+        Ok(TransactionDetails {
+            txid: self.compute_txid(),
+
+            received: received.to_sat(),
+            sent: sent.to_sat(),
+            fees: wallet_lock.calculate_fee(&self.tx).ok().map(|a| a.to_sat()),
+
+            vbytes_size: self.weight().to_vbytes_ceil(),
             time,
 
             inputs,

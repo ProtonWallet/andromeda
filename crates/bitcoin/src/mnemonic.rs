@@ -232,10 +232,7 @@ mod tests {
         .unwrap();
 
         assert!(match mnemonic_error {
-            Error::Bip39(mnemonic_error) => match mnemonic_error {
-                Bip39Error::UnknownWord(word_index) => word_index == 0,
-                _ => false,
-            },
+            Error::Bip39(Bip39Error::UnknownWord(word_index)) => word_index == 0,
             _ => false,
         });
     }
@@ -250,10 +247,7 @@ mod tests {
         .unwrap();
 
         assert!(match mnemonic_error {
-            Error::Bip39(mnemonic_error) => match mnemonic_error {
-                Bip39Error::UnknownWord(word_index) => word_index == 0,
-                _ => false,
-            },
+            Error::Bip39(Bip39Error::UnknownWord(word_index)) => word_index == 0,
             _ => false,
         });
     }
@@ -268,10 +262,7 @@ mod tests {
         .unwrap();
 
         assert!(match mnemonic_error {
-            Error::Bip39(mnemonic_error) => match mnemonic_error {
-                Bip39Error::BadWordCount(word_count) => word_count == 11,
-                _ => false,
-            },
+            Error::Bip39(Bip39Error::BadWordCount(word_index)) => word_index == 11,
             _ => false,
         });
     }
@@ -286,10 +277,7 @@ mod tests {
         .unwrap();
 
         assert!(match mnemonic_error {
-            Error::Bip39(mnemonic_error) => match mnemonic_error {
-                Bip39Error::UnknownWord(word_index) => word_index == 0,
-                _ => false,
-            },
+            Error::Bip39(Bip39Error::UnknownWord(word_index)) => word_index == 0,
             _ => false,
         });
     }

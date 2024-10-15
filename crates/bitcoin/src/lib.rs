@@ -1,4 +1,5 @@
 pub mod account;
+pub mod address;
 pub mod bdk_wallet_ext;
 pub mod blockchain_client;
 pub mod error;
@@ -14,7 +15,6 @@ pub mod storage;
 
 #[cfg(feature = "sqlite")]
 pub use bdk_wallet::rusqlite::Connection;
-
 #[doc(hidden)]
 pub use bdk_wallet::{
     bitcoin::{

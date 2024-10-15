@@ -4,12 +4,13 @@ use andromeda_bitcoin::account::Account;
 use wasm_bindgen::prelude::*;
 
 use super::{
+    blockchain_client::WasmBlockchainClient,
     psbt::WasmPsbt,
     storage::{WalletWebConnector, WalletWebPersister, WalletWebPersisterFactory},
     types::{
-        address::WasmAddress,
+        address::{WasmAddress, WasmAddressDetailsArray, WasmAddressDetailsData},
         address_info::WasmAddressInfo,
-        balance::WasmBalance,
+        balance::{WasmBalance, WasmBalanceWrapper},
         derivation_path::WasmDerivationPath,
         pagination::{WasmPagination, WasmSortOrder},
         transaction::{WasmTransactionDetailsArray, WasmTransactionDetailsData},
@@ -102,10 +103,10 @@ impl WasmAccount {
     }
 
     #[wasm_bindgen(js_name = getBalance)]
-    pub async fn get_balance(&self) -> Result<WasmBalance, js_sys::Error> {
+    pub async fn get_balance(&self) -> Result<WasmBalanceWrapper, js_sys::Error> {
         let balance: WasmBalance = self.inner.get_balance().await.into();
 
-        Ok(balance)
+        Ok(WasmBalanceWrapper { data: balance })
     }
 
     #[wasm_bindgen(js_name = getDerivationPath)]
@@ -128,15 +129,34 @@ impl WasmAccount {
         Ok(WasmUtxoArray(utxos))
     }
 
+    #[wasm_bindgen(js_name = getAddresses)]
+    pub async fn get_addresses(
+        &self,
+        pagination: WasmPagination,
+        client: &WasmBlockchainClient,
+        force_sync: Option<bool>,
+    ) -> Result<WasmAddressDetailsArray, js_sys::Error> {
+        let address_details = self
+            .inner
+            .get_addresses(pagination.into(), client.into(), force_sync.unwrap_or(false))
+            .await
+            .map_err(|e| e.to_js_error())?
+            .into_iter()
+            .map(|address| WasmAddressDetailsData { Data: address.into() })
+            .collect::<Vec<_>>();
+
+        Ok(WasmAddressDetailsArray(address_details))
+    }
+
     #[wasm_bindgen(js_name = getTransactions)]
     pub async fn get_transactions(
         &self,
-        pagination: Option<WasmPagination>,
+        pagination: WasmPagination,
         sort: Option<WasmSortOrder>,
     ) -> Result<WasmTransactionDetailsArray, js_sys::Error> {
         let transactions = self
             .inner
-            .get_transactions(pagination.map(|pa| pa.into()), sort.map(|s| s.into()))
+            .get_transactions(pagination.into(), sort.map(|s| s.into()))
             .await
             .map_err(|e| e.to_js_error())?
             .into_iter()

@@ -54,10 +54,7 @@ impl WasmTransaction {
     #[wasm_bindgen(js_name = fromPsbt)]
     pub fn from_psbt(value: WasmPsbt) -> Result<WasmTransaction, js_sys::Error> {
         Ok(WasmTransaction {
-            inner: value
-                .get_inner()
-                .extract_tx()
-                .map_err(|e| BitcoinError::from(e).to_js_error())?,
+            inner: value.get_inner().extract_tx().map_err(|e| e.to_js_error())?,
         })
     }
 }
@@ -66,8 +63,8 @@ impl WasmTransaction {
 impl WasmScript {
     #[wasm_bindgen(js_name = toAddress)]
     pub fn to_address(&self, network: WasmNetwork) -> Result<WasmAddress, js_sys::Error> {
-        let script_bug: ScriptBuf = self.into();
-        let address = Address::from_script(script_bug.as_script(), ConsensusParams::new(network.into()))
+        let script_buf: ScriptBuf = self.into();
+        let address = Address::from_script(script_buf.as_script(), ConsensusParams::new(network.into()))
             .map_err(|e| BitcoinError::from(e).to_js_error())?;
 
         Ok(address.into())

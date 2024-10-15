@@ -1,7 +1,9 @@
 use bdk_wallet::{KeychainKind, Wallet};
+use bitcoin::OutPoint;
 
 pub trait BdkWalletExt {
     fn mark_used_to(&mut self, keychain: KeychainKind, from: u32, to: Option<u32>);
+    fn outpoints_from_spk_index(&self, index: u32) -> impl Iterator<Item = (u32, OutPoint)>;
 }
 
 impl BdkWalletExt for Wallet {
@@ -58,5 +60,11 @@ impl BdkWalletExt for Wallet {
         for index in from..to {
             self.mark_used(keychain, index);
         }
+    }
+
+    fn outpoints_from_spk_index(&self, index: u32) -> impl Iterator<Item = (u32, OutPoint)> {
+        self.spk_index()
+            .keychain_outpoints(KeychainKind::External)
+            .filter(move |(i, _)| *i == index)
     }
 }

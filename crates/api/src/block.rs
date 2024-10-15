@@ -101,6 +101,7 @@ struct GetTipHashResponseBody {
     pub BlockHash: String,
 }
 
+#[derive(Clone)]
 pub struct BlockClient {
     api_client: Arc<ProtonWalletApiClient>,
 }

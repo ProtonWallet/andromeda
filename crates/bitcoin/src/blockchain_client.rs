@@ -3,23 +3,30 @@ use std::collections::HashMap;
 use andromeda_api::{transaction::ExchangeRateOrTransactionTime, ProtonWalletApiClient};
 use andromeda_esplora::{AsyncClient, EsploraAsyncExt};
 use async_std::sync::RwLockReadGuard;
+use bdk_chain::spk_client::SyncRequest;
 use bdk_wallet::{
     bitcoin::{Transaction, Txid},
     chain::spk_client::{FullScanResult, SyncResult},
     KeychainKind, PersistedWallet, WalletPersister,
 };
+use bitcoin::ScriptBuf;
 
 use crate::{account::Account, error::Error, storage::WalletPersisterConnector};
 
 pub const DEFAULT_STOP_GAP: usize = 50;
 pub const PARALLEL_REQUESTS: usize = 5;
 
+#[derive(Clone)]
 pub struct BlockchainClient(AsyncClient);
 
 impl BlockchainClient {
     pub fn new(proton_api_client: ProtonWalletApiClient) -> Self {
         let client = AsyncClient::from_client(proton_api_client);
         BlockchainClient(client)
+    }
+
+    pub fn inner(&self) -> &AsyncClient {
+        &self.0
     }
 
     /// Given a stop gap (10 currently, hard-coded) and a descriptor, we query
@@ -89,6 +96,20 @@ impl BlockchainClient {
             .start_sync_with_revealed_spks()
             .outpoints(utxos.into_iter())
             .txids(unconfirmed_txids.into_iter());
+
+        let update = self.0.sync(request, PARALLEL_REQUESTS).await?;
+
+        Ok(update)
+    }
+
+    pub async fn sync_spks<'a, P>(
+        &self,
+        wallet: &RwLockReadGuard<'a, PersistedWallet<P>>,
+        spks_to_sync: Vec<ScriptBuf>,
+    ) -> Result<SyncResult, Error> {
+        let request = SyncRequest::builder()
+            .chain_tip(wallet.local_chain().tip())
+            .spks(spks_to_sync);
 
         let update = self.0.sync(request, PARALLEL_REQUESTS).await?;
 

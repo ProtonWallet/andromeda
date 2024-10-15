@@ -11,7 +11,11 @@
 
 //! Esplora by way of `reqwest` HTTP client.
 
-use std::{collections::HashMap, str::FromStr};
+use std::{
+    collections::{HashMap, HashSet},
+    str::FromStr,
+    sync::Arc,
+};
 
 use crate::{BlockStatus, BlockSummary, Error, MerkleProof, OutputStatus, Tx, TxStatus};
 use andromeda_api::transaction::MempoolInfo;
@@ -24,17 +28,24 @@ use andromeda_api::{
 use bitcoin::{
     block::Header as BlockHeader,
     consensus::{deserialize, serialize},
-    hashes::{hex::FromHex, sha256, Hash},
+    hashes::hex::FromHex,
     hex::DisplayHex,
     Block, BlockHash, MerkleBlock, ScriptBuf, Transaction, Txid,
 };
-#[allow(unused_imports)]
-use log::{debug, error, info, trace};
+use futures::lock::Mutex;
+
+#[derive(Clone)]
 
 pub struct AsyncClient {
     transaction: TransactionClient,
     address: AddressClient,
     block: BlockClient,
+
+    /// Set of spks that have been fetched at least once
+    ///
+    /// It is aims to be used to know whether or not an automatic
+    /// sync should be triggered for a given spk
+    fetched_spks: Arc<Mutex<HashSet<String>>>,
 }
 
 const TRANSACTIONS_PER_PAGE: u32 = 25;
@@ -52,7 +63,18 @@ impl AsyncClient {
             transaction,
             address,
             block,
+
+            fetched_spks: Arc::new(Mutex::new(HashSet::new())),
         }
+    }
+
+    /// Returns an iterator we only spks that haven't been fetched yet
+    pub async fn filter_already_fetched(&self, spks: Vec<ScriptBuf>) -> Vec<ScriptBuf> {
+        let fetched_spks = self.fetched_spks.lock().await;
+
+        spks.into_iter()
+            .filter(|spk| !fetched_spks.contains(&spk.to_hex_string()))
+            .collect::<_>()
     }
 
     /// Get a [`Transaction`] option given its [`Txid`]
@@ -152,6 +174,7 @@ impl AsyncClient {
     }
 
     /// Broadcast a [`Transaction`] to Esplora
+    #[allow(clippy::too_many_arguments)]
     pub async fn broadcast(
         &self,
         transaction: &Transaction,
@@ -215,7 +238,7 @@ impl AsyncClient {
     ) -> Result<HashMap<String, (u32, Vec<Tx>)>, Error> {
         let mut txs_by_spk_map: HashMap<String, (u32, Vec<Tx>)> = scripts
             .into_iter()
-            .map(|(spk_index, spk)| (sha256::Hash::hash(spk.as_bytes()).to_string(), (spk_index, Vec::new())))
+            .map(|(spk_index, spk)| (spk.to_hex_string(), (spk_index, Vec::new())))
             .collect::<HashMap<_, _>>();
 
         let mut remaining_spks_to_fetch = txs_by_spk_map
@@ -232,8 +255,12 @@ impl AsyncClient {
                 .get_scripthashes_transactions(remaining_spks_to_fetch.clone())
                 .await?;
 
+            let mut fetched_spks = self.fetched_spks.lock().await;
+
             let mut new_remaining_spks_to_fetch = Vec::<ScriptHashTransactionsPayload>::new();
             fetched_txs_by_spk.iter().for_each(|(spk, fetched_txs)| {
+                fetched_spks.insert(spk.clone());
+
                 // Extends txs vectors with newly fetched transations
                 let (_index, txs) = txs_by_spk_map.get_mut(spk).expect("Should be in the init hashmap");
                 txs.extend(fetched_txs.clone().into_iter().map(|tx| tx.into()));

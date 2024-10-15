@@ -1,6 +1,11 @@
 use andromeda_bitcoin::Balance;
+use serde::{Deserialize, Serialize};
+use tsify::Tsify;
 use wasm_bindgen::prelude::*;
-#[wasm_bindgen]
+
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+#[allow(non_snake_case)]
 pub struct WasmBalance {
     /// All coinbase outputs not yet matured
     pub immature: u64,
@@ -21,4 +26,10 @@ impl Into<WasmBalance> for Balance {
             confirmed: self.confirmed.to_sat(),
         }
     }
+}
+
+#[wasm_bindgen(getter_with_clone)]
+#[derive(Clone, Serialize)]
+pub struct WasmBalanceWrapper {
+    pub data: WasmBalance,
 }
