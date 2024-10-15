@@ -6,8 +6,12 @@ use std::{
 
 use andromeda_api::{ApiConfig, ProtonWalletApiClient};
 use andromeda_bitcoin::{
-    account::Account, blockchain_client::BlockchainClient, storage::MemoryPersisted, transactions::TransactionTime,
-    wallet::Wallet, DerivationPath,
+    account::Account,
+    blockchain_client::BlockchainClient,
+    storage::MemoryPersisted,
+    transactions::{Pagination, TransactionTime},
+    wallet::Wallet,
+    DerivationPath,
 };
 use andromeda_common::{Network, ScriptType};
 
@@ -215,7 +219,7 @@ async fn get_account_transactions(
 
     println!("\nTRANSACTIONS");
     account
-        .get_transactions(None, None)
+        .get_transactions(Pagination::default(), None)
         .await
         .map_err(|_| "Cannot get transactions")?
         .into_iter()

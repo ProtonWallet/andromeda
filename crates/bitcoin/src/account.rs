@@ -18,7 +18,9 @@ use miniscript::{descriptor::DescriptorSecretKey, DescriptorPublicKey};
 
 use super::{payment_link::PaymentLink, transactions::Pagination, utils::sort_and_paginate_txs};
 use crate::{
+    address::AddressDetails,
     bdk_wallet_ext::BdkWalletExt,
+    blockchain_client::BlockchainClient,
     error::Error,
     psbt::Psbt,
     storage::{WalletConnectorFactory, WalletPersisterConnector},
@@ -307,8 +309,7 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
         Ok(PaymentLink::new_bitcoin_uri(address.address, amount, label, message))
     }
 
-    /// Returns a list of transactions, optionnally paginated. Maybe later we
-    /// might force the pagination if not provided.
+    /// Returns a paginated list of transactions.
     ///
     /// # Notes
     ///
@@ -317,11 +318,9 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
     /// can be called with txid
     pub async fn get_transactions(
         &self,
-        pagination: Option<Pagination>,
+        pagination: Pagination,
         sort: Option<SortOrder>,
     ) -> Result<Vec<TransactionDetails>, Error> {
-        let pagination = pagination.unwrap_or_default();
-
         let wallet_lock = self.get_wallet().await;
         let transactions = wallet_lock.transactions().collect::<Vec<_>>();
 
@@ -334,6 +333,87 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(sort_and_paginate_txs(transactions, pagination, sort))
+    }
+
+    /// Returns a paginated list of addresses.
+    ///
+    /// # Notes
+    ///
+    /// Each returned address detail contains balance and transactions
+    /// with output to the address, in addition to index and serialised
+    /// address. It can then be used to build an address list with enhanced
+    /// details
+    ///
+    /// It currently only supports External keychain
+    pub async fn get_addresses(
+        &self,
+        pagination: Pagination,
+        client: Arc<BlockchainClient>,
+        force_sync: bool,
+    ) -> Result<Vec<AddressDetails>, Error> {
+        let (skip, take) = (pagination.skip as u32, pagination.take as u32);
+        let spks_range = skip..(skip + take - 1);
+
+        // We need to reveal addresses to be able to sync them
+        let mut wallet_lock = self.get_mutable_wallet().await;
+        let _ = wallet_lock.reveal_addresses_to(KeychainKind::External, spks_range.end);
+        drop(wallet_lock);
+
+        let wallet_lock = self.get_wallet().await;
+        let spks = spks_range
+            .clone()
+            .filter_map(|index| wallet_lock.spk_index().spk_at_index(KeychainKind::External, index))
+            .collect::<Vec<_>>();
+
+        // Sync missing spks (or all if forced)
+        let spks_to_sync = if force_sync {
+            spks
+        } else {
+            client.inner().filter_already_fetched(spks).await
+        };
+
+        if !spks_to_sync.is_empty() {
+            let update = client.sync_spks(&wallet_lock, spks_to_sync).await?;
+
+            // drop the wallet lock to let mutable lock to apply update
+            drop(wallet_lock);
+            self.apply_update(update).await?;
+        }
+
+        // get readable lock again
+        let wallet_lock = self.get_wallet().await;
+
+        // Find tx data from spk
+        let mut address_details = Vec::new();
+        for spk_index in spks_range {
+            let outpoints = wallet_lock.outpoints_from_spk_index(spk_index);
+            let spk_balance = wallet_lock.tx_graph().balance(
+                wallet_lock.local_chain(),
+                wallet_lock.local_chain().tip().block_id(),
+                outpoints,
+                |_, _| false,
+            );
+
+            let transactions = wallet_lock
+                .outpoints_from_spk_index(spk_index)
+                .filter_map(|(_, op)| wallet_lock.tx_graph().get_tx_node(op.txid))
+                .map(|tx_node| tx_node.to_transaction_details((&wallet_lock, self.get_derivation_path())))
+                .collect::<Result<Vec<_>, _>>()?;
+
+            let address_str = wallet_lock
+                .peek_address(KeychainKind::External, spk_index)
+                .address
+                .to_string();
+
+            address_details.push(AddressDetails {
+                index: spk_index,
+                address: address_str,
+                balance: spk_balance,
+                transactions,
+            });
+        }
+
+        Ok(address_details)
     }
 
     /// Given a txid, returns a complete transaction    

@@ -1,10 +1,14 @@
 use std::str::FromStr;
 
-use andromeda_bitcoin::{error::Error as BitcoinError, Address, ConsensusParams, ScriptBuf};
+use andromeda_bitcoin::{address::AddressDetails, error::Error as BitcoinError, Address, ConsensusParams, ScriptBuf};
 use serde::{Deserialize, Deserializer, Serialize};
+use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
-use super::transaction::WasmScript;
+use super::{
+    balance::WasmBalance,
+    transaction::{WasmScript, WasmTransactionDetails},
+};
 use crate::common::{error::ErrorExt, types::WasmNetwork};
 
 #[wasm_bindgen]
@@ -73,3 +77,38 @@ impl WasmAddress {
         self.inner.script_pubkey().into()
     }
 }
+
+// Address Details
+
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+#[allow(non_snake_case)]
+pub struct WasmAddressDetails {
+    pub index: u32,
+    pub address: String,
+    pub transactions: Vec<WasmTransactionDetails>,
+    pub balance: WasmBalance,
+}
+
+impl Into<WasmAddressDetails> for AddressDetails {
+    fn into(self) -> WasmAddressDetails {
+        WasmAddressDetails {
+            index: self.index,
+            address: self.address,
+            transactions: self.transactions.into_iter().map(|t| t.into()).collect::<Vec<_>>(),
+            balance: self.balance.into(),
+        }
+    }
+}
+
+// We need this wrapper because unfortunately, tsify doesn't support
+// VectoIntoWasmAbi yet
+#[wasm_bindgen(getter_with_clone)]
+#[derive(Clone)]
+#[allow(non_snake_case)]
+pub struct WasmAddressDetailsData {
+    pub Data: WasmAddressDetails,
+}
+
+#[wasm_bindgen(getter_with_clone)]
+pub struct WasmAddressDetailsArray(pub Vec<WasmAddressDetailsData>);

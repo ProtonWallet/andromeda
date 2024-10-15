@@ -108,9 +108,7 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Wallet<C, P> {
 
         let balance = account_balances
             .into_iter()
-            .fold(Ok(init), |acc: Result<Balance, Error>, account_balance| {
-                acc.map(|acc| acc + account_balance)
-            })?;
+            .fold(init, |acc: Balance, account_balance| acc + account_balance);
 
         Ok(balance)
     }

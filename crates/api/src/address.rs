@@ -10,6 +10,7 @@ use crate::{
     ProtonWalletApiClient,
 };
 
+#[derive(Clone)]
 pub struct AddressClient {
     api_client: Arc<ProtonWalletApiClient>,
 }

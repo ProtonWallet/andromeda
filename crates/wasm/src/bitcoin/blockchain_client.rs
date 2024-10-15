@@ -1,10 +1,7 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use andromeda_api::transaction::ExchangeRateOrTransactionTime;
-use andromeda_bitcoin::{
-    blockchain_client::{self, BlockchainClient},
-    error::Error as BitcoinError,
-};
+use andromeda_bitcoin::blockchain_client::{self, BlockchainClient};
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
@@ -19,7 +16,7 @@ pub fn get_default_stop_gap() -> usize {
 
 #[wasm_bindgen(getter_with_clone)]
 pub struct WasmBlockchainClient {
-    inner: BlockchainClient,
+    inner: Arc<BlockchainClient>,
 }
 
 #[wasm_bindgen]
@@ -28,9 +25,9 @@ extern "C" {
     pub type FeeRateByBlockEstimation;
 }
 
-impl Into<BlockchainClient> for WasmBlockchainClient {
-    fn into(self) -> BlockchainClient {
-        self.inner
+impl Into<Arc<BlockchainClient>> for &WasmBlockchainClient {
+    fn into(self) -> Arc<BlockchainClient> {
+        self.inner.clone()
     }
 }
 
@@ -84,7 +81,7 @@ impl WasmBlockchainClient {
     #[wasm_bindgen(constructor)]
     pub fn new(proton_api_client: &WasmProtonWalletApiClient) -> Result<WasmBlockchainClient, JsValue> {
         let inner = BlockchainClient::new(proton_api_client.into());
-        Ok(WasmBlockchainClient { inner })
+        Ok(WasmBlockchainClient { inner: Arc::new(inner) })
     }
 
     #[wasm_bindgen(js_name = getFeesEstimation)]
@@ -116,10 +113,7 @@ impl WasmBlockchainClient {
             .await
             .map_err(|e| e.to_js_error())?;
 
-        account_inner
-            .apply_update(update)
-            .await
-            .map_err(|e| BitcoinError::from(e).to_js_error())?;
+        account_inner.apply_update(update).await.map_err(|e| e.to_js_error())?;
 
         Ok(())
     }
@@ -135,10 +129,7 @@ impl WasmBlockchainClient {
             .await
             .map_err(|e| e.to_js_error())?;
 
-        account_inner
-            .apply_update(update)
-            .await
-            .map_err(|e| BitcoinError::from(e).to_js_error())?;
+        account_inner.apply_update(update).await.map_err(|e| e.to_js_error())?;
 
         Ok(())
     }

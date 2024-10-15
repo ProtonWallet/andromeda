@@ -19,6 +19,7 @@ bitcoin = { workspace = true }
 miniscript = { version = "12.0.0", default-features = false }
 
 bdk_wallet = { workspace = true }
+bdk_chain = { workspace = true }
 
 thiserror = { workspace = true }
 anyhow = { workspace = true }

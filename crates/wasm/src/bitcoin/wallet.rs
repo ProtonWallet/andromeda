@@ -8,7 +8,7 @@ use super::{
     account::WasmAccount,
     storage::{WalletWebConnector, WalletWebPersister, WalletWebPersisterFactory},
     types::{
-        balance::WasmBalance,
+        balance::WasmBalanceWrapper,
         derivation_path::WasmDerivationPath,
         pagination::{WasmPagination, WasmSortOrder},
         transaction::{WasmTransactionDetailsArray, WasmTransactionDetailsData},
@@ -117,9 +117,10 @@ impl WasmWallet {
     }
 
     #[wasm_bindgen(js_name = getBalance)]
-    pub async fn get_balance(&self) -> Result<WasmBalance, js_sys::Error> {
+    pub async fn get_balance(&self) -> Result<WasmBalanceWrapper, js_sys::Error> {
         let balance = self.inner.get_balance().await.map_err(|e| e.to_js_error())?;
-        Ok(balance.into())
+
+        Ok(WasmBalanceWrapper { data: balance.into() })
     }
 
     #[wasm_bindgen(js_name = getTransactions)]
