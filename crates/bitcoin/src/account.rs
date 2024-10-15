@@ -460,7 +460,6 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
         let mut wallet_lock: RwLockWriteGuard<'_, PersistedWallet<P>> = self.get_mutable_wallet().await;
         let mut fee_bump_tx = wallet_lock.build_fee_bump(Txid::from_str(&txid)?)?;
 
-        fee_bump_tx.enable_rbf();
         fee_bump_tx.fee_absolute(Amount::from_sat(fees));
 
         let psbt = fee_bump_tx.finish()?;
