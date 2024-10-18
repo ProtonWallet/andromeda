@@ -1,6 +1,5 @@
 #[cfg(feature = "mocking")]
 pub mod mock_utils {
-    use async_trait::async_trait;
     use mockall::mock;
 
     use crate::{

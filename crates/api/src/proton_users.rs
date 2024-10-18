@@ -111,7 +111,7 @@ pub struct ApiProtonUserResponse {
     User: ProtonUser,
 }
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
 #[allow(non_snake_case)]
 pub struct ProtonUser {
     pub ID: String,
@@ -133,7 +133,7 @@ pub struct ProtonUser {
     pub Keys: Option<Vec<ProtonUserKey>>,
     pub MnemonicStatus: u32,
 }
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[allow(non_snake_case)]
 pub struct ProtonUserKey {
     pub ID: String,
