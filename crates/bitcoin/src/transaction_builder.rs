@@ -462,10 +462,6 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> TxBuilder<C, P> {
             tx_builder.drain_wallet();
         }
 
-        if self.rbf_enabled {
-            tx_builder.enable_rbf();
-        }
-
         if !&self.data.is_empty() {
             let mut buf = PushBytesBuf::new();
             buf.extend_from_slice(self.data.as_slice())
