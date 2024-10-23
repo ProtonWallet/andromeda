@@ -38,6 +38,11 @@ impl WasmDerivationPath {
             inner: DerivationPath::from_str(&str).map_err(|e| BitcoinError::from(e).to_js_error())?,
         })
     }
+
+    #[wasm_bindgen(js_name = toString)]
+    pub fn to_str(&self) -> String {
+        self.inner.to_string()
+    }
 }
 
 impl WasmDerivationPath {
