@@ -3,7 +3,7 @@ use bitcoin::OutPoint;
 
 pub trait BdkWalletExt {
     fn mark_used_to(&mut self, keychain: KeychainKind, from: u32, to: Option<u32>);
-    fn outpoints_from_spk_index(&self, index: u32) -> impl Iterator<Item = (u32, OutPoint)>;
+    fn outpoints_from_spk_index(&self, keychain: KeychainKind, index: u32) -> impl Iterator<Item = (u32, OutPoint)>;
 }
 
 impl BdkWalletExt for Wallet {
@@ -62,9 +62,9 @@ impl BdkWalletExt for Wallet {
         }
     }
 
-    fn outpoints_from_spk_index(&self, index: u32) -> impl Iterator<Item = (u32, OutPoint)> {
+    fn outpoints_from_spk_index(&self, keychain: KeychainKind, index: u32) -> impl Iterator<Item = (u32, OutPoint)> {
         self.spk_index()
-            .keychain_outpoints(KeychainKind::External)
+            .keychain_outpoints(keychain)
             .filter(move |(i, _)| *i == index)
     }
 }
