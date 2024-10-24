@@ -28,7 +28,7 @@ use andromeda_api::{
 use bitcoin::{
     block::Header as BlockHeader,
     consensus::{deserialize, serialize},
-    hashes::hex::FromHex,
+    hashes::{hex::FromHex, sha256, Hash},
     hex::DisplayHex,
     Block, BlockHash, MerkleBlock, ScriptBuf, Transaction, Txid,
 };
@@ -49,6 +49,10 @@ pub struct AsyncClient {
 }
 
 const TRANSACTIONS_PER_PAGE: u32 = 25;
+
+fn hash_spk(spk: &ScriptBuf) -> String {
+    sha256::Hash::hash(spk.as_bytes()).to_string()
+}
 
 impl AsyncClient {
     /// build an async client from the base url and [`Client`]
@@ -73,7 +77,7 @@ impl AsyncClient {
         let fetched_spks = self.fetched_spks.lock().await;
 
         spks.into_iter()
-            .filter(|spk| !fetched_spks.contains(&spk.to_hex_string()))
+            .filter(|spk| !fetched_spks.contains(&hash_spk(spk)))
             .collect::<_>()
     }
 
@@ -238,7 +242,7 @@ impl AsyncClient {
     ) -> Result<HashMap<String, (u32, Vec<Tx>)>, Error> {
         let mut txs_by_spk_map: HashMap<String, (u32, Vec<Tx>)> = scripts
             .into_iter()
-            .map(|(spk_index, spk)| (spk.to_hex_string(), (spk_index, Vec::new())))
+            .map(|(spk_index, spk)| (hash_spk(&spk), (spk_index, Vec::new())))
             .collect::<HashMap<_, _>>();
 
         let mut remaining_spks_to_fetch = txs_by_spk_map

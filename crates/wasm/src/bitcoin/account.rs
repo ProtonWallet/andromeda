@@ -20,7 +20,7 @@ use super::{
 };
 use crate::common::{
     error::ErrorExt,
-    types::{WasmNetwork, WasmScriptType},
+    types::{WasmKeychainKind, WasmNetwork, WasmScriptType},
 };
 
 #[wasm_bindgen]
@@ -134,11 +134,17 @@ impl WasmAccount {
         &self,
         pagination: WasmPagination,
         client: &WasmBlockchainClient,
+        keychain: WasmKeychainKind,
         force_sync: Option<bool>,
     ) -> Result<WasmAddressDetailsArray, js_sys::Error> {
         let address_details = self
             .inner
-            .get_addresses(pagination.into(), client.into(), force_sync.unwrap_or(false))
+            .get_addresses(
+                pagination.into(),
+                client.into(),
+                keychain.into(),
+                force_sync.unwrap_or(false),
+            )
             .await
             .map_err(|e| e.to_js_error())?
             .into_iter()
