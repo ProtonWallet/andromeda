@@ -123,6 +123,7 @@ pub struct MempoolInfo {
     pub MaxMempool: u32,
     pub MempoolMinFee: f32,
     pub MinRelayTxFee: f32,
+    pub IncrementalRelayFee: f32,
     pub UnbroadcastCount: u8,
     pub FullRbf: u8,
 }
