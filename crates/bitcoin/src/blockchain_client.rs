@@ -159,6 +159,14 @@ impl BlockchainClient {
         Ok(mempool_info.MempoolMinFee)
     }
 
+    /// Returns minimum replacement fee
+    pub async fn get_minimum_replacement_fee(&self) -> Result<f32, Error> {
+        let mempool_info = self.0.get_mempool_info().await?;
+        let max_value_relay_fee = f32::max(mempool_info.IncrementalRelayFee, mempool_info.MinRelayTxFee);
+
+        Ok(f32::max(mempool_info.MempoolMinFee, max_value_relay_fee))
+    }
+
     /// Returns fee estimations in a Map
     pub async fn get_fees_estimation(&self) -> Result<HashMap<String, f64>, Error> {
         let fees = self.0.get_fee_estimates().await?;
