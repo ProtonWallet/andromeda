@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::{account::Account, error::Error, storage::WalletPersisterConnector};
 use andromeda_api::{transaction::ExchangeRateOrTransactionTime, ProtonWalletApiClient};
 use andromeda_esplora::{AsyncClient, EsploraAsyncExt};
 use async_std::sync::RwLockReadGuard;
@@ -10,14 +11,20 @@ use bdk_wallet::{
     KeychainKind, PersistedWallet, WalletPersister,
 };
 use bitcoin::ScriptBuf;
-
-use crate::{account::Account, error::Error, storage::WalletPersisterConnector};
+use serde::{Deserialize, Serialize};
 
 pub const DEFAULT_STOP_GAP: usize = 50;
 pub const PARALLEL_REQUESTS: usize = 5;
 
 #[derive(Clone)]
 pub struct BlockchainClient(AsyncClient);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(non_snake_case)]
+pub struct MinimumFees {
+    pub MinimumBroadcastFee: f32,
+    pub MinimumIncrementalFee: f32,
+}
 
 impl BlockchainClient {
     pub fn new(proton_api_client: ProtonWalletApiClient) -> Self {
@@ -152,19 +159,19 @@ impl BlockchainClient {
         Ok(tip_hash != latest_chekpoint_hash)
     }
 
-    /// Returns mempool minimum fee
-    pub async fn get_mempool_minimum_fee(&self) -> Result<f32, Error> {
+    /// Returns mempool minimum fee, minimum relay tx fee and incremental relay fee in sat/vB instead of BTC/kB
+    pub async fn get_minimum_fees(&self) -> Result<MinimumFees, Error> {
         let mempool_info = self.0.get_mempool_info().await?;
+        let minimum_broadcast_fee = f32::max(
+            mempool_info.MempoolMinFee * 100000.0,
+            mempool_info.MinRelayTxFee * 100000.0,
+        );
+        let minimum_incremental_fee = f32::max(minimum_broadcast_fee, mempool_info.IncrementalRelayFee * 100000.0);
 
-        Ok(mempool_info.MempoolMinFee)
-    }
-
-    /// Returns minimum replacement fee
-    pub async fn get_minimum_replacement_fee(&self) -> Result<f32, Error> {
-        let mempool_info = self.0.get_mempool_info().await?;
-        let max_value_relay_fee = f32::max(mempool_info.IncrementalRelayFee, mempool_info.MinRelayTxFee);
-
-        Ok(f32::max(mempool_info.MempoolMinFee, max_value_relay_fee))
+        Ok(MinimumFees {
+            MinimumBroadcastFee: minimum_broadcast_fee,
+            MinimumIncrementalFee: minimum_incremental_fee,
+        })
     }
 
     /// Returns fee estimations in a Map
