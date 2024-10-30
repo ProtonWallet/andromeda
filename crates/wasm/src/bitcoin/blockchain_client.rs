@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use andromeda_api::transaction::ExchangeRateOrTransactionTime;
-use andromeda_bitcoin::blockchain_client::{self, BlockchainClient};
+use andromeda_bitcoin::blockchain_client::{self, BlockchainClient, MinimumFees};
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
@@ -23,6 +23,22 @@ pub struct WasmBlockchainClient {
 extern "C" {
     #[wasm_bindgen(typescript_type = "Map<string, number>")]
     pub type FeeRateByBlockEstimation;
+}
+
+#[wasm_bindgen]
+#[allow(non_snake_case)]
+pub struct WasmMinimumFees {
+    pub MinimumBroadcastFee: f32,
+    pub MinimumIncrementalFee: f32,
+}
+
+impl From<MinimumFees> for WasmMinimumFees {
+    fn from(value: MinimumFees) -> Self {
+        WasmMinimumFees {
+            MinimumBroadcastFee: value.MinimumBroadcastFee,
+            MinimumIncrementalFee: value.MinimumIncrementalFee,
+        }
+    }
 }
 
 impl Into<Arc<BlockchainClient>> for &WasmBlockchainClient {
@@ -91,28 +107,11 @@ impl WasmBlockchainClient {
         Ok(serde_wasm_bindgen::to_value(&fees_estimation).unwrap().into())
     }
 
-    #[wasm_bindgen(js_name = getMempoolMinFee)]
-    /// Return mempool minimum fee in sat/vB instead of BTC/kB
-    pub async fn get_mempool_min_fee(&mut self) -> Result<f32, JsValue> {
-        let mempool_min_fee = self
-            .inner
-            .get_mempool_minimum_fee()
-            .await
-            .map_err(|e| e.to_js_error())?;
+    #[wasm_bindgen(js_name = getMininumFees)]
+    pub async fn get_minimum_fees(&mut self) -> Result<WasmMinimumFees, JsValue> {
+        let minimum_fees = self.inner.get_minimum_fees().await.map_err(|e| e.to_js_error())?;
 
-        Ok(mempool_min_fee * 100000.0)
-    }
-
-    #[wasm_bindgen(js_name = getMinReplacementFee)]
-    /// Return highest fee rate between minrelaytxfee and incrementalrelayfee in sat/vB instead of BTC/kB
-    pub async fn get_min_replacement_fee(&mut self) -> Result<f32, JsValue> {
-        let minimum_replacement_fee = self
-            .inner
-            .get_minimum_replacement_fee()
-            .await
-            .map_err(|e| e.to_js_error())?;
-
-        Ok(minimum_replacement_fee * 100000.0)
+        Ok(WasmMinimumFees::from(minimum_fees))
     }
 
     #[wasm_bindgen(js_name = fullSync)]
