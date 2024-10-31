@@ -25,9 +25,9 @@ pub enum WasmTimeframe {
     Unsupported,
 }
 
-impl Into<Timeframe> for WasmTimeframe {
-    fn into(self: WasmTimeframe) -> Timeframe {
-        match self {
+impl From<WasmTimeframe> for Timeframe {
+    fn from(value: WasmTimeframe) -> Timeframe {
+        match value {
             WasmTimeframe::OneDay => Timeframe::OneDay,
             WasmTimeframe::OneWeek => Timeframe::OneWeek,
             WasmTimeframe::OneMonth => Timeframe::OneMonth,
