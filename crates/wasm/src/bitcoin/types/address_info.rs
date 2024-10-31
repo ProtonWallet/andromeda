@@ -16,12 +16,12 @@ pub struct WasmAddressInfo {
     pub keychain: WasmKeychainKind,
 }
 
-impl Into<WasmAddressInfo> for AddressInfo {
-    fn into(self) -> WasmAddressInfo {
+impl From<AddressInfo> for WasmAddressInfo {
+    fn from(value: AddressInfo) -> Self {
         WasmAddressInfo {
-            index: self.index,
-            address: self.address.to_string(),
-            keychain: self.keychain.into(),
+            index: value.index,
+            address: value.address.to_string(),
+            keychain: value.keychain.into(),
         }
     }
 }

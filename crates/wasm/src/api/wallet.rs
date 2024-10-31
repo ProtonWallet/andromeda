@@ -474,7 +474,7 @@ impl WasmWalletClient {
             Mnemonic: mnemonic,
             Fingerprint: fingerprint,
             PublicKey: public_key,
-            IsAutoCreated: is_auto_created.map(|b| u8::from_bool(b)).unwrap_or(0),
+            IsAutoCreated: is_auto_created.map(u8::from_bool).unwrap_or(0),
         };
 
         self.0
@@ -502,11 +502,7 @@ impl WasmWalletClient {
                 .collect(),
         };
 
-        self.0
-            .migrate(wallet_id, payload)
-            .await
-            .map_err(|e| e.to_js_error())
-            .map(|wallet| wallet.into())
+        self.0.migrate(wallet_id, payload).await.map_err(|e| e.to_js_error())
     }
 
     #[wasm_bindgen(js_name = "updateWalletName")]

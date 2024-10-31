@@ -14,6 +14,8 @@ pub enum GatewayProvider {
     Banxa,
     Ramp,
     MoonPay,
+    #[cfg(target_arch = "wasm32")]
+    Azteco,
     // A fallback value to handle potential failures resulting from changes in the server value.
     #[serde(other)]
     Unsupported,

@@ -24,6 +24,7 @@ pub enum WasmGatewayProvider {
     Banxa,
     Ramp,
     MoonPay,
+    Azteco,
     Unsupported,
 }
 
@@ -33,6 +34,8 @@ impl From<GatewayProvider> for WasmGatewayProvider {
             GatewayProvider::Banxa => WasmGatewayProvider::Banxa,
             GatewayProvider::Ramp => WasmGatewayProvider::Ramp,
             GatewayProvider::MoonPay => WasmGatewayProvider::MoonPay,
+            #[cfg(target_arch = "wasm32")]
+            GatewayProvider::Azteco => WasmGatewayProvider::Azteco,
             GatewayProvider::Unsupported => WasmGatewayProvider::Unsupported,
         }
     }
@@ -44,7 +47,9 @@ impl From<WasmGatewayProvider> for GatewayProvider {
             WasmGatewayProvider::Banxa => GatewayProvider::Banxa,
             WasmGatewayProvider::Ramp => GatewayProvider::Ramp,
             WasmGatewayProvider::MoonPay => GatewayProvider::MoonPay,
-            WasmGatewayProvider::Unsupported => GatewayProvider::Unsupported,
+            #[cfg(target_arch = "wasm32")]
+            WasmGatewayProvider::Azteco => GatewayProvider::Azteco,
+            _ => GatewayProvider::Unsupported,
         }
     }
 }
@@ -88,14 +93,13 @@ impl From<CountriesByProvider> for WasmCountriesByProvider {
     fn from(value: CountriesByProvider) -> Self {
         let countries_and_provider_tupple = value
             .keys()
-            .into_iter()
             .map(|provider| {
                 let default = &Vec::new();
                 let countries = value.get(provider).unwrap_or(default);
                 WasmCountriesAndProviderTupple(
                     (*provider).into(),
                     WasmCountries {
-                        data: countries.into_iter().map(|c| c.into()).collect::<Vec<_>>(),
+                        data: countries.iter().map(|c| c.into()).collect::<Vec<_>>(),
                     },
                 )
             })
@@ -146,14 +150,13 @@ impl From<FiatCurrenciesByProvider> for WasmFiatCurrenciesByProvider {
     fn from(value: FiatCurrenciesByProvider) -> Self {
         let fiat_currency_and_provider_tupples = value
             .keys()
-            .into_iter()
             .map(|provider| {
                 let default = &Vec::new();
                 let fiat_currencies = value.get(provider).unwrap_or(default);
                 WasmFiatCurrenciesAndProviderTupple(
                     (*provider).into(),
                     WasmFiatCurrencies {
-                        data: fiat_currencies.into_iter().map(|c| c.into()).collect::<Vec<_>>(),
+                        data: fiat_currencies.iter().map(|c| c.into()).collect::<Vec<_>>(),
                     },
                 )
             })
@@ -226,14 +229,13 @@ impl From<PaymentMethodsByProvider> for WasmPaymentMethodsByProvider {
     fn from(value: PaymentMethodsByProvider) -> Self {
         let countries_and_provider_tupple = value
             .keys()
-            .into_iter()
             .map(|provider| {
                 let default = &Vec::new();
                 let payment_methods = value.get(provider).unwrap_or(default);
                 WasmPaymentMethodsAndProviderTupple(
                     (*provider).into(),
                     WasmPaymentMethods {
-                        data: payment_methods.into_iter().map(|c| c.into()).collect::<Vec<_>>(),
+                        data: payment_methods.iter().map(|c| c.into()).collect::<Vec<_>>(),
                     },
                 )
             })
@@ -290,14 +292,13 @@ impl From<QuotesByProvider> for WasmQuotesByProvider {
     fn from(value: QuotesByProvider) -> Self {
         let countries_and_provider_tupple = value
             .keys()
-            .into_iter()
             .map(|provider| {
                 let default = &Vec::new();
                 let quotes = value.get(provider).unwrap_or(default);
                 WasmQuotesAndProviderTupple(
                     (*provider).into(),
                     WasmQuotes {
-                        data: quotes.into_iter().map(|c| c.into()).collect::<Vec<_>>(),
+                        data: quotes.iter().map(|c| c.into()).collect::<Vec<_>>(),
                     },
                 )
             })
