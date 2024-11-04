@@ -89,15 +89,33 @@ impl ApiClient for ProtonSettingsClient {
     }
 }
 
-impl ProtonSettingsClient {
-    pub async fn get_mnemonic_settings(&self) -> Result<Vec<ApiMnemonicUserKey>, Error> {
+#[cfg_attr(target_arch = "wasm32", async_trait::async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait::async_trait)]
+pub trait ProtonSettingsClientExt {
+    async fn get_mnemonic_settings(&self) -> Result<Vec<ApiMnemonicUserKey>, Error>;
+
+    async fn set_mnemonic_settings(&self, req: UpdateMnemonicSettingsRequestBody) -> Result<u32, Error>;
+
+    async fn reactive_mnemonic_settings(&self, req: UpdateMnemonicSettingsRequestBody) -> Result<u32, Error>;
+
+    async fn disable_mnemonic_settings(&self, req: ProtonSrpClientProofs) -> Result<String, Error>;
+
+    async fn enable_2fa_totp(&self, req: SetTwoFaTOTPRequestBody) -> Result<SetTwoFaTOTPResponseBody, Error>;
+
+    async fn disable_2fa_totp(&self, req: ProtonSrpClientProofs) -> Result<ProtonUserSettings, Error>;
+}
+
+#[cfg_attr(target_arch = "wasm32", async_trait::async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait::async_trait)]
+impl ProtonSettingsClientExt for ProtonSettingsClient {
+    async fn get_mnemonic_settings(&self) -> Result<Vec<ApiMnemonicUserKey>, Error> {
         let request = self.get("settings/mnemonic");
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetMnemonicSettingsResponseBody>()?;
         Ok(parsed.MnemonicUserKeys)
     }
 
-    pub async fn set_mnemonic_settings(&self, req: UpdateMnemonicSettingsRequestBody) -> Result<u32, Error> {
+    async fn set_mnemonic_settings(&self, req: UpdateMnemonicSettingsRequestBody) -> Result<u32, Error> {
         let request = self.put("settings/mnemonic").body_json(req)?;
 
         let response = self.api_client.send(request).await?;
@@ -105,7 +123,7 @@ impl ProtonSettingsClient {
         Ok(parsed.Code)
     }
 
-    pub async fn reactive_mnemonic_settings(&self, req: UpdateMnemonicSettingsRequestBody) -> Result<u32, Error> {
+    async fn reactive_mnemonic_settings(&self, req: UpdateMnemonicSettingsRequestBody) -> Result<u32, Error> {
         let request = self.put("settings/mnemonic/reactivate").body_json(req)?;
 
         let response = self.api_client.send(request).await?;
@@ -113,7 +131,7 @@ impl ProtonSettingsClient {
         Ok(parsed.Code)
     }
 
-    pub async fn disable_mnemonic_settings(&self, req: ProtonSrpClientProofs) -> Result<String, Error> {
+    async fn disable_mnemonic_settings(&self, req: ProtonSrpClientProofs) -> Result<String, Error> {
         let request = self.post("settings/mnemonic/disable").body_json(req)?;
 
         let response = self.api_client.send(request).await?;
@@ -121,7 +139,7 @@ impl ProtonSettingsClient {
         Ok(parsed.ServerProof)
     }
 
-    pub async fn enable_2fa_totp(&self, req: SetTwoFaTOTPRequestBody) -> Result<SetTwoFaTOTPResponseBody, Error> {
+    async fn enable_2fa_totp(&self, req: SetTwoFaTOTPRequestBody) -> Result<SetTwoFaTOTPResponseBody, Error> {
         let request = self.post("settings/2fa/totp").body_json(req)?;
 
         let response = self.api_client.send(request).await?;
@@ -129,7 +147,7 @@ impl ProtonSettingsClient {
         Ok(parsed)
     }
 
-    pub async fn disable_2fa_totp(&self, req: ProtonSrpClientProofs) -> Result<ProtonUserSettings, Error> {
+    async fn disable_2fa_totp(&self, req: ProtonSrpClientProofs) -> Result<ProtonUserSettings, Error> {
         let request = self.put("settings/2fa/totp").body_json(req)?;
 
         let response = self.api_client.send(request).await?;
@@ -149,7 +167,9 @@ mod tests {
     use super::{MnemonicAuth, UpdateMnemonicSettingsRequestBody};
     use crate::{
         core::ApiClient,
-        proton_settings::{GetMnemonicSettingsResponseBody, MnemonicUserKey, ProtonSettingsClient},
+        proton_settings::{
+            GetMnemonicSettingsResponseBody, MnemonicUserKey, ProtonSettingsClient, ProtonSettingsClientExt,
+        },
         proton_users::ProtonSrpClientProofs,
         tests::utils::{common_api_client, setup_test_connection_arc},
         BASE_CORE_API_V4,

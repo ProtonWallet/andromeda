@@ -171,14 +171,14 @@ pub struct GetAuthInfoRequest {
     pub Intent: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[allow(non_snake_case)]
 pub struct TwoFA {
     #[allow(non_snake_case)]
     pub Enabled: u8,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[allow(non_snake_case)]
 pub struct GetAuthInfoResponseBody {
     pub Code: u32,
@@ -191,7 +191,7 @@ pub struct GetAuthInfoResponseBody {
     pub two_fa: TwoFA,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[allow(non_snake_case)]
 pub struct ProtonSrpClientProofs {
     pub ClientEphemeral: String,

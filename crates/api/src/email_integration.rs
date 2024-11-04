@@ -8,7 +8,7 @@ use crate::{
     ProtonWalletApiClient, BASE_WALLET_API_V1,
 };
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[allow(non_snake_case)]
 pub struct ApiWalletBitcoinAddressLookup {
     pub BitcoinAddress: Option<String>,
