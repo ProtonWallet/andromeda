@@ -14,7 +14,7 @@ use crate::{
     ProtonWalletApiClient,
 };
 
-#[derive(Debug, Deserialize, Serialize, Default)]
+#[derive(Debug, Deserialize, Serialize, Default, Clone)]
 #[allow(non_snake_case)]
 pub struct ApiWallet {
     pub ID: String,
@@ -44,7 +44,7 @@ pub struct ApiWallet {
     pub Legacy: Option<u8>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Default)]
+#[derive(Debug, Deserialize, Serialize, Default, Clone)]
 #[allow(non_snake_case)]
 pub struct CreateWalletRequestBody {
     /// Name of the wallet
@@ -85,7 +85,7 @@ pub struct ApiWalletKey {
     pub WalletKeySignature: String,
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Default, Clone)]
 #[allow(non_snake_case)]
 pub struct ApiWalletSettings {
     pub WalletID: String,
@@ -96,7 +96,7 @@ pub struct ApiWalletSettings {
     pub ShowWalletRecovery: Option<bool>,
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Default, Clone)]
 #[allow(non_snake_case)]
 pub struct ApiWalletData {
     pub Wallet: ApiWallet,
@@ -172,7 +172,7 @@ struct GetWalletAccountAddressesResponseBody {
     pub Addresses: Vec<ApiEmailAddress>,
 }
 
-#[derive(Debug, Serialize, Default)]
+#[derive(Debug, Serialize, Default, Clone)]
 #[allow(non_snake_case)]
 pub struct CreateWalletAccountRequestBody {
     pub DerivationPath: String,

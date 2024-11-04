@@ -29,7 +29,7 @@ pub struct AddBitcoinAddressesRequestBody {
     pub BitcoinAddresses: Vec<ApiBitcoinAddressCreationPayload>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[allow(non_snake_case)]
 pub struct ApiBitcoinAddressCreationPayload {
     pub BitcoinAddress: String,
