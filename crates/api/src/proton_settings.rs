@@ -8,6 +8,7 @@ use crate::{
     proton_users::{ApiProtonUserSettingsResponse, EmptyResponseBody, ProtonSrpClientProofs, ProtonUserSettings},
     ProtonWalletApiClient, BASE_CORE_API_V4,
 };
+use muon::common::ServiceType;
 
 #[derive(Deserialize, Debug)]
 #[allow(non_snake_case)]
@@ -109,14 +110,19 @@ pub trait ProtonSettingsClientExt {
 #[cfg_attr(not(target_arch = "wasm32"), async_trait::async_trait)]
 impl ProtonSettingsClientExt for ProtonSettingsClient {
     async fn get_mnemonic_settings(&self) -> Result<Vec<ApiMnemonicUserKey>, Error> {
-        let request = self.get("settings/mnemonic");
+        let request = self
+            .get("settings/mnemonic")
+            .service_type(ServiceType::Interactive, true);
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetMnemonicSettingsResponseBody>()?;
         Ok(parsed.MnemonicUserKeys)
     }
 
     async fn set_mnemonic_settings(&self, req: UpdateMnemonicSettingsRequestBody) -> Result<u32, Error> {
-        let request = self.put("settings/mnemonic").body_json(req)?;
+        let request = self
+            .put("settings/mnemonic")
+            .body_json(req)?
+            .service_type(ServiceType::Interactive, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<EmptyResponseBody>()?;
@@ -124,7 +130,10 @@ impl ProtonSettingsClientExt for ProtonSettingsClient {
     }
 
     async fn reactive_mnemonic_settings(&self, req: UpdateMnemonicSettingsRequestBody) -> Result<u32, Error> {
-        let request = self.put("settings/mnemonic/reactivate").body_json(req)?;
+        let request = self
+            .put("settings/mnemonic/reactivate")
+            .body_json(req)?
+            .service_type(ServiceType::Interactive, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<EmptyResponseBody>()?;
@@ -132,7 +141,10 @@ impl ProtonSettingsClientExt for ProtonSettingsClient {
     }
 
     async fn disable_mnemonic_settings(&self, req: ProtonSrpClientProofs) -> Result<String, Error> {
-        let request = self.post("settings/mnemonic/disable").body_json(req)?;
+        let request = self
+            .post("settings/mnemonic/disable")
+            .body_json(req)?
+            .service_type(ServiceType::Interactive, false);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateMnemonicSettingsResponseBody>()?;
@@ -140,7 +152,10 @@ impl ProtonSettingsClientExt for ProtonSettingsClient {
     }
 
     async fn enable_2fa_totp(&self, req: SetTwoFaTOTPRequestBody) -> Result<SetTwoFaTOTPResponseBody, Error> {
-        let request = self.post("settings/2fa/totp").body_json(req)?;
+        let request = self
+            .post("settings/2fa/totp")
+            .body_json(req)?
+            .service_type(ServiceType::Interactive, false);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<SetTwoFaTOTPResponseBody>()?;
@@ -148,7 +163,10 @@ impl ProtonSettingsClientExt for ProtonSettingsClient {
     }
 
     async fn disable_2fa_totp(&self, req: ProtonSrpClientProofs) -> Result<ProtonUserSettings, Error> {
-        let request = self.put("settings/2fa/totp").body_json(req)?;
+        let request = self
+            .put("settings/2fa/totp")
+            .body_json(req)?
+            .service_type(ServiceType::Interactive, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<ApiProtonUserSettingsResponse>()?;

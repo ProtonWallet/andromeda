@@ -9,6 +9,7 @@ use crate::{
     error::Error,
     ProtonWalletApiClient,
 };
+use muon::common::ServiceType;
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
@@ -123,10 +124,12 @@ impl ApiClient for BlockClient {
 impl BlockClient {
     /// Get recent block summaries, starting at tip or height if provided
     pub async fn get_blocks(&self, height: Option<u32>) -> Result<Vec<ApiBlock>, Error> {
-        let request = self.get(match height {
-            Some(height) => format!("blocks/{}", height),
-            None => "blocks".to_string(),
-        });
+        let request = self
+            .get(match height {
+                Some(height) => format!("blocks/{}", height),
+                None => "blocks".to_string(),
+            })
+            .service_type(ServiceType::Interactive, true);
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetBlocksResponseBody>()?;
 
@@ -135,7 +138,9 @@ impl BlockClient {
 
     /// Get a [`BlockHeader`] given a particular block hash.
     pub async fn get_header_by_hash(&self, block_hash: &BlockHash) -> Result<BlockHeader, Error> {
-        let request = self.get(format!("blocks/{}/header", block_hash));
+        let request = self
+            .get(format!("blocks/{}/header", block_hash))
+            .service_type(ServiceType::Interactive, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetHeaderByHashResponseBody>()?;
@@ -144,7 +149,9 @@ impl BlockClient {
     }
 
     pub async fn get_block_hash(&self, block_height: u32) -> Result<BlockHash, Error> {
-        let request = self.get(format!("blocks/height/{}/hash", block_height));
+        let request = self
+            .get(format!("blocks/height/{}/hash", block_height))
+            .service_type(ServiceType::Interactive, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetBlockHashByBlockHeightResponseBody>()?;
@@ -153,7 +160,9 @@ impl BlockClient {
     }
 
     pub async fn get_block_status(&self, block_hash: &BlockHash) -> Result<BlockStatus, Error> {
-        let request = self.get(format!("blocks/{}/status", block_hash));
+        let request = self
+            .get(format!("blocks/{}/status", block_hash))
+            .service_type(ServiceType::Interactive, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetBlockStatusResponseBody>()?;
@@ -162,7 +171,9 @@ impl BlockClient {
     }
 
     pub async fn get_block_by_hash(&self, block_hash: &BlockHash) -> Result<Block, Error> {
-        let request = self.get(format!("blocks/{}/raw", block_hash));
+        let request = self
+            .get(format!("blocks/{}/raw", block_hash))
+            .service_type(ServiceType::Interactive, true);
 
         let response = self.api_client.send(request).await?;
 
@@ -170,7 +181,9 @@ impl BlockClient {
     }
 
     pub async fn get_txid_at_block_index(&self, block_hash: &BlockHash, index: usize) -> Result<String, Error> {
-        let request = self.get(format!("blocks/{}/txid/{}", block_hash, index));
+        let request = self
+            .get(format!("blocks/{}/txid/{}", block_hash, index))
+            .service_type(ServiceType::Interactive, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetTxIdAtBlockIndexResponseBody>()?;
@@ -178,7 +191,9 @@ impl BlockClient {
     }
 
     pub async fn get_tip_height(&self) -> Result<u32, Error> {
-        let request = self.get("blocks/tip/height");
+        let request = self
+            .get("blocks/tip/height")
+            .service_type(ServiceType::Interactive, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetTipHeightResponseBody>()?;
@@ -186,7 +201,7 @@ impl BlockClient {
     }
 
     pub async fn get_tip_hash(&self) -> Result<BlockHash, Error> {
-        let request = self.get("blocks/tip/hash");
+        let request = self.get("blocks/tip/hash").service_type(ServiceType::Interactive, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetTipHashResponseBody>()?;

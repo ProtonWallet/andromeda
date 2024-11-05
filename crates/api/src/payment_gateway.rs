@@ -8,6 +8,7 @@ use crate::{
     error::Error,
     ProtonWalletApiClient, BASE_WALLET_API_V1,
 };
+use muon::common::ServiceType;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub enum GatewayProvider {
@@ -162,7 +163,9 @@ impl ApiClient for PaymentGatewayClient {
 
 impl PaymentGatewayClient {
     pub async fn get_countries(&self) -> Result<CountriesByProvider, Error> {
-        let request = self.get("payment-gateway/on-ramp/countries");
+        let request = self
+            .get("payment-gateway/on-ramp/countries")
+            .service_type(ServiceType::Interactive, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetCountriesResponseBody>()?;
@@ -170,7 +173,9 @@ impl PaymentGatewayClient {
     }
 
     pub async fn get_fiat_currencies(&self) -> Result<FiatCurrenciesByProvider, Error> {
-        let request = self.get("payment-gateway/on-ramp/fiats");
+        let request = self
+            .get("payment-gateway/on-ramp/fiats")
+            .service_type(ServiceType::Interactive, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetFiatCurrenciesResponseBody>()?;
@@ -180,7 +185,8 @@ impl PaymentGatewayClient {
     pub async fn get_payment_methods(&self, fiat_symbol: String) -> Result<PaymentMethodsByProvider, Error> {
         let request = self
             .get("payment-gateway/on-ramp/payment-methods")
-            .query(("FiatCurrency", fiat_symbol.to_string()));
+            .query(("FiatCurrency", fiat_symbol.to_string()))
+            .service_type(ServiceType::Interactive, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetPaymentMethodsResponseBody>()?;
@@ -197,7 +203,8 @@ impl PaymentGatewayClient {
         let mut request = self
             .get("payment-gateway/on-ramp/quotes")
             .query(("Amount", amount))
-            .query(("FiatCurrency", fiat_currency.to_string()));
+            .query(("FiatCurrency", fiat_currency.to_string()))
+            .service_type(ServiceType::Interactive, true);
 
         if let Some(value) = payment_method {
             request = request.query(("PaymentMethod", (value as i32).to_string()));
@@ -227,7 +234,10 @@ impl PaymentGatewayClient {
             PaymentMethod: pay_method,
             Provider: provider,
         };
-        let request = self.post("payment-gateway/on-ramp/checkout-url").body_json(body)?;
+        let request = self
+            .post("payment-gateway/on-ramp/checkout-url")
+            .body_json(body)?
+            .service_type(ServiceType::Interactive, false);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<CreateOnRampCheckoutResponseBody>()?;
@@ -241,7 +251,10 @@ impl PaymentGatewayClient {
             Url: url,
             Provider: provider,
         };
-        let request = self.post("payment-gateway/on-ramp/sign-url").body_json(body)?;
+        let request = self
+            .post("payment-gateway/on-ramp/sign-url")
+            .body_json(body)?
+            .service_type(ServiceType::Interactive, false);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<SignUrlResponseBody>()?;
@@ -255,7 +268,8 @@ impl PaymentGatewayClient {
     pub async fn get_public_api_key(&self, provider: GatewayProvider) -> Result<String, Error> {
         let request = self
             .get("payment-gateway/on-ramp/public-api-key")
-            .query(("Provider", provider));
+            .query(("Provider", provider))
+            .service_type(ServiceType::Interactive, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetPublicAPIKeyResponseBody>()?;

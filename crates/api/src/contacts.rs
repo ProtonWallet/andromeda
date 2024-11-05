@@ -7,6 +7,7 @@ use crate::{
     error::Error,
     ProtonWalletApiClient, BASE_CONTACTS_API_V4,
 };
+use muon::common::ServiceType;
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
@@ -51,7 +52,7 @@ impl ContactsClient {
         page_size: Option<u64>,
         page: Option<u64>,
     ) -> Result<Vec<ApiContactEmails>, Error> {
-        let mut request = self.get("contacts/emails");
+        let mut request = self.get("contacts/emails").service_type(ServiceType::Normal, true);
 
         if let Some(page_size) = page_size {
             request = request.query(("PageSize", page_size.to_string()));

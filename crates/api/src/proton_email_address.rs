@@ -7,6 +7,7 @@ use crate::{
     error::Error,
     ProtonWalletApiClient, BASE_CORE_API_V4,
 };
+use muon::common::ServiceType;
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
@@ -88,7 +89,7 @@ impl ApiClient for ProtonEmailAddressClient {
 
 impl ProtonEmailAddressClient {
     pub async fn get_proton_email_addresses(&self) -> Result<Vec<ApiProtonAddress>, Error> {
-        let request = self.get("addresses");
+        let request = self.get("addresses").service_type(ServiceType::Normal, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetApiProtonAddressesResponseBody>()?;
@@ -101,7 +102,10 @@ impl ProtonEmailAddressClient {
         email: String,
         internal_only: Option<u8>,
     ) -> Result<Vec<ApiAllKeyAddressKey>, Error> {
-        let mut request = self.get("keys/all").query(("Email", email));
+        let mut request = self
+            .get("keys/all")
+            .query(("Email", email))
+            .service_type(ServiceType::Normal, true);
         if let Some(intenal) = internal_only {
             request = request.query(("InternalOnly", intenal.to_string()));
         }

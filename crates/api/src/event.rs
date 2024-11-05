@@ -11,6 +11,7 @@ use crate::{
     wallet::{ApiWallet, ApiWalletAccount, ApiWalletKey, ApiWalletSettings, ApiWalletTransaction},
     ProtonWalletApiClient, BASE_CORE_API_V4, BASE_CORE_API_V5,
 };
+use muon::common::ServiceType;
 
 const MAX_EVENTS_PER_POLL: usize = 50;
 
@@ -161,14 +162,15 @@ impl EventClient {
     pub async fn get_event(&self, latest_event_id: &str) -> Result<ApiProtonEvent, Error> {
         let request = self
             .build_request(BASE_CORE_API_V5, format!("events/{}", &latest_event_id))
-            .to_get_request();
+            .to_get_request()
+            .service_type(ServiceType::Interactive, true);
 
         let response = self.api_client.send(request).await?;
         response.parse_response::<ApiProtonEvent>()
     }
 
     pub async fn get_latest_event_id(&self) -> Result<String, Error> {
-        let request = self.get("events/latest");
+        let request = self.get("events/latest").service_type(ServiceType::Interactive, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetLatestEventIDResponseBody>()?;

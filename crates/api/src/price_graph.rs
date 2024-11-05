@@ -10,6 +10,7 @@ use crate::{
     settings::FiatCurrencySymbol,
     ProtonWalletApiClient, BASE_WALLET_API_V1,
 };
+use muon::common::ServiceType;
 
 #[derive(Deserialize_repr, Serialize_repr, PartialEq, Debug)]
 #[repr(u8)]
@@ -73,7 +74,8 @@ impl PriceGraphClient {
         let request = self
             .get("graph")
             .query(("FiatCurrency", fiat_currency))
-            .query(("Type", (timeframe as u8).to_string()));
+            .query(("Type", (timeframe as u8).to_string()))
+            .service_type(ServiceType::Normal, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetGraphDataResponseBody>()?;

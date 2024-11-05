@@ -7,6 +7,7 @@ use crate::{
     error::Error,
     ProtonWalletApiClient, BASE_WALLET_API_V1,
 };
+use muon::common::ServiceType;
 
 const ONLY_WITHOUT_BITCOIN_ADDRESS_KEY: &str = "OnlyWithoutBitcoinAddresses[]";
 
@@ -87,10 +88,12 @@ impl BitcoinAddressClient {
         wallet_account_id: String,
         only_without_bitcoin_addresses: Option<u8>,
     ) -> Result<Vec<ApiWalletBitcoinAddress>, Error> {
-        let mut request = self.get(format!(
-            "wallets/{}/accounts/{}/addresses/bitcoin",
-            wallet_id, wallet_account_id
-        ));
+        let mut request = self
+            .get(format!(
+                "wallets/{}/accounts/{}/addresses/bitcoin",
+                wallet_id, wallet_account_id
+            ))
+            .service_type(ServiceType::Normal, true);
         if let Some(only_without_bitcoin_addresses) = only_without_bitcoin_addresses {
             request = request.query((
                 ONLY_WITHOUT_BITCOIN_ADDRESS_KEY,
@@ -108,10 +111,12 @@ impl BitcoinAddressClient {
         wallet_id: String,
         wallet_account_id: String,
     ) -> Result<u64, Error> {
-        let request = self.get(format!(
-            "wallets/{}/accounts/{}/addresses/bitcoin/index",
-            wallet_id, wallet_account_id,
-        ));
+        let request = self
+            .get(format!(
+                "wallets/{}/accounts/{}/addresses/bitcoin/index",
+                wallet_id, wallet_account_id,
+            ))
+            .service_type(ServiceType::Normal, true);
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetBitcoinAddressHighestIndexResponseBody>()?;
         Ok(parsed.HighestIndex)
@@ -132,7 +137,8 @@ impl BitcoinAddressClient {
                 "wallets/{}/accounts/{}/addresses/bitcoin",
                 wallet_id, wallet_account_id,
             ))
-            .body_json(payload)?;
+            .body_json(payload)?
+            .service_type(ServiceType::Normal, false);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetBitcoinAddressesResponseBody>()?;
@@ -151,7 +157,8 @@ impl BitcoinAddressClient {
                 "wallets/{}/accounts/{}/addresses/bitcoin/{}",
                 wallet_id, wallet_account_id, wallet_account_bitcoin_address_id
             ))
-            .body_json(bitcoin_address)?;
+            .body_json(bitcoin_address)?
+            .service_type(ServiceType::Normal, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateBitcoinAddressResponseBody>()?;
