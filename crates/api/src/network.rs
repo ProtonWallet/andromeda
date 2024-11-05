@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use andromeda_common::Network;
+use muon::common::ServiceType;
 use serde::Deserialize;
 
 use crate::{
@@ -39,7 +40,7 @@ impl ApiClient for NetworkClient {
 
 impl NetworkClient {
     pub async fn get_network(&self) -> Result<Network, Error> {
-        let request = self.get("network");
+        let request = self.get("network").service_type(ServiceType::Normal, true);
         let response = self.api_client.send(request).await?;
 
         let parsed = response.parse_response::<GetNetworkResponseBody>()?;

@@ -13,6 +13,7 @@ use crate::{
     wallet_ext::WalletClientExt,
     ProtonWalletApiClient,
 };
+use muon::common::ServiceType;
 
 #[derive(Debug, Deserialize, Serialize, Default, Clone)]
 #[allow(non_snake_case)]
@@ -442,14 +443,17 @@ impl ApiClient for WalletClient {
 #[cfg_attr(not(target_arch = "wasm32"), async_trait::async_trait)]
 impl WalletClientExt for WalletClient {
     async fn get_wallets(&self) -> Result<Vec<ApiWalletData>, Error> {
-        let request = self.get("wallets");
+        let request = self.get("wallets").service_type(ServiceType::Interactive, true);
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetWalletsResponseBody>()?;
         Ok(parsed.Wallets)
     }
 
     async fn create_wallet(&self, payload: CreateWalletRequestBody) -> Result<ApiWalletData, Error> {
-        let request = self.post("wallets").body_json(payload)?;
+        let request = self
+            .post("wallets")
+            .body_json(payload)?
+            .service_type(ServiceType::Interactive, false);
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<CreateWalletResponseBody>()?;
 
@@ -461,7 +465,10 @@ impl WalletClientExt for WalletClient {
     }
 
     async fn migrate(&self, wallet_id: String, payload: WalletMigrateRequestBody) -> Result<(), Error> {
-        let request = self.post(format!("wallets/{}/migrate", wallet_id)).body_json(payload)?;
+        let request = self
+            .post(format!("wallets/{}/migrate", wallet_id))
+            .body_json(payload)?
+            .service_type(ServiceType::Interactive, false);
         let response = self.api_client.send(request).await?;
         response.parse_response::<WalletMigrateResponseBody>()?;
         Ok(())
@@ -469,21 +476,28 @@ impl WalletClientExt for WalletClient {
 
     async fn update_wallet_name(&self, wallet_id: String, name: String) -> Result<ApiWallet, Error> {
         let payload = UpdateWalletNameRequestBody { Name: name };
-        let request = self.put(format!("wallets/{}/name", wallet_id)).body_json(payload)?;
+        let request = self
+            .put(format!("wallets/{}/name", wallet_id))
+            .body_json(payload)?
+            .service_type(ServiceType::Normal, true);
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletNameResponseBody>()?;
         Ok(parsed.Wallet)
     }
 
     async fn delete_wallet(&self, wallet_id: String) -> Result<(), Error> {
-        let request = self.delete(format!("wallets/{}", wallet_id));
+        let request = self
+            .delete(format!("wallets/{}", wallet_id))
+            .service_type(ServiceType::Interactive, true);
         let response = self.api_client.send(request).await?;
         response.parse_response::<DeleteWalletAccountResponseBody>()?;
         Ok(())
     }
 
     async fn get_wallet_accounts(&self, wallet_id: String) -> Result<Vec<ApiWalletAccount>, Error> {
-        let request = self.get(format!("wallets/{}/accounts", wallet_id));
+        let request = self
+            .get(format!("wallets/{}/accounts", wallet_id))
+            .service_type(ServiceType::Interactive, true);
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetWalletAccountsResponseBody>()?;
 
@@ -495,10 +509,12 @@ impl WalletClientExt for WalletClient {
         wallet_id: String,
         wallet_account_id: String,
     ) -> Result<Vec<ApiEmailAddress>, Error> {
-        let request = self.get(format!(
-            "wallets/{}/accounts/{}/addresses",
-            wallet_id, wallet_account_id
-        ));
+        let request = self
+            .get(format!(
+                "wallets/{}/accounts/{}/addresses",
+                wallet_id, wallet_account_id
+            ))
+            .service_type(ServiceType::Interactive, true);
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetWalletAccountAddressesResponseBody>()?;
 
@@ -512,7 +528,8 @@ impl WalletClientExt for WalletClient {
     ) -> Result<ApiWalletAccount, Error> {
         let request = self
             .post(format!("wallets/{}/accounts", wallet_id))
-            .body_json(payload)?;
+            .body_json(payload)?
+            .service_type(ServiceType::Interactive, false);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<CreateWalletAccountResponseBody>()?;
@@ -534,7 +551,8 @@ impl WalletClientExt for WalletClient {
                 "wallets/{}/accounts/{}/currency/fiat",
                 wallet_id, wallet_account_id
             ))
-            .body_json(payload)?;
+            .body_json(payload)?
+            .service_type(ServiceType::Normal, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletAccountResponseBody>()?;
@@ -552,7 +570,8 @@ impl WalletClientExt for WalletClient {
 
         let request = self
             .put(format!("wallets/{}/accounts/{}/label", wallet_id, wallet_account_id))
-            .body_json(payload)?;
+            .body_json(payload)?
+            .service_type(ServiceType::Normal, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletAccountResponseBody>()?;
@@ -571,7 +590,8 @@ impl WalletClientExt for WalletClient {
 
         let request = self
             .put(format!("wallets/{}/accounts/order", wallet_id))
-            .body_json(payload)?;
+            .body_json(payload)?
+            .service_type(ServiceType::Normal, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletAccountsOrderResponseBody>()?;
@@ -592,7 +612,8 @@ impl WalletClientExt for WalletClient {
                 "wallets/{}/accounts/{}/addresses/email",
                 wallet_id, wallet_account_id
             ))
-            .body_json(payload)?;
+            .body_json(payload)?
+            .service_type(ServiceType::Interactive, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletAccountResponseBody>()?;
@@ -615,7 +636,8 @@ impl WalletClientExt for WalletClient {
                 "wallets/{}/accounts/{}/lastUsedIndex",
                 wallet_id, wallet_account_id
             ))
-            .body_json(payload)?;
+            .body_json(payload)?
+            .service_type(ServiceType::Normal, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletAccountResponseBody>()?;
@@ -629,10 +651,12 @@ impl WalletClientExt for WalletClient {
         wallet_account_id: String,
         address_id: String,
     ) -> Result<ApiWalletAccount, Error> {
-        let request = self.delete(format!(
-            "wallets/{}/accounts/{}/addresses/email/{}",
-            wallet_id, wallet_account_id, address_id
-        ));
+        let request = self
+            .delete(format!(
+                "wallets/{}/accounts/{}/addresses/email/{}",
+                wallet_id, wallet_account_id, address_id
+            ))
+            .service_type(ServiceType::Interactive, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletAccountResponseBody>()?;
@@ -641,7 +665,9 @@ impl WalletClientExt for WalletClient {
     }
 
     async fn delete_wallet_account(&self, wallet_id: String, wallet_account_id: String) -> Result<(), Error> {
-        let request = self.delete(format!("wallets/{}/accounts/{}", wallet_id, wallet_account_id));
+        let request = self
+            .delete(format!("wallets/{}/accounts/{}", wallet_id, wallet_account_id))
+            .service_type(ServiceType::Interactive, true);
         let response = self.api_client.send(request).await?;
         response.parse_response::<DeleteWalletAccountResponseBody>()?;
 
@@ -654,12 +680,14 @@ impl WalletClientExt for WalletClient {
         wallet_account_id: Option<String>,
         hashed_txids: Option<Vec<String>>,
     ) -> Result<Vec<ApiWalletTransaction>, Error> {
-        let mut request = self.get(match wallet_account_id {
-            Some(wallet_account_id) => {
-                format!("wallets/{}/accounts/{}/transactions", wallet_id, wallet_account_id)
-            }
-            None => format!("wallets/{}/transactions", wallet_id),
-        });
+        let mut request = self
+            .get(match wallet_account_id {
+                Some(wallet_account_id) => {
+                    format!("wallets/{}/accounts/{}/transactions", wallet_id, wallet_account_id)
+                }
+                None => format!("wallets/{}/transactions", wallet_id),
+            })
+            .service_type(ServiceType::Interactive, true);
 
         for txid in hashed_txids.unwrap_or_default() {
             request = request.query((HASHED_TRANSACTION_ID_KEY, txid));
@@ -675,15 +703,17 @@ impl WalletClientExt for WalletClient {
         wallet_id: String,
         wallet_account_id: Option<String>,
     ) -> Result<Vec<ApiWalletTransaction>, Error> {
-        let request = self.get(match wallet_account_id {
-            Some(wallet_account_id) => {
-                format!(
-                    "wallets/{}/accounts/{}/transactions/to-hash",
-                    wallet_id, wallet_account_id
-                )
-            }
-            None => format!("wallets/{}/transactions/to-hash", wallet_id),
-        });
+        let request = self
+            .get(match wallet_account_id {
+                Some(wallet_account_id) => {
+                    format!(
+                        "wallets/{}/accounts/{}/transactions/to-hash",
+                        wallet_id, wallet_account_id
+                    )
+                }
+                None => format!("wallets/{}/transactions/to-hash", wallet_id),
+            })
+            .service_type(ServiceType::Interactive, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetWalletTransactionsResponseBody>()?;
@@ -702,7 +732,8 @@ impl WalletClientExt for WalletClient {
                 "wallets/{}/accounts/{}/transactions",
                 wallet_id, wallet_account_id
             ))
-            .body_json(payload)?;
+            .body_json(payload)?
+            .service_type(ServiceType::Interactive, false);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<CreateWalletTransactionResponseBody>()?;
@@ -724,7 +755,8 @@ impl WalletClientExt for WalletClient {
                 "wallets/{}/accounts/{}/transactions/{}/label",
                 wallet_id, wallet_account_id, wallet_transaction_id
             ))
-            .body_json(payload)?;
+            .body_json(payload)?
+            .service_type(ServiceType::Normal, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletTransactionResponseBody>()?;
@@ -748,7 +780,8 @@ impl WalletClientExt for WalletClient {
                 "wallets/{}/accounts/{}/transactions/{}/hash",
                 wallet_id, wallet_account_id, wallet_transaction_id
             ))
-            .body_json(payload)?;
+            .body_json(payload)?
+            .service_type(ServiceType::Normal, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletTransactionResponseBody>()?;
@@ -770,7 +803,8 @@ impl WalletClientExt for WalletClient {
                 "wallets/{}/accounts/{}/transactions/{}/sender",
                 wallet_id, wallet_account_id, wallet_transaction_id
             ))
-            .body_json(payload)?;
+            .body_json(payload)?
+            .service_type(ServiceType::Normal, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletTransactionResponseBody>()?;
@@ -785,10 +819,12 @@ impl WalletClientExt for WalletClient {
         wallet_transaction_id: String,
         flag: WalletTransactionFlag,
     ) -> Result<ApiWalletTransaction, Error> {
-        let request = self.put(format!(
-            "wallets/{}/accounts/{}/transactions/{}/{}",
-            wallet_id, wallet_account_id, wallet_transaction_id, flag
-        ));
+        let request = self
+            .put(format!(
+                "wallets/{}/accounts/{}/transactions/{}/{}",
+                wallet_id, wallet_account_id, wallet_transaction_id, flag
+            ))
+            .service_type(ServiceType::Normal, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletTransactionResponseBody>()?;
@@ -803,10 +839,12 @@ impl WalletClientExt for WalletClient {
         wallet_transaction_id: String,
         flag: WalletTransactionFlag,
     ) -> Result<ApiWalletTransaction, Error> {
-        let request = self.delete(format!(
-            "wallets/{}/accounts/{}/transactions/{}/{}",
-            wallet_id, wallet_account_id, wallet_transaction_id, flag
-        ));
+        let request = self
+            .delete(format!(
+                "wallets/{}/accounts/{}/transactions/{}/{}",
+                wallet_id, wallet_account_id, wallet_transaction_id, flag
+            ))
+            .service_type(ServiceType::Normal, true);
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletTransactionResponseBody>()?;
 
@@ -819,10 +857,12 @@ impl WalletClientExt for WalletClient {
         wallet_account_id: String,
         wallet_transaction_id: String,
     ) -> Result<(), Error> {
-        let request = self.delete(format!(
-            "wallets/{}/accounts/{}/transactions/{}",
-            wallet_id, wallet_account_id, wallet_transaction_id
-        ));
+        let request = self
+            .delete(format!(
+                "wallets/{}/accounts/{}/transactions/{}",
+                wallet_id, wallet_account_id, wallet_transaction_id
+            ))
+            .service_type(ServiceType::Normal, true);
         let response = self.api_client.send(request).await?;
         response.parse_response::<DeleteWalletTransactionResponseBody>()?;
 
@@ -830,7 +870,9 @@ impl WalletClientExt for WalletClient {
     }
 
     async fn disable_show_wallet_recovery(&self, wallet_id: String) -> Result<ApiWalletSettings, Error> {
-        let request = self.put(format!("wallets/{}/settings/show-wallet-recovery/disable", wallet_id));
+        let request = self
+            .put(format!("wallets/{}/settings/show-wallet-recovery/disable", wallet_id))
+            .service_type(ServiceType::Normal, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateWalletSettingsResponseBody>()?;

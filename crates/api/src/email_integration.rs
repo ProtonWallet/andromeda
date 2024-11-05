@@ -7,6 +7,7 @@ use crate::{
     error::Error,
     ProtonWalletApiClient, BASE_WALLET_API_V1,
 };
+use muon::common::ServiceType;
 
 #[derive(Debug, Deserialize, Clone)]
 #[allow(non_snake_case)]
@@ -57,7 +58,10 @@ impl ApiClient for EmailIntegrationClient {
 
 impl EmailIntegrationClient {
     pub async fn lookup_bitcoin_address(&self, email: String) -> Result<ApiWalletBitcoinAddressLookup, Error> {
-        let request = self.get("emails/lookup").query(("Email", email));
+        let request = self
+            .get("emails/lookup")
+            .query(("Email", email))
+            .service_type(ServiceType::Interactive, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<LookupBitcoinAddressResponseBody>()?;
@@ -68,7 +72,10 @@ impl EmailIntegrationClient {
     pub async fn create_bitcoin_addresses_request(&self, email: String) -> Result<(), Error> {
         let payload = CreateBitcoinAddressRequestBody { Email: email };
 
-        let request = self.post("emails/requests").body_json(payload)?;
+        let request = self
+            .post("emails/requests")
+            .body_json(payload)?
+            .service_type(ServiceType::Interactive, false);
 
         let response = self.api_client.send(request).await?;
         response.parse_response::<CreateBitcoinAddressRequestResponseBody>()?;

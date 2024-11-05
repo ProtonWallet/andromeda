@@ -10,6 +10,7 @@ use crate::{
     error::Error,
     ProtonWalletApiClient, BASE_WALLET_API_V1,
 };
+use muon::common::ServiceType;
 
 #[derive(Deserialize_repr, Serialize_repr, PartialEq, Debug)]
 #[repr(u8)]
@@ -215,7 +216,7 @@ impl ApiClient for SettingsClient {
 
 impl SettingsClient {
     pub async fn get_user_settings(&self) -> Result<UserSettings, Error> {
-        let request = self.get("settings");
+        let request = self.get("settings").service_type(ServiceType::Normal, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetUserSettingsResponseBody>()?;
@@ -226,7 +227,8 @@ impl SettingsClient {
     pub async fn update_bitcoin_unit(&self, symbol: BitcoinUnit) -> Result<UserSettings, Error> {
         let request = self
             .put("settings/currency/bitcoin")
-            .body_json(UpdateBitcoinUnitRequestBody { Symbol: symbol })?;
+            .body_json(UpdateBitcoinUnitRequestBody { Symbol: symbol })?
+            .service_type(ServiceType::Normal, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetUserSettingsResponseBody>()?;
@@ -237,7 +239,8 @@ impl SettingsClient {
     pub async fn update_fiat_currency(&self, symbol: FiatCurrencySymbol) -> Result<UserSettings, Error> {
         let request = self
             .put("settings/currency/fiat")
-            .body_json(UpdateFiatCurrencyRequestBody { Symbol: symbol })?;
+            .body_json(UpdateFiatCurrencyRequestBody { Symbol: symbol })?
+            .service_type(ServiceType::Normal, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetUserSettingsResponseBody>()?;
@@ -250,7 +253,8 @@ impl SettingsClient {
             .put("settings/2fa/threshold")
             .body_json(Update2FAThresholdRequestBody {
                 TwoFactorAmountThreshold: amount,
-            })?;
+            })?
+            .service_type(ServiceType::Normal, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetUserSettingsResponseBody>()?;
@@ -266,7 +270,8 @@ impl SettingsClient {
             .put("settings/addresses/used/hide")
             .body_json(UpdateHideEmptyUsedAddressesRequestBody {
                 HideEmptyUsedAddresses: hide_empty_used_addresses.into(),
-            })?;
+            })?
+            .service_type(ServiceType::Normal, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetUserSettingsResponseBody>()?;
@@ -284,7 +289,8 @@ impl SettingsClient {
             .body_json(UpdateReceiveNotificationEmailRequestBody {
                 EmailType: email_type,
                 IsEnabled: is_enable.into(),
-            })?;
+            })?
+            .service_type(ServiceType::Normal, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetUserSettingsResponseBody>()?;
@@ -293,7 +299,9 @@ impl SettingsClient {
     }
 
     pub async fn accept_terms_and_conditions(&self) -> Result<UserSettings, Error> {
-        let request = self.put("settings/terms-and-conditions/accept");
+        let request = self
+            .put("settings/terms-and-conditions/accept")
+            .service_type(ServiceType::Normal, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetUserSettingsResponseBody>()?;
@@ -302,7 +310,9 @@ impl SettingsClient {
     }
 
     pub async fn get_user_wallet_eligibility(&self) -> Result<u8, Error> {
-        let request = self.get("settings/eligible");
+        let request = self
+            .get("settings/eligible")
+            .service_type(ServiceType::Interactive, true);
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetUserWalletEligibilityResponseBody>()?;
