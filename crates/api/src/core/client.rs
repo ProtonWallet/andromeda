@@ -3,7 +3,7 @@ use std::sync::Arc;
 use muon::ProtonRequest;
 
 use super::ToProtonRequest;
-use crate::ProtonWalletApiClient;
+use crate::{ProtonWalletApiClient, DEFAULT_TIME_CONSTRAINT};
 
 pub trait ApiClient {
     fn new(api_client: Arc<ProtonWalletApiClient>) -> Self;
@@ -12,16 +12,28 @@ pub trait ApiClient {
     fn base_url(&self) -> &str;
 
     fn get(&self, endpoint: impl ToString) -> ProtonRequest {
-        return self.build_request(self.base_url(), endpoint).to_get_request();
+        return self
+            .build_request(self.base_url(), endpoint)
+            .to_get_request()
+            .allowed_time(DEFAULT_TIME_CONSTRAINT);
     }
     fn post(&self, endpoint: impl ToString) -> ProtonRequest {
-        return self.build_request(self.base_url(), endpoint).to_post_request();
+        return self
+            .build_request(self.base_url(), endpoint)
+            .to_post_request()
+            .allowed_time(DEFAULT_TIME_CONSTRAINT);
     }
     fn put(&self, endpoint: impl ToString) -> ProtonRequest {
-        return self.build_request(self.base_url(), endpoint).to_put_request();
+        return self
+            .build_request(self.base_url(), endpoint)
+            .to_put_request()
+            .allowed_time(DEFAULT_TIME_CONSTRAINT);
     }
     fn delete(&self, endpoint: impl ToString) -> ProtonRequest {
-        return self.build_request(self.base_url(), endpoint).to_delete_request();
+        return self
+            .build_request(self.base_url(), endpoint)
+            .to_delete_request()
+            .allowed_time(DEFAULT_TIME_CONSTRAINT);
     }
     fn build_request(&self, version: &str, endpoint: impl ToString) -> String {
         return self.api_client().build_full_url(version, endpoint);

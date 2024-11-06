@@ -1,5 +1,8 @@
 use core::ApiClient;
-use std::sync::{Arc, Mutex};
+use std::{
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 use address::AddressClient;
 use bitcoin_address::BitcoinAddressClient;
@@ -79,6 +82,8 @@ pub const BASE_WALLET_API_V1: &str = "wallet/v1";
 pub const BASE_CORE_API_V4: &str = "core/v4";
 pub const BASE_CORE_API_V5: &str = "core/v5";
 pub const BASE_CONTACTS_API_V4: &str = "contacts/v4";
+
+pub const DEFAULT_TIME_CONSTRAINT: Duration = Duration::from_secs(30);
 
 /// An API client providing interfaces to send authenticated http requests to
 /// Wallet backend
