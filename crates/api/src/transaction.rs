@@ -13,6 +13,13 @@ use crate::{
 
 #[derive(Debug, Serialize)]
 #[allow(non_snake_case)]
+pub struct BroadcastMessage {
+    pub Encrypted: String,
+    pub Asymmetrical: HashMap<String, String>,
+}
+
+#[derive(Debug, Serialize)]
+#[allow(non_snake_case)]
 struct BroadcastRawTransactionRequestBody {
     SignedTransactionHex: String,
     WalletID: String,
@@ -22,6 +29,7 @@ struct BroadcastRawTransactionRequestBody {
     AddressID: Option<String>,
     TransactionTime: Option<String>,
     Body: Option<String>,
+    Message: Option<BroadcastMessage>,
     Recipients: Option<HashMap<String, String>>,
     IsAnonymous: u8,
 }
@@ -171,6 +179,7 @@ impl TransactionClient {
         exchange_rate_or_transaction_time: ExchangeRateOrTransactionTime,
         address_id: Option<String>,
         body: Option<String>,
+        message: Option<BroadcastMessage>,
         recipients: Option<HashMap<String, String>>,
         is_anonymous: Option<u8>,
     ) -> Result<String, Error> {
@@ -188,6 +197,7 @@ impl TransactionClient {
             TransactionTime: transaction_time,
             AddressID: address_id,
             Body: body,
+            Message: message,
             Recipients: recipients,
             IsAnonymous: is_anonymous.unwrap_or(0),
         };

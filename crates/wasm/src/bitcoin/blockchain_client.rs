@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use andromeda_api::transaction::ExchangeRateOrTransactionTime;
+use andromeda_api::transaction::{BroadcastMessage, ExchangeRateOrTransactionTime};
 use andromeda_bitcoin::blockchain_client::{self, BlockchainClient, MinimumFees};
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
@@ -81,11 +81,28 @@ pub struct WasmTransactionData {
     exchange_rate_or_transaction_time: WasmExchangeRateOrTransactionTime,
 }
 
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct WasmBroadcastMessage {
+    pub encrypted: String,
+    pub asymmetrical: HashMap<String, String>,
+}
+
+impl Into<BroadcastMessage> for WasmBroadcastMessage {
+    fn into(self) -> BroadcastMessage {
+        BroadcastMessage {
+            Encrypted: self.encrypted,
+            Asymmetrical: self.asymmetrical,
+        }
+    }
+}
+
 #[derive(Tsify, Serialize, Deserialize, Clone, Default)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct WasmEmailIntegrationData {
     address_id: Option<String>,
     body: Option<String>,
+    message: Option<WasmBroadcastMessage>,
     recipients: Option<HashMap<String, String>>,
     is_anonymous: Option<u8>,
 }
@@ -176,6 +193,7 @@ impl WasmBlockchainClient {
                 transaction_data.exchange_rate_or_transaction_time.into(),
                 email_integration_data.address_id,
                 email_integration_data.body,
+                email_integration_data.message.map(|m| m.into()),
                 email_integration_data.recipients,
                 email_integration_data.is_anonymous,
             )
