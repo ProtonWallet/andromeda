@@ -95,6 +95,8 @@ pub struct Quote {
     pub NetworkFee: String,
     pub PaymentGatewayFee: String,
     pub PaymentMethod: PaymentMethod,
+    pub PurchaseAmount: Option<String>,
+    pub PaymentProcessingFee: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -469,6 +471,18 @@ mod tests {
         {
             "Code": 1000,
             "Quotes": {
+                "Azteco": [
+                    {
+                        "BitcoinAmount": "0.00437556",
+                        "FiatAmount": "300.50",
+                        "FiatCurrencySymbol": "EUR",
+                        "NetworkFee": "1.34",
+                        "PaymentGatewayFee": "5.85",
+                        "PaymentMethod": 1,
+                        "PurchaseAmount": "289,31",
+                        "PaymentProcessingFee": "4"
+                    }
+                ],
                 "Banxa": [
                     {
                         "BitcoinAmount": "0.00437556",

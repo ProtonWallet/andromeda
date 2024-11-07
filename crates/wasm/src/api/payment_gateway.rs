@@ -258,6 +258,8 @@ pub struct WasmQuote {
     pub NetworkFee: String,
     pub PaymentGatewayFee: String,
     pub PaymentMethod: WasmPaymentMethod,
+    pub PurchaseAmount: Option<String>,
+    pub PaymentProcessingFee: Option<String>,
 }
 
 impl From<&Quote> for WasmQuote {
@@ -269,6 +271,8 @@ impl From<&Quote> for WasmQuote {
             NetworkFee: value.NetworkFee.clone(),
             PaymentGatewayFee: value.PaymentGatewayFee.clone(),
             PaymentMethod: (&value.PaymentMethod).into(),
+            PurchaseAmount: value.PurchaseAmount.clone(),
+            PaymentProcessingFee: value.PaymentProcessingFee.clone(),
         }
     }
 }
