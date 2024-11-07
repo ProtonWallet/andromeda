@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
 use crate::{account::Account, error::Error, storage::WalletPersisterConnector};
-use andromeda_api::{transaction::ExchangeRateOrTransactionTime, ProtonWalletApiClient};
+use andromeda_api::{
+    transaction::{BroadcastMessage, ExchangeRateOrTransactionTime},
+    ProtonWalletApiClient,
+};
 use andromeda_esplora::{AsyncClient, EsploraAsyncExt};
 use async_std::sync::RwLockReadGuard;
 use bdk_chain::spk_client::SyncRequest;
@@ -191,6 +194,7 @@ impl BlockchainClient {
         exchange_rate_or_transaction_time: ExchangeRateOrTransactionTime,
         address_id: Option<String>,
         body: Option<String>,
+        message: Option<BroadcastMessage>,
         recipients: Option<HashMap<String, String>>,
         is_anonymous: Option<u8>,
     ) -> Result<(), Error> {
@@ -203,6 +207,7 @@ impl BlockchainClient {
                 exchange_rate_or_transaction_time,
                 address_id,
                 body,
+                message,
                 recipients,
                 is_anonymous,
             )

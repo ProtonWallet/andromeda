@@ -18,7 +18,7 @@ use std::{
 };
 
 use crate::{BlockStatus, BlockSummary, Error, MerkleProof, OutputStatus, Tx, TxStatus};
-use andromeda_api::transaction::MempoolInfo;
+use andromeda_api::transaction::{BroadcastMessage, MempoolInfo};
 use andromeda_api::{
     address::{AddressClient, ScriptHashTransactionsPayload},
     block::BlockClient,
@@ -188,6 +188,7 @@ impl AsyncClient {
         exchange_rate_or_transaction_time: ExchangeRateOrTransactionTime,
         address_id: Option<String>,
         body: Option<String>,
+        message: Option<BroadcastMessage>,
         recipients: Option<HashMap<String, String>>,
         is_anonymous: Option<u8>,
     ) -> Result<(), Error> {
@@ -200,6 +201,7 @@ impl AsyncClient {
                 exchange_rate_or_transaction_time,
                 address_id,
                 body,
+                message,
                 recipients,
                 is_anonymous,
             )
