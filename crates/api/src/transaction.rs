@@ -1,7 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
 use bitcoin::{consensus::deserialize, Transaction};
-use muon::common::ServiceType;
 use serde::{Deserialize, Serialize};
 
 use super::{error::Error, BASE_WALLET_API_V1};
@@ -202,10 +201,7 @@ impl TransactionClient {
             IsAnonymous: is_anonymous.unwrap_or(0),
         };
 
-        let request = self
-            .post("transactions")
-            .body_json(body)?
-            .service_type(ServiceType::Interactive, false);
+        let request = self.post("transactions").body_json(body)?;
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<BroadcastRawTransactionResponseBody>()?;
@@ -214,9 +210,7 @@ impl TransactionClient {
     }
 
     pub async fn get_raw_transaction(&self, txid: String) -> Result<Transaction, Error> {
-        let request = self
-            .get(format!("transactions/{}/raw", txid))
-            .service_type(ServiceType::Interactive, true);
+        let request = self.get(format!("transactions/{}/raw", txid));
 
         let response = self.api_client.send(request).await?;
         let parsed: Transaction = deserialize(response.body())?;
@@ -225,9 +219,7 @@ impl TransactionClient {
     }
 
     pub async fn get_transaction_status(&self, txid: String) -> Result<ApiTransactionStatus, Error> {
-        let request = self
-            .get(format!("transactions/{}/status", txid))
-            .service_type(ServiceType::Interactive, true);
+        let request = self.get(format!("transactions/{}/status", txid));
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetTransactionStatusResponseBody>()?;
@@ -236,9 +228,7 @@ impl TransactionClient {
     }
 
     pub async fn get_transaction_info(&self, txid: String) -> Result<Option<ApiTx>, Error> {
-        let request = self
-            .get(format!("transactions/{}/info", txid))
-            .service_type(ServiceType::Interactive, true);
+        let request = self.get(format!("transactions/{}/info", txid));
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetTransactionInfoResponseBody>();
@@ -251,9 +241,7 @@ impl TransactionClient {
     }
 
     pub async fn get_transaction_merkle_proof(&self, txid: String) -> Result<TransactionMerkleProof, Error> {
-        let request = self
-            .get(format!("transactions/{}/merkle-proof", txid))
-            .service_type(ServiceType::Interactive, true);
+        let request = self.get(format!("transactions/{}/merkle-proof", txid));
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetTransactionMerkleProofResponseBody>()?;
@@ -262,9 +250,7 @@ impl TransactionClient {
     }
 
     pub async fn get_transaction_merkle_block_proof(&self, txid: String) -> Result<String, Error> {
-        let request = self
-            .get(format!("transactions/{}/merkleblock-proof", txid))
-            .service_type(ServiceType::Interactive, true);
+        let request = self.get(format!("transactions/{}/merkleblock-proof", txid));
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetTransactionMerkleBlockProofResponseBody>()?;
@@ -277,9 +263,7 @@ impl TransactionClient {
         txid: String,
         index: u64,
     ) -> Result<OutpointSpendingStatus, Error> {
-        let request = self
-            .get(format!("transactions/{}/outspend/{}", txid, index))
-            .service_type(ServiceType::Interactive, true);
+        let request = self.get(format!("transactions/{}/outspend/{}", txid, index));
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetOutpointSpendingStatusResponseBody>()?;
@@ -288,9 +272,7 @@ impl TransactionClient {
     }
 
     pub async fn get_fee_estimates(&self) -> Result<HashMap<String, f64>, Error> {
-        let request = self
-            .get("transactions/fee-estimates")
-            .service_type(ServiceType::Interactive, true);
+        let request = self.get("transactions/fee-estimates");
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetFeeEstimateResponseBody>()?;
@@ -299,7 +281,7 @@ impl TransactionClient {
     }
 
     pub async fn get_mempool_info(&self) -> Result<MempoolInfo, Error> {
-        let request = self.get("mempool/info").service_type(ServiceType::Interactive, true);
+        let request = self.get("mempool/info");
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetMempoolInfoResponseBody>()?;

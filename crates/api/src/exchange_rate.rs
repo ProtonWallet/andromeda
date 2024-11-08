@@ -9,7 +9,6 @@ use crate::{
     settings::FiatCurrencySymbol,
     ProtonWalletApiClient, BASE_WALLET_API_V1,
 };
-use muon::common::ServiceType;
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
@@ -83,10 +82,7 @@ impl ExchangeRateClient {
         fiat_currency: FiatCurrencySymbol,
         time: Option<u64>,
     ) -> Result<ApiExchangeRate, Error> {
-        let mut request = self
-            .get("rates")
-            .query(("FiatCurrency", fiat_currency.to_string()))
-            .service_type(ServiceType::Normal, true);
+        let mut request = self.get("rates").query(("FiatCurrency", fiat_currency.to_string()));
         if let Some(time) = time {
             request = request.query(("Time", time.to_string()))
         }
@@ -98,7 +94,7 @@ impl ExchangeRateClient {
     }
 
     pub async fn get_all_fiat_currencies(&self) -> Result<Vec<ApiFiatCurrency>, Error> {
-        let request = self.get("fiat-currencies").service_type(ServiceType::Normal, true);
+        let request = self.get("fiat-currencies");
 
         let response = self.api_client.send(request).await?;
 
