@@ -8,7 +8,6 @@ use crate::{
     error::Error,
     ProtonWalletApiClient, BASE_WALLET_API_V1,
 };
-use muon::common::ServiceType;
 
 #[derive(Deserialize_repr, Serialize_repr, PartialEq, Debug)]
 #[repr(u8)]
@@ -75,14 +74,11 @@ impl ApiClient for InviteClient {
 
 impl InviteClient {
     pub async fn send_newcomer_invite(&self, invitee_email: String, inviter_address_id: String) -> Result<(), Error> {
-        let request = self
-            .post("invites")
-            .body_json(InviteRequestBody {
-                Email: invitee_email,
-                Type: InviteNotificationType::Newcomer,
-                InviterAddressID: inviter_address_id,
-            })?
-            .service_type(ServiceType::Interactive, false);
+        let request = self.post("invites").body_json(InviteRequestBody {
+            Email: invitee_email,
+            Type: InviteNotificationType::Newcomer,
+            InviterAddressID: inviter_address_id,
+        })?;
 
         let response = self.api_client.send(request).await?;
         response.parse_response::<SendInviteResponseBody>()?;
@@ -102,8 +98,7 @@ impl InviteClient {
             .get("invites")
             .query(("Email", invitee_email))
             .query(("Type", (invite_notification_type as i32).to_string()))
-            .query(("InviterAddressID", inviter_address_id))
-            .service_type(ServiceType::Interactive, true);
+            .query(("InviterAddressID", inviter_address_id));
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<CanSendInviteResponseBody>()?;
@@ -116,14 +111,11 @@ impl InviteClient {
         invitee_email: String,
         inviter_address_id: String,
     ) -> Result<(), Error> {
-        let request = self
-            .post("invites")
-            .body_json(InviteRequestBody {
-                Email: invitee_email,
-                Type: InviteNotificationType::EmailIntegration,
-                InviterAddressID: inviter_address_id,
-            })?
-            .service_type(ServiceType::Interactive, false);
+        let request = self.post("invites").body_json(InviteRequestBody {
+            Email: invitee_email,
+            Type: InviteNotificationType::EmailIntegration,
+            InviterAddressID: inviter_address_id,
+        })?;
         let response = self.api_client.send(request).await?;
         response.parse_response::<SendInviteResponseBody>()?;
 
@@ -131,7 +123,7 @@ impl InviteClient {
     }
 
     pub async fn get_remaining_monthly_invitation(&self) -> Result<RemainingMonthlyInvitations, Error> {
-        let request = self.get("invites/remaining").service_type(ServiceType::Normal, true);
+        let request = self.get("invites/remaining");
         let response = self.api_client.send(request).await?;
 
         let parsed = response.parse_response::<GetRemainingMonthlyInvitationsResponseBody>()?;

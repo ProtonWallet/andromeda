@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use muon::common::ServiceType;
 use muon::rest::core::v4::{keys::salts::KeySalt, users::User};
 use serde::{Deserialize, Serialize};
 
@@ -258,7 +257,7 @@ impl ApiClient for ProtonUsersClient {
 #[cfg_attr(not(target_arch = "wasm32"), async_trait::async_trait)]
 impl ProtonUsersClientExt for ProtonUsersClient {
     async fn get_auth_modulus(&self) -> Result<GetAuthModulusResponse, Error> {
-        let request = self.get("auth/modulus").service_type(ServiceType::Interactive, true);
+        let request = self.get("auth/modulus");
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetAuthModulusResponse>()?;
@@ -267,10 +266,7 @@ impl ProtonUsersClientExt for ProtonUsersClient {
 
     // this is spical endpoint. it is get data but with a post call
     async fn get_auth_info(&self, req: GetAuthInfoRequest) -> Result<GetAuthInfoResponseBody, Error> {
-        let request = self
-            .post("auth/info")
-            .body_json(req)?
-            .service_type(ServiceType::Interactive, true);
+        let request = self.post("auth/info").body_json(req)?;
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetAuthInfoResponseBody>()?;
@@ -278,10 +274,7 @@ impl ProtonUsersClientExt for ProtonUsersClient {
     }
 
     async fn unlock_password_change(&self, proofs: ProtonSrpClientProofs) -> Result<String, Error> {
-        let request = self
-            .put("users/password")
-            .body_json(proofs)?
-            .service_type(ServiceType::Interactive, true);
+        let request = self.put("users/password").body_json(proofs)?;
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<ProtonSrpServerProofs>()?;
@@ -289,10 +282,7 @@ impl ProtonUsersClientExt for ProtonUsersClient {
     }
 
     async fn unlock_sensitive_settings(&self, proofs: ProtonSrpClientProofs) -> Result<String, Error> {
-        let request = self
-            .put("users/unlock")
-            .body_json(proofs)?
-            .service_type(ServiceType::Interactive, true);
+        let request = self.put("users/unlock").body_json(proofs)?;
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<ProtonSrpServerProofs>()?;
@@ -300,7 +290,7 @@ impl ProtonUsersClientExt for ProtonUsersClient {
     }
 
     async fn lock_sensitive_settings(&self) -> Result<u32, Error> {
-        let request = self.put("users/lock").service_type(ServiceType::Interactive, true);
+        let request = self.put("users/lock");
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<EmptyResponseBody>()?;
@@ -309,7 +299,7 @@ impl ProtonUsersClientExt for ProtonUsersClient {
 
     // get proton user info. This includes the user's keys.
     async fn get_user_info(&self) -> Result<ProtonUser, Error> {
-        let request = self.get("users").service_type(ServiceType::Interactive, true);
+        let request = self.get("users");
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<ApiProtonUserResponse>()?;
@@ -319,7 +309,7 @@ impl ProtonUsersClientExt for ProtonUsersClient {
     // get proton user settings.
     //  used for 2fa settings and password recovery etc..
     async fn get_user_settings(&self) -> Result<ProtonUserSettings, Error> {
-        let request = self.get("settings").service_type(ServiceType::Interactive, true);
+        let request = self.get("settings");
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<ApiProtonUserSettingsResponse>()?;

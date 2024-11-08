@@ -7,7 +7,6 @@ use crate::{
     error::Error,
     ProtonWalletApiClient, BASE_WALLET_API_V1,
 };
-use muon::common::ServiceType;
 
 #[derive(Deserialize, Debug, PartialEq)]
 #[allow(non_snake_case)]
@@ -56,7 +55,7 @@ impl ApiClient for DiscoverContentClient {
 
 impl DiscoverContentClient {
     pub async fn get_discovery_contents(&self) -> Result<Vec<Content>, Error> {
-        let request = self.get("discover-content").service_type(ServiceType::Normal, true);
+        let request = self.get("discover-content");
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetDiscoveryContentResponseBody>()?;
         Ok(parsed.DiscoverContent)

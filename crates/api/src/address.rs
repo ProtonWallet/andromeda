@@ -10,8 +10,6 @@ use crate::{
     ProtonWalletApiClient,
 };
 
-use muon::common::ServiceType;
-
 #[derive(Clone)]
 pub struct AddressClient {
     api_client: Arc<ProtonWalletApiClient>,
@@ -126,9 +124,7 @@ impl ApiClient for AddressClient {
 impl AddressClient {
     /// Get balance of a Bitcoin address.
     pub async fn get_address_balance(&self, address: String) -> Result<AddressBalance, Error> {
-        let request = self
-            .get(format!("addresses/{}/balance", address))
-            .service_type(ServiceType::Interactive, true);
+        let request = self.get(format!("addresses/{}/balance", address));
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetAddressBalanceResponseBody>()?;
 
@@ -139,9 +135,7 @@ impl AddressClient {
     /// first. Returns up to 50 mempool transactions plus the first 25
     /// confirmed transactions.
     pub async fn get_scripthash_transactions(&self, script_hash: String) -> Result<Vec<ApiTx>, Error> {
-        let request = self
-            .get(format!("addresses/scripthash/{}/transactions", script_hash))
-            .service_type(ServiceType::Interactive, true);
+        let request = self.get(format!("addresses/scripthash/{}/transactions", script_hash));
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetScriptHashTransactionsResponseBody>()?;
 
@@ -156,12 +150,10 @@ impl AddressClient {
         script_hash: String,
         transaction_id: String,
     ) -> Result<Vec<ApiTx>, Error> {
-        let request = self
-            .get(format!(
-                "addresses/scripthash/{}/transactions/{}",
-                script_hash, transaction_id
-            ))
-            .service_type(ServiceType::Interactive, true);
+        let request = self.get(format!(
+            "addresses/scripthash/{}/transactions/{}",
+            script_hash, transaction_id
+        ));
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetScriptHashTransactionsResponseBody>()?;
 
@@ -180,12 +172,7 @@ impl AddressClient {
             ScriptHashes: script_hashes,
         };
 
-        /// This is a special case where we use POST with script_hashes,
-        /// but it behaves like a GET request, so it is idempotent.
-        let request = self
-            .post("addresses/scripthashes/transactions")
-            .body_json(payload)?
-            .service_type(ServiceType::Interactive, true);
+        let request = self.post("addresses/scripthashes/transactions").body_json(payload)?;
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetScriptHashesTransactionsResponseBody>()?;
 
