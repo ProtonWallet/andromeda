@@ -14,7 +14,7 @@ use crate::{
 #[allow(non_snake_case)]
 pub struct BroadcastMessage {
     pub Encrypted: String,
-    pub Asymmetrical: HashMap<String, String>,
+    pub Asymmetric: HashMap<String, String>,
 }
 
 #[derive(Debug, Serialize)]

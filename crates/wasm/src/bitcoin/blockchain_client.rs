@@ -85,14 +85,14 @@ pub struct WasmTransactionData {
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct WasmBroadcastMessage {
     pub encrypted: String,
-    pub asymmetrical: HashMap<String, String>,
+    pub asymmetric: HashMap<String, String>,
 }
 
 impl Into<BroadcastMessage> for WasmBroadcastMessage {
     fn into(self) -> BroadcastMessage {
         BroadcastMessage {
             Encrypted: self.encrypted,
-            Asymmetrical: self.asymmetrical,
+            Asymmetric: self.asymmetric,
         }
     }
 }
