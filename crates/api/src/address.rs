@@ -276,17 +276,18 @@ mod tests {
                 .as_bytes(),
         );
 
-        let mut script_hashes = Vec::new();
-        script_hashes.push(ScriptHashTransactionsPayload {
-            ScriptHash: script_hash_1.to_string(),
-            TransactionID: None,
-        });
-        script_hashes.push(ScriptHashTransactionsPayload {
-            ScriptHash: script_hash_2.to_string(),
-            TransactionID: Some(String::from(
-                "3865f0eb3f59dfbef5506e0269430c773df0fa288bc89fb4fcc99ae1a2d8835e",
-            )),
-        });
+        let script_hashes = vec![
+            ScriptHashTransactionsPayload {
+                ScriptHash: script_hash_1.to_string(),
+                TransactionID: None,
+            },
+            ScriptHashTransactionsPayload {
+                ScriptHash: script_hash_2.to_string(),
+                TransactionID: Some(String::from(
+                    "3865f0eb3f59dfbef5506e0269430c773df0fa288bc89fb4fcc99ae1a2d8835e",
+                )),
+            },
+        ];
 
         let json_body = serde_json::json!(
         {

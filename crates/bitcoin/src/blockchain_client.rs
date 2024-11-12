@@ -185,6 +185,7 @@ impl BlockchainClient {
     }
 
     /// Broadcasts a provided transaction
+    #[allow(clippy::too_many_arguments)]
     pub async fn broadcast(
         &self,
         transaction: Transaction,
