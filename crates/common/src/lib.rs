@@ -1,11 +1,11 @@
-use std::fmt;
-
 use bitcoin::{
     bip32::{ChildNumber, DerivationPath},
     Network as BdkNetwork,
 };
 use error::Error;
 use serde::{Deserialize, Serialize};
+use std::fmt;
+use std::fmt::Display;
 
 pub const SATOSHI: u64 = 1;
 pub const BITCOIN: u64 = 100_000_000 * SATOSHI;
@@ -27,14 +27,15 @@ pub enum Network {
     Regtest,
 }
 
-impl ToString for Network {
-    fn to_string(&self) -> String {
-        match self {
-            Network::Bitcoin => String::from("bitcoin"),
-            Network::Testnet => String::from("testnet"),
-            Network::Signet => String::from("signet"),
-            Network::Regtest => String::from("regtest"),
-        }
+impl Display for Network {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let str = match self {
+            Network::Bitcoin => "bitcoin",
+            Network::Testnet => "testnet",
+            Network::Signet => "signet",
+            Network::Regtest => "regtest",
+        };
+        write!(f, "{}", str)
     }
 }
 
@@ -78,6 +79,7 @@ impl TryFrom<String> for Network {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum BitcoinUnit {
     /// 100,000,000 sats
     BTC,

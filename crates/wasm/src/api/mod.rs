@@ -103,6 +103,7 @@ mod tests {
 
     #[wasm_bindgen_test]
     #[ignore]
+    #[allow(dead_code)]
     async fn should_create_pw_api_client() {
         let client = WasmProtonWalletApiClient::new(test_spec().0, test_spec().1, None, None, None).unwrap();
         client.0.login("pro", "pro").await.unwrap();

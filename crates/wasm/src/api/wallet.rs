@@ -449,6 +449,7 @@ impl WasmWalletClient {
     }
 
     #[wasm_bindgen(js_name = "createWallet")]
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_wallet(
         &self,
         name: String,

@@ -148,7 +148,7 @@ impl Mnemonic {
     /// assert_eq!(result.as_words(), vec!["desk", "prevent", "enhance", "husband", "hungry", "idle", "member", "vessel", "room", "moment", "simple", "behave"]);
     /// ```
     pub fn as_words(&self) -> Vec<String> {
-        self.inner.word_iter().map(String::from).collect()
+        self.inner.words().map(String::from).collect()
     }
 
     pub fn inner(&self) -> BdkMnemonic {

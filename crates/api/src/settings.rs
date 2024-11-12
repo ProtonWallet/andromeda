@@ -22,6 +22,7 @@ pub enum UserReceiveNotificationEmailTypes {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize, Default)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum FiatCurrencySymbol {
     ALL,
     DZD,

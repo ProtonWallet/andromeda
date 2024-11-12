@@ -50,6 +50,7 @@ impl From<WasmUserReceiveNotificationEmailTypes> for UserReceiveNotificationEmai
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum WasmFiatCurrencySymbol {
     ALL,
     DZD,

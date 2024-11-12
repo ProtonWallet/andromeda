@@ -169,6 +169,7 @@ impl ApiClient for TransactionClient {
 }
 
 impl TransactionClient {
+    #[allow(clippy::too_many_arguments)]
     pub async fn broadcast_raw_transaction(
         &self,
         signed_transaction_hex: String,

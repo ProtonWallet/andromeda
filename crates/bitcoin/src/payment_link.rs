@@ -1,4 +1,5 @@
 use core::fmt::Debug;
+use std::fmt::Display;
 use std::str::FromStr;
 
 use andromeda_common::{BitcoinUnit, Network};
@@ -24,9 +25,9 @@ pub enum PaymentLink {
     },
 }
 
-impl ToString for PaymentLink {
-    fn to_string(&self) -> String {
-        match self {
+impl Display for PaymentLink {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
             Self::BitcoinAddress(address) => address.to_string(),
             Self::BitcoinURI {
                 address,
@@ -37,14 +38,15 @@ impl ToString for PaymentLink {
                 let params_str = Self::get_querystring(amount, label, message);
 
                 if !params_str.is_empty() {
-                    return format!("bitcoin:{}?{}", address, params_str);
+                    return write!(f, "{}", format!("bitcoin:{}?{}", address, params_str));
                 }
 
                 address.to_string()
             }
             Self::LightningURI { uri } => uri.clone(),
             Self::UnifiedURI { uri } => uri.clone(),
-        }
+        };
+        write!(f, "{}", str)
     }
 }
 
