@@ -96,6 +96,7 @@ pub struct Quote {
     pub PaymentMethod: PaymentMethod,
     pub PurchaseAmount: Option<String>,
     pub PaymentProcessingFee: Option<String>,
+    pub OrderID: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -107,7 +108,7 @@ pub struct GetQuotesResponseBody {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(non_snake_case)]
-pub struct CreateOnRampCheckoutRequestBody {
+pub struct CreateOnRampCheckoutUrlRequestBody {
     pub Amount: String,
     pub BitcoinAddress: String,
     pub FiatCurrency: String,
@@ -115,9 +116,27 @@ pub struct CreateOnRampCheckoutRequestBody {
     pub Provider: GatewayProvider,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+#[allow(non_snake_case)]
+pub struct CreateOnRampCheckoutRequestBody {
+    pub Amount: String,
+    pub BitcoinAddress: String,
+    pub FiatCurrency: String,
+    pub PaymentMethod: PaymentMethod,
+    pub Provider: GatewayProvider,
+    pub OrderID: String,
+}
+
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 pub struct CreateOnRampCheckoutResponseBody {
+    pub Code: i32,
+    pub ClientSecret: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+pub struct CreateOnRampCheckoutUrlResponseBody {
     pub Code: i32,
     pub CheckoutUrl: String,
 }
@@ -219,20 +238,47 @@ impl PaymentGatewayClient {
         amount: String,
         btc_address: String,
         fiat_currency: String,
+        payment_method: PaymentMethod,
+        provider: GatewayProvider,
+        order_id: String,
+    ) -> Result<String, Error> {
+        let body = CreateOnRampCheckoutRequestBody {
+            Amount: amount,
+            BitcoinAddress: btc_address,
+            FiatCurrency: fiat_currency,
+            PaymentMethod: payment_method,
+            Provider: provider,
+            OrderID: order_id,
+        };
+        let request = self.post("payment-gateway/on-ramp/checkout").body_json(body)?;
+
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<CreateOnRampCheckoutResponseBody>()?;
+
+        Ok(parsed.ClientSecret)
+    }
+
+    pub async fn create_on_ramp_checkout_url(
+        &self,
+        amount: String,
+        btc_address: String,
+        fiat_currency: String,
         pay_method: PaymentMethod,
         provider: GatewayProvider,
     ) -> Result<String, Error> {
-        let body = CreateOnRampCheckoutRequestBody {
+        let body = CreateOnRampCheckoutUrlRequestBody {
             Amount: amount,
             BitcoinAddress: btc_address,
             FiatCurrency: fiat_currency,
             PaymentMethod: pay_method,
             Provider: provider,
         };
+
         let request = self.post("payment-gateway/on-ramp/checkout-url").body_json(body)?;
 
         let response = self.api_client.send(request).await?;
-        let parsed = response.parse_response::<CreateOnRampCheckoutResponseBody>()?;
+        let parsed = response.parse_response::<CreateOnRampCheckoutUrlResponseBody>()?;
+
         Ok(parsed.CheckoutUrl)
     }
 
@@ -758,6 +804,60 @@ mod tests {
         let json_body = serde_json::json!(
         {
             "Code": 1000,
+            "ClientSecret": "cs_test_123",
+        });
+        let req_path: String = format!("{}/payment-gateway/on-ramp/checkout", BASE_WALLET_API_V1);
+        let response = ResponseTemplate::new(200).set_body_json(json_body);
+        Mock::given(method("POST"))
+            .and(path(req_path))
+            .and(body_json(serde_json::json!(
+            {
+                "Amount": "10.00",
+                "BitcoinAddress": "tb1q886jdswcmtn5u9memdlaz0lymua637a9aufqq6",
+                "FiatCurrency": "AUD",
+                "PaymentMethod": 3,
+                "Provider": "Banxa",
+                "OrderID": "1145329",
+            })))
+            .respond_with(response)
+            .expect(1..)
+            .with_priority(1)
+            .mount(&mock_server)
+            .await;
+        Mock::given(method("POST"))
+            .respond_with(ResponseTemplate::new(404))
+            .with_priority(2)
+            .mount(&mock_server)
+            .await;
+
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let gateway_client = PaymentGatewayClient::new(api_client);
+        let res = gateway_client
+            .create_on_ramp_checkout(
+                "10.00".to_string(),
+                "tb1q886jdswcmtn5u9memdlaz0lymua637a9aufqq6".to_string(),
+                "AUD".to_string(),
+                PaymentMethod::Card,
+                GatewayProvider::Banxa,
+                "1145329".to_string(),
+            )
+            .await;
+        println!("create_on_ramp_checkout done: {:?}", res);
+        match res {
+            Ok(value) => assert!(!value.is_empty()),
+            Err(e) => panic!("Expected Ok variant but got Err.{}", e),
+        }
+
+        let unmatched_requests = mock_server.received_requests().await.unwrap();
+        assert_eq!(unmatched_requests.len(), 1, "There should be no unmatched requests");
+    }
+
+    #[tokio::test]
+    async fn test_create_on_ramp_checkout_url_1000() {
+        let mock_server = MockServer::start().await;
+        let json_body = serde_json::json!(
+        {
+            "Code": 1000,
             "CheckoutUrl": "https://example.com",
         });
         let req_path: String = format!("{}/payment-gateway/on-ramp/checkout-url", BASE_WALLET_API_V1);
@@ -786,7 +886,7 @@ mod tests {
         let api_client = setup_test_connection_arc(mock_server.uri());
         let gateway_client = PaymentGatewayClient::new(api_client);
         let res = gateway_client
-            .create_on_ramp_checkout(
+            .create_on_ramp_checkout_url(
                 "10.00".to_string(),
                 "tb1q886jdswcmtn5u9memdlaz0lymua637a9aufqq6".to_string(),
                 "AUD".to_string(),
@@ -794,7 +894,7 @@ mod tests {
                 GatewayProvider::Banxa,
             )
             .await;
-        println!("create_on_ramp_checkout done: {:?}", res);
+        println!("create_on_ramp_checkout_url done: {:?}", res);
         match res {
             Ok(value) => assert!(!value.is_empty()),
             Err(e) => panic!("Expected Ok variant but got Err.{}", e),
@@ -805,7 +905,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_create_on_ramp_checkout_1000_empty() {
+    async fn test_create_on_ramp_checkout_url_1000_empty() {
         let mock_server = MockServer::start().await;
         let json_body = serde_json::json!(
         {
@@ -823,7 +923,7 @@ mod tests {
         let api_client = setup_test_connection_arc(mock_server.uri());
         let gateway_client = PaymentGatewayClient::new(api_client);
         let res = gateway_client
-            .create_on_ramp_checkout(
+            .create_on_ramp_checkout_url(
                 "10.00".to_string(),
                 "tb1q886jdswcmtn5u9memdlaz0lymua637a9aufqq6".to_string(),
                 "AUD".to_string(),
@@ -928,6 +1028,7 @@ mod tests {
                 "AUD".to_string(),
                 PaymentMethod::Card,
                 GatewayProvider::Banxa,
+                "1145329".to_string(),
             )
             .await;
         println!("create_on_ramp_checkout done: {:?}", res);
