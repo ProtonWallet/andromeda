@@ -260,6 +260,7 @@ pub struct WasmQuote {
     pub PaymentMethod: WasmPaymentMethod,
     pub PurchaseAmount: Option<String>,
     pub PaymentProcessingFee: Option<String>,
+    pub OrderID: Option<String>,
 }
 
 impl From<&Quote> for WasmQuote {
@@ -273,6 +274,7 @@ impl From<&Quote> for WasmQuote {
             PaymentMethod: (&value.PaymentMethod).into(),
             PurchaseAmount: value.PurchaseAmount.clone(),
             PaymentProcessingFee: value.PaymentProcessingFee.clone(),
+            OrderID: value.OrderID.clone(),
         }
     }
 }
@@ -371,6 +373,7 @@ impl WasmPaymentGatewayClient {
         fiat_currency: String,
         payment_method: WasmPaymentMethod,
         provider: WasmGatewayProvider,
+        order_id: String,
     ) -> Result<String, JsValue> {
         self.0
             .create_on_ramp_checkout(
@@ -379,6 +382,7 @@ impl WasmPaymentGatewayClient {
                 fiat_currency,
                 payment_method.into(),
                 provider.into(),
+                order_id,
             )
             .await
             .map_err(|e| e.to_js_error())
