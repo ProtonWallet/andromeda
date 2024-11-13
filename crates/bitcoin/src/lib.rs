@@ -6,12 +6,14 @@ pub mod error;
 pub mod mnemonic;
 pub mod payment_link;
 pub mod psbt;
+pub mod storage;
 pub mod transaction_builder;
 pub mod transactions;
 pub mod utils;
 pub mod wallet;
 
-pub mod storage;
+// Define a type alias for the common result type used in this crate
+type Result<T> = std::result::Result<T, error::Error>;
 
 #[cfg(feature = "sqlite")]
 pub use bdk_wallet::rusqlite::Connection;
