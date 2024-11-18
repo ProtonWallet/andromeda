@@ -236,33 +236,32 @@ impl ProtonWalletApiClient {
     }
 
     /// fork session, client must be authenticated first
-    pub async fn fork(&self) -> Result<ChildSession, Error> {
+    pub async fn fork(&self, client_child: &str, app_version: &str, user_agent: &str) -> Result<ChildSession, Error> {
         use muon::client::flow::WithSelectorFlow;
 
         // Fork the session
         let ForkFlowResult::Success(_client, selector) = self
             .session
             .clone()
-            .fork("ios-wallet")
-            .payload(b"hello world")
+            .fork(client_child)
+            .payload(b"proton wallet fork")
             .send()
             .await
         else {
             return Err(Error::ForkSession);
         };
+
         // Create a new client.
         let store_env: String = self.env.clone().unwrap_or("atlas".to_string());
         let store = WalletAuthStore::from_env_str(store_env, Arc::new(Mutex::new(Auth::None)));
-        let app_version = "ios-wallet@1.0.0";
-        let user_agentuser_agent = "ProtonWallet/1.0.0 (iOS/17.4; arm64)";
-        let app_spec = App::new(app_version)?.with_user_agent(user_agentuser_agent);
+        let app_spec = App::new(app_version)?.with_user_agent(user_agent);
         let child = Client::new(app_spec, store.clone())?;
         // Authenticate the child client via the fork.
         let WithSelectorFlow::Ok(_, payload) = child.auth().from_fork().with_selector(selector).await else {
             return Err(Error::ForkAuthSession);
         };
         // The payload is the data sent by the parent client.
-        if payload.as_deref() == Some(b"hello world".as_ref()) {
+        if payload.as_deref() == Some(b"proton wallet fork".as_ref()) {
             let auth = store.auth.lock().unwrap();
             Ok(ChildSession {
                 session_id: auth.uid().unwrap().to_string(),
@@ -274,6 +273,14 @@ impl ProtonWalletApiClient {
             // Change to our error type
             Err(Error::Deserialize("Payload not as expected".to_string()))
         }
+    }
+
+    /// fork session and get selector, client must be authenticated first
+    pub async fn fork_selector(&self, client_child: &str) -> Result<String, Error> {
+        let ForkFlowResult::Success(_client, selector) = self.session.clone().fork(client_child).send().await else {
+            return Err(Error::ForkSession);
+        };
+        Ok(selector)
     }
 
     /// Builds a full url from base and endpoint.
