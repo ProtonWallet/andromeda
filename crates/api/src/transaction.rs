@@ -13,8 +13,8 @@ use crate::{
 #[derive(Debug, Serialize)]
 #[allow(non_snake_case)]
 pub struct BroadcastMessage {
-    pub Encrypted: String,
-    pub Asymmetric: HashMap<String, String>,
+    pub DataPacket: String,
+    pub KeyPackets: HashMap<String, String>,
 }
 
 #[derive(Debug, Serialize)]
