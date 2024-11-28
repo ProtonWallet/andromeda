@@ -314,10 +314,17 @@ impl SettingsClient {
 
 #[cfg(test)]
 mod tests {
-    use andromeda_common::BitcoinUnit;
-
     use super::SettingsClient;
-    use crate::{core::ApiClient, settings::FiatCurrencySymbol, tests::utils::common_api_client};
+    use crate::{
+        core::ApiClient, settings::FiatCurrencySymbol, tests::utils::common_api_client,
+        tests::utils::setup_test_connection, BASE_WALLET_API_V1,
+    };
+    use andromeda_common::BitcoinUnit;
+    use std::sync::Arc;
+    use wiremock::{
+        matchers::{body_json, method, path},
+        Mock, MockServer, ResponseTemplate,
+    };
 
     #[tokio::test]
     #[ignore]
@@ -415,5 +422,330 @@ mod tests {
             .await;
         println!("request done: {:?}", settings);
         assert!(settings.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_get_user_settings_success() {
+        let mock_server = MockServer::start().await;
+        let response_body = serde_json::json!(
+            {
+                "Code": 1000,
+                "WalletUserSettings": {
+                    "BitcoinUnit": "BTC",
+                    "FiatCurrency": "CHF",
+                    "HideEmptyUsedAddresses": 1,
+                    "TwoFactorAmountThreshold": 1000,
+                    "ReceiveInviterNotification": 1,
+                    "ReceiveEmailIntegrationNotification": 1,
+                    "ReceiveTransactionNotification": 1,
+                    "WalletCreated": 1
+                }
+            }
+        );
+        let req_path: String = format!("{}/settings", BASE_WALLET_API_V1);
+        let response = ResponseTemplate::new(200).set_body_json(response_body);
+        Mock::given(method("GET"))
+            .and(path(req_path))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection(mock_server.uri());
+        let client = SettingsClient::new(Arc::new(api_client));
+        let result = client.get_user_settings().await;
+        match result {
+            Ok(settings) => {
+                assert_eq!(settings.BitcoinUnit, BitcoinUnit::BTC);
+                assert_eq!(settings.FiatCurrency, FiatCurrencySymbol::CHF);
+                assert_eq!(settings.HideEmptyUsedAddresses, 1);
+                assert_eq!(settings.TwoFactorAmountThreshold.unwrap(), 1000);
+                assert_eq!(settings.ReceiveInviterNotification.unwrap(), 1);
+                assert_eq!(settings.ReceiveEmailIntegrationNotification.unwrap(), 1);
+                assert_eq!(settings.ReceiveTransactionNotification.unwrap(), 1);
+                assert_eq!(settings.WalletCreated.unwrap(), 1);
+                return;
+            }
+            Err(e) => panic!("Got Err. {:?}", e),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_update_bitcoin_unit_success() {
+        let mock_server = MockServer::start().await;
+        let response_body = serde_json::json!(
+            {
+                "Code": 1000,
+                "WalletUserSettings": {
+                    "BitcoinUnit": "SATS",
+                    "FiatCurrency": "CHF",
+                    "HideEmptyUsedAddresses": 1,
+                    "TwoFactorAmountThreshold": 1000,
+                    "ReceiveInviterNotification": 1,
+                    "ReceiveEmailIntegrationNotification": 1,
+                    "ReceiveTransactionNotification": 1,
+                    "WalletCreated": 1
+                }
+            }
+        );
+        let req_path: String = format!("{}/settings/currency/bitcoin", BASE_WALLET_API_V1);
+        let response = ResponseTemplate::new(200).set_body_json(response_body);
+        Mock::given(method("PUT"))
+            .and(path(req_path))
+            .and(body_json(serde_json::json!(
+            {
+                "Symbol": "SATS",
+            })))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection(mock_server.uri());
+        let client = SettingsClient::new(Arc::new(api_client));
+        let bitcoin_unit = BitcoinUnit::SATS;
+        let result = client.update_bitcoin_unit(bitcoin_unit).await;
+        match result {
+            Ok(settings) => {
+                assert_eq!(settings.BitcoinUnit, bitcoin_unit);
+                return;
+            }
+            Err(e) => panic!("Got Err. {:?}", e),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_update_fiat_currency_success() {
+        let mock_server = MockServer::start().await;
+        let response_body = serde_json::json!(
+            {
+                "Code": 1000,
+                "WalletUserSettings": {
+                    "BitcoinUnit": "BTC",
+                    "FiatCurrency": "TWD",
+                    "HideEmptyUsedAddresses": 1,
+                    "TwoFactorAmountThreshold": 1000,
+                    "ReceiveInviterNotification": 1,
+                    "ReceiveEmailIntegrationNotification": 1,
+                    "ReceiveTransactionNotification": 1,
+                    "WalletCreated": 1
+                }
+            }
+        );
+        let req_path: String = format!("{}/settings/currency/fiat", BASE_WALLET_API_V1);
+        let response = ResponseTemplate::new(200).set_body_json(response_body);
+        Mock::given(method("PUT"))
+            .and(path(req_path))
+            .and(body_json(serde_json::json!(
+            {
+                "Symbol": "TWD",
+            })))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection(mock_server.uri());
+        let client = SettingsClient::new(Arc::new(api_client));
+        let currency = FiatCurrencySymbol::TWD;
+        let result = client.update_fiat_currency(currency).await;
+        match result {
+            Ok(settings) => {
+                assert_eq!(settings.FiatCurrency, currency);
+                return;
+            }
+            Err(e) => panic!("Got Err. {:?}", e),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_update_two_fa_threshold_success() {
+        let mock_server = MockServer::start().await;
+        let response_body = serde_json::json!(
+            {
+                "Code": 1000,
+                "WalletUserSettings": {
+                    "BitcoinUnit": "BTC",
+                    "FiatCurrency": "TWD",
+                    "HideEmptyUsedAddresses": 1,
+                    "TwoFactorAmountThreshold": 3000,
+                    "ReceiveInviterNotification": 1,
+                    "ReceiveEmailIntegrationNotification": 1,
+                    "ReceiveTransactionNotification": 1,
+                    "WalletCreated": 1
+                }
+            }
+        );
+        let req_path: String = format!("{}/settings/2fa/threshold", BASE_WALLET_API_V1);
+        let response = ResponseTemplate::new(200).set_body_json(response_body);
+        Mock::given(method("PUT"))
+            .and(path(req_path))
+            .and(body_json(serde_json::json!(
+            {
+                "TwoFactorAmountThreshold": 3000,
+            })))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection(mock_server.uri());
+        let client = SettingsClient::new(Arc::new(api_client));
+        let amount = 3000;
+        let result = client.update_two_fa_threshold(amount).await;
+        match result {
+            Ok(settings) => {
+                assert_eq!(settings.TwoFactorAmountThreshold.unwrap(), amount);
+                return;
+            }
+            Err(e) => panic!("Got Err. {:?}", e),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_update_hide_empty_used_addresses_success() {
+        let mock_server = MockServer::start().await;
+        let response_body = serde_json::json!(
+            {
+                "Code": 1000,
+                "WalletUserSettings": {
+                    "BitcoinUnit": "BTC",
+                    "FiatCurrency": "TWD",
+                    "HideEmptyUsedAddresses": 0,
+                    "TwoFactorAmountThreshold": 3000,
+                    "ReceiveInviterNotification": 1,
+                    "ReceiveEmailIntegrationNotification": 1,
+                    "ReceiveTransactionNotification": 1,
+                    "WalletCreated": 1
+                }
+            }
+        );
+        let req_path: String = format!("{}/settings/addresses/used/hide", BASE_WALLET_API_V1);
+        let response = ResponseTemplate::new(200).set_body_json(response_body);
+        Mock::given(method("PUT"))
+            .and(path(req_path))
+            .and(body_json(serde_json::json!(
+            {
+                "HideEmptyUsedAddresses": 0,
+            })))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection(mock_server.uri());
+        let client = SettingsClient::new(Arc::new(api_client));
+        let hide = false;
+        let result = client.update_hide_empty_used_addresses(hide).await;
+        match result {
+            Ok(settings) => {
+                assert_eq!(settings.HideEmptyUsedAddresses, 0);
+                return;
+            }
+            Err(e) => panic!("Got Err. {:?}", e),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_update_receive_notification_email_success() {
+        let mock_server = MockServer::start().await;
+        let response_body = serde_json::json!(
+            {
+                "Code": 1000,
+                "WalletUserSettings": {
+                    "BitcoinUnit": "BTC",
+                    "FiatCurrency": "TWD",
+                    "HideEmptyUsedAddresses": 1,
+                    "TwoFactorAmountThreshold": 3000,
+                    "ReceiveInviterNotification": 0,
+                    "ReceiveEmailIntegrationNotification": 1,
+                    "ReceiveTransactionNotification": 1,
+                    "WalletCreated": 1
+                }
+            }
+        );
+        let req_path: String = format!("{}/settings/notification-email", BASE_WALLET_API_V1);
+        let response = ResponseTemplate::new(200).set_body_json(response_body);
+        Mock::given(method("PUT"))
+            .and(path(req_path))
+            .and(body_json(serde_json::json!(
+            {
+                "EmailType": crate::settings::UserReceiveNotificationEmailTypes::NotificationToInviter,
+                "IsEnabled": 0,
+            })))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection(mock_server.uri());
+        let client = SettingsClient::new(Arc::new(api_client));
+        let result = client
+            .update_receive_notification_email(
+                crate::settings::UserReceiveNotificationEmailTypes::NotificationToInviter,
+                false,
+            )
+            .await;
+        match result {
+            Ok(settings) => {
+                assert_eq!(settings.ReceiveInviterNotification.unwrap(), 0);
+                return;
+            }
+            Err(e) => panic!("Got Err. {:?}", e),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_accept_terms_and_conditions_success() {
+        let mock_server = MockServer::start().await;
+        let response_body = serde_json::json!(
+            {
+                "Code": 1000,
+                "WalletUserSettings": {
+                    "AcceptTermsAndConditions": 1,
+                    "BitcoinUnit": "BTC",
+                    "FiatCurrency": "TWD",
+                    "HideEmptyUsedAddresses": 0,
+                    "TwoFactorAmountThreshold": 3000,
+                    "ReceiveInviterNotification": 1,
+                    "ReceiveEmailIntegrationNotification": 1,
+                    "ReceiveTransactionNotification": 1,
+                    "WalletCreated": 1
+                }
+            }
+        );
+        let req_path: String = format!("{}/settings/terms-and-conditions/accept", BASE_WALLET_API_V1);
+        let response = ResponseTemplate::new(200).set_body_json(response_body);
+        Mock::given(method("PUT"))
+            .and(path(req_path))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection(mock_server.uri());
+        let client = SettingsClient::new(Arc::new(api_client));
+        let result = client.accept_terms_and_conditions().await;
+        match result {
+            Ok(settings) => {
+                assert_eq!(settings.AcceptTermsAndConditions.unwrap(), 1);
+                return;
+            }
+            Err(e) => panic!("Got Err. {:?}", e),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_get_user_wallet_eligibility_success() {
+        let mock_server = MockServer::start().await;
+        let response_body = serde_json::json!(
+            {
+                "Code": 1000,
+                "IsEligible": 0,
+            }
+        );
+        let req_path: String = format!("{}/settings/eligible", BASE_WALLET_API_V1);
+        let response = ResponseTemplate::new(200).set_body_json(response_body);
+        Mock::given(method("GET"))
+            .and(path(req_path))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection(mock_server.uri());
+        let client = SettingsClient::new(Arc::new(api_client));
+        let result = client.get_user_wallet_eligibility().await;
+        match result {
+            Ok(eligible) => {
+                assert_eq!(eligible, 0);
+                return;
+            }
+            Err(e) => panic!("Got Err. {:?}", e),
+        }
     }
 }

@@ -42,7 +42,15 @@ impl UnleashClient {
 
 #[cfg(test)]
 mod tests {
-    use crate::{core::ApiClient, tests::utils::common_api_client, unleash::UnleashClient};
+    use crate::{
+        core::ApiClient, read_mock_file, tests::utils::common_api_client, tests::utils::setup_test_connection,
+        unleash::UnleashClient,
+    };
+    use std::sync::Arc;
+    use wiremock::{
+        matchers::{method, path},
+        Mock, MockServer, ResponseTemplate,
+    };
 
     #[tokio::test]
     #[ignore]
@@ -54,5 +62,28 @@ mod tests {
         let response = unleash_response.unwrap();
         assert!(response.status_code == 200);
         println!("request done code: {:?}", response.status_code);
+    }
+
+    #[tokio::test]
+    async fn test_fetch_toggles_success() {
+        let mock_server = MockServer::start().await;
+        let req_path: String = "feature/v2/frontend".to_string();
+        let contents = read_mock_file!("fetch_toggles_1000_body");
+        let response = ResponseTemplate::new(200).set_body_string(contents);
+        Mock::given(method("GET"))
+            .and(path(req_path))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection(mock_server.uri());
+        let client = UnleashClient::new(Arc::new(api_client));
+        let result = client.fetch_toggles().await;
+        match result {
+            Ok(response) => {
+                assert_eq!(response.status_code, 200);
+                return;
+            }
+            Err(e) => panic!("Got Err. {:?}", e),
+        }
     }
 }

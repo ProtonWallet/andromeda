@@ -1,0 +1,24 @@
+{
+  "Code": 1000,
+  "Address": {
+    "Keys": [
+      {
+        "Flags": 3,
+        "PublicKey": "-----BEGIN PGP PUBLIC KEY BLOCK-----\nVersion: ProtonMail\n\nxjMEZqIR1hYJKwYBBAHaRw8BAQdAg53JRcPL/EkpeYYKX5qAndW0T8IpKh25\nJDjDAoyONVfNKXdpbGwua2FiaUBwcm90b24ubWUgPHdpbGwua2FiaUBwcm90\nb24ubWU+wo8EExYIAEEFAmaiEdYJEJSe7m6ROP3SFiEEAQh6xxLmaiflg8yV\nlJ7ubpE4/dICGwMCHgECGQEDCwkHAhUIAxYAAgUnCQIHAgAA2u8A+QEo4shz\nGkUB0iEj+Nq/fzpm9GBTVfZZ0MxrwU2HJIuBAQCEHHoXA2ggmF0OmofJAvt7\nHpwrMQY4xZSCdr/YAc7xCMKoBBAWCABaBQJmo2NYCRDYBsGvWXjoxxYhBAqG\nUv5dUzhgV4mf6dgGwa9ZeOjHLBxvcGVucGdwLWNhQHByb3Rvbi5tZSA8b3Bl\nbnBncC1jYUBwcm90b24ubWU+BYMA7U4AAADf8AEAiQY2GNiwbBArLKBKStGq\npjJj1awQ+2Dz/ShBmd/WAc4BALsgfE8BKfgF/XEpUJosxi0AYrCX+FjWlFmZ\nXJNZkwoAzjgEZqIR1hIKKwYBBAGXVQEFAQEHQI0AcNDf/dmvYkuICaB18YHa\nGi+Ngqu/fguzHTUeQ/YHAwEKCcJ4BBgWCAAqBQJmohHWCRCUnu5ukTj90hYh\nBAEIescS5mon5YPMlZSe7m6ROP3SAhsMAABUaQEA6eK3qyBs0p9J0rmp2B9p\nKkFr90LVND5OJPLE+qe4P5MBAM0W7NFbrgTR6osJWX1uDfQh4zP86PWhKJr2\nVptEyPsA\n=W4qM\n-----END PGP PUBLIC KEY BLOCK-----\n",
+        "Source": 0
+      }
+    ],
+    "SignedKeyList": {
+      "MinEpochID": 2349,
+      "MaxEpochID": 3043,
+      "ExpectedMinEpochID": null,
+      "Data": "[{\"Fingerprint\": \"01087ac712e66a27e583cc95949eee6e9138fdd2\",\"SHA256Fingerprints\": [\"95135855464b08761a1a2384cac1ec06e35d69813a0c5f431fec211d12f468ef\",\"462c1a5ee9f8a65adade1c7abaddc2e004929b27eb884a9e3f6db34a251b7202\"],\"Flags\": 3,\"Primary\": 1}]",
+      "ObsolescenceToken": null,
+      "Revision": 1,
+      "Signature": "-----BEGIN PGP SIGNATURE-----\nVersion: ProtonMail\n\nwqkEARYKAFsFAmajY1YJEJSe7m6ROP3SFiEEAQh6xxLmaiflg8yVlJ7ubpE4\n/dIzFIAAAAAAEQAZY29udGV4dEBwcm90b24uY2hrZXktdHJhbnNwYXJlbmN5\nLmtleS1saXN0AACOGAEA/X+XPkun4NMTrhd88lq6xkJw2TlMH9auNO5eXZWj\nIa8BAKHJ+POGAUwb2OAPt4yLGtVWEZM6S1lo3Fmx1efoPwkF\n=G4g5\n-----END PGP SIGNATURE-----\n"
+    }
+  },
+  "Warnings": [],
+  "ProtonMX": true,
+  "IsProton": 0
+}

@@ -111,11 +111,11 @@ impl EventClient {
         let mut events = Vec::with_capacity(4);
         let event = self.get_event(&latest_event_id).await?;
         let mut has_more = event.More == 1;
-        let mut next_event_id = event.EventID;
+        let mut next_event_id = event.EventID.clone();
 
         events.push(ApiProtonEvent {
             Code: event.Code,
-            EventID: next_event_id,
+            EventID: event.EventID,
             Refresh: event.Refresh,
             More: event.More,
             ContactEmails: event.ContactEmails,
@@ -136,12 +136,12 @@ impl EventClient {
                 return Ok(events);
             }
 
-            let event = self.get_event(&latest_event_id).await?;
+            let event = self.get_event(&next_event_id).await?;
             has_more = event.More == 1;
-            next_event_id = event.EventID;
+            next_event_id = event.EventID.clone();
             events.push(ApiProtonEvent {
                 Code: event.Code,
-                EventID: next_event_id,
+                EventID: event.EventID,
                 Refresh: event.Refresh,
                 More: event.More,
                 ContactEmails: event.ContactEmails,
@@ -190,7 +190,7 @@ mod tests {
         core::ApiClient,
         read_mock_file,
         tests::utils::{common_api_client, setup_test_connection_arc},
-        BASE_CORE_API_V5,
+        BASE_CORE_API_V4, BASE_CORE_API_V5,
     };
 
     #[tokio::test]
@@ -239,7 +239,7 @@ mod tests {
         assert_eq!(events.Code, 1000);
         assert_eq!(events.EventID, "ACXDmTaBub14w==");
         assert_eq!(events.Refresh, 0);
-        assert_eq!(events.More, 0);
+        assert_eq!(events.More, 1);
         assert!(events.ContactEmails.is_some());
         assert!(events.Wallets.is_some());
         assert!(events.WalletAccounts.is_some());
@@ -247,5 +247,92 @@ mod tests {
         assert!(events.WalletSettings.is_some());
         assert!(events.WalletTransactions.is_some());
         assert!(events.WalletUserSettings.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_collect_events_success() {
+        let contents = read_mock_file!("get_events_1000_body");
+        assert!(!contents.is_empty());
+        let contents2 = read_mock_file!("get_events_1000_body_2");
+        assert!(!contents2.is_empty());
+        let latest_event_id = "latest_event_id";
+        let req_path: String = format!("{}/events/{}", BASE_CORE_API_V5, latest_event_id);
+        let req_path2: String = format!("{}/events/{}", BASE_CORE_API_V5, "ACXDmTaBub14w==");
+        let response = ResponseTemplate::new(200).set_body_string(contents);
+        let response2 = ResponseTemplate::new(200).set_body_string(contents2);
+        let mock_server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path(req_path))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path(req_path2))
+            .respond_with(response2)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let client = EventClient::new(api_client);
+        let result = client.collect_events(latest_event_id.to_string()).await;
+        match result {
+            Ok(events) => {
+                assert_eq!(events[0].Code, 1000);
+                assert_eq!(events[0].EventID, "ACXDmTaBub14w==");
+                assert_eq!(events[0].Refresh, 0);
+                assert_eq!(events[0].More, 1);
+                assert!(events[0].ContactEmails.is_some());
+                assert!(events[0].Wallets.is_some());
+                assert!(events[0].WalletAccounts.is_some());
+                assert!(events[0].WalletKeys.is_some());
+                assert!(events[0].WalletSettings.is_some());
+                assert!(events[0].WalletTransactions.is_some());
+                assert!(events[0].WalletUserSettings.is_some());
+
+                assert_eq!(events[1].Code, 1000);
+                assert_eq!(events[1].EventID, "AC22222222222==");
+                assert_eq!(events[1].Refresh, 0);
+                assert_eq!(events[1].More, 0);
+                assert!(events[1].ContactEmails.is_none());
+                assert!(events[1].Wallets.is_none());
+                assert!(events[1].WalletAccounts.is_none());
+                assert!(events[1].WalletKeys.is_none());
+                assert!(events[1].WalletSettings.is_none());
+                assert!(events[1].WalletTransactions.is_some());
+                assert!(events[1].WalletUserSettings.is_some());
+                return;
+            }
+            Err(e) => panic!("Got Err. {:?}", e),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_get_latest_event_id_success() {
+        let mock_server = MockServer::start().await;
+        let response_body = serde_json::json!(
+            {
+                "Code": 1000,
+                "EventID": "bgS5cAcad_6N-x5IwSobpNiFptVSdZlHnd_KS28lkYXuPQTjiGZHQxJG18gpSxWfv1meGFMFchYFay6pLx1uSg=="
+            }
+        );
+        let req_path: String = format!("{}/events/latest", BASE_CORE_API_V4);
+        let response = ResponseTemplate::new(200).set_body_json(response_body);
+        Mock::given(method("GET"))
+            .and(path(req_path))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let client = EventClient::new(api_client);
+        let result = client.get_latest_event_id().await;
+        match result {
+            Ok(event_id) => {
+                assert_eq!(
+                    event_id,
+                    "bgS5cAcad_6N-x5IwSobpNiFptVSdZlHnd_KS28lkYXuPQTjiGZHQxJG18gpSxWfv1meGFMFchYFay6pLx1uSg=="
+                );
+                return;
+            }
+            Err(e) => panic!("Got Err. {:?}", e),
+        }
     }
 }

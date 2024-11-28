@@ -1,0 +1,32 @@
+{
+    "Code": 1000,
+    "toggles": [
+        {
+            "name": "Mock001",
+            "enabled": true,
+            "impressionData": false,
+            "variant": {
+                "name": "disabled",
+                "enabled": false
+            }
+        },
+        {
+            "name": "Mock002",
+            "enabled": true,
+            "impressionData": false,
+            "variant": {
+                "name": "disabled",
+                "enabled": false
+            }
+        },
+        {
+            "name": "Mock003",
+            "enabled": true,
+            "impressionData": false,
+            "variant": {
+                "name": "disabled",
+                "enabled": false
+            }
+        }
+    ]
+}

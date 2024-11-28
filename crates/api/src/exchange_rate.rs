@@ -106,7 +106,16 @@ impl ExchangeRateClient {
 #[cfg(test)]
 mod tests {
     use super::ExchangeRateClient;
-    use crate::{core::ApiClient, settings::FiatCurrencySymbol, tests::utils::common_api_client};
+    use crate::{
+        core::ApiClient, settings::FiatCurrencySymbol, tests::utils::common_api_client,
+        tests::utils::setup_test_connection, BASE_WALLET_API_V1,
+    };
+    use andromeda_common::BitcoinUnit;
+    use std::sync::Arc;
+    use wiremock::{
+        matchers::{method, path, query_param},
+        Mock, MockServer, ResponseTemplate,
+    };
 
     #[tokio::test]
     #[ignore]
@@ -132,5 +141,105 @@ mod tests {
 
         println!("request done: {:?}", fiat_currencies);
         assert!(fiat_currencies.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_get_exchange_rate_success() {
+        let mock_server = MockServer::start().await;
+        let response_body = serde_json::json!(
+            {
+                "Code": 1000,
+                "ExchangeRate": {
+                    "ID": "BG2rHbE0giOBTvPWDVHdS_MMyxemjRxSzrKOTbxaINTH0zYnS5hD5zEqV9TURB-mzMy2LPC3qg4XnPq_kHmf9g==",
+                    "BitcoinUnit": "BTC",
+                    "FiatCurrency": "USD",
+                    "Sign": "$",
+                    "ExchangeRateTime": "1732266518",
+                    "ExchangeRate": 9890500,
+                    "Cents": 100
+                }
+            }
+        );
+        let fiat_currency = FiatCurrencySymbol::USD;
+        let req_path: String = format!("{}/rates", BASE_WALLET_API_V1);
+        let response = ResponseTemplate::new(200).set_body_json(response_body);
+        Mock::given(method("GET"))
+            .and(path(req_path))
+            .and(query_param("FiatCurrency", fiat_currency.to_string()))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection(mock_server.uri());
+        let client = ExchangeRateClient::new(Arc::new(api_client));
+        let result = client.get_exchange_rate(fiat_currency, None).await;
+        match result {
+            Ok(exchange_rate) => {
+                assert_eq!(
+                    exchange_rate.ID,
+                    "BG2rHbE0giOBTvPWDVHdS_MMyxemjRxSzrKOTbxaINTH0zYnS5hD5zEqV9TURB-mzMy2LPC3qg4XnPq_kHmf9g=="
+                );
+                assert_eq!(exchange_rate.BitcoinUnit, BitcoinUnit::BTC);
+                assert_eq!(exchange_rate.FiatCurrency, FiatCurrencySymbol::USD);
+                assert_eq!(exchange_rate.Sign, Some("$".to_string()));
+                assert_eq!(exchange_rate.ExchangeRateTime, "1732266518");
+                assert_eq!(exchange_rate.ExchangeRate, 9890500);
+                assert_eq!(exchange_rate.Cents, 100);
+                return;
+            }
+            Err(e) => panic!("Got Err. {:?}", e),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_get_all_fiat_currencies_success() {
+        let mock_server = MockServer::start().await;
+        let response_body = serde_json::json!(
+            {
+                "Code": 1000,
+                "FiatCurrencies": [
+                    {
+                    "ID": "FiatCurrency_001",
+                    "Name": "Swiss Franc",
+                    "Symbol": "CHF",
+                    "Sign": "CHF",
+                    "Cents": 100
+                    },
+                    {
+                    "ID": "FiatCurrency_002",
+                    "Name": "United Dollar",
+                    "Symbol": "USD",
+                    "Sign": "$",
+                    "Cents": 100
+                    }
+                ]
+            }
+        );
+        let req_path: String = format!("{}/fiat-currencies", BASE_WALLET_API_V1);
+        let response = ResponseTemplate::new(200).set_body_json(response_body);
+        Mock::given(method("GET"))
+            .and(path(req_path))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection(mock_server.uri());
+        let client = ExchangeRateClient::new(Arc::new(api_client));
+        let result = client.get_all_fiat_currencies().await;
+        match result {
+            Ok(fiat_currencies) => {
+                assert_eq!(fiat_currencies[0].ID, "FiatCurrency_001");
+                assert_eq!(fiat_currencies[0].Name, "Swiss Franc");
+                assert_eq!(fiat_currencies[0].Symbol, FiatCurrencySymbol::CHF);
+                assert_eq!(fiat_currencies[0].Sign, "CHF");
+                assert_eq!(fiat_currencies[0].Cents, 100);
+
+                assert_eq!(fiat_currencies[1].ID, "FiatCurrency_002");
+                assert_eq!(fiat_currencies[1].Name, "United Dollar");
+                assert_eq!(fiat_currencies[1].Symbol, FiatCurrencySymbol::USD);
+                assert_eq!(fiat_currencies[1].Sign, "$");
+                assert_eq!(fiat_currencies[1].Cents, 100);
+                return;
+            }
+            Err(e) => panic!("Got Err. {:?}", e),
+        }
     }
 }

@@ -1,0 +1,8 @@
+{
+  "Code": 1000,
+  "BlockStatus": {
+    "IsInBestChain": 1,
+    "BlockHeight": 871864,
+    "NextBest": "0000000000000000000084855fd06ffed9ac4cf7df513e09ed1011522b67275c"
+  }
+}

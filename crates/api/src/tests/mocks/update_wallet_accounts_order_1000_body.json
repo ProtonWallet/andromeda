@@ -1,0 +1,39 @@
+{
+  "Code": 1000,
+  "Accounts": [
+    {
+      "ID": "lY2ZCYkVNfl_osze70PRoqzg34MQI64mE3-pLc-yMp_6KXthkV1paUsyS276OdNwucz9zKoWKZL_TgtKxOPb0w==",
+      "WalletID": "_zuc9hOPmSeNUPoBlvFs2JvjWw_hX4ktpVnqKmpAhh3PcAGXNVJqU_jD2ZoZ_qTteGsa30m8mHG8GiWt_7L0xg==",
+      "FiatCurrency": "JPY",
+      "DerivationPath": "84'/0'/1'",
+      "Label": "yEYMWfpITIiHiVtqImHb/4yCvoDnLWbr93FkE8NKwTwjKOEVFQ==",
+      "LastUsedIndex": 0,
+      "PoolSize": 10,
+      "Priority": 1,
+      "ScriptType": 3,
+      "Addresses": [
+        {
+          "ID": "v4f03EPBAzQEogZgQX68hpaNqNuXwKN6X1us0nrJCTA6Zt3SdozXUmEmxqceBO22CccjmOWtwFyFraTAH2LE8A==",
+          "Email": "test@proton.me"
+        }
+      ]
+    },
+    {
+      "ID": "yYzIuZJobta-FCUwbhCdUwCXtn-BLoW0yZvVNJK5MCh0KT-igpGYa3zd_uNz43gKTD9BXrRaDlT4uRhdo70y_A==",
+      "WalletID": "_zuc9hOPmSeNUPoBlvFs2JvjWw_hX4ktpVnqKmpAhh3PcAGXNVJqU_jD2ZoZ_qTteGsa30m8mHG8GiWt_7L0xg==",
+      "FiatCurrency": "CHF",
+      "DerivationPath": "84'/0'/0'",
+      "Label": "yEYMWfpITIiHiVtqImHb/4yCvoDnLWbr93FkE8NKwTwjKOEVFQ==",
+      "LastUsedIndex": 0,
+      "PoolSize": 10,
+      "Priority": 2,
+      "ScriptType": 3,
+      "Addresses": [
+        {
+          "ID": "v4f03EPBAzQEogZgQX68hpaNqNuXwKN6X1us0nrJCTA6Zt3SdozXUmEmxqceBO22CccjmOWtwFyFraTAH2LE8A==",
+          "Email": "test@proton.me"
+        }
+      ]
+    }
+  ]
+}
