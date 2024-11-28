@@ -1,11 +1,11 @@
+use std::{fmt, fmt::Display};
+
 use bitcoin::{
     bip32::{ChildNumber, DerivationPath},
     Network as BdkNetwork,
 };
 use error::Error;
 use serde::{Deserialize, Serialize};
-use std::fmt;
-use std::fmt::Display;
 
 pub const SATOSHI: u64 = 1;
 pub const BITCOIN: u64 = 100_000_000 * SATOSHI;

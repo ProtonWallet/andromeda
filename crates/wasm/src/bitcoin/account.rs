@@ -129,6 +129,24 @@ impl WasmAccount {
         Ok(WasmUtxoArray(utxos))
     }
 
+    #[wasm_bindgen(js_name = getAddress)]
+    pub async fn get_address(
+        &self,
+        network: WasmNetwork,
+        address_str: String,
+        client: &WasmBlockchainClient,
+        force_sync: Option<bool>,
+    ) -> Result<Option<WasmAddressDetailsData>, js_sys::Error> {
+        let address_details = self
+            .inner
+            .get_address(network.into(), address_str, client.into(), force_sync.unwrap_or(false))
+            .await
+            .map_err(|e| e.to_js_error())?
+            .map(|address| WasmAddressDetailsData { Data: address.into() });
+
+        Ok(address_details)
+    }
+
     #[wasm_bindgen(js_name = getAddresses)]
     pub async fn get_addresses(
         &self,

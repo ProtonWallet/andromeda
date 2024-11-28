@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use crate::{account::Account, error::Error, storage::WalletPersisterConnector};
 use andromeda_api::{
     transaction::{BroadcastMessage, ExchangeRateOrTransactionTime},
     ProtonWalletApiClient,
@@ -15,6 +14,8 @@ use bdk_wallet::{
 };
 use bitcoin::ScriptBuf;
 use serde::{Deserialize, Serialize};
+
+use crate::{account::Account, error::Error, storage::WalletPersisterConnector};
 
 pub const DEFAULT_STOP_GAP: usize = 50;
 pub const PARALLEL_REQUESTS: usize = 5;
@@ -162,7 +163,8 @@ impl BlockchainClient {
         Ok(tip_hash != latest_chekpoint_hash)
     }
 
-    /// Returns mempool minimum fee, minimum relay tx fee and incremental relay fee in sat/vB instead of BTC/kB
+    /// Returns mempool minimum fee, minimum relay tx fee and incremental relay
+    /// fee in sat/vB instead of BTC/kB
     pub async fn get_minimum_fees(&self) -> Result<MinimumFees, Error> {
         let mempool_info = self.0.get_mempool_info().await?;
         let minimum_broadcast_fee = f32::max(

@@ -335,6 +335,69 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
         Ok(sort_and_paginate_txs(transactions, pagination, sort))
     }
 
+    /// Returns a single address if found in the graph.
+    ///
+    /// # Notes
+    ///
+    /// The returned address detail contains balance and transactions
+    /// with output to the address, in addition to index and serialised
+    /// address. It can then be used to build an address list with enhanced
+    /// details
+    pub async fn get_address(
+        &self,
+        network: Network,
+        address_str: String,
+        client: Arc<BlockchainClient>,
+        sync: bool,
+    ) -> Result<Option<AddressDetails>, Error> {
+        let spk: bitcoin::ScriptBuf = Address::from_str(&address_str)?
+            .require_network(network.into())?
+            .script_pubkey();
+
+        let wallet_lock = self.get_wallet().await;
+
+        if let Some((keychain, spk_index)) = wallet_lock.derivation_of_spk(spk.clone()) {
+            let update = {
+                if sync {
+                    Some(client.sync_spks(&wallet_lock, vec![spk]).await?)
+                } else {
+                    None
+                }
+            };
+
+            if let Some(update) = update {
+                self.apply_update(update).await?;
+            }
+
+            let wallet_lock = self.get_wallet().await;
+
+            let outpoints = wallet_lock.outpoints_from_spk_index(keychain, spk_index);
+            let spk_balance = wallet_lock.tx_graph().balance(
+                wallet_lock.local_chain(),
+                wallet_lock.local_chain().tip().block_id(),
+                outpoints,
+                |_, _| false,
+            );
+
+            let transactions = wallet_lock
+                .outpoints_from_spk_index(keychain, spk_index)
+                .filter_map(|(_, op)| wallet_lock.tx_graph().get_tx_node(op.txid))
+                .map(|tx_node| tx_node.to_transaction_details((&wallet_lock, self.get_derivation_path())))
+                .collect::<Result<Vec<_>, _>>()?;
+
+            let address_str = wallet_lock.peek_address(keychain, spk_index).address.to_string();
+
+            return Ok(Some(AddressDetails {
+                index: spk_index,
+                address: address_str,
+                balance: spk_balance,
+                transactions,
+            }));
+        }
+
+        Ok(None)
+    }
+
     /// Returns a paginated list of addresses.
     ///
     /// # Notes
@@ -343,8 +406,6 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
     /// with output to the address, in addition to index and serialised
     /// address. It can then be used to build an address list with enhanced
     /// details
-    ///
-    /// It currently only supports External keychain
     pub async fn get_addresses(
         &self,
         pagination: Pagination,
@@ -362,6 +423,7 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
 
         let update = {
             let wallet_lock = self.get_wallet().await;
+
             let spks = spks_range
                 .clone()
                 .filter_map(|index| wallet_lock.spk_index().spk_at_index(keychain, index))

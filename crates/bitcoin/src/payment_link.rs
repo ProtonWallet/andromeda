@@ -4,13 +4,15 @@ use std::{
     str::FromStr,
 };
 
-use super::Result;
-use crate::{error::Error, utils::convert_amount};
 use andromeda_common::{BitcoinUnit, Network};
 use bitcoin::Address;
 use urlencoding::{decode, encode};
 
-/// Enum representing different types of payment links for Bitcoin and Lightning.
+use super::Result;
+use crate::{error::Error, utils::convert_amount};
+
+/// Enum representing different types of payment links for Bitcoin and
+/// Lightning.
 #[derive(Debug, PartialEq, Clone)]
 pub enum PaymentLink {
     /// Basic Bitcoin address.
@@ -58,7 +60,8 @@ const LABEL_KEY: &str = "label";
 const MESSAGE_KEY: &str = "message";
 
 impl PaymentLink {
-    /// Helper function to generate a query string from optional BIP-21 parameters.
+    /// Helper function to generate a query string from optional BIP-21
+    /// parameters.
     fn get_query_string(amount: &Option<u64>, label: &Option<String>, message: &Option<String>) -> String {
         let str_amount = amount.map(|am| convert_amount(am as f64, BitcoinUnit::SATS, BitcoinUnit::BTC).to_string());
         vec![
@@ -104,7 +107,8 @@ impl PaymentLink {
         }
     }
 
-    /// Attempts to create a Bitcoin `Address` from a string, validating against a specified network.
+    /// Attempts to create a Bitcoin `Address` from a string, validating against
+    /// a specified network.
     fn try_create_address(address_str: &str, network: Network) -> Result<Address> {
         let address = Address::from_str(address_str)?.require_network(network.into())?;
         Ok(address)
@@ -169,7 +173,8 @@ impl PaymentLink {
     }
 }
 
-/// Helper function to retrieve a query parameter from a list of `(key, value)` pairs.
+/// Helper function to retrieve a query parameter from a list of `(key, value)`
+/// pairs.
 fn get_query_params(query_params: &Vec<(&str, &str)>, key: &str) -> Option<String> {
     query_params
         .iter()
