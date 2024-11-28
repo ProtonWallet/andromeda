@@ -171,6 +171,7 @@ mod tests {
             GetMnemonicSettingsResponseBody, MnemonicUserKey, ProtonSettingsClient, ProtonSettingsClientExt,
         },
         proton_users::ProtonSrpClientProofs,
+        read_mock_file,
         tests::utils::{common_api_client, setup_test_connection_arc},
         BASE_CORE_API_V4,
     };
@@ -370,5 +371,145 @@ mod tests {
         };
         let server_proofs = settings_client.disable_mnemonic_settings(req).await.unwrap();
         assert!(server_proofs == *"<base64_encoded_proof>");
+    }
+
+    #[tokio::test]
+    async fn test_reactive_mnemonic_settings_success() {
+        let json_body = serde_json::json!(
+        {
+            "Code": 1000,
+        });
+        let req_path: String = format!("{}/settings/mnemonic/reactivate", BASE_CORE_API_V4);
+        let response = ResponseTemplate::new(200).set_body_json(json_body);
+        let mock_server = MockServer::start().await;
+        Mock::given(method("PUT"))
+            .and(path(req_path))
+            .and(body_json(serde_json::json!(
+            {
+                "MnemonicUserKeys": [
+                    {
+                    "ID": "1H8EGg3J1QpSDL...k0uhrHx6nnGQ==",
+                    "PrivateKey": "-----BEGIN PGP PRIVATE KEY BLOCK ..."
+                    }
+                ],
+                "MnemonicSalt": "1H8EGg3J1Qwk243hf==",
+                "MnemonicAuth": {
+                    "Version": 4,
+                    "ModulusID": "<encrypted_id>",
+                    "Salt": "<base64_encoded_salt>",
+                    "Verifier": "<base64_encoded_verifier>"
+                },
+            })))
+            .respond_with(response)
+            .expect(1..)
+            .with_priority(1)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let settings_client = ProtonSettingsClient::new(api_client);
+
+        let mnemonic_user_keys = vec![MnemonicUserKey {
+            ID: "1H8EGg3J1QpSDL...k0uhrHx6nnGQ==".to_string(),
+            PrivateKey: "-----BEGIN PGP PRIVATE KEY BLOCK ...".to_string(),
+        }];
+        let auth = MnemonicAuth {
+            Version: 4,
+            ModulusID: "<encrypted_id>".to_string(),
+            Salt: "<base64_encoded_salt>".to_string(),
+            Verifier: "<base64_encoded_verifier>".to_string(),
+        };
+
+        let req = UpdateMnemonicSettingsRequestBody {
+            MnemonicUserKeys: mnemonic_user_keys,
+            MnemonicSalt: "1H8EGg3J1Qwk243hf==".to_string(),
+            MnemonicAuth: auth,
+        };
+        let code = settings_client.reactive_mnemonic_settings(req).await.unwrap();
+        assert!(code == 1000);
+    }
+
+    #[tokio::test]
+    async fn test_enable_2fa_totp_success() {
+        let mock_server = MockServer::start().await;
+        let contents = read_mock_file!("two_factor_auth_enable_1000_body");
+        let response = ResponseTemplate::new(200).set_body_string(contents);
+        let req_path: String = format!("{}/settings/2fa/totp", BASE_CORE_API_V4);
+        let secret = "JBSWY3DPEHPK3PXP";
+        let code = "123456";
+        Mock::given(method("POST"))
+            .and(path(req_path))
+            .and(body_json(serde_json::json!(
+            {
+                "TOTPConfirmation": code,
+                "TOTPSharedSecret": secret,
+            })))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let client = ProtonSettingsClient::new(api_client);
+        let data = crate::proton_settings::SetTwoFaTOTPRequestBody {
+            TOTPConfirmation: code.to_string(),
+            TOTPSharedSecret: secret.to_string(),
+        };
+        let result = client.enable_2fa_totp(data).await;
+        match result {
+            Ok(response) => {
+                assert_eq!(response.Code, 1000);
+                assert_eq!(response.TwoFactorRecoveryCodes.len(), 8);
+                assert_eq!(response.TwoFactorRecoveryCodes[0], "aaaaaaaa");
+                assert_eq!(response.TwoFactorRecoveryCodes[1], "bbbbbbbb");
+                assert_eq!(response.TwoFactorRecoveryCodes[2], "cccccccc");
+                assert_eq!(response.TwoFactorRecoveryCodes[3], "dddddddd");
+                assert_eq!(response.TwoFactorRecoveryCodes[4], "eeeeeeee");
+                assert_eq!(response.TwoFactorRecoveryCodes[5], "ffffffff");
+                assert_eq!(response.TwoFactorRecoveryCodes[6], "gggggggg");
+                assert_eq!(response.TwoFactorRecoveryCodes[7], "hhhhhhhh");
+                let two_fa_settings = response.UserSettings.two_fa.unwrap();
+                assert_eq!(two_fa_settings.Enabled, 1);
+                assert_eq!(two_fa_settings.Allowed, 3);
+                return;
+            }
+            Err(e) => panic!("Got Err. {:?}", e),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_disable_2fa_totp_success() {
+        let mock_server = MockServer::start().await;
+        let contents = read_mock_file!("two_factor_auth_disable_1000_body");
+        let response = ResponseTemplate::new(200).set_body_string(contents);
+        let req_path: String = format!("{}/settings/2fa/totp", BASE_CORE_API_V4);
+        let code = "123456";
+        Mock::given(method("PUT"))
+            .and(path(req_path))
+            .and(body_json(serde_json::json!(
+            {
+                "ClientEphemeral": "<base64_encoded_ephemeral>",
+                "ClientProof": "<base64_encoded_proof>",
+                "SRPSession": "<hex_encoded_session_id>",
+                "TwoFactorCode": code,
+            })))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let client = ProtonSettingsClient::new(api_client);
+        let req = ProtonSrpClientProofs {
+            ClientEphemeral: "<base64_encoded_ephemeral>".to_string(),
+            ClientProof: "<base64_encoded_proof>".to_string(),
+            SRPSession: "<hex_encoded_session_id>".to_string(),
+            TwoFactorCode: Some(code.to_string()),
+        };
+        let result = client.disable_2fa_totp(req).await;
+        match result {
+            Ok(response) => {
+                let two_fa_settings = response.two_fa.unwrap();
+                assert_eq!(two_fa_settings.Enabled, 0);
+                assert_eq!(two_fa_settings.Allowed, 3);
+                return;
+            }
+            Err(e) => panic!("Got Err. {:?}", e),
+        }
     }
 }

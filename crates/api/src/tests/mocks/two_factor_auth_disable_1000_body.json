@@ -1,0 +1,89 @@
+{
+    "Code": 1000,
+    "UserSettings": {
+        "Email": {
+            "Value": null,
+            "Status": 0,
+            "Notify": 1,
+            "Reset": 1,
+            "UpdateTime": 0
+        },
+        "Phone": {
+            "Value": null,
+            "Status": 0,
+            "Notify": 1,
+            "Reset": 1,
+            "UpdateTime": 0
+        },
+        "Password": {
+            "Mode": 1,
+            "ExpirationTime": null
+        },
+        "PasswordMode": 1,
+        "Mnemonic": {
+            "UpdateTime": 1721677663,
+            "LastValidateTime": 0
+        },
+        "2FA": {
+            "Enabled": 0,
+            "Allowed": 3,
+            "ExpirationTime": null,
+            "U2FKeys": [],
+            "RegisteredKeys": []
+        },
+        "TOTP": 0,
+        "News": 58351,
+        "Locale": "en_US",
+        "LogAuth": 1,
+        "InvoiceText": "",
+        "Density": 0,
+        "Theme": null,
+        "ThemeType": 0,
+        "WeekStart": 0,
+        "DateFormat": 0,
+        "TimeFormat": 0,
+        "Flags": {
+            "Welcomed": 1,
+            "SupportPgpV6Keys": 0
+        },
+        "DeviceRecovery": 1,
+        "Telemetry": 1,
+        "CrashReports": 1,
+        "HighSecurity": {
+            "Eligible": 1,
+            "Value": 0
+        },
+        "SessionAccountRecovery": 1,
+        "BreachAlerts": {
+            "Eligible": 1,
+            "Value": 0,
+            "EmailNotifications": 1
+        },
+        "AIAssistantFlags": 0,
+        "ProductDisabled": {
+            "Mail": 0,
+            "Calendar": 0,
+            "Drive": 0,
+            "Pass": 0,
+            "Wallet": 0,
+            "Neutron": 0
+        },
+        "Referral": {
+            "Link": "",
+            "Eligible": true
+        },
+        "UsedClientFlags": 3133441,
+        "HideSidePanel": 0,
+        "TwoFactor": 0,
+        "Welcome": 0,
+        "WelcomeFlag": 0,
+        "AppWelcome": {
+            "Mail": [
+                "Web"
+            ]
+        },
+        "EarlyAccess": 0,
+        "Checklists": []
+    },
+    "ServerProof": "uDLe45uC...NyyGM=="
+}

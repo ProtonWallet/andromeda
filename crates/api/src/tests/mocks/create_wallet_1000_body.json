@@ -1,0 +1,32 @@
+{
+    "Code": 1000,
+    "Wallet": {
+        "ID": "_zuc9hOPmSeNUPoBlvFs2JvjWw_hX4ktpVnqKmpAhh3PcAGXNVJqU_jD2ZoZ_qTteGsa30m8mHG8GiWt_7L0xg==",
+        "HasPassphrase": 0,
+        "IsImported": 0,
+        "Mnemonic": "ZdOl9KiWSKwBCL/eNPm5Djdv+OLqPNuCr0ahanvkxs+mdIeNzYpsWVZC2F+5fJDQqHzLSEuMhmxGF4kW9M56WYjsg26caGTos0W7ORlElx8lYiRV9zON01e9DDf3UsGeLePLgZY=",
+        "Fingerprint": "c31a5132",
+        "Name": "Lupevd3Wykz7LiEp+O4B6o97Ol4Pfo08sCb8xVKn5p3EF6hgds4R",
+        "Priority": 2,
+        "PublicKey": null,
+        "Status": 1,
+        "Type": 1,
+        "MigrationRequired": 0,
+        "Legacy": 0
+    },
+    "WalletKey": {
+        "ID": "_zuc9hOPmSeNUPoBlvFs2JvjWw_hX4ktpVnqKmpAhh3PcAGXNVJqU_jD2ZoZ_qTteGsa30m8mHG8GiWt_7L0xg==",
+        "WalletID": "_zuc9hOPmSeNUPoBlvFs2JvjWw_hX4ktpVnqKmpAhh3PcAGXNVJqU_jD2ZoZ_qTteGsa30m8mHG8GiWt_7L0xg==",
+        "UserKeyID": "tWKoN2pdE1OwJu6fe0yQlOI5wenzwSjWQTa-zc47jZ9nZkoKztAWKg4ODm8dIKAJ19T7_RsNIOmbpy2bPdTujA==",
+        "WalletKey": "-----BEGIN PGP MESSAGE-----\nVersion: ProtonMail\n\nwV4DRfOJbaEnt70SAQdAA/OU7k45dMfj1LOu28Z1j46N3JIKBBfNnTFL33OM\nen4wr7dvAvbfMophp21m2kcrow+F+aworya731uK1COjcfviZhvnA5+nScbb\nmj621oQu0lEBUaikCNoZlEcgGwUYChsRJKiR6vWTRYLjdB2LzTaZ2B22LUkr\nOgRNklP4SMy9zdArQDYym7i6KeLFRm4/qQ05OR9/sqFLIGu5b7fV6iEMRh8=\n=llm1\n-----END PGP MESSAGE-----\n",
+        "WalletKeySignature": "-----BEGIN PGP SIGNATURE-----\nVersion: ProtonMail\n\nwpoEABYIAEwFgmc0QH8JkHw2lLkDy0yVJJSAAAAAABEACmNvbnRleHRAcHJv\ndG9uLmNod2FsbGV0LmtleRYhBC/WAX60RvaD0zyn7Hw2lLkDy0yVAACDdwEA\nm6Wsp6BsUPPFtj85mRGTSYCJ9LLxDJcmqX8JxkmmUFMA/1fOfOjHtIld9jp0\nuMrZMG3Krm20P+doTLJdiJEMO8YD\n=RS+g\n-----END PGP SIGNATURE-----\n"
+    },
+    "WalletSettings": {
+        "WalletID": "_zuc9hOPmSeNUPoBlvFs2JvjWw_hX4ktpVnqKmpAhh3PcAGXNVJqU_jD2ZoZ_qTteGsa30m8mHG8GiWt_7L0xg==",
+        "HideAccounts": 0,
+        "InvoiceDefaultDescription": null,
+        "InvoiceExpirationTime": 3600,
+        "MaxChannelOpeningFee": 1,
+        "ShowWalletRecovery": false
+    }
+}

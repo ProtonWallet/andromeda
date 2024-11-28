@@ -196,6 +196,7 @@ mod tests {
     use super::{AddressClient, ScriptHashTransactionsPayload};
     use crate::{
         core::ApiClient,
+        read_mock_file,
         tests::utils::{common_api_client, setup_test_connection_arc},
         BASE_WALLET_API_V1,
     };
@@ -502,5 +503,114 @@ mod tests {
 
         let unmatched_requests = mock_server.received_requests().await.unwrap();
         assert_eq!(unmatched_requests.len(), 1, "There should be no unmatched requests");
+    }
+
+    #[tokio::test]
+    async fn test_get_address_balance_success() {
+        let mock_server = MockServer::start().await;
+        let address = "tb1qsfhk3xzxkk7m63v9nhdn90vqn5vk54hff0lrq5";
+        let response_body = serde_json::json!({
+            "Code": 1000,
+            "Balance": {
+              "Address": address,
+              "ChainFundedBitcoin": 1000,
+              "ChainSpentBitcoin": 2000,
+              "MempoolFundedBitcoin": 1000,
+              "MempoolSpentBitcoin": 2000,
+            }
+        });
+        let response = ResponseTemplate::new(200).set_body_json(response_body);
+        let req_path: String = format!("{}/addresses/{}/balance", BASE_WALLET_API_V1, address);
+        Mock::given(method("GET"))
+            .and(path(req_path))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let client = AddressClient::new(api_client);
+
+        let result = client.get_address_balance(address.to_string()).await;
+
+        match result {
+            Ok(balance) => {
+                assert_eq!(balance.Address, address);
+                assert_eq!(balance.ChainFundedBitcoin, 1000);
+                assert_eq!(balance.ChainSpentBitcoin, 2000);
+                assert_eq!(balance.MempoolFundedBitcoin, 1000);
+                assert_eq!(balance.MempoolSpentBitcoin, 2000);
+            }
+            Err(e) => panic!("Got Err. {:?}", e),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_get_scripthash_transactions_success() {
+        let mock_server = MockServer::start().await;
+        let script_hash_1 = sha256::Hash::hash(
+            Address::from_str("bc1qsv433rsr3e26wc3kxxapn36a3e7s6rkjrgeu0u")
+                .unwrap()
+                .assume_checked()
+                .script_pubkey()
+                .as_bytes(),
+        );
+        let contents = read_mock_file!("get_scripthash_transactions_1000_body");
+        let response = ResponseTemplate::new(200).set_body_string(contents);
+        let req_path: String = format!(
+            "{}/addresses/scripthash/{}/transactions",
+            BASE_WALLET_API_V1, script_hash_1
+        );
+        Mock::given(method("GET"))
+            .and(path(req_path))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let client = AddressClient::new(api_client);
+
+        let result = client.get_scripthash_transactions(script_hash_1.to_string()).await;
+
+        match result {
+            Ok(transactions) => {
+                assert_eq!(transactions.len(), 2);
+            }
+            Err(e) => panic!("Got Err. {:?}", e),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_get_scripthash_transactions_at_transaction_id_success() {
+        let mock_server = MockServer::start().await;
+        let script_hash_1 = sha256::Hash::hash(
+            Address::from_str("bc1qsv433rsr3e26wc3kxxapn36a3e7s6rkjrgeu0u")
+                .unwrap()
+                .assume_checked()
+                .script_pubkey()
+                .as_bytes(),
+        );
+        let transaction_id = "6bbfc06ef911e4b2fffe1150fa8f3729b3ee52c78ef21093b5ae45544ff690fa";
+        let contents = read_mock_file!("get_scripthash_transactions_1000_body");
+        let response = ResponseTemplate::new(200).set_body_string(contents);
+        let req_path: String = format!(
+            "{}/addresses/scripthash/{}/transactions/{}",
+            BASE_WALLET_API_V1, script_hash_1, transaction_id
+        );
+        Mock::given(method("GET"))
+            .and(path(req_path))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let client = AddressClient::new(api_client);
+
+        let result = client
+            .get_scripthash_transactions_at_transaction_id(script_hash_1.to_string(), transaction_id.to_string())
+            .await;
+
+        match result {
+            Ok(transactions) => {
+                assert_eq!(transactions.len(), 2);
+            }
+            Err(e) => panic!("Got Err. {:?}", e),
+        }
     }
 }

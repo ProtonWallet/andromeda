@@ -1,0 +1,41 @@
+{
+    "Code": 1000,
+    "EventID": "AC22222222222==",
+    "Refresh": 0,
+    "More": 0,
+    "WalletTransactions": [
+        {
+            "ID": "wSGAB7IOerWAaIItAfyAIbSWIaFSS==",
+            "Action": 1,
+            "WalletTransaction": {
+                "ID": "string",
+                "WalletID": "string",
+                "WalletAccountID": "string",
+                "TransactionID": "string",
+                "TransactionTime": "1707287982",
+                "Set to 1 if output amount is smaller than 1001 Sats, or output size is bigger than 20 blocks": 0,
+                "Set to 1 if user does not want to spend UTXO from this transaction": 0,
+                "Type": 1,
+                "HashedTransactionID": null,
+                "Label": null,
+                "ExchangeRate": null,
+                "Sender": null,
+                "ToList": null,
+                "Subject": null,
+                "Body": null,
+                "IsSuspicious": 1,
+                "IsPrivate": 1
+            }
+        }
+    ],
+    "WalletUserSettings": {
+        "BitcoinUnit": "BTC",
+        "FiatCurrency": "CHF",
+        "HideEmptyUsedAddresses": 1,
+        "TwoFactorAmountThreshold": 1000,
+        "ReceiveInviterNotification": 1,
+        "ReceiveEmailIntegrationNotification": 1,
+        "ReceiveTransactionNotification": 1,
+        "WalletCreated": 1
+    }
+}

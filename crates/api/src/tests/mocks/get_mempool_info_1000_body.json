@@ -1,0 +1,15 @@
+{
+    "Code": 1000,
+    "MempoolInfo": {
+        "Loaded": 1,
+        "Size": 58805,
+        "Bytes": 33596529,
+        "Usage": 194323824,
+        "MaxMempool": 300000000,
+        "MempoolMinFee": 1.0000000000000001e-5,
+        "MinRelayTxFee": 1.0000000000000001e-5,
+        "IncrementalRelayFee": 1.0000000000000001e-5,
+        "UnbroadcastCount": 0,
+        "FullRbf": 0
+    }
+}

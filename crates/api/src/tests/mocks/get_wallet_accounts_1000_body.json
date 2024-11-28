@@ -1,0 +1,34 @@
+{
+    "Code": 1000,
+    "Accounts": [
+        {
+            "ID": "yYzIuZJobta-FCUwbhCdUwCXtn-BLoW0yZvVNJK5MCh0KT-igpGYa3zd_uNz43gKTD9BXrRaDlT4uRhdo70y_A==",
+            "WalletID": "_zuc9hOPmSeNUPoBlvFs2JvjWw_hX4ktpVnqKmpAhh3PcAGXNVJqU_jD2ZoZ_qTteGsa30m8mHG8GiWt_7L0xg==",
+            "FiatCurrency": "CNY",
+            "DerivationPath": "84'/0'/0'",
+            "Label": "vMexjP3A2103oyWlyDtX5klTVh5mAZ4OD8j+Ulh/HkzpKq0MV8X8xp8jIA==",
+            "LastUsedIndex": 0,
+            "PoolSize": 10,
+            "Priority": 1,
+            "ScriptType": 3,
+            "Addresses": [
+                {
+                    "ID": "v4f03EPBAzQEogZgQX68hpaNqNuXwKN6X1us0nrJCTA6Zt3SdozXUmEmxqceBO22CccjmOWtwFyFraTAH2LE8A==",
+                    "Email": "test@proton.me"
+                }
+            ]
+        },
+        {
+            "ID": "YrMmAAZDJuPgrrJJUqY5i85bbZ9gGW-WqXJMnzGzGUaoPmnc-AoOjvLesKA2LHakWV3XerdrjN1xoynYtQymxQ==",
+            "WalletID": "_zuc9hOPmSeNUPoBlvFs2JvjWw_hX4ktpVnqKmpAhh3PcAGXNVJqU_jD2ZoZ_qTteGsa30m8mHG8GiWt_7L0xg==",
+            "FiatCurrency": "USD",
+            "DerivationPath": "84'/0'/1'",
+            "Label": "r9KE43LcM18yqWcGYKlqFwQEWIhTiNn8FB3mBX34GH+Jh+9cj1ztxw==",
+            "LastUsedIndex": 0,
+            "PoolSize": 10,
+            "Priority": 2,
+            "ScriptType": 3,
+            "Addresses": []
+        }
+    ]
+}
