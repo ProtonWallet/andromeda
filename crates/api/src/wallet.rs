@@ -265,6 +265,8 @@ pub struct ApiWalletTransaction {
     pub TransactionTime: String,
     pub IsSuspicious: u8,
     pub IsPrivate: u8,
+    /// make IsAnonymous option to make prod env compatible
+    pub IsAnonymous: Option<u8>,
     pub ExchangeRate: Option<ApiExchangeRate>,
     pub HashedTransactionID: Option<String>,
     pub Subject: Option<String>,
@@ -2401,6 +2403,10 @@ mod tests {
                 assert_eq!(wallet_transactions[0].HashedTransactionID, Some(hashed_ids[0].clone()));
                 assert_eq!(wallet_transactions[1].HashedTransactionID, Some(hashed_ids[1].clone()));
                 assert_eq!(wallet_transactions[2].HashedTransactionID, Some(hashed_ids[2].clone()));
+
+                assert_eq!(wallet_transactions[0].IsAnonymous, None);
+                assert_eq!(wallet_transactions[1].IsAnonymous, Some(1));
+                assert_eq!(wallet_transactions[2].IsAnonymous, Some(0));
                 return;
             }
             Err(e) => panic!("Got Err. {:?}", e),
