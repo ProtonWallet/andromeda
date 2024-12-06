@@ -17,6 +17,8 @@ use std::{
     sync::Arc,
 };
 
+use crate::{BlockStatus, BlockSummary, Error, MerkleProof, OutputStatus, Tx, TxStatus};
+use andromeda_api::transaction::RecommendedFees;
 use andromeda_api::{
     address::{AddressClient, ScriptHashTransactionsPayload},
     block::BlockClient,
@@ -31,8 +33,6 @@ use bitcoin::{
     Block, BlockHash, MerkleBlock, ScriptBuf, Transaction, Txid,
 };
 use futures::lock::Mutex;
-
-use crate::{BlockStatus, BlockSummary, Error, MerkleProof, OutputStatus, Tx, TxStatus};
 
 #[derive(Clone)]
 
@@ -294,6 +294,11 @@ impl AsyncClient {
     /// blocks) and the value is the estimated feerate (in sat/vB).
     pub async fn get_fee_estimates(&self) -> Result<HashMap<String, f64>, Error> {
         Ok(self.transaction.get_fee_estimates().await?)
+    }
+
+    /// Get recommended fees.
+    pub async fn get_recommended_fees(&self) -> Result<RecommendedFees, Error> {
+        Ok(self.transaction.get_recommended_fees().await?)
     }
 
     /// Get mempool info.
