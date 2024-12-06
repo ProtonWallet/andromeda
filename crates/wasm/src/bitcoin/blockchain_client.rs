@@ -1,13 +1,12 @@
 use std::{collections::HashMap, sync::Arc};
 
-use andromeda_api::transaction::{BroadcastMessage, ExchangeRateOrTransactionTime};
+use super::{account::WasmAccount, psbt::WasmPsbt};
+use crate::{api::WasmProtonWalletApiClient, common::error::ErrorExt};
+use andromeda_api::transaction::{BroadcastMessage, ExchangeRateOrTransactionTime, RecommendedFees};
 use andromeda_bitcoin::blockchain_client::{self, BlockchainClient, MinimumFees};
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
-
-use super::{account::WasmAccount, psbt::WasmPsbt};
-use crate::{api::WasmProtonWalletApiClient, common::error::ErrorExt};
 
 #[wasm_bindgen(js_name = getDefaultStopGap)]
 pub fn get_default_stop_gap() -> usize {
@@ -37,6 +36,28 @@ impl From<MinimumFees> for WasmMinimumFees {
         WasmMinimumFees {
             MinimumBroadcastFee: value.MinimumBroadcastFee,
             MinimumIncrementalFee: value.MinimumIncrementalFee,
+        }
+    }
+}
+
+#[wasm_bindgen]
+#[allow(non_snake_case)]
+pub struct WasmRecommendedFees {
+    pub FastestFee: u8,
+    pub HalfHourFee: u8,
+    pub HourFee: u8,
+    pub EconomyFee: u8,
+    pub MinimumFee: u8,
+}
+
+impl From<RecommendedFees> for WasmRecommendedFees {
+    fn from(value: RecommendedFees) -> Self {
+        WasmRecommendedFees {
+            FastestFee: value.FastestFee,
+            HalfHourFee: value.HalfHourFee,
+            HourFee: value.HourFee,
+            EconomyFee: value.EconomyFee,
+            MinimumFee: value.MinimumFee,
         }
     }
 }
@@ -129,6 +150,13 @@ impl WasmBlockchainClient {
         let minimum_fees = self.inner.get_minimum_fees().await.map_err(|e| e.to_js_error())?;
 
         Ok(WasmMinimumFees::from(minimum_fees))
+    }
+
+    #[wasm_bindgen(js_name = getRecommendedFees)]
+    pub async fn get_recommended_fees(&self) -> Result<WasmRecommendedFees, JsValue> {
+        let recommended_fees = self.inner.get_recommended_fees().await.map_err(|e| e.to_js_error())?;
+
+        Ok(WasmRecommendedFees::from(recommended_fees))
     }
 
     #[wasm_bindgen(js_name = fullSync)]

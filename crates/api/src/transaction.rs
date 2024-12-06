@@ -123,6 +123,29 @@ struct GetFeeEstimateResponseBody {
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
+pub struct RecommendedFees {
+    /// Fee rate in sat/vB to place the transaction in the first mempool block
+    pub FastestFee: u8,
+    /// Fee rate in sat/vB to usually confirm within half hour and place the transaction in between the first and second mempool blocks
+    pub HalfHourFee: u8,
+    /// Fee rate in sat/vB to usually confirm within one hour and place the transaction in between the second and third mempool blocks
+    pub HourFee: u8,
+    /// Either 2 times the minimum fees, or the low priority rate (whichever is lower)
+    pub EconomyFee: u8,
+    /// Minimum fee rate in sat/vB for transaction to be accepted
+    pub MinimumFee: u8,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+struct GetRecommendedFeesResponseBody {
+    #[allow(dead_code)]
+    pub Code: u16,
+    pub RecommendedFees: RecommendedFees,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
 pub struct MempoolInfo {
     pub Loaded: u8,
     pub Size: u32,
@@ -288,6 +311,15 @@ impl TransactionClient {
         let parsed = response.parse_response::<GetMempoolInfoResponseBody>()?;
 
         Ok(parsed.MempoolInfo)
+    }
+
+    pub async fn get_recommended_fees(&self) -> Result<RecommendedFees, Error> {
+        let request = self.get("fees/recommended");
+
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<GetRecommendedFeesResponseBody>()?;
+
+        Ok(parsed.RecommendedFees)
     }
 }
 
