@@ -520,13 +520,37 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> TxBuilder<C, P> {
 
 #[cfg(test)]
 mod tests {
-    use bdk_wallet::{
-        bitcoin::{absolute::LockTime, Amount, FeeRate},
-        tx_builder::ChangeSpendPolicy,
-    };
+    use super::Account;
+    use andromeda_common::ScriptType;
 
     use super::{super::transaction_builder::CoinSelection, correct_recipients_amounts, TmpRecipient, TxBuilder};
-    use crate::storage::MemoryPersisted;
+
+    use std::{str::FromStr, sync::Arc};
+
+    use andromeda_api::{
+        address,
+        tests::utils::{common_api_client, setup_test_connection},
+        BASE_WALLET_API_V1,
+    };
+    use andromeda_common::Network;
+    use bdk_wallet::{
+        bitcoin::{
+            absolute::LockTime,
+            bip32::{DerivationPath, Xpriv},
+            Address, Amount, FeeRate, NetworkKind,
+        },
+        serde_json,
+        tx_builder::ChangeSpendPolicy,
+    };
+    use wiremock::{
+        matchers::{body_json, body_string_contains, method, path, path_regex, query_param},
+        Mock, MockServer, ResponseTemplate,
+    };
+
+    use crate::{
+        blockchain_client::BlockchainClient, mnemonic::Mnemonic, read_mock_file, storage::MemoryPersisted,
+        transactions::Pagination, utils::SortOrder,
+    };
 
     #[test]
     fn should_remove_correct_amount() {
@@ -638,6 +662,17 @@ mod tests {
         assert_eq!(updated.recipients.len(), 2);
     }
 
+    #[test]
+    fn test_remove_recipient() {
+        let mut tx_builder = TxBuilder::<MemoryPersisted>::new();
+
+        tx_builder = tx_builder.add_recipient(None);
+        assert_eq!(tx_builder.recipients.len(), 2);
+
+        tx_builder = tx_builder.remove_recipient(0);
+        assert_eq!(tx_builder.recipients.len(), 1);
+    }
+
     #[tokio::test]
     async fn should_update_recipient() {
         let tx_builder = TxBuilder::<MemoryPersisted>::new();
@@ -649,5 +684,207 @@ mod tests {
 
         let updated = tx_builder.update_recipient(0, (None, Some(668932)));
         assert_eq!(updated.recipients[0].2, Amount::from_sat(668932));
+    }
+
+    fn set_test_account_regtest(
+        script_type: ScriptType,
+        derivation_path: &str,
+    ) -> Account<MemoryPersisted, MemoryPersisted> {
+        let network = NetworkKind::Test;
+        let mnemonic = Mnemonic::from_string(
+            "onion ancient develop team busy purchase salmon robust danger wheat rich empower".to_string(),
+        )
+        .unwrap();
+        let master_secret_key = Xpriv::new_master(network, &mnemonic.inner().to_seed("")).unwrap();
+
+        let derivation_path = DerivationPath::from_str(derivation_path).unwrap();
+
+        Account::new(
+            master_secret_key,
+            Network::Regtest,
+            script_type,
+            derivation_path,
+            MemoryPersisted {},
+        )
+        .unwrap()
+    }
+
+    #[tokio::test]
+    async fn test_build_transaction_flow() {
+        let mut tx_builder = TxBuilder::<MemoryPersisted>::new();
+
+        // create account and do full sync, balance will be 8781
+        let account = set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'");
+
+        let mock_server = MockServer::start().await;
+
+        let req_path_blocks: String = format!("{}/blocks", BASE_WALLET_API_V1);
+
+        let response_contents = read_mock_file!("get_blocks_body");
+        let response = ResponseTemplate::new(200).set_body_string(response_contents);
+        Mock::given(method("GET"))
+            .and(path(req_path_blocks.clone()))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+
+        let req_path: String = format!("{}/addresses/scripthashes/transactions", BASE_WALLET_API_V1);
+
+        let response_contents1 = read_mock_file!("get_scripthashes_transactions_body_1");
+        let response1 = ResponseTemplate::new(200).set_body_string(response_contents1);
+        Mock::given(method("POST"))
+            .and(path(req_path.clone()))
+            .and(body_string_contains(
+                "89a10f34b9e0ad8b770c381d5bbb1f566124d3164781f41fb98218d1362069ec",
+            ))
+            .respond_with(response1)
+            .mount(&mock_server)
+            .await;
+
+        let response_contents2 = read_mock_file!("get_scripthashes_transactions_body_2");
+        let response2 = ResponseTemplate::new(200).set_body_string(response_contents2);
+
+        Mock::given(method("POST"))
+            .and(path(req_path.clone()))
+            .and(body_string_contains(
+                "b6c3616a787f87ed96b70770d84d45acf637ed3ad6f2706b2dfc282cc3ba4c05",
+            ))
+            .respond_with(response2)
+            .mount(&mock_server)
+            .await;
+
+        let response_contents3 = read_mock_file!("get_scripthashes_transactions_body_3");
+        let response3 = ResponseTemplate::new(200).set_body_string(response_contents3);
+
+        Mock::given(method("POST"))
+            .and(path(req_path.clone()))
+            .and(body_string_contains(
+                "5eac955f250ff14fd8c61e29e9531bc3e49d69038981a1344e88b985bd200a29",
+            ))
+            .respond_with(response3)
+            .mount(&mock_server)
+            .await;
+
+        let response_contents_block_hash = read_mock_file!("get_block_hash_body");
+        let response_block_hash = ResponseTemplate::new(200).set_body_string(response_contents_block_hash);
+
+        Mock::given(method("GET"))
+            .and(path_regex(".*/height/.*"))
+            .respond_with(response_block_hash)
+            .mount(&mock_server)
+            .await;
+
+        let api_client = setup_test_connection(mock_server.uri());
+        let client = BlockchainClient::new(api_client.clone());
+
+        // do full sync
+        let update = client.full_sync(&account, None).await.unwrap();
+        account
+            .apply_update(update)
+            .await
+            .map_err(|_e| "ERROR: could not apply sync update")
+            .unwrap();
+
+        // set account
+        tx_builder = tx_builder.set_account(Arc::new(account));
+
+        // test add recipient
+        tx_builder = tx_builder.add_recipient(Some((
+            Some("bcrt1qh3nltpdyugldpz2hc294k9jwyy9s3953yg7g9j".to_string()),
+            None,
+        )));
+        assert_eq!(tx_builder.recipients.len(), 2);
+        assert_eq!(tx_builder.recipients[0].1, "");
+        assert_eq!(tx_builder.recipients[0].2.to_sat(), 0);
+        assert_eq!(
+            tx_builder.recipients[1].1,
+            "bcrt1qh3nltpdyugldpz2hc294k9jwyy9s3953yg7g9j"
+        );
+        assert_eq!(tx_builder.recipients[1].2.to_sat(), 0);
+
+        // test update to max amount
+        tx_builder = tx_builder.update_recipient_amount_to_max(1).await;
+        assert_eq!(
+            tx_builder.recipients[1].1,
+            "bcrt1qh3nltpdyugldpz2hc294k9jwyy9s3953yg7g9j"
+        );
+        assert_eq!(tx_builder.recipients[1].2.to_sat(), 8781);
+
+        // test update recipient
+        tx_builder = tx_builder.update_recipient(
+            0,
+            (
+                Some("bcrt1qekjrshcthdqafs0du85llvkwhg25zzpc8ztj4h".to_string()),
+                Some(2333),
+            ),
+        );
+        tx_builder = tx_builder.update_recipient(
+            1,
+            (
+                Some("bcrt1qh3nltpdyugldpz2hc294k9jwyy9s3953yg7g9j".to_string()),
+                Some(1234),
+            ),
+        );
+        assert_eq!(tx_builder.recipients.len(), 2);
+        assert_eq!(
+            tx_builder.recipients[0].1,
+            "bcrt1qekjrshcthdqafs0du85llvkwhg25zzpc8ztj4h"
+        );
+        assert_eq!(tx_builder.recipients[0].2.to_sat(), 2333);
+        assert_eq!(
+            tx_builder.recipients[1].1,
+            "bcrt1qh3nltpdyugldpz2hc294k9jwyy9s3953yg7g9j"
+        );
+        assert_eq!(tx_builder.recipients[1].2.to_sat(), 1234);
+
+        // test constrain recipient amounts
+        tx_builder.constrain_recipient_amounts();
+        assert_eq!(tx_builder.recipients.len(), 2);
+        assert_eq!(
+            tx_builder.recipients[0].1,
+            "bcrt1qekjrshcthdqafs0du85llvkwhg25zzpc8ztj4h"
+        );
+        assert_eq!(tx_builder.recipients[0].2.to_sat(), 2333);
+        assert_eq!(
+            tx_builder.recipients[1].1,
+            "bcrt1qh3nltpdyugldpz2hc294k9jwyy9s3953yg7g9j"
+        );
+        assert_eq!(tx_builder.recipients[1].2.to_sat(), 1234);
+
+        // test set coin selection
+        tx_builder = tx_builder.set_coin_selection(CoinSelection::LargestFirst);
+        assert_eq!(tx_builder.coin_selection, CoinSelection::LargestFirst);
+
+        // test rbf enable/disable
+        tx_builder = tx_builder.disable_rbf();
+        assert_eq!(tx_builder.rbf_enabled, false);
+        tx_builder = tx_builder.enable_rbf();
+        assert_eq!(tx_builder.rbf_enabled, true);
+
+        // test set/unset locktime
+        let seconds: u32 = 1653195600; // May 22nd, 5am UTC.
+        let lock_time = LockTime::from_time(seconds).expect("valid time");
+        tx_builder = tx_builder.add_locktime(lock_time);
+        assert_eq!(tx_builder.locktime.unwrap(), lock_time);
+        tx_builder = tx_builder.remove_locktime();
+        assert!(tx_builder.locktime.is_none());
+
+        // test set change policy
+        tx_builder = tx_builder.set_change_policy(ChangeSpendPolicy::OnlyChange);
+        assert_eq!(tx_builder.change_policy, ChangeSpendPolicy::OnlyChange);
+
+        // test set fee rate
+        tx_builder = tx_builder.set_fee_rate(399);
+        assert_eq!(tx_builder.fee_rate.unwrap().to_sat_per_vb_floor(), 399);
+
+        // test create psbt
+        let psbt = tx_builder.create_psbt(true, false).await;
+        // InsufficientFunds error
+        assert!(psbt.is_err());
+
+        // test create draft psbt
+        let psbt = tx_builder.create_draft_psbt(false).await;
+        // InsufficientFunds error
+        assert!(psbt.is_err());
     }
 }

@@ -558,16 +558,31 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
+    use std::{str::FromStr, sync::Arc};
 
+    use andromeda_api::{
+        address,
+        tests::utils::{common_api_client, setup_test_connection},
+        BASE_WALLET_API_V1,
+    };
     use andromeda_common::Network;
-    use bdk_wallet::bitcoin::{
-        bip32::{DerivationPath, Xpriv},
-        Address, NetworkKind,
+    use bdk_wallet::{
+        bitcoin::{
+            bip32::{DerivationPath, Xpriv},
+            Address, NetworkKind,
+        },
+        serde_json,
+    };
+    use wiremock::{
+        matchers::{body_json, body_string_contains, method, path, path_regex, query_param},
+        Mock, MockServer, ResponseTemplate,
     };
 
     use super::{Account, ScriptType};
-    use crate::{mnemonic::Mnemonic, storage::MemoryPersisted};
+    use crate::{
+        blockchain_client::BlockchainClient, mnemonic::Mnemonic, read_mock_file, storage::MemoryPersisted,
+        transactions::Pagination, utils::SortOrder,
+    };
 
     fn set_test_account(script_type: ScriptType, derivation_path: &str) -> Account<MemoryPersisted, MemoryPersisted> {
         let network = NetworkKind::Test;
@@ -584,6 +599,532 @@ mod tests {
             MemoryPersisted {},
         )
         .unwrap()
+    }
+
+    fn set_test_account_regtest(
+        script_type: ScriptType,
+        derivation_path: &str,
+    ) -> Account<MemoryPersisted, MemoryPersisted> {
+        let network = NetworkKind::Test;
+        let mnemonic = Mnemonic::from_string(
+            "onion ancient develop team busy purchase salmon robust danger wheat rich empower".to_string(),
+        )
+        .unwrap();
+        let master_secret_key = Xpriv::new_master(network, &mnemonic.inner().to_seed("")).unwrap();
+
+        let derivation_path = DerivationPath::from_str(derivation_path).unwrap();
+
+        Account::new(
+            master_secret_key,
+            Network::Regtest,
+            script_type,
+            derivation_path,
+            MemoryPersisted {},
+        )
+        .unwrap()
+    }
+
+    #[tokio::test]
+    async fn test_get_wallet() {
+        let account = set_test_account(ScriptType::Legacy, "m/44'/1'/0'");
+        let wallet = account.get_wallet().await;
+        assert!(wallet.balance().total().to_sat() == 0);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_get_address_sync_true() {
+        let account = set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'");
+        let network = Network::Regtest;
+        let address_str = "bcrt1q4zpmdp77e9ff4ls8ajgqapdhgqutrkcpqpzcqw".to_string();
+
+        let api_client = common_api_client().await;
+        let client = BlockchainClient::new(api_client.as_ref().clone());
+        let address_detail = account
+            .get_address(network, address_str.clone(), Arc::new(client.clone()), true)
+            .await
+            .unwrap();
+        assert!(address_detail.is_some());
+        assert!(address_detail.unwrap().balance.confirmed.to_sat() == 0);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_get_address_sync_false() {
+        let account = set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'");
+        let network = Network::Regtest;
+        let address_str = "bcrt1q4zpmdp77e9ff4ls8ajgqapdhgqutrkcpqpzcqw".to_string();
+
+        let api_client = common_api_client().await;
+        let client = BlockchainClient::new(api_client.as_ref().clone());
+        let address_detail = account
+            .get_address(network, address_str.clone(), Arc::new(client.clone()), false)
+            .await
+            .unwrap();
+        assert!(address_detail.is_some());
+        assert!(address_detail.unwrap().balance.confirmed.to_sat() == 0);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_get_addresses_sync_false() {
+        let account = set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'");
+
+        let api_client = common_api_client().await;
+        let client = BlockchainClient::new(api_client.as_ref().clone());
+        let pagination = Pagination::new(0, 10);
+        let addresses = account
+            .get_addresses(
+                pagination,
+                Arc::new(client.clone()),
+                bdk_wallet::KeychainKind::Internal,
+                false,
+            )
+            .await
+            .unwrap();
+        assert!(addresses.len() == 9);
+    }
+
+    #[tokio::test]
+    async fn test_get_addresses() {
+        let account = set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'");
+
+        let mock_server = MockServer::start().await;
+
+        let req_path_blocks: String = format!("{}/blocks", BASE_WALLET_API_V1);
+
+        let response_contents = read_mock_file!("get_blocks_body");
+        let response = ResponseTemplate::new(200).set_body_string(response_contents);
+        Mock::given(method("GET"))
+            .and(path(req_path_blocks.clone()))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+
+        let req_path: String = format!("{}/addresses/scripthashes/transactions", BASE_WALLET_API_V1);
+
+        let response_contents1 = read_mock_file!("get_addresses_body_1");
+        let response1 = ResponseTemplate::new(200).set_body_string(response_contents1);
+        Mock::given(method("POST"))
+            .and(path(req_path.clone()))
+            .and(body_string_contains(
+                "3979339df938c20edd4f7505ba17ded9c999c4901091660072628aa0b69fe004",
+            ))
+            .respond_with(response1)
+            .mount(&mock_server)
+            .await;
+
+        let response_contents_block_hash = read_mock_file!("get_block_hash_body");
+        let response_block_hash = ResponseTemplate::new(200).set_body_string(response_contents_block_hash);
+
+        Mock::given(method("GET"))
+            .and(path_regex(".*/height/.*"))
+            .respond_with(response_block_hash)
+            .mount(&mock_server)
+            .await;
+
+        let api_client = setup_test_connection(mock_server.uri());
+        let client = BlockchainClient::new(api_client.clone());
+        let pagination = Pagination::new(0, 10);
+        let addresses = account
+            .get_addresses(
+                pagination,
+                Arc::new(client.clone()),
+                bdk_wallet::KeychainKind::Internal,
+                false,
+            )
+            .await
+            .unwrap();
+        assert!(addresses.len() == 9);
+    }
+
+    #[tokio::test]
+    async fn test_get_address() {
+        let account = set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'");
+        let network = Network::Regtest;
+        let address_str = "bcrt1q4zpmdp77e9ff4ls8ajgqapdhgqutrkcpqpzcqw".to_string();
+
+        let mock_server = MockServer::start().await;
+        let api_client = setup_test_connection(mock_server.uri());
+        let client = BlockchainClient::new(api_client.clone());
+        let address_detail = account
+            .get_address(network, address_str.clone(), Arc::new(client.clone()), false)
+            .await
+            .unwrap();
+        assert!(address_detail.is_some());
+        assert!(address_detail.unwrap().balance.confirmed.to_sat() == 0);
+    }
+
+    #[tokio::test]
+    async fn test_bump_transactions_fees_error() {
+        let account = set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'");
+        let result = account
+            .bump_transactions_fees(
+                "6b62ad31e219c9dab4d7e24a0803b02bbc5d86ba53f6f02aa6de0f301b718e88".to_string(),
+                1000,
+            )
+            .await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_get_derivation_path() {
+        let account = set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'");
+        let derivation_path = account.get_derivation_path();
+        assert_eq!(derivation_path.to_string(), "84'/1'/0'");
+    }
+
+    #[tokio::test]
+    async fn test_get_balance() {
+        let account = set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'");
+        let balance = account.get_balance().await;
+        assert_eq!(balance.total().to_sat(), 0);
+
+        let mock_server = MockServer::start().await;
+
+        let req_path_blocks: String = format!("{}/blocks", BASE_WALLET_API_V1);
+
+        let response_contents = read_mock_file!("get_blocks_body");
+        let response = ResponseTemplate::new(200).set_body_string(response_contents);
+        Mock::given(method("GET"))
+            .and(path(req_path_blocks.clone()))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+
+        let req_path: String = format!("{}/addresses/scripthashes/transactions", BASE_WALLET_API_V1);
+
+        let response_contents1 = read_mock_file!("get_scripthashes_transactions_body_1");
+        let response1 = ResponseTemplate::new(200).set_body_string(response_contents1);
+        Mock::given(method("POST"))
+            .and(path(req_path.clone()))
+            .and(body_string_contains(
+                "89a10f34b9e0ad8b770c381d5bbb1f566124d3164781f41fb98218d1362069ec",
+            ))
+            .respond_with(response1)
+            .mount(&mock_server)
+            .await;
+
+        let response_contents2 = read_mock_file!("get_scripthashes_transactions_body_2");
+        let response2 = ResponseTemplate::new(200).set_body_string(response_contents2);
+
+        Mock::given(method("POST"))
+            .and(path(req_path.clone()))
+            .and(body_string_contains(
+                "b6c3616a787f87ed96b70770d84d45acf637ed3ad6f2706b2dfc282cc3ba4c05",
+            ))
+            .respond_with(response2)
+            .mount(&mock_server)
+            .await;
+
+        let response_contents3 = read_mock_file!("get_scripthashes_transactions_body_3");
+        let response3 = ResponseTemplate::new(200).set_body_string(response_contents3);
+
+        Mock::given(method("POST"))
+            .and(path(req_path.clone()))
+            .and(body_string_contains(
+                "5eac955f250ff14fd8c61e29e9531bc3e49d69038981a1344e88b985bd200a29",
+            ))
+            .respond_with(response3)
+            .mount(&mock_server)
+            .await;
+
+        let response_contents_block_hash = read_mock_file!("get_block_hash_body");
+        let response_block_hash = ResponseTemplate::new(200).set_body_string(response_contents_block_hash);
+
+        Mock::given(method("GET"))
+            .and(path_regex(".*/height/.*"))
+            .respond_with(response_block_hash)
+            .mount(&mock_server)
+            .await;
+
+        let api_client = setup_test_connection(mock_server.uri());
+        let client = BlockchainClient::new(api_client.clone());
+
+        // do full sync
+        let update = client.full_sync(&account, None).await.unwrap();
+        account
+            .apply_update(update)
+            .await
+            .map_err(|_e| "ERROR: could not apply sync update")
+            .unwrap();
+        let balance = account.get_balance().await;
+        assert_eq!(balance.total().to_sat(), 8781);
+    }
+
+    #[tokio::test]
+    async fn test_get_utxo() {
+        let account = set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'");
+        let utxos = account.get_utxos().await;
+        assert_eq!(utxos.len(), 0);
+
+        let mock_server = MockServer::start().await;
+
+        let req_path_blocks: String = format!("{}/blocks", BASE_WALLET_API_V1);
+
+        let response_contents = read_mock_file!("get_blocks_body");
+        let response = ResponseTemplate::new(200).set_body_string(response_contents);
+        Mock::given(method("GET"))
+            .and(path(req_path_blocks.clone()))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+
+        let req_path: String = format!("{}/addresses/scripthashes/transactions", BASE_WALLET_API_V1);
+
+        let response_contents1 = read_mock_file!("get_scripthashes_transactions_body_1");
+        let response1 = ResponseTemplate::new(200).set_body_string(response_contents1);
+        Mock::given(method("POST"))
+            .and(path(req_path.clone()))
+            .and(body_string_contains(
+                "89a10f34b9e0ad8b770c381d5bbb1f566124d3164781f41fb98218d1362069ec",
+            ))
+            .respond_with(response1)
+            .mount(&mock_server)
+            .await;
+
+        let response_contents2 = read_mock_file!("get_scripthashes_transactions_body_2");
+        let response2 = ResponseTemplate::new(200).set_body_string(response_contents2);
+
+        Mock::given(method("POST"))
+            .and(path(req_path.clone()))
+            .and(body_string_contains(
+                "b6c3616a787f87ed96b70770d84d45acf637ed3ad6f2706b2dfc282cc3ba4c05",
+            ))
+            .respond_with(response2)
+            .mount(&mock_server)
+            .await;
+
+        let response_contents3 = read_mock_file!("get_scripthashes_transactions_body_3");
+        let response3 = ResponseTemplate::new(200).set_body_string(response_contents3);
+
+        Mock::given(method("POST"))
+            .and(path(req_path.clone()))
+            .and(body_string_contains(
+                "5eac955f250ff14fd8c61e29e9531bc3e49d69038981a1344e88b985bd200a29",
+            ))
+            .respond_with(response3)
+            .mount(&mock_server)
+            .await;
+
+        let response_contents_block_hash = read_mock_file!("get_block_hash_body");
+        let response_block_hash = ResponseTemplate::new(200).set_body_string(response_contents_block_hash);
+
+        Mock::given(method("GET"))
+            .and(path_regex(".*/height/.*"))
+            .respond_with(response_block_hash)
+            .mount(&mock_server)
+            .await;
+
+        let api_client = setup_test_connection(mock_server.uri());
+        let client = BlockchainClient::new(api_client.clone());
+
+        // do full sync
+        let update = client.full_sync(&account, None).await.unwrap();
+        account
+            .apply_update(update)
+            .await
+            .map_err(|_e| "ERROR: could not apply sync update")
+            .unwrap();
+        let utxos = account.get_utxos().await;
+
+        assert_eq!(utxos.len(), 1);
+        assert_eq!(utxos[0].confirmation_time.is_confirmed(), true);
+        assert_eq!(utxos[0].txout.value.to_sat(), 8781);
+    }
+
+    #[tokio::test]
+    async fn test_bump_transactions_fees_success() {}
+
+    #[tokio::test]
+    async fn test_has_sync_data() {
+        let account = set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'");
+
+        let mock_server = MockServer::start().await;
+
+        let req_path_blocks: String = format!("{}/blocks", BASE_WALLET_API_V1);
+
+        let response_contents = read_mock_file!("get_blocks_body");
+        let response = ResponseTemplate::new(200).set_body_string(response_contents);
+        Mock::given(method("GET"))
+            .and(path(req_path_blocks.clone()))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+
+        let req_path: String = format!("{}/addresses/scripthashes/transactions", BASE_WALLET_API_V1);
+
+        let response_contents1 = read_mock_file!("get_scripthashes_transactions_body_1");
+        let response1 = ResponseTemplate::new(200).set_body_string(response_contents1);
+        Mock::given(method("POST"))
+            .and(path(req_path.clone()))
+            .and(body_string_contains(
+                "89a10f34b9e0ad8b770c381d5bbb1f566124d3164781f41fb98218d1362069ec",
+            ))
+            .respond_with(response1)
+            .mount(&mock_server)
+            .await;
+
+        let response_contents2 = read_mock_file!("get_scripthashes_transactions_body_2");
+        let response2 = ResponseTemplate::new(200).set_body_string(response_contents2);
+
+        Mock::given(method("POST"))
+            .and(path(req_path.clone()))
+            .and(body_string_contains(
+                "b6c3616a787f87ed96b70770d84d45acf637ed3ad6f2706b2dfc282cc3ba4c05",
+            ))
+            .respond_with(response2)
+            .mount(&mock_server)
+            .await;
+
+        let response_contents3 = read_mock_file!("get_scripthashes_transactions_body_3");
+        let response3 = ResponseTemplate::new(200).set_body_string(response_contents3);
+
+        Mock::given(method("POST"))
+            .and(path(req_path.clone()))
+            .and(body_string_contains(
+                "5eac955f250ff14fd8c61e29e9531bc3e49d69038981a1344e88b985bd200a29",
+            ))
+            .respond_with(response3)
+            .mount(&mock_server)
+            .await;
+
+        let response_contents_block_hash = read_mock_file!("get_block_hash_body");
+        let response_block_hash = ResponseTemplate::new(200).set_body_string(response_contents_block_hash);
+
+        Mock::given(method("GET"))
+            .and(path_regex(".*/height/.*"))
+            .respond_with(response_block_hash)
+            .mount(&mock_server)
+            .await;
+
+        let api_client = setup_test_connection(mock_server.uri());
+        let client = BlockchainClient::new(api_client.clone());
+
+        let has_synced = account.has_sync_data().await;
+        assert!(!has_synced);
+
+        // do full sync
+        let update = client.full_sync(&account, None).await.unwrap();
+        account
+            .apply_update(update)
+            .await
+            .map_err(|_e| "ERROR: could not apply sync update")
+            .unwrap();
+
+        let has_synced = account.has_sync_data().await;
+        assert!(has_synced);
+    }
+
+    #[tokio::test]
+    async fn test_get_transactions() {
+        let account = set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'");
+
+        let mock_server = MockServer::start().await;
+
+        let req_path_blocks: String = format!("{}/blocks", BASE_WALLET_API_V1);
+
+        let response_contents = read_mock_file!("get_blocks_body");
+        let response = ResponseTemplate::new(200).set_body_string(response_contents);
+        Mock::given(method("GET"))
+            .and(path(req_path_blocks.clone()))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+
+        let req_path: String = format!("{}/addresses/scripthashes/transactions", BASE_WALLET_API_V1);
+
+        let response_contents1 = read_mock_file!("get_scripthashes_transactions_body_1");
+        let response1 = ResponseTemplate::new(200).set_body_string(response_contents1);
+        Mock::given(method("POST"))
+            .and(path(req_path.clone()))
+            .and(body_string_contains(
+                "89a10f34b9e0ad8b770c381d5bbb1f566124d3164781f41fb98218d1362069ec",
+            ))
+            .respond_with(response1)
+            .mount(&mock_server)
+            .await;
+
+        let response_contents2 = read_mock_file!("get_scripthashes_transactions_body_2");
+        let response2 = ResponseTemplate::new(200).set_body_string(response_contents2);
+
+        Mock::given(method("POST"))
+            .and(path(req_path.clone()))
+            .and(body_string_contains(
+                "b6c3616a787f87ed96b70770d84d45acf637ed3ad6f2706b2dfc282cc3ba4c05",
+            ))
+            .respond_with(response2)
+            .mount(&mock_server)
+            .await;
+
+        let response_contents3 = read_mock_file!("get_scripthashes_transactions_body_3");
+        let response3 = ResponseTemplate::new(200).set_body_string(response_contents3);
+
+        Mock::given(method("POST"))
+            .and(path(req_path.clone()))
+            .and(body_string_contains(
+                "5eac955f250ff14fd8c61e29e9531bc3e49d69038981a1344e88b985bd200a29",
+            ))
+            .respond_with(response3)
+            .mount(&mock_server)
+            .await;
+
+        let response_contents_block_hash = read_mock_file!("get_block_hash_body");
+        let response_block_hash = ResponseTemplate::new(200).set_body_string(response_contents_block_hash);
+
+        Mock::given(method("GET"))
+            .and(path_regex(".*/height/.*"))
+            .respond_with(response_block_hash)
+            .mount(&mock_server)
+            .await;
+
+        let api_client = setup_test_connection(mock_server.uri());
+        let client = BlockchainClient::new(api_client.clone());
+        // do full sync
+        let update = client.full_sync(&account, None).await.unwrap();
+        account
+            .apply_update(update)
+            .await
+            .map_err(|_e| "ERROR: could not apply sync update")
+            .unwrap();
+
+        // get single transaction
+        let txid = "6b62ad31e219c9dab4d7e24a0803b02bbc5d86ba53f6f02aa6de0f301b718e88".to_string();
+        let transaction_details = account.get_transaction(txid).await.unwrap();
+        assert_eq!(transaction_details.fees.unwrap(), 141);
+        assert_eq!(transaction_details.received, 8781);
+
+        // get transactions
+        let pagination = Pagination::new(0, 10);
+        let transactions = account
+            .get_transactions(pagination, Some(SortOrder::Asc))
+            .await
+            .unwrap();
+
+        assert_eq!(transactions.len(), 1);
+        assert_eq!(transactions[0].fees.unwrap(), 141);
+        assert_eq!(transactions[0].received, 8781);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_get_transactions_from_atlas() {
+        let account = set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'");
+
+        let api_client = common_api_client().await;
+        let client = BlockchainClient::new(api_client.as_ref().clone());
+
+        // do full sync
+        let update = client.full_sync(&account, None).await.unwrap();
+        account
+            .apply_update(update)
+            .await
+            .map_err(|_e| "ERROR: could not apply sync update")
+            .unwrap();
+
+        let txid = "6b62ad31e219c9dab4d7e24a0803b02bbc5d86ba53f6f02aa6de0f301b718e88".to_string();
+        let transaction_details = account.get_transaction(txid).await.unwrap();
+        assert_eq!(transaction_details.fees.unwrap(), 141);
     }
 
     #[tokio::test]

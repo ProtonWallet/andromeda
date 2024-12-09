@@ -31,7 +31,7 @@ pub async fn common_api_client() -> Arc<ProtonWalletApiClient> {
         auth: None,
     };
     let api = ProtonWalletApiClient::from_config(config).unwrap();
-    api.login("pro", "pro").await.unwrap();
+    api.login("bart", "bart").await.unwrap();
     Arc::new(api)
 }
 
