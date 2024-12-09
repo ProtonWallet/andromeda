@@ -36,6 +36,7 @@ wasm-bindgen = { version = "0.2.88", features = [
 wasm-bindgen-futures = "0.4.39"
 
 [dev-dependencies]
+wiremock = "0.6.0"
 tokio = { workspace = true }
 tokio-test = { workspace = true }
 bech32 = "0.11.0"
@@ -43,3 +44,4 @@ bech32 = "0.11.0"
 
 [features]
 sqlite = ["bdk_wallet/rusqlite"]
+default = ["andromeda-api/allow-dangerous-env"]
