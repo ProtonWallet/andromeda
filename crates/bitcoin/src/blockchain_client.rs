@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use crate::{account::Account, error::Error, storage::WalletPersisterConnector};
+use andromeda_api::transaction::RecommendedFees;
 use andromeda_api::{
     transaction::{BroadcastMessage, ExchangeRateOrTransactionTime},
     ProtonWalletApiClient,
@@ -14,8 +16,6 @@ use bdk_wallet::{
 };
 use bitcoin::ScriptBuf;
 use serde::{Deserialize, Serialize};
-
-use crate::{account::Account, error::Error, storage::WalletPersisterConnector};
 
 pub const DEFAULT_STOP_GAP: usize = 50;
 pub const PARALLEL_REQUESTS: usize = 5;
@@ -184,6 +184,13 @@ impl BlockchainClient {
         let fees = self.0.get_fee_estimates().await?;
 
         Ok(fees)
+    }
+
+    /// Returns recommended fees
+    pub async fn get_recommended_fees(&self) -> Result<RecommendedFees, Error> {
+        let recommended_fees = self.0.get_recommended_fees().await?;
+
+        Ok(recommended_fees)
     }
 
     /// Broadcasts a provided transaction
