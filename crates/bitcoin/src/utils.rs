@@ -206,3 +206,31 @@ mod tests {
         )
     }
 }
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! read_mock_file {
+    ($filename:expr) => {{
+        use std::{fs::File, io::Read};
+
+        let mut file = File::open(format!("./src/tests/mocks/{}.json", $filename)).unwrap();
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).unwrap();
+
+        contents
+    }};
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! read_mock_raw_file {
+    ($filename:expr) => {{
+        use std::{fs::File, io::Read};
+
+        let mut file = File::open(format!("./src/tests/mocks/{}.raw", $filename)).unwrap();
+        let mut contents = Vec::new();
+
+        file.read_to_end(&mut contents).unwrap();
+        contents
+    }};
+}
