@@ -561,20 +561,16 @@ mod tests {
     use std::{str::FromStr, sync::Arc};
 
     use andromeda_api::{
-        address,
         tests::utils::{common_api_client, setup_test_connection},
         BASE_WALLET_API_V1,
     };
     use andromeda_common::Network;
-    use bdk_wallet::{
-        bitcoin::{
-            bip32::{DerivationPath, Xpriv},
-            Address, NetworkKind,
-        },
-        serde_json,
+    use bdk_wallet::bitcoin::{
+        bip32::{DerivationPath, Xpriv},
+        Address, NetworkKind,
     };
     use wiremock::{
-        matchers::{body_json, body_string_contains, method, path, path_regex, query_param},
+        matchers::{body_string_contains, method, path, path_regex},
         Mock, MockServer, ResponseTemplate,
     };
 

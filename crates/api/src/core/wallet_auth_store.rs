@@ -1,20 +1,13 @@
 use std::sync::{Arc, Mutex};
 
 use cfg_if::cfg_if;
+#[cfg(feature = "allow-dangerous-env")]
+use muon::{app::AppVersion, common::Server, tls::TlsPinSet};
 use muon::{
     client::Auth,
     common::IntoDyn,
     env::{Env, EnvId},
     store::{Store, StoreFailure},
-};
-#[cfg(feature = "allow-dangerous-env")]
-use {
-    muon::{
-        app::AppVersion,
-        common::{Endpoint, Server},
-        tls::TlsPinSet,
-    },
-    std::str::FromStr,
 };
 
 #[derive(Debug, Clone)]
@@ -87,10 +80,7 @@ cfg_if! {
         /// Implement [`Env`] to specify the servers for the custom environment.
         impl Env for WalletCustomEnv {
             fn servers(&self, _: &AppVersion) -> Vec<Server> {
-                let endpoint = Endpoint::from_str(self.inner.as_str()).expect("Invalid server address");
-                let path = String::from("/");
-
-                vec![Server{endpoint, path}]
+                vec![self.inner.as_str().parse().expect("Invalid server address")]
             }
 
             fn pins(&self, _: &Server) -> Option<TlsPinSet> {

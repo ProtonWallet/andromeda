@@ -123,7 +123,7 @@ mod tests {
     };
     use std::sync::Arc;
     use wiremock::{
-        matchers::{body_json, method, path, query_param},
+        matchers::{method, path, query_param},
         Mock, MockServer, ResponseTemplate,
     };
 

@@ -336,7 +336,7 @@ mod tests {
     use bitcoin::transaction::Version;
     use std::{collections::HashMap, sync::Arc};
     use wiremock::{
-        matchers::{body_json, method, path, query_param},
+        matchers::{method, path},
         Mock, MockServer, ResponseTemplate,
     };
 
