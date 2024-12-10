@@ -199,11 +199,7 @@ impl BlockClient {
 mod tests {
     use std::str::FromStr;
 
-    use bitcoin::{
-        block::{Header as BlockHeader, Version},
-        hex::{Case, DisplayHex},
-        BlockHash, CompactTarget, TxMerkleNode,
-    };
+    use bitcoin::{block::Version, BlockHash, CompactTarget};
 
     use super::BlockClient;
 
@@ -213,7 +209,7 @@ mod tests {
     };
     use std::sync::Arc;
     use wiremock::{
-        matchers::{method, path, query_param},
+        matchers::{method, path},
         Mock, MockServer, ResponseTemplate,
     };
 

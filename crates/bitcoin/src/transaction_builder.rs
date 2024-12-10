@@ -527,30 +527,22 @@ mod tests {
 
     use std::{str::FromStr, sync::Arc};
 
-    use andromeda_api::{
-        address,
-        tests::utils::{common_api_client, setup_test_connection},
-        BASE_WALLET_API_V1,
-    };
+    use andromeda_api::{tests::utils::setup_test_connection, BASE_WALLET_API_V1};
     use andromeda_common::Network;
     use bdk_wallet::{
         bitcoin::{
             absolute::LockTime,
             bip32::{DerivationPath, Xpriv},
-            Address, Amount, FeeRate, NetworkKind,
+            Amount, FeeRate, NetworkKind,
         },
-        serde_json,
         tx_builder::ChangeSpendPolicy,
     };
     use wiremock::{
-        matchers::{body_json, body_string_contains, method, path, path_regex, query_param},
+        matchers::{body_string_contains, method, path, path_regex},
         Mock, MockServer, ResponseTemplate,
     };
 
-    use crate::{
-        blockchain_client::BlockchainClient, mnemonic::Mnemonic, read_mock_file, storage::MemoryPersisted,
-        transactions::Pagination, utils::SortOrder,
-    };
+    use crate::{blockchain_client::BlockchainClient, mnemonic::Mnemonic, read_mock_file, storage::MemoryPersisted};
 
     #[test]
     fn should_remove_correct_amount() {
@@ -838,7 +830,7 @@ mod tests {
         assert_eq!(tx_builder.recipients[1].2.to_sat(), 1234);
 
         // test constrain recipient amounts
-        tx_builder.constrain_recipient_amounts();
+        tx_builder.constrain_recipient_amounts().await;
         assert_eq!(tx_builder.recipients.len(), 2);
         assert_eq!(
             tx_builder.recipients[0].1,
