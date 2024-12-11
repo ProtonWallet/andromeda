@@ -302,19 +302,14 @@ async fn fetch_txs_with_keychain_spks<I: Iterator<Item = Indexed<ScriptBuf>> + S
                 insert_prevouts(&mut update, tx.vin);
             }
         }
-
         let current_gap = last_index.expect("Should be set when handles is not empty") - last_active_index;
         let count_until_stop_gap = stop_gap.saturating_sub(current_gap as usize);
-
         if count_until_stop_gap == 0 {
             break;
         }
-
         spks_to_fetch = Ord::min(count_until_stop_gap, MAX_SPKS_PER_REQUESTS);
     }
-
     let last_active_index = u32::try_from(last_active_index).ok();
-
     Ok((update, last_active_index))
 }
 

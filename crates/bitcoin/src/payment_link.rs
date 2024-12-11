@@ -130,7 +130,7 @@ impl PaymentLink {
             let query_split: Vec<&str> = address_part.split('?').collect();
 
             let address_str = query_split
-                .get(0)
+                .first()
                 .ok_or(Error::InvalidAddress(payment_link_str.clone()))?; //Ignore the test coverage for line
             let query_params_str = query_split.get(1).unwrap_or(&"");
 
@@ -173,9 +173,8 @@ impl PaymentLink {
     }
 }
 
-/// Helper function to retrieve a query parameter from a list of `(key, value)`
-/// pairs.
-fn get_query_params(query_params: &Vec<(&str, &str)>, key: &str) -> Option<String> {
+/// Helper function to retrieve a query parameter from a list of `(key, value)` pairs.
+fn get_query_params(query_params: &[(&str, &str)], key: &str) -> Option<String> {
     query_params
         .iter()
         .find(|(param_key, _)| *param_key == key)
@@ -219,7 +218,7 @@ mod tests {
 
         let payment_link = PaymentLink::try_parse(TEST_ADDRESS.to_string(), Network::Testnet).unwrap();
         let uri = payment_link.to_uri();
-        assert!(uri == TEST_ADDRESS.to_string());
+        assert!(uri == *TEST_ADDRESS);
         let payment_link = PaymentLink::BitcoinURI {
             address: test_address(),
             amount: None,
@@ -242,7 +241,7 @@ mod tests {
 
         let payment_link = PaymentLink::try_parse(TEST_ADDRESS.to_string(), Network::Testnet).unwrap();
         let bitcoin_address = payment_link.to_address_string();
-        assert!(bitcoin_address == TEST_ADDRESS.to_string());
+        assert!(bitcoin_address == *TEST_ADDRESS);
 
         let payment_link = PaymentLink::BitcoinURI {
             address: test_address(),
@@ -251,7 +250,7 @@ mod tests {
             message: Some("Thank for your donation".to_string()),
         };
         let bitcoin_address = payment_link.to_address_string();
-        assert!(bitcoin_address == TEST_ADDRESS.to_string());
+        assert!(bitcoin_address == *TEST_ADDRESS);
     }
 
     #[test]

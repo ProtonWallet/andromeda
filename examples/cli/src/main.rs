@@ -21,7 +21,7 @@ fn create_wallet(
     let (bip39, bip38, network) = words.fold((None, None, None), |acc, word| {
         let bip39 = if acc.0.is_none() {
             word.strip_prefix("--bip39=")
-                .map(|word| word.split("_").collect::<Vec<_>>().join(" "))
+                .map(|word| word.split('_').collect::<Vec<_>>().join(" "))
         } else {
             acc.0
         };
