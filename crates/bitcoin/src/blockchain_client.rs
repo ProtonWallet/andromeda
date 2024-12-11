@@ -71,9 +71,7 @@ impl BlockchainClient {
     {
         let read_lock = account.get_wallet().await;
         let request = read_lock.start_full_scan();
-
         let update = self.0.full_scan(request, stop_gap.unwrap_or(DEFAULT_STOP_GAP)).await?;
-
         Ok(update)
     }
 
