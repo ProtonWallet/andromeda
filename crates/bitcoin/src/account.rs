@@ -263,6 +263,24 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
         Ok(())
     }
 
+    /// Returns the highest used address index `Some(u32)` from the wallet's outputs for a specific keychain,
+    /// or `None` if no outputs are found for the given keychain.
+    /// # Parameters
+    ///
+    /// - `keychain`: The type of keychain (e.g., external or internal) to filter the outputs by.
+    pub async fn get_highest_used_address_index_in_output(&self, keychain: KeychainKind) -> Result<Option<u32>, Error> {
+        let highest_index = self
+            .get_wallet()
+            .await
+            .list_output()
+            .into_iter()
+            .filter(|output| output.keychain == keychain)
+            .map(|output| output.derivation_index)
+            .reduce(|a, b| a.max(b));
+
+        Ok(highest_index)
+    }
+
     /// Returns the next address to be used to receive coins and marks it as
     /// used
     ///
@@ -565,9 +583,12 @@ mod tests {
         BASE_WALLET_API_V1,
     };
     use andromeda_common::Network;
-    use bdk_wallet::bitcoin::{
-        bip32::{DerivationPath, Xpriv},
-        Address, NetworkKind,
+    use bdk_wallet::{
+        bitcoin::{
+            bip32::{DerivationPath, Xpriv},
+            Address, NetworkKind,
+        },
+        serde_json,
     };
     use wiremock::{
         matchers::{body_string_contains, method, path, path_regex},
@@ -613,6 +634,52 @@ mod tests {
         Account::new(
             master_secret_key,
             Network::Regtest,
+            script_type,
+            derivation_path,
+            MemoryPersisted {},
+        )
+        .unwrap()
+    }
+
+    fn set_test_account_regtest2(
+        script_type: ScriptType,
+        derivation_path: &str,
+    ) -> Account<MemoryPersisted, MemoryPersisted> {
+        let network = NetworkKind::Test;
+        let mnemonic = Mnemonic::from_string(
+            "remove over athlete patient priority unable memory axis sunset home balance sausage".to_string(),
+        )
+        .unwrap();
+        let master_secret_key = Xpriv::new_master(network, &mnemonic.inner().to_seed("")).unwrap();
+
+        let derivation_path = DerivationPath::from_str(derivation_path).unwrap();
+
+        Account::new(
+            master_secret_key,
+            Network::Regtest,
+            script_type,
+            derivation_path,
+            MemoryPersisted {},
+        )
+        .unwrap()
+    }
+
+    fn set_test_account_for_mainnet(
+        script_type: ScriptType,
+        derivation_path: &str,
+    ) -> Account<MemoryPersisted, MemoryPersisted> {
+        let network = NetworkKind::Main;
+        let mnemonic = Mnemonic::from_string(
+            "sense giggle bulb easily canal since toilet diagram deer able inflict bacon".to_string(),
+        )
+        .unwrap();
+        let master_secret_key = Xpriv::new_master(network, &mnemonic.inner().to_seed("")).unwrap();
+
+        let derivation_path = DerivationPath::from_str(derivation_path).unwrap();
+
+        Account::new(
+            master_secret_key,
+            Network::Bitcoin,
             script_type,
             derivation_path,
             MemoryPersisted {},
@@ -1100,6 +1167,249 @@ mod tests {
         assert_eq!(transactions.len(), 1);
         assert_eq!(transactions[0].fees.unwrap(), 141);
         assert_eq!(transactions[0].received, 8781);
+    }
+
+    #[tokio::test]
+    async fn test_get_highest_used_address_index_in_output() {
+        let account = set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'");
+
+        // highest will be none before we sync the wallet
+        let highest = account
+            .get_highest_used_address_index_in_output(bdk_wallet::KeychainKind::External)
+            .await
+            .unwrap();
+        assert!(highest.is_none());
+
+        let mock_server = MockServer::start().await;
+
+        let req_path_blocks: String = format!("{}/blocks", BASE_WALLET_API_V1);
+
+        let response_contents = read_mock_file!("get_blocks_body");
+        let response = ResponseTemplate::new(200).set_body_string(response_contents);
+        Mock::given(method("GET"))
+            .and(path(req_path_blocks.clone()))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+
+        let req_path: String = format!("{}/addresses/scripthashes/transactions", BASE_WALLET_API_V1);
+
+        let response_contents1 = read_mock_file!("get_scripthashes_transactions_body_1");
+        let response1 = ResponseTemplate::new(200).set_body_string(response_contents1);
+        Mock::given(method("POST"))
+            .and(path(req_path.clone()))
+            .and(body_string_contains(
+                "89a10f34b9e0ad8b770c381d5bbb1f566124d3164781f41fb98218d1362069ec",
+            ))
+            .respond_with(response1)
+            .mount(&mock_server)
+            .await;
+
+        let response_contents2 = read_mock_file!("get_scripthashes_transactions_body_2");
+        let response2 = ResponseTemplate::new(200).set_body_string(response_contents2);
+
+        Mock::given(method("POST"))
+            .and(path(req_path.clone()))
+            .and(body_string_contains(
+                "b6c3616a787f87ed96b70770d84d45acf637ed3ad6f2706b2dfc282cc3ba4c05",
+            ))
+            .respond_with(response2)
+            .mount(&mock_server)
+            .await;
+
+        let response_contents3 = read_mock_file!("get_scripthashes_transactions_body_3");
+        let response3 = ResponseTemplate::new(200).set_body_string(response_contents3);
+
+        Mock::given(method("POST"))
+            .and(path(req_path.clone()))
+            .and(body_string_contains(
+                "5eac955f250ff14fd8c61e29e9531bc3e49d69038981a1344e88b985bd200a29",
+            ))
+            .respond_with(response3)
+            .mount(&mock_server)
+            .await;
+
+        let response_contents_block_hash = read_mock_file!("get_block_hash_body");
+        let response_block_hash = ResponseTemplate::new(200).set_body_string(response_contents_block_hash);
+
+        Mock::given(method("GET"))
+            .and(path_regex(".*/height/.*"))
+            .respond_with(response_block_hash)
+            .mount(&mock_server)
+            .await;
+
+        let api_client = setup_test_connection(mock_server.uri());
+        let client = BlockchainClient::new(api_client.clone());
+
+        // do full sync
+        let update = client.full_sync(&account, None).await.unwrap();
+        account
+            .apply_update(update)
+            .await
+            .map_err(|_e| "ERROR: could not apply sync update")
+            .unwrap();
+
+        let highest = account
+            .get_highest_used_address_index_in_output(bdk_wallet::KeychainKind::External)
+            .await
+            .unwrap();
+        assert_eq!(highest.unwrap(), 0);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_get_highest_from_atlas() {
+        let account = set_test_account_regtest2(ScriptType::NativeSegwit, "m/84'/1'/0'");
+
+        // mark used to make sure it wont change the result of get_highest_used_address_index_in_output()
+        account.mark_receive_addresses_used_to(0, Some(210)).await.unwrap();
+
+        let api_client = common_api_client().await;
+        let client = BlockchainClient::new(api_client.as_ref().clone());
+
+        // do full sync
+        let update = client.full_sync(&account, Some(200)).await.unwrap();
+        account
+            .apply_update(update)
+            .await
+            .map_err(|_e| "ERROR: could not apply sync update")
+            .unwrap();
+
+        let highest = account
+            .get_highest_used_address_index_in_output(bdk_wallet::KeychainKind::External)
+            .await
+            .unwrap();
+        assert!(highest.unwrap() == 138);
+    }
+
+    #[tokio::test]
+    async fn test_get_highest_used_address_index_in_output_mainnet() {
+        let account = set_test_account_for_mainnet(ScriptType::NativeSegwit, "m/84'/0'/0'");
+        // highest will be none before we sync the wallet
+        let highest = account
+            .get_highest_used_address_index_in_output(bdk_wallet::KeychainKind::External)
+            .await
+            .unwrap();
+        assert!(highest.is_none());
+
+        // mark used to make sure it wont change the result of get_highest_used_address_index_in_output()
+        account.mark_receive_addresses_used_to(0, Some(13)).await.unwrap();
+
+        let mock_server = MockServer::start().await;
+
+        let req_path_blocks: String = format!("{}/blocks", BASE_WALLET_API_V1);
+
+        let response_contents = read_mock_file!("get_blocks_body_mainnet");
+        let response = ResponseTemplate::new(200).set_body_string(response_contents);
+        Mock::given(method("GET"))
+            .and(path(req_path_blocks.clone()))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+
+        let req_path: String = format!("{}/addresses/scripthashes/transactions", BASE_WALLET_API_V1);
+
+        let response_contents1 = read_mock_file!("get_scripthashes_transactions_body_mainnet_1");
+        let response1 = ResponseTemplate::new(200).set_body_string(response_contents1);
+        Mock::given(method("POST"))
+            .and(path(req_path.clone()))
+            .and(body_string_contains(
+                "5433431edc5b618c67ddc237ea86a996f32004022daa49bd40dc607052e892e0",
+            ))
+            .respond_with(response1)
+            .mount(&mock_server)
+            .await;
+
+        let response_contents2 = read_mock_file!("get_scripthashes_transactions_body_mainnet_2");
+        let response2 = ResponseTemplate::new(200).set_body_string(response_contents2);
+
+        Mock::given(method("POST"))
+            .and(path(req_path.clone()))
+            .and(body_string_contains(
+                "364923b99c5e330ddf19692077b8d69700e71083542ef0a6ebc9e657d5e1ef56",
+            ))
+            .respond_with(response2)
+            .mount(&mock_server)
+            .await;
+
+        let response_contents3 = read_mock_file!("get_scripthashes_transactions_body_mainnet_3");
+        let response3 = ResponseTemplate::new(200).set_body_string(response_contents3);
+
+        Mock::given(method("POST"))
+            .and(path(req_path.clone()))
+            .and(body_string_contains(
+                "032f964badcda0acf21c0b7642fd7a94056e3cfa49a38ed92d9c2f46acba4417",
+            ))
+            .respond_with(response3)
+            .mount(&mock_server)
+            .await;
+
+        let response_contents4 = read_mock_file!("get_scripthashes_transactions_body_mainnet_4");
+        let response4 = ResponseTemplate::new(200).set_body_string(response_contents4);
+
+        Mock::given(method("POST"))
+            .and(path(req_path.clone()))
+            .and(body_string_contains(
+                "278a61a1f06888fab709301b570b9c3e4b9efdc54a1f26b9bfbad34b508e8433",
+            ))
+            .respond_with(response4)
+            .mount(&mock_server)
+            .await;
+
+        let block_hash_data = vec![
+            (0, "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"),
+            (
+                869089,
+                "000000000000000000015c4d376f65d85378b3b6f5eaae656078dc319dd7fcdf",
+            ),
+            (
+                869090,
+                "000000000000000000002067d2cd097be40e1d7d1876d38b8025eb1bb2f28fc4",
+            ),
+            (
+                869434,
+                "00000000000000000000556ef62a310d7230ec72afc2a577b953072320f03c5b",
+            ),
+            (
+                871611,
+                "00000000000000000001f9a7c7c50359f190a71fcd658f5efe02808adfa8027b",
+            ),
+            (
+                872365,
+                "000000000000000000001d74687b6170827dad9bf59c4d612db3d7cd73009a5b",
+            ),
+            (
+                872366,
+                "000000000000000000018700dd168b5672808addc35d6aa015eb817e80a00f2d",
+            ),
+        ];
+        for (block_height, block_hash) in block_hash_data {
+            Mock::given(method("GET"))
+                .and(path_regex(format!(".*blocks/height/{}/hash", block_height)))
+                .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                    "Code": 1000,
+                    "BlockHash": block_hash,
+                })))
+                .mount(&mock_server)
+                .await;
+        }
+
+        let api_client = setup_test_connection(mock_server.uri());
+        let client = BlockchainClient::new(api_client.clone());
+
+        // do full sync
+        let update = client.full_sync(&account, Some(20)).await.unwrap();
+        account
+            .apply_update(update)
+            .await
+            .map_err(|_e| "ERROR: could not apply sync update")
+            .unwrap();
+
+        let highest = account
+            .get_highest_used_address_index_in_output(bdk_wallet::KeychainKind::External)
+            .await
+            .unwrap();
+        assert_eq!(highest.unwrap(), 7);
     }
 
     #[tokio::test]
