@@ -1,5 +1,6 @@
 use core::ApiClient;
 use std::{
+    env,
     sync::{Arc, Mutex},
     time::Duration,
 };
@@ -85,10 +86,18 @@ pub const BASE_CORE_API_V4: &str = "core/v4";
 pub const BASE_CORE_API_V5: &str = "core/v5";
 pub const BASE_CONTACTS_API_V4: &str = "contacts/v4";
 
-pub const DEFAULT_TIME_CONSTRAINT: Duration = Duration::from_secs(30);
-
 pub const DEFAULT_SERVICE_TYPE: ServiceType = ServiceType::Normal;
 pub const DEFAULT_INTERACTIVITY: ServiceType = ServiceType::Interactive;
+
+// get default time constraint from env, or we will use 30 as default time constraint
+pub fn get_default_time_constraint() -> Duration {
+    let time_constraint = env::var("DEFAULT_TIME_CONSTRAINT")
+        .ok()
+        .and_then(|val| val.parse::<u64>().ok())
+        .unwrap_or(30); // set default time constraint to 30s
+
+    Duration::from_secs(time_constraint)
+}
 
 /// An API client providing interfaces to send authenticated http requests to
 /// Wallet backend
