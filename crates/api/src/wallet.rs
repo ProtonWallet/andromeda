@@ -146,6 +146,7 @@ pub struct ApiWalletAccount {
     pub PoolSize: u32,
     pub Priority: u32,
     pub ScriptType: u8,
+    pub StopGap: Option<u32>,
     pub Addresses: Vec<ApiEmailAddress>,
 }
 
@@ -2331,6 +2332,7 @@ mod tests {
                     "yYzIuZJobta-FCUwbhCdUwCXtn-BLoW0yZvVNJK5MCh0KT-igpGYa3zd_uNz43gKTD9BXrRaDlT4uRhdo70y_A=="
                 );
                 assert_eq!(accounts[0].DerivationPath, "84'/0'/0'");
+                assert_eq!(accounts[0].StopGap, Some(38));
                 assert_eq!(accounts[0].Addresses.len(), 1);
                 assert_eq!(accounts[1].WalletID, wallet_id);
                 assert_eq!(
@@ -2338,6 +2340,7 @@ mod tests {
                     "YrMmAAZDJuPgrrJJUqY5i85bbZ9gGW-WqXJMnzGzGUaoPmnc-AoOjvLesKA2LHakWV3XerdrjN1xoynYtQymxQ=="
                 );
                 assert_eq!(accounts[1].DerivationPath, "84'/0'/1'");
+                assert!(accounts[1].StopGap.is_none());
                 assert_eq!(accounts[1].Addresses.len(), 0);
                 return;
             }
