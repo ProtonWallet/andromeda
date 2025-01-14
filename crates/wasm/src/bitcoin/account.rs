@@ -172,6 +172,18 @@ impl WasmAccount {
         Ok(WasmAddressDetailsArray(address_details))
     }
 
+    #[wasm_bindgen(js_name = getHighestUsedAddressIndexInOutput)]
+    pub async fn get_highest_used_address_index_in_output(
+        &self,
+        keychain: WasmKeychainKind,
+    ) -> Result<Option<u32>, js_sys::Error> {
+        Ok(self
+            .inner
+            .get_highest_used_address_index_in_output(keychain.into())
+            .await
+            .map_err(|e| e.to_js_error())?)
+    }
+
     #[wasm_bindgen(js_name = getTransactions)]
     pub async fn get_transactions(
         &self,
