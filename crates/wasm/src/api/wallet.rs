@@ -155,6 +155,7 @@ pub struct WasmApiWalletAccount {
     pub PoolSize: u32,
     pub Priority: u32,
     pub ScriptType: u8,
+    pub StopGap: Option<u32>,
     pub Addresses: Vec<WasmApiEmailAddress>,
 }
 
@@ -186,6 +187,7 @@ impl From<ApiWalletAccount> for WasmApiWalletAccount {
             Priority: value.Priority,
             DerivationPath: value.DerivationPath,
             ScriptType: value.ScriptType,
+            StopGap: value.StopGap,
             Addresses: value.Addresses.into_iter().map(|a| a.into()).collect::<Vec<_>>(),
         }
     }
