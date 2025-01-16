@@ -13,7 +13,7 @@ opt-level = "s" # Tell `rustc` to optimize for small code size.
 
 [workspace.dependencies]
 anyhow = { version = "1.0" }
-thiserror = { version = "1.0" }
+thiserror = { version = "^2.0" }
 serde_json = { version = "1.0.117" }
 serde = { version = "1.0.144", features = ["derive"] }
 async-std = { version = "1.10" }
