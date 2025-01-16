@@ -29,6 +29,7 @@
             "PoolSize": 10,
             "Priority": 2,
             "ScriptType": 3,
+            "StopGap": 0,
             "Addresses": []
         }
     ]

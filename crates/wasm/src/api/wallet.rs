@@ -155,7 +155,7 @@ pub struct WasmApiWalletAccount {
     pub PoolSize: u32,
     pub Priority: u32,
     pub ScriptType: u8,
-    pub StopGap: Option<u32>,
+    pub StopGap: u16,
     pub Addresses: Vec<WasmApiEmailAddress>,
 }
 
@@ -657,6 +657,22 @@ impl WasmWalletClient {
         let account = self
             .0
             .update_wallet_account_last_used_index(wallet_id, wallet_account_id, last_used_index)
+            .await
+            .map_err(|e| e.to_js_error())?;
+
+        Ok(WasmWalletAccountData { Data: account.into() })
+    }
+
+    #[wasm_bindgen(js_name = "updateWalletAccountStopGap")]
+    pub async fn update_wallet_account_stop_gap(
+        &self,
+        wallet_id: String,
+        wallet_account_id: String,
+        stop_gap: u16,
+    ) -> Result<WasmWalletAccountData, JsValue> {
+        let account = self
+            .0
+            .update_wallet_account_stop_gap(wallet_id, wallet_account_id, stop_gap)
             .await
             .map_err(|e| e.to_js_error())?;
 

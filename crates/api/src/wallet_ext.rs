@@ -75,6 +75,13 @@ pub trait WalletClientExt {
         last_used_index: u32,
     ) -> Result<ApiWalletAccount, Error>;
 
+    async fn update_wallet_account_stop_gap(
+        &self,
+        wallet_id: String,
+        wallet_account_id: String,
+        stop_gap: u16,
+    ) -> Result<ApiWalletAccount, Error>;
+
     async fn remove_email_address(
         &self,
         wallet_id: String,
