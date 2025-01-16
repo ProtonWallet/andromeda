@@ -47,6 +47,14 @@ struct GetBitcoinAddressHighestIndexResponseBody {
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
+struct GetUsedIndexesResponseBody {
+    #[allow(dead_code)]
+    pub Code: u16,
+    pub UsedIndexes: Vec<u64>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
 struct GetBitcoinAddressesResponseBody {
     #[allow(dead_code)]
     pub Code: u16,
@@ -115,6 +123,16 @@ impl BitcoinAddressClient {
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetBitcoinAddressHighestIndexResponseBody>()?;
         Ok(parsed.HighestIndex)
+    }
+
+    pub async fn get_used_indexes(&self, wallet_id: String, wallet_account_id: String) -> Result<Vec<u64>, Error> {
+        let request = self.get(format!(
+            "wallets/{}/accounts/{}/addresses/bitcoin/indexes/used",
+            wallet_id, wallet_account_id,
+        ));
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<GetUsedIndexesResponseBody>()?;
+        Ok(parsed.UsedIndexes)
     }
 
     pub async fn add_bitcoin_addresses(
@@ -301,6 +319,42 @@ mod tests {
         match result {
             Ok(highest_index) => {
                 assert_eq!(highest_index, 100);
+                return;
+            }
+            Err(e) => panic!("Got Err. {:?}", e),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_get_used_indexes() {
+        let mock_server = MockServer::start().await;
+        let response_body = serde_json::json!(
+            {
+                "Code": 1000,
+                "UsedIndexes": [1, 3],
+            }
+        );
+        let wallet_id = "wallet_001";
+        let wallet_account_id = "account_001";
+        let req_path: String = format!(
+            "{}/wallets/{}/accounts/{}/addresses/bitcoin/indexes/used",
+            BASE_WALLET_API_V1, wallet_id, wallet_account_id
+        );
+        let response = ResponseTemplate::new(200).set_body_json(response_body);
+        Mock::given(method("GET"))
+            .and(path(req_path))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection(mock_server.uri());
+        let client = BitcoinAddressClient::new(Arc::new(api_client));
+        let result = client
+            .get_used_indexes(wallet_id.to_string(), wallet_account_id.to_string())
+            .await;
+        match result {
+            Ok(indexes) => {
+                assert_eq!(indexes[0], 1);
+                assert_eq!(indexes[1], 3);
                 return;
             }
             Err(e) => panic!("Got Err. {:?}", e),

@@ -54,6 +54,16 @@ pub struct WasmApiWalletBitcoinAddressData {
 #[wasm_bindgen(getter_with_clone)]
 pub struct WasmApiWalletBitcoinAddresses(pub Vec<WasmApiWalletBitcoinAddressData>);
 
+#[wasm_bindgen(getter_with_clone)]
+#[derive(Clone)]
+#[allow(non_snake_case)]
+pub struct WasmApiWalletBitcoinAddressUsedIndexData {
+    pub Data: u64,
+}
+
+#[wasm_bindgen(getter_with_clone)]
+pub struct WasmApiWalletBitcoinAddressIndexes(pub Vec<WasmApiWalletBitcoinAddressUsedIndexData>);
+
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[allow(non_snake_case)]
@@ -142,6 +152,27 @@ impl WasmBitcoinAddressClient {
             .get_bitcoin_address_highest_index(wallet_id, wallet_account_id)
             .await
             .map_err(|e| e.to_js_error())
+    }
+
+    #[wasm_bindgen(js_name = "getUsedIndexes")]
+    pub async fn get_used_indexes(
+        &self,
+        wallet_id: String,
+        wallet_account_id: String,
+    ) -> Result<WasmApiWalletBitcoinAddressIndexes, JsValue> {
+        let indexes = self
+            .0
+            .get_used_indexes(wallet_id, wallet_account_id)
+            .await
+            .map(|indexes| {
+                indexes
+                    .into_iter()
+                    .map(|index| WasmApiWalletBitcoinAddressUsedIndexData { Data: index })
+                    .collect::<Vec<_>>()
+            })
+            .map_err(|e| e.to_js_error())?;
+
+        Ok(WasmApiWalletBitcoinAddressIndexes(indexes))
     }
 
     #[wasm_bindgen(js_name = "addBitcoinAddresses")]
