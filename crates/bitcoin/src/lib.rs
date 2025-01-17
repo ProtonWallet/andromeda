@@ -30,7 +30,7 @@ pub use bdk_wallet::{
         Address, Amount, BlockHash, Network as BdkNetwork, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut,
         Witness,
     },
-    chain::{ConfirmationBlockTime, ConfirmationTime},
+    chain::ConfirmationBlockTime,
     keys::{
         bip39::{Language as BdkLanguage, Mnemonic as BdkMnemonic, MnemonicWithPassphrase, WordCount},
         DerivableKey, ExtendedKey,
