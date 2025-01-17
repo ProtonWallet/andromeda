@@ -563,17 +563,6 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
         wallet_lock.latest_checkpoint().hash() != genesis_block(wallet_lock.network()).block_hash()
     }
 
-    /// Manually insert a transaction not confirmed yet
-    /// It will be then be stored and synced until it gets confirmed
-    pub async fn insert_unconfirmed_tx(&self, tx: Transaction) -> Result<(), Error> {
-        let mut wallet_lock = self.get_mutable_wallet().await;
-        wallet_lock.insert_tx(tx);
-
-        self.persist(wallet_lock).await?;
-
-        Ok(())
-    }
-
     pub async fn bump_transactions_fees(&self, txid: String, fees: u64) -> Result<Psbt, Error> {
         let mut wallet_lock: RwLockWriteGuard<'_, PersistedWallet<P>> = self.get_mutable_wallet().await;
         let mut fee_bump_tx = wallet_lock.build_fee_bump(Txid::from_str(&txid)?)?;
@@ -587,7 +576,7 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
 
     pub async fn apply_update(&self, update: impl Into<Update>) -> Result<(), Error> {
         let mut wallet_lock = self.get_mutable_wallet().await;
-        wallet_lock.apply_update_at(update, Some(now().as_secs()))?;
+        wallet_lock.apply_update_at(update, now().as_secs())?;
 
         self.persist(wallet_lock).await?;
 
@@ -1154,7 +1143,7 @@ mod tests {
         let utxos = account.get_utxos().await;
 
         assert_eq!(utxos.len(), 1);
-        assert_eq!(utxos[0].confirmation_time.is_confirmed(), true);
+        assert_eq!(utxos[0].chain_position.is_confirmed(), true);
         assert_eq!(utxos[0].txout.value.to_sat(), 8781);
     }
 

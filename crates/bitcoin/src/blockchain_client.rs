@@ -11,7 +11,7 @@ use async_std::sync::RwLockReadGuard;
 use bdk_chain::spk_client::SyncRequest;
 use bdk_wallet::{
     bitcoin::{Transaction, Txid},
-    chain::spk_client::{FullScanResult, SyncResult},
+    chain::spk_client::{FullScanResponse, SyncResponse},
     KeychainKind, PersistedWallet, WalletPersister,
 };
 use bitcoin::ScriptBuf;
@@ -64,7 +64,7 @@ impl BlockchainClient {
         &self,
         account: &Account<C, P>,
         stop_gap: Option<usize>,
-    ) -> Result<FullScanResult<KeychainKind>, Error>
+    ) -> Result<FullScanResponse<KeychainKind>, Error>
     where
         C: WalletPersisterConnector<P>,
         P: WalletPersister,
@@ -85,7 +85,7 @@ impl BlockchainClient {
     pub async fn partial_sync<'a, P>(
         &self,
         wallet: RwLockReadGuard<'a, PersistedWallet<P>>,
-    ) -> Result<SyncResult, Error>
+    ) -> Result<SyncResponse, Error>
     where
         P: WalletPersister,
     {
@@ -115,7 +115,7 @@ impl BlockchainClient {
         &self,
         wallet: &RwLockReadGuard<'a, PersistedWallet<P>>,
         spks_to_sync: Vec<ScriptBuf>,
-    ) -> Result<SyncResult, Error> {
+    ) -> Result<SyncResponse, Error> {
         let request = SyncRequest::builder()
             .chain_tip(wallet.local_chain().tip())
             .spks(spks_to_sync);

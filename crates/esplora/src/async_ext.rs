@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use bdk_core::{
     bitcoin::{BlockHash, OutPoint, ScriptBuf, Txid},
     collections::{BTreeMap, BTreeSet, HashSet},
-    spk_client::{FullScanRequest, FullScanResult, SyncRequest, SyncResult},
+    spk_client::{FullScanRequest, FullScanResponse, SyncRequest, SyncResponse},
     BlockId, CheckPoint, ConfirmationBlockTime, Indexed, TxUpdate,
 };
 use futures::{stream::FuturesOrdered, TryStreamExt};
@@ -31,7 +31,7 @@ pub trait EsploraAsyncExt {
         &self,
         request: R,
         stop_gap: usize,
-    ) -> Result<FullScanResult<K>, Error>;
+    ) -> Result<FullScanResponse<K>, Error>;
 
     /// Sync a set of scripts, txids, and/or outpoints against Esplora.
     ///
@@ -44,7 +44,7 @@ pub trait EsploraAsyncExt {
         &self,
         request: R,
         parallel_requests: usize,
-    ) -> Result<SyncResult, Error>;
+    ) -> Result<SyncResponse, Error>;
 }
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
@@ -54,7 +54,7 @@ impl EsploraAsyncExt for AsyncClient {
         &self,
         request: R,
         stop_gap: usize,
-    ) -> Result<FullScanResult<K>, Error> {
+    ) -> Result<FullScanResponse<K>, Error> {
         let mut request = request.into();
         let keychains = request.keychains();
 
@@ -85,7 +85,7 @@ impl EsploraAsyncExt for AsyncClient {
             _ => None,
         };
 
-        Ok(FullScanResult {
+        Ok(FullScanResponse {
             chain_update,
             tx_update,
             last_active_indices,
@@ -96,7 +96,7 @@ impl EsploraAsyncExt for AsyncClient {
         &self,
         request: R,
         parallel_requests: usize,
-    ) -> Result<SyncResult, Error> {
+    ) -> Result<SyncResponse, Error> {
         let mut request = request.into();
 
         let chain_tip = request.chain_tip();
@@ -121,7 +121,7 @@ impl EsploraAsyncExt for AsyncClient {
             _ => None,
         };
 
-        Ok(SyncResult {
+        Ok(SyncResponse {
             chain_update,
             tx_update,
         })

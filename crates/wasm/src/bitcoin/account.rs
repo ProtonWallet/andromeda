@@ -216,18 +216,6 @@ impl WasmAccount {
         self.inner.has_sync_data().await
     }
 
-    #[wasm_bindgen(js_name = insertUnconfirmedTransaction)]
-    pub async fn insert_unconfirmed_tx(&self, psbt: &WasmPsbt) -> Result<(), js_sys::Error> {
-        let transaction = psbt.get_inner().extract_tx().map_err(|e| e.to_js_error())?;
-
-        self.inner
-            .insert_unconfirmed_tx(transaction)
-            .await
-            .map_err(|e| e.to_js_error())?;
-
-        Ok(())
-    }
-
     #[wasm_bindgen(js_name = bumpTransactionsFees)]
     pub async fn bump_transactions_fees(
         &self,

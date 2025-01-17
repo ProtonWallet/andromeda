@@ -285,7 +285,7 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> TxBuilder<C, P> {
                 let amount_to_remove = needed - available;
 
                 return TxBuilder {
-                    recipients: correct_recipients_amounts(self.recipients.clone(), Amount::from_sat(amount_to_remove)),
+                    recipients: correct_recipients_amounts(self.recipients.clone(), amount_to_remove),
                     ..self.clone()
                 };
             }

@@ -94,13 +94,15 @@ fn get_detailled_outputs(txout: Vec<TxOut>, wallet: &BdkWallet) -> Result<Vec<De
     Ok(outputs)
 }
 
-fn get_time(chain_position: Option<ChainPosition<&ConfirmationBlockTime>>) -> TransactionTime {
+fn get_time(chain_position: Option<ChainPosition<ConfirmationBlockTime>>) -> TransactionTime {
     if let Some(chain_position) = chain_position {
         return match chain_position {
-            ChainPosition::Confirmed(anchor) => TransactionTime::Confirmed {
+            ChainPosition::Confirmed { anchor, .. } => TransactionTime::Confirmed {
                 confirmation_time: anchor.confirmation_time,
             },
-            ChainPosition::Unconfirmed(last_seen) => TransactionTime::Unconfirmed { last_seen },
+            ChainPosition::Unconfirmed { last_seen } => TransactionTime::Unconfirmed {
+                last_seen: last_seen.unwrap_or(now().as_secs()),
+            },
         };
     }
 
@@ -155,18 +157,14 @@ where
         (wallet_lock, account_derivation_path): (&RwLockReadGuard<'a, PersistedWallet<P>>, DerivationPath),
     ) -> Result<TransactionDetails, Error> {
         let (sent, received) = wallet_lock.sent_and_received(&self.tx);
-
-        let time = get_time(
-            wallet_lock
-                .tx_graph()
-                .try_get_chain_position(
-                    wallet_lock.local_chain(),
-                    wallet_lock.local_chain().tip().block_id(),
-                    self.compute_txid(),
-                )
-                .ok()
-                .flatten(),
-        );
+        let tx = wallet_lock
+            .tx_graph()
+            .list_canonical_txs(wallet_lock.local_chain(), wallet_lock.local_chain().tip().block_id())
+            .find(|tx| tx.tx_node.txid == self.compute_txid());
+        let time = match tx {
+            Some(tx) => get_time(Some(tx.chain_position)),
+            None => get_time(None),
+        };
 
         let outputs = get_detailled_outputs(self.output.clone(), wallet_lock)?;
         let inputs = get_detailled_inputs(self.input.clone(), wallet_lock)?;
