@@ -146,7 +146,7 @@ pub struct ApiWalletAccount {
     pub PoolSize: u32,
     pub Priority: u32,
     pub ScriptType: u8,
-    pub StopGap: Option<u32>,
+    pub StopGap: u16,
     pub Addresses: Vec<ApiEmailAddress>,
 }
 
@@ -205,6 +205,12 @@ pub struct UpdateWalletAccountLabelRequestBody {
 #[allow(non_snake_case)]
 pub struct UpdateWalletAccountLastUsedIndexRequestBody {
     pub LastUsedIndex: u32,
+}
+
+#[derive(Debug, Serialize)]
+#[allow(non_snake_case)]
+pub struct UpdateWalletAccountStopGapRequestBody {
+    pub StopGap: u16,
 }
 
 #[derive(Debug, Serialize)]
@@ -626,6 +632,24 @@ impl WalletClientExt for WalletClient {
         Ok(parsed.Account)
     }
 
+    async fn update_wallet_account_stop_gap(
+        &self,
+        wallet_id: String,
+        wallet_account_id: String,
+        stop_gap: u16,
+    ) -> Result<ApiWalletAccount, Error> {
+        let payload = UpdateWalletAccountStopGapRequestBody { StopGap: stop_gap };
+
+        let request = self
+            .put(format!("wallets/{}/accounts/{}/stop-gap", wallet_id, wallet_account_id))
+            .body_json(payload)?;
+
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<UpdateWalletAccountResponseBody>()?;
+
+        Ok(parsed.Account)
+    }
+
     async fn remove_email_address(
         &self,
         wallet_id: String,
@@ -865,10 +889,10 @@ mod tests {
         wallet::{
             AddEmailAddressRequestBody, MigratedWallet, MigratedWalletAccount, MigratedWalletTransaction,
             UpdateWalletAccountFiatCurrencyRequestBody, UpdateWalletAccountLabelRequestBody,
-            UpdateWalletAccountLastUsedIndexRequestBody, UpdateWalletAccountsOrderRequestBody,
-            UpdateWalletNameRequestBody, UpdateWalletTransactionExternalSenderRequestBody,
-            UpdateWalletTransactionHashedTxidRequestBody, UpdateWalletTransactionLabelRequestBody, WalletClientExt,
-            WalletMigrateRequestBody, WalletTransactionFlag,
+            UpdateWalletAccountLastUsedIndexRequestBody, UpdateWalletAccountStopGapRequestBody,
+            UpdateWalletAccountsOrderRequestBody, UpdateWalletNameRequestBody,
+            UpdateWalletTransactionExternalSenderRequestBody, UpdateWalletTransactionHashedTxidRequestBody,
+            UpdateWalletTransactionLabelRequestBody, WalletClientExt, WalletMigrateRequestBody, WalletTransactionFlag,
         },
         BASE_WALLET_API_V1,
     };
@@ -1500,6 +1524,7 @@ mod tests {
                     "PoolSize": 12,
                     "Priority": 23,
                     "ScriptType": 1,
+                    "StopGap": 0,
                     "Addresses": [],
                     "FiatCurrency": "USD",
                 }
@@ -1907,6 +1932,7 @@ mod tests {
                 "PoolSize": 10,
                 "Priority": 1,
                 "ScriptType": 3,
+                "StopGap": 0,
                 "Addresses": [
                     {
                         "ID": "v4f03EPBAzQEogZgQX68hpaNqNuXwKN6X1us0nrJCTA6Zt3SdozXUmEmxqceBO22CccjmOWtwFyFraTAH2LE8A==",
@@ -1964,6 +1990,7 @@ mod tests {
                 "PoolSize": 10,
                 "Priority": 1,
                 "ScriptType": 3,
+                "StopGap": 0,
                 "Addresses": [
                     {
                         "ID": "v4f03EPBAzQEogZgQX68hpaNqNuXwKN6X1us0nrJCTA6Zt3SdozXUmEmxqceBO22CccjmOWtwFyFraTAH2LE8A==",
@@ -2065,6 +2092,7 @@ mod tests {
                 "PoolSize": 10,
                 "Priority": 1,
                 "ScriptType": 3,
+                "StopGap": 0,
                 "Addresses": [
                     {
                         "ID": "v4f03EPBAzQEogZgQX68hpaNqNuXwKN6X1us0nrJCTA6Zt3SdozXUmEmxqceBO22CccjmOWtwFyFraTAH2LE8A==",
@@ -2105,6 +2133,64 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_update_wallet_account_stop_gap_success() {
+        let wallet_id = "_zuc9hOPmSeNUPoBlvFs2JvjWw_hX4ktpVnqKmpAhh3PcAGXNVJqU_jD2ZoZ_qTteGsa30m8mHG8GiWt_7L0xg==";
+        let wallet_account_id =
+            "yYzIuZJobta-FCUwbhCdUwCXtn-BLoW0yZvVNJK5MCh0KT-igpGYa3zd_uNz43gKTD9BXrRaDlT4uRhdo70y_A==";
+
+        let mock_server = MockServer::start().await;
+        let req_path = format!(
+            "{}/wallets/{}/accounts/{}/stop-gap",
+            BASE_WALLET_API_V1, wallet_id, wallet_account_id
+        );
+        let stop_gap = 88;
+        let response_body = serde_json::json!({
+            "Code": 1000,
+            "Account": {
+                "ID": "yYzIuZJobta-FCUwbhCdUwCXtn-BLoW0yZvVNJK5MCh0KT-igpGYa3zd_uNz43gKTD9BXrRaDlT4uRhdo70y_A==",
+                "WalletID": "_zuc9hOPmSeNUPoBlvFs2JvjWw_hX4ktpVnqKmpAhh3PcAGXNVJqU_jD2ZoZ_qTteGsa30m8mHG8GiWt_7L0xg==",
+                "FiatCurrency": "CHF",
+                "DerivationPath": "84'/0'/0'",
+                "Label": "yEYMWfpITIiHiVtqImHb/4yCvoDnLWbr93FkE8NKwTwjKOEVFQ==",
+                "LastUsedIndex": 0,
+                "PoolSize": 10,
+                "Priority": 1,
+                "ScriptType": 3,
+                "StopGap": stop_gap,
+                "Addresses": [
+                    {
+                        "ID": "v4f03EPBAzQEogZgQX68hpaNqNuXwKN6X1us0nrJCTA6Zt3SdozXUmEmxqceBO22CccjmOWtwFyFraTAH2LE8A==",
+                        "Email": "test@proton.me"
+                    }
+                ]
+            }
+        });
+        let response = ResponseTemplate::new(200).set_body_json(response_body);
+        let payload = UpdateWalletAccountStopGapRequestBody { StopGap: stop_gap };
+        Mock::given(method("PUT"))
+            .and(path(req_path))
+            .and(body_json(payload))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let client = WalletClient::new(api_client);
+
+        let result = client
+            .update_wallet_account_stop_gap(wallet_id.to_string(), wallet_account_id.to_string(), stop_gap)
+            .await;
+
+        match result {
+            Ok(account) => {
+                assert_eq!(account.WalletID, wallet_id);
+                assert_eq!(account.ID, wallet_account_id);
+                assert_eq!(account.StopGap, stop_gap);
+            }
+            Err(e) => panic!("Got Err. {:?}", e),
+        }
+    }
+
+    #[tokio::test]
     async fn test_add_email_address_success() {
         let wallet_id = "_zuc9hOPmSeNUPoBlvFs2JvjWw_hX4ktpVnqKmpAhh3PcAGXNVJqU_jD2ZoZ_qTteGsa30m8mHG8GiWt_7L0xg==";
         let wallet_account_id =
@@ -2128,6 +2214,7 @@ mod tests {
                 "PoolSize": 10,
                 "Priority": 1,
                 "ScriptType": 3,
+                "StopGap": 0,
                 "Addresses": [
                     {
                         "ID": "v4f03EPBAzQEogZgQX68hpaNqNuXwKN6X1us0nrJCTA6Zt3SdozXUmEmxqceBO22CccjmOWtwFyFraTAH2LE8A==",
@@ -2192,6 +2279,7 @@ mod tests {
                 "PoolSize": 10,
                 "Priority": 1,
                 "ScriptType": 3,
+                "StopGap": 0,
                 "Addresses": []
             }
         });
@@ -2332,7 +2420,7 @@ mod tests {
                     "yYzIuZJobta-FCUwbhCdUwCXtn-BLoW0yZvVNJK5MCh0KT-igpGYa3zd_uNz43gKTD9BXrRaDlT4uRhdo70y_A=="
                 );
                 assert_eq!(accounts[0].DerivationPath, "84'/0'/0'");
-                assert_eq!(accounts[0].StopGap, Some(38));
+                assert_eq!(accounts[0].StopGap, 38);
                 assert_eq!(accounts[0].Addresses.len(), 1);
                 assert_eq!(accounts[1].WalletID, wallet_id);
                 assert_eq!(
@@ -2340,7 +2428,7 @@ mod tests {
                     "YrMmAAZDJuPgrrJJUqY5i85bbZ9gGW-WqXJMnzGzGUaoPmnc-AoOjvLesKA2LHakWV3XerdrjN1xoynYtQymxQ=="
                 );
                 assert_eq!(accounts[1].DerivationPath, "84'/0'/1'");
-                assert!(accounts[1].StopGap.is_none());
+                assert_eq!(accounts[1].StopGap, 0);
                 assert_eq!(accounts[1].Addresses.len(), 0);
                 return;
             }

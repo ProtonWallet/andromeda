@@ -11,6 +11,7 @@
       "PoolSize": 10,
       "Priority": 1,
       "ScriptType": 3,
+      "StopGap": 0,
       "Addresses": [
         {
           "ID": "v4f03EPBAzQEogZgQX68hpaNqNuXwKN6X1us0nrJCTA6Zt3SdozXUmEmxqceBO22CccjmOWtwFyFraTAH2LE8A==",
@@ -28,6 +29,7 @@
       "PoolSize": 10,
       "Priority": 2,
       "ScriptType": 3,
+      "StopGap": 0,
       "Addresses": [
         {
           "ID": "v4f03EPBAzQEogZgQX68hpaNqNuXwKN6X1us0nrJCTA6Zt3SdozXUmEmxqceBO22CccjmOWtwFyFraTAH2LE8A==",

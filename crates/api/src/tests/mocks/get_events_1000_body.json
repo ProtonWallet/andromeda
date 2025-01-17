@@ -1050,7 +1050,8 @@
                 "Priority": 1,
                 "ScriptType": 1,
                 "Addresses": [],
-                "LastUsedIndex": 0
+                "LastUsedIndex": 0,
+                "StopGap": 0
             }
         }
     ],
