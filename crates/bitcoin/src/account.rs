@@ -352,6 +352,22 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
         }
     }
 
+    /// Returns the stop gap range
+    pub fn get_stop_gap_range(&self, max_gap: u32) -> Result<u32, Error> {
+        let ranges = vec![20, 50, 100, 200, 500];
+
+        match ranges.binary_search(&max_gap) {
+            Ok(index) => Ok(ranges[index]),
+            Err(index) => {
+                if index >= ranges.len() {
+                    Ok(*ranges.last().unwrap_or(&500))
+                } else {
+                    Ok(ranges[index])
+                }
+            }
+        }
+    }
+
     /// Returns a bitcoin uri as defined in https://bips.dev/21/
     pub async fn get_bitcoin_uri(
         &mut self,
@@ -1457,6 +1473,30 @@ mod tests {
             .await
             .unwrap();
         assert!(maximum_gap.unwrap() == 450);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_get_stop_gap_range() {
+        let account = set_test_account_regtest3(ScriptType::NativeSegwit, "m/84'/1'/0'");
+        assert_eq!(account.get_stop_gap_range(999999).unwrap(), 500);
+        assert_eq!(account.get_stop_gap_range(501).unwrap(), 500);
+        assert_eq!(account.get_stop_gap_range(500).unwrap(), 500);
+        assert_eq!(account.get_stop_gap_range(499).unwrap(), 500);
+        assert_eq!(account.get_stop_gap_range(201).unwrap(), 500);
+        assert_eq!(account.get_stop_gap_range(200).unwrap(), 200);
+        assert_eq!(account.get_stop_gap_range(199).unwrap(), 200);
+        assert_eq!(account.get_stop_gap_range(101).unwrap(), 200);
+        assert_eq!(account.get_stop_gap_range(100).unwrap(), 100);
+        assert_eq!(account.get_stop_gap_range(99).unwrap(), 100);
+        assert_eq!(account.get_stop_gap_range(51).unwrap(), 100);
+        assert_eq!(account.get_stop_gap_range(50).unwrap(), 50);
+        assert_eq!(account.get_stop_gap_range(49).unwrap(), 50);
+        assert_eq!(account.get_stop_gap_range(21).unwrap(), 50);
+        assert_eq!(account.get_stop_gap_range(20).unwrap(), 20);
+        assert_eq!(account.get_stop_gap_range(19).unwrap(), 20);
+        assert_eq!(account.get_stop_gap_range(1).unwrap(), 20);
+        assert_eq!(account.get_stop_gap_range(0).unwrap(), 20);
     }
 
     #[tokio::test]
