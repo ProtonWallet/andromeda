@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use andromeda_api::error::Error as ApiError;
-use andromeda_bitcoin::error::{CreateTxError, Error as BitcoinError, InsufficientFundsError};
+use andromeda_bitcoin::error::{Bip39Error, CreateTxError, Error as BitcoinError, InsufficientFundsError};
 use andromeda_common::error::Error as CommonError;
 use andromeda_esplora::error::Error as EsploraError;
 use serde::Serialize;
@@ -70,8 +70,8 @@ impl ErrorExt for ApiError {
 impl ErrorExt for BitcoinError {
     fn to_js_error(self) -> JsValue {
         let common_error = JsValue::from(
-            &format!("Wasm error occured in Bitcoin: {}", self),
-            // json!(self), TODO: fix this to have more detailled errors
+            &format!("Wasm error occurred in Bitcoin: {}", self),
+            // json!(self), TODO: fix this to have more detailed errors
         );
 
         match self {
@@ -86,6 +86,26 @@ impl ErrorExt for BitcoinError {
                     "limit": limit,
                 })),
                 _ => common_error,
+            },
+            BitcoinError::Bip39(error) => match error {
+                Bip39Error::BadWordCount(count) => json_to_jsvalue(json!({
+                    "kind": "BadWordCount",
+                    "count": count,
+                })),
+                Bip39Error::UnknownWord(index) => json_to_jsvalue(json!({
+                    "kind": "UnknownWord",
+                    "index": index,
+                })),
+                Bip39Error::BadEntropyBitCount(bit) => json_to_jsvalue(json!({
+                    "kind": "BadEntropyBitCount",
+                    "bit": bit,
+                })),
+                Bip39Error::InvalidChecksum => json_to_jsvalue(json!({
+                    "kind": "InvalidChecksum",
+                })),
+                Bip39Error::AmbiguousLanguages(_) => json_to_jsvalue(json!({
+                    "kind": "AmbiguousLanguages",
+                })),
             },
             BitcoinError::EsploraClient(EsploraError::ApiError(error)) => error.to_js_error(),
             _ => common_error,
