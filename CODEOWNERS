@@ -1,0 +1,8 @@
+# ownership: loose
+*	@web-team/wallet 
+/.cargo/	@web-team/wallet 
+/.gitlab/	@web-team/wallet 
+/ci-templates/	@web-team/wallet 
+/crates/	@web-team/wallet 
+/examples/	@web-team/wallet 
+/utilities/	@web-team/wallet 
