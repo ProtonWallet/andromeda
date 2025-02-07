@@ -182,27 +182,34 @@ impl WasmBitcoinAddressClient {
         wallet_account_id: String,
         bitcoin_addresses: WasmApiBitcoinAddressesCreationPayload,
     ) -> Result<WasmApiWalletBitcoinAddresses, JsValue> {
-        let addresses = self
+        let bitcoin_addresses_list = bitcoin_addresses
             .0
-            .add_bitcoin_addresses(
-                wallet_id,
-                wallet_account_id,
-                bitcoin_addresses
-                    .0
-                    .into_iter()
-                    .map(|addr| addr.Data.into())
-                    .collect::<Vec<_>>(),
-            )
-            .await
-            .map(|addresses| {
-                addresses
-                    .into_iter()
-                    .map(|address| WasmApiWalletBitcoinAddressData { Data: address.into() })
-                    .collect::<Vec<_>>()
-            })
-            .map_err(|e| e.to_js_error())?;
+            .into_iter()
+            .map(|addr| addr.Data.into())
+            .collect::<Vec<ApiBitcoinAddressCreationPayload>>();
 
-        Ok(WasmApiWalletBitcoinAddresses(addresses))
+        let mut addresses_list = Vec::new();
+
+        for bitcoin_addresses_chunk in bitcoin_addresses_list.chunks(20) {
+            let addresses = self
+                .0
+                .add_bitcoin_addresses(
+                    wallet_id.clone(),
+                    wallet_account_id.clone(),
+                    bitcoin_addresses_chunk.into(),
+                )
+                .await
+                .map(|addresses| {
+                    addresses
+                        .into_iter()
+                        .map(|address| WasmApiWalletBitcoinAddressData { Data: address.into() })
+                        .collect::<Vec<_>>()
+                })
+                .map_err(|e| e.to_js_error())?;
+            addresses_list.extend_from_slice(&addresses);
+        }
+
+        Ok(WasmApiWalletBitcoinAddresses(addresses_list))
     }
 
     #[wasm_bindgen(js_name = "updateBitcoinAddress")]
