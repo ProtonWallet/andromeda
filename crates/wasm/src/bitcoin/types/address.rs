@@ -9,7 +9,10 @@ use super::{
     balance::WasmBalance,
     transaction::{WasmScript, WasmTransactionDetails},
 };
-use crate::common::{error::ErrorExt, types::WasmNetwork};
+use crate::common::{
+    error::ErrorExt,
+    types::{WasmKeychainKind, WasmNetwork},
+};
 
 #[wasm_bindgen]
 #[derive(Clone, Serialize)]
@@ -88,6 +91,7 @@ pub struct WasmAddressDetails {
     pub address: String,
     pub transactions: Vec<WasmTransactionDetails>,
     pub balance: WasmBalance,
+    pub keychain: WasmKeychainKind,
 }
 
 impl Into<WasmAddressDetails> for AddressDetails {
@@ -97,6 +101,7 @@ impl Into<WasmAddressDetails> for AddressDetails {
             address: self.address,
             transactions: self.transactions.into_iter().map(|t| t.into()).collect::<Vec<_>>(),
             balance: self.balance.into(),
+            keychain: self.keychain.into(),
         }
     }
 }

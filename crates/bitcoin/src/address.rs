@@ -1,4 +1,4 @@
-use bdk_wallet::Balance;
+use bdk_wallet::{Balance, KeychainKind};
 
 use crate::transactions::TransactionDetails;
 
@@ -7,4 +7,5 @@ pub struct AddressDetails {
     pub address: String,
     pub transactions: Vec<TransactionDetails>,
     pub balance: Balance,
+    pub keychain: KeychainKind,
 }

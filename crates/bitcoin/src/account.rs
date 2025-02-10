@@ -8,7 +8,7 @@ use bdk_wallet::{
         constants::genesis_block,
         psbt::Psbt as BdkPsbt,
         secp256k1::Secp256k1,
-        Address, Network as BdkNetwork, Transaction, Txid,
+        Address, Network as BdkNetwork, Txid,
     },
     descriptor, AddressInfo, Balance as BdkBalance, ChangeSet, KeychainKind, LocalOutput as LocalUtxo, PersistedWallet,
     SignOptions, Update, Wallet as BdkWallet, WalletPersister,
@@ -457,12 +457,12 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
                 .collect::<Result<Vec<_>, _>>()?;
 
             let address_str = wallet_lock.peek_address(keychain, spk_index).address.to_string();
-
             return Ok(Some(AddressDetails {
                 index: spk_index,
                 address: address_str,
                 balance: spk_balance,
-                transactions,
+                transactions: transactions,
+                keychain: keychain,
             }));
         }
 
@@ -543,7 +543,8 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
                 index: spk_index,
                 address: address_str,
                 balance: spk_balance,
-                transactions,
+                transactions: transactions,
+                keychain: keychain,
             });
         }
 
