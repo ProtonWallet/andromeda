@@ -28,7 +28,7 @@ The project is split up into several crates in the `/crates` directory:
 
 ## External dependencies
 
-- [`bdk`](https://docs.rs/bdk/)
+- [`bdk_wallet`](https://docs.rs/bdk_wallet/)
 
 ## How to build WebAssembly package
 
