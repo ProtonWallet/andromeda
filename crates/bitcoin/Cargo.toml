@@ -44,4 +44,5 @@ bech32 = "0.11.0"
 
 [features]
 sqlite = ["bdk_wallet/rusqlite"]
-default = ["andromeda-api/allow-dangerous-env"]
+default = []
+test = ["andromeda-api/allow-dangerous-env"]

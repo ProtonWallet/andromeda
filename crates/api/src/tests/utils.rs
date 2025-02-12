@@ -13,6 +13,7 @@ pub fn setup_test_connection(url: String) -> ProtonWalletApiClient {
         env: Some(url),
         store: None,
         auth: None,
+        proxy: None,
     };
 
     ProtonWalletApiClient::from_config(config).unwrap()
@@ -29,6 +30,7 @@ pub async fn common_api_client() -> Arc<ProtonWalletApiClient> {
         env: None,
         store: None,
         auth: None,
+        proxy: None,
     };
     let api = ProtonWalletApiClient::from_config(config).unwrap();
     api.login("bart", "bart").await.unwrap();

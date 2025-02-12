@@ -70,6 +70,7 @@ impl WasmProtonWalletApiClient {
             env: origin,
             url_prefix,
             store: None,
+            proxy: None,
         };
 
         let client = ProtonWalletApiClient::from_config(config).map_err(|e| e.to_js_error())?;
