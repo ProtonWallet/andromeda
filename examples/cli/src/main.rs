@@ -171,6 +171,7 @@ async fn sync_account(
         env: Some("atlas".to_string()),
         url_prefix: None,
         store: None,
+        proxy: None,
     };
 
     let proton_api_client = ProtonWalletApiClient::from_config(config).unwrap();

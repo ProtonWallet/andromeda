@@ -31,6 +31,10 @@ impl WalletAuthStore {
         }
     }
 
+    pub fn from_custom_env_str(env: String, auth: Arc<Mutex<Auth>>) -> Self {
+        Self::custom_env(env, auth)
+    }
+
     /// Create a new store for the given environment.
     pub fn new(env: EnvId) -> Self {
         Self {

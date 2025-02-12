@@ -16,7 +16,6 @@ use event::EventClient;
 use exchange_rate::ExchangeRateClient;
 use invite::InviteClient;
 use log::info;
-use muon::client::flow::ForkFlowResult;
 pub use muon::{
     app::Product,
     client::{flow::LoginFlow, Auth, Tokens},
@@ -26,6 +25,11 @@ pub use muon::{
     store::{DynStore, Store, StoreFailure},
     util::ProtonRequestExt,
     App, Client, Error as MuonError, ProtonRequest, ProtonResponse, GET,
+};
+use muon::{
+    client::flow::ForkFlowResult,
+    common::{ConstProxy, Endpoint, Host, Scheme},
+    tls::{TlsCert, Verifier, VerifyRes},
 };
 use network::NetworkClient;
 use payment_gateway::PaymentGatewayClient;
@@ -132,6 +136,14 @@ pub struct ApiConfig {
     pub env: Option<String>,
     /// The muon auth store. web doesn't need but flutter side needs
     pub store: Option<DynStore>,
+    /// The proxy address. Enable `allow-dangerous-env`` feature to use this
+    pub proxy: Option<ProxyConfig>,
+}
+
+#[derive(Debug)]
+pub struct ProxyConfig {
+    pub host: String,
+    pub port: u16,
 }
 
 pub struct Clients {
@@ -169,6 +181,7 @@ impl ProtonWalletApiClient {
     ///     env: Some("atlas".to_string()),
     ///     url_prefix: None,
     ///     store: None,
+    ///     proxy: None,
     /// };
     /// let api_client = ProtonWalletApiClient::from_config(config);
     /// ```
@@ -178,13 +191,24 @@ impl ProtonWalletApiClient {
         let (app_version, user_agent) = config.spec;
         let app = App::new(app_version)?.with_user_agent(user_agent);
 
-        let session = if let Some(store) = config.store {
-            Client::new(app, store)?
-        } else {
+        let store = config.store.unwrap_or_else(|| {
             let auth = config.auth.unwrap_or(Auth::None);
-            let auth_store = WalletAuthStore::from_env_str(env, Arc::new(Mutex::new(auth)));
-            Client::new(app, auth_store)?
-        };
+            if config.proxy.is_none() {
+                Box::new(WalletAuthStore::from_env_str(env, Arc::new(Mutex::new(auth))))
+            } else {
+                Box::new(WalletAuthStore::from_custom_env_str(env, Arc::new(Mutex::new(auth))))
+            }
+        });
+
+        let mut builder = Client::builder(app, store);
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(proxy) = config.proxy {
+            if let Ok(host) = Host::direct(proxy.host) {
+                builder = builder.verifier(UnSafeVerifier);
+                builder = builder.proxy(ConstProxy::new(Endpoint::new(Scheme::Http, host, proxy.port)));
+            }
+        }
+        let session = builder.build()?;
 
         Ok(Self {
             session,
@@ -324,7 +348,22 @@ impl Default for ProtonWalletApiClient {
             env: None,
             store: None,
             auth: None,
+            proxy: None,
         };
         Self::from_config(config).unwrap()
+    }
+}
+
+/// An unsafe verifier that always makes Accept decisions.
+#[derive(Debug)]
+pub struct UnSafeVerifier;
+
+impl Verifier for UnSafeVerifier {
+    fn verify(&self, _: &Host, _: &TlsCert, _: &[TlsCert]) -> Result<VerifyRes, muon::Error> {
+        if cfg!(feature = "allow-dangerous-env") {
+            Ok(VerifyRes::Accept)
+        } else {
+            Ok(VerifyRes::Delegate)
+        }
     }
 }
