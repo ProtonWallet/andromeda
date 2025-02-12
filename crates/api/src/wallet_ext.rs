@@ -159,6 +159,13 @@ pub trait WalletClientExt {
     ) -> Result<(), Error>;
 
     async fn disable_show_wallet_recovery(&self, wallet_id: String) -> Result<ApiWalletSettings, Error>;
+
+    async fn send_wallet_account_metrics(
+        &self,
+        wallet_id: String,
+        wallet_account_id: String,
+        has_positive_balance: bool,
+    ) -> Result<(), Error>;
 }
 
 #[cfg(test)]

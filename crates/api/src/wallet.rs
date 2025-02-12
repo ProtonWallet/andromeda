@@ -428,6 +428,19 @@ struct WalletMigrateResponseBody {
     pub Code: u16,
 }
 
+#[derive(Debug, Serialize, Default)]
+#[allow(non_snake_case)]
+struct WalletAccountMetricRequestBody {
+    pub HasPositiveBalance: u16,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+struct WalletAccountMetricResponseBody {
+    #[allow(dead_code)]
+    pub Code: u16,
+}
+
 #[derive(Clone)]
 pub struct WalletClient {
     api_client: Arc<ProtonWalletApiClient>,
@@ -864,6 +877,26 @@ impl WalletClientExt for WalletClient {
 
         Ok(parsed.WalletSettings)
     }
+
+    async fn send_wallet_account_metrics(
+        &self,
+        wallet_id: String,
+        wallet_account_id: String,
+        has_positive_balance: bool,
+    ) -> Result<(), Error> {
+        let payload = WalletAccountMetricRequestBody {
+            HasPositiveBalance: has_positive_balance as u16,
+        };
+
+        let request = self
+            .put(format!("wallets/{}/accounts/{}/metrics", wallet_id, wallet_account_id))
+            .body_json(payload)?;
+
+        let response = self.api_client.send(request).await?;
+        response.parse_response::<WalletAccountMetricResponseBody>()?;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -872,6 +905,8 @@ mod tests {
 
     use andromeda_common::ScriptType;
     use bitcoin::bip32::DerivationPath;
+    use serde_json::json;
+    use tokio_test::assert_ok;
     use wiremock::{
         matchers::{body_json, method, path, query_param},
         Mock, MockServer, ResponseTemplate,
@@ -2968,5 +3003,38 @@ mod tests {
             }
             Err(e) => panic!("Got Err. {:?}", e),
         }
+    }
+
+    #[tokio::test]
+    async fn test_send_wallet_account_metrics_success() {
+        let wallet_id = "_zuc9hOPmSeNUPoBlvFs2JvjWw_hX4ktpVnqKmpAhh3PcAGXNVJqU_jD2ZoZ_qTteGsa30m8mHG8GiWt_7L0xg==";
+        let wallet_account_id =
+            "yYzIuZJobta-FCUwbhCdUwCXtn-BLoW0yZvVNJK5MCh0KT-igpGYa3zd_uNz43gKTD9BXrRaDlT4uRhdo70y_A==";
+        let mock_server = MockServer::start().await;
+        let req_path = format!(
+            "{}/wallets/{}/accounts/{}/metrics",
+            BASE_WALLET_API_V1, wallet_id, wallet_account_id
+        );
+        let response_body = serde_json::json!({
+            "Code": 1000,
+        });
+        let expected_body = json!({
+            "HasPositiveBalance": 1
+        });
+        let response = ResponseTemplate::new(200).set_body_json(response_body);
+        Mock::given(method("PUT"))
+            .and(path(req_path))
+            .and(body_json(&expected_body))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection_arc(mock_server.uri());
+        let client = WalletClient::new(api_client);
+
+        let result = client
+            .send_wallet_account_metrics(wallet_id.into(), wallet_account_id.into(), true)
+            .await;
+
+        assert_ok!(result);
     }
 }
