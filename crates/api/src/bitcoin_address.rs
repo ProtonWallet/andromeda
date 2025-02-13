@@ -9,6 +9,10 @@ use crate::{
 };
 
 const ONLY_WITHOUT_BITCOIN_ADDRESS_KEY: &str = "OnlyWithoutBitcoinAddresses[]";
+const PAGE: &str = "Page";
+const PAGE_SIZE_PARAMETER: &str = "PageSize";
+
+const PAGE_SIZE: &str = "100";
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
@@ -95,20 +99,33 @@ impl BitcoinAddressClient {
         wallet_account_id: String,
         only_without_bitcoin_addresses: Option<u8>,
     ) -> Result<Vec<ApiWalletBitcoinAddress>, Error> {
-        let mut request = self.get(format!(
-            "wallets/{}/accounts/{}/addresses/bitcoin",
-            wallet_id, wallet_account_id
-        ));
-        if let Some(only_without_bitcoin_addresses) = only_without_bitcoin_addresses {
-            request = request.query((
-                ONLY_WITHOUT_BITCOIN_ADDRESS_KEY,
-                only_without_bitcoin_addresses.to_string(),
-            ));
-        }
-        let response = self.api_client.send(request).await?;
-        let parsed = response.parse_response::<GetBitcoinAddressesResponseBody>()?;
+        let mut bitcoin_addresses = Vec::new();
+        let mut page = 0;
+        let page_size = PAGE_SIZE;
+        let max_items = PAGE_SIZE.parse::<usize>().unwrap();
+        let mut result = max_items;
 
-        Ok(parsed.WalletBitcoinAddresses)
+        while result == max_items {
+            let mut request = self.get(format!(
+                "wallets/{}/accounts/{}/addresses/bitcoin",
+                wallet_id, wallet_account_id
+            ));
+            request = request.query((PAGE, page.to_string()));
+            request = request.query((PAGE_SIZE_PARAMETER, page_size.to_string()));
+            if let Some(only_without_bitcoin_addresses) = only_without_bitcoin_addresses {
+                request = request.query((
+                    ONLY_WITHOUT_BITCOIN_ADDRESS_KEY,
+                    only_without_bitcoin_addresses.to_string(),
+                ));
+            }
+            let response = self.api_client.send(request).await?;
+            let mut parsed = response.parse_response::<GetBitcoinAddressesResponseBody>()?;
+            result = parsed.WalletBitcoinAddresses.len();
+            bitcoin_addresses.append(&mut parsed.WalletBitcoinAddresses);
+            page += 1
+        }
+
+        Ok(bitcoin_addresses)
     }
 
     pub async fn get_bitcoin_address_highest_index(
