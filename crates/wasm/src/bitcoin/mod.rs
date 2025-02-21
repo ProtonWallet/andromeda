@@ -1,5 +1,6 @@
 pub mod account;
 pub mod blockchain_client;
+pub mod message_signer;
 pub mod mnemonic;
 pub mod payment_link;
 pub mod psbt;

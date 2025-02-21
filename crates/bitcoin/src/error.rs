@@ -71,4 +71,10 @@ pub enum Error {
     UtxoNotFound(OutPoint),
     #[error(transparent)]
     Other(#[from] anyhow::Error),
+    #[error("No signer found")]
+    NoSignerFound,
+    #[error("Invalid network")]
+    InvalidNetwork,
+    #[error("Message sign crypto error occurred: \n\t{0}")]
+    MessageSignatureCryto(#[from] andromeda_crypto::error::Error),
 }
