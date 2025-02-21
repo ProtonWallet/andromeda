@@ -5,6 +5,7 @@ members = [
   "crates/common",
   "crates/bitcoin",
   "crates/esplora",
+  "crates/crypto",
   "crates/wasm",
   "examples/cli",
 ]

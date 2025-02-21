@@ -1,8 +1,10 @@
 pub mod account;
 pub mod address;
 pub mod bdk_wallet_ext;
+pub mod bdk_wallet_secp_ext;
 pub mod blockchain_client;
 pub mod error;
+pub mod message_signer;
 pub mod mnemonic;
 pub mod payment_link;
 pub mod psbt;
@@ -38,3 +40,5 @@ pub use bdk_wallet::{
     tx_builder::ChangeSpendPolicy,
     AddressInfo, Balance, ChangeSet, KeychainKind, LocalOutput, SignOptions,
 };
+
+pub use andromeda_crypto::message_signature::SigningType;

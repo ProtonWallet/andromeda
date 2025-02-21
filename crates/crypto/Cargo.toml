@@ -1,0 +1,18 @@
+[package]
+name = "andromeda-crypto"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+andromeda-common = { version = "0.1.0", path = "../common" }
+
+bitcoin = { workspace = true, features = ["base64"] }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+rand = { version = "0.8.4", features = ["std"] }
+tokio = { workspace = true }
+tokio-test = { workspace = true }
+
+[features]
+default = []

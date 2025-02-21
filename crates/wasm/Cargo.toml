@@ -29,8 +29,12 @@ tsify = "0.4.5"
 
 console_error_panic_hook = { version = "0.1.7", optional = true }
 
+miniscript = { version = "12.0.0", default-features = false }
+bitcoin = { workspace = true }
+
 [dev-dependencies]
 tokio = { workspace = true }
+tokio-test = { workspace = true }
 wasm-bindgen-test = "0.3.38"
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
@@ -40,3 +44,4 @@ wasm-bindgen-test = "0.3.38"
 [features]
 # On web, we need the `allow-dangerous-env` feature to be able to use the browser env and get the session from it.
 default = ["console_error_panic_hook", "andromeda-api/allow-dangerous-env"]
+test = ["console_error_panic_hook", "andromeda-api/allow-dangerous-env"]
