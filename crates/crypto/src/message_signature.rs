@@ -99,8 +99,8 @@ impl MessageSignature {
         let msg_hash = bitcoin::sign_message::signed_msg_hash(message);
         let pub_key_h = self.0.recover_pubkey(&secp_ctx, msg_hash)?;
 
-        // some signature is parsed as uncompressed key. but it matches comparessed key,
-        //   this logic for better complatibility
+        // A signature can be parsed as uncompressed key, but it matches compressed key.
+        // This logic is for better compatibility.
         let is_valid = address.is_related_to_pubkey(&pub_key_h)
             || (!pub_key_h.compressed && {
                 let mut pk = pub_key_h.clone();
@@ -145,7 +145,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_verify_message_2() {
-        // this signature data is pared uncompressed key. but it matches comparessed key
+        // this signature data is pared uncompressed key. but it matches compressed key
         let secp_ctx = secp256k1::Secp256k1::new();
         let signature_str = "I6ir3uueMk2nza/ZZitIcrI40n79rC/cmu8oQTsqr+DrG/s4q9X7f1ptvZiGnPbT1Vnw3YogpzRkr6hvyAdl4JU=";
         let signature = MessageSignature::from_base64(signature_str).unwrap();

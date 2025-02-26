@@ -223,6 +223,19 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
         self.derivation_path.clone()
     }
 
+    /// Returns script type
+    pub fn get_script_type(&self) -> Result<ScriptType, Error> {
+        let u32_vec = self.derivation_path.to_u32_vec();
+        let purpose = u32_vec[0] - 0x80000000;
+        match purpose {
+            44 => Ok(ScriptType::Legacy),
+            49 => Ok(ScriptType::NestedSegwit),
+            84 => Ok(ScriptType::NativeSegwit),
+            86 => Ok(ScriptType::Taproot),
+            _ => Err(Error::UnknownPurpose(purpose)),
+        }
+    }
+
     /// Returns the last synced balance of an account.
     ///
     /// # Notes
