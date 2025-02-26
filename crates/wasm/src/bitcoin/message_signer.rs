@@ -2,7 +2,7 @@ use andromeda_bitcoin::{message_signer::MessageSigner, SigningType};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use crate::common::{error::ErrorExt, types::WasmScriptType};
+use crate::common::error::ErrorExt;
 
 use super::account::WasmAccount;
 
@@ -32,18 +32,11 @@ impl WasmMessageSigner {
         account: &WasmAccount,
         message: &str,
         signing_type: WasmSigningType,
-        script_type: WasmScriptType,
         btc_address: &str,
     ) -> Result<String, js_sys::Error> {
         Ok(self
             .inner
-            .sign_message(
-                &account.get_inner(),
-                message,
-                signing_type.into(),
-                script_type.into(),
-                btc_address,
-            )
+            .sign_message(&account.get_inner(), message, signing_type.into(), btc_address)
             .await
             .map_err(|e| e.to_js_error())?)
     }

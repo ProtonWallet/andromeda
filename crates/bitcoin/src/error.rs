@@ -77,4 +77,6 @@ pub enum Error {
     InvalidNetwork,
     #[error("Message sign crypto error occurred: \n\t{0}")]
     MessageSignatureCryto(#[from] andromeda_crypto::error::Error),
+    #[error("Unknown purpose in derivation path: {0}")]
+    UnknownPurpose(u32),
 }

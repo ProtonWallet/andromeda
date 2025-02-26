@@ -1,14 +1,12 @@
 use std::str::FromStr;
 
-use andromeda_common::ScriptType;
+use crate::{account::Account, bdk_wallet_secp_ext::BdkWalletSecpExt, error::Error, storage::WalletPersisterConnector};
 use andromeda_crypto::{
     message::BitcoinMessage,
     message_signature::{MessageSignature, SigningType},
 };
 use bdk_wallet::WalletPersister;
 use bitcoin::Address;
-
-use crate::{account::Account, bdk_wallet_secp_ext::BdkWalletSecpExt, error::Error, storage::WalletPersisterConnector};
 
 #[derive(Clone, Copy)]
 pub struct MessageSigner {}
@@ -21,7 +19,6 @@ impl MessageSigner {
     /// * `account` - Account to sign the message
     /// * `message` - Message to sign
     /// * `signing_type` - Type of signing
-    /// * `script_type` - Type of script
     /// * `btc_address` - Bitcoin address to sign the message
     /// # Returns
     /// * `Result<String>` - Base64 encoded signature
@@ -31,16 +28,17 @@ impl MessageSigner {
         account: &Account<C, P>,
         message: &str,
         signing_type: SigningType,
-        script_type: ScriptType,
         btc_address: &str,
     ) -> Result<String, Error> {
+        println!("{:?}", account.get_script_type());
         let wallet = account.get_wallet().await;
+        let script_type = account.get_script_type()?;
         let secp = wallet.secp_ctx();
 
         let (derived_keypair, is_compressed) = wallet.get_secp256k1_keypair(btc_address)?;
         let signature = BitcoinMessage::from_str(message)?.sign(secp, &derived_keypair)?;
         let message_signature = MessageSignature::new(signature, is_compressed);
-        return Ok(message_signature.to_base64(signing_type, script_type)?);
+        Ok(message_signature.to_base64(signing_type, script_type)?)
     }
 
     /// Verify a message with the public key of the BTC address
@@ -50,7 +48,7 @@ impl MessageSigner {
     /// * `signature` - Signature of the message
     /// * `btc_address` - Bitcoin address to verify the message
     /// # Returns
-    /// * `Result<()>` - Ok if the signature is valid
+    /// * `Result<(), Error>`
     pub async fn verify_message<C: WalletPersisterConnector<P>, P: WalletPersister>(
         &self,
         account: &Account<C, P>,
@@ -62,8 +60,8 @@ impl MessageSigner {
         let secp_ctx = wallet.secp_ctx();
         let signature = MessageSignature::from_base64(signature)?;
         let address = Address::from_str(btc_address)?.require_network(wallet.network())?;
-        signature.verify(secp_ctx, message, address)?;
-        Ok(())
+
+        Ok(signature.verify(secp_ctx, message, address)?)
     }
 }
 
@@ -90,7 +88,7 @@ mod tests {
 
         let signer = MessageSigner {};
         let result = signer
-            .sign_message(&account, &message, SigningType::Electrum, script_type, &address_str)
+            .sign_message(&account, &message, SigningType::Electrum, &address_str)
             .await
             .unwrap();
 
@@ -106,7 +104,7 @@ mod tests {
         );
 
         let result = signer
-            .sign_message(&account, &message, SigningType::Bip137, script_type, &address_str)
+            .sign_message(&account, &message, SigningType::Bip137, &address_str)
             .await
             .unwrap();
 
@@ -131,7 +129,7 @@ mod tests {
 
         let signer = MessageSigner {};
         let result = signer
-            .sign_message(&account, &message, SigningType::Electrum, script_type, &address_str)
+            .sign_message(&account, &message, SigningType::Electrum, &address_str)
             .await
             .unwrap();
         println!("result: {}", result);
@@ -147,7 +145,7 @@ mod tests {
         );
 
         let result = signer
-            .sign_message(&account, &message, SigningType::Bip137, script_type, &address_str)
+            .sign_message(&account, &message, SigningType::Bip137, &address_str)
             .await
             .unwrap();
 
@@ -172,7 +170,7 @@ mod tests {
 
         let signer = MessageSigner {};
         let result = signer
-            .sign_message(&account, &message, SigningType::Electrum, script_type, &address_str)
+            .sign_message(&account, &message, SigningType::Electrum, &address_str)
             .await
             .unwrap();
 
@@ -188,7 +186,7 @@ mod tests {
         );
 
         let result = signer
-            .sign_message(&account, &message, SigningType::Bip137, script_type, &address_str)
+            .sign_message(&account, &message, SigningType::Bip137, &address_str)
             .await
             .unwrap();
 
@@ -213,7 +211,7 @@ mod tests {
 
         let signer = MessageSigner {};
         let result = signer
-            .sign_message(&account, &message, SigningType::Electrum, script_type, &address_str)
+            .sign_message(&account, &message, SigningType::Electrum, &address_str)
             .await;
 
         assert_err!(&result);
