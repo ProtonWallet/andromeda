@@ -30,7 +30,6 @@ impl MessageSigner {
         signing_type: SigningType,
         btc_address: &str,
     ) -> Result<String, Error> {
-        println!("{:?}", account.get_script_type());
         let wallet = account.get_wallet().await;
         let script_type = account.get_script_type()?;
         let secp = wallet.secp_ctx();
