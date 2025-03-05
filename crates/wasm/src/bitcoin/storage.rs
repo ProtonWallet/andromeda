@@ -1,6 +1,8 @@
+use std::sync::Arc;
+
 use andromeda_bitcoin::{
     error::Error,
-    storage::{ChangeSet, Merge, WalletConnectorFactory, WalletPersister, WalletPersisterConnector},
+    storage::{ChangeSet, Merge, Storage, WalletPersisterFactory},
 };
 use anyhow::anyhow;
 
@@ -56,37 +58,23 @@ impl WalletWebPersister {
     }
 }
 
-impl WalletPersister for WalletWebPersister {
-    type Error = Error;
-
-    fn initialize(persister: &mut Self) -> Result<ChangeSet, Error> {
-        Ok(persister.get().unwrap_or_default())
+impl Storage for WalletWebPersister {
+    fn initialize(&self) -> Result<ChangeSet, Error> {
+        Ok(self.get().unwrap_or_default())
     }
 
-    fn persist(persister: &mut Self, new_changeset: &ChangeSet) -> Result<(), Error> {
-        let mut prev_changeset = persister.get().unwrap_or_default();
+    fn persist(&self, new_changeset: &ChangeSet) -> Result<(), Error> {
+        let mut prev_changeset = self.get().unwrap_or_default();
         prev_changeset.merge(new_changeset.clone());
 
-        persister.set(prev_changeset)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct WalletWebConnector {
-    key: String,
-}
-
-impl WalletPersisterConnector<WalletWebPersister> for WalletWebConnector {
-    fn connect(&self) -> WalletWebPersister {
-        WalletWebPersister::new(self.key.clone())
+        self.set(prev_changeset)
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct WalletWebPersisterFactory;
-
-impl WalletConnectorFactory<WalletWebConnector, WalletWebPersister> for WalletWebPersisterFactory {
-    fn build(self, key: String) -> WalletWebConnector {
-        WalletWebConnector { key }
+impl WalletPersisterFactory for WalletWebPersisterFactory {
+    fn build(self, key: String) -> Arc<dyn Storage> {
+        Arc::new(WalletWebPersister::new(key))
     }
 }

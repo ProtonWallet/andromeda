@@ -17,13 +17,13 @@ pub struct WasmBalance {
     pub confirmed: u64,
 }
 
-impl Into<WasmBalance> for Balance {
-    fn into(self) -> WasmBalance {
+impl From<Balance> for WasmBalance {
+    fn from(val: Balance) -> Self {
         WasmBalance {
-            immature: self.immature.to_sat(),
-            trusted_pending: self.trusted_pending.to_sat(),
-            untrusted_pending: self.untrusted_pending.to_sat(),
-            confirmed: self.confirmed.to_sat(),
+            immature: val.immature.to_sat(),
+            trusted_pending: val.trusted_pending.to_sat(),
+            untrusted_pending: val.untrusted_pending.to_sat(),
+            confirmed: val.confirmed.to_sat(),
         }
     }
 }

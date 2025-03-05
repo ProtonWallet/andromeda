@@ -20,21 +20,21 @@ use crate::common::{error::ErrorExt, types::WasmNetwork};
 #[derive(Clone, Serialize, Deserialize)]
 pub struct WasmScript(pub Vec<u8>);
 
-impl Into<ScriptBuf> for WasmScript {
-    fn into(self) -> ScriptBuf {
-        ScriptBuf::from_bytes(self.0)
+impl From<WasmScript> for ScriptBuf {
+    fn from(val: WasmScript) -> Self {
+        ScriptBuf::from_bytes(val.0)
     }
 }
 
-impl Into<ScriptBuf> for &WasmScript {
-    fn into(self) -> ScriptBuf {
-        ScriptBuf::from_bytes(self.0.clone())
+impl From<&WasmScript> for ScriptBuf {
+    fn from(val: &WasmScript) -> Self {
+        ScriptBuf::from_bytes(val.0.clone())
     }
 }
 
-impl Into<WasmScript> for ScriptBuf {
-    fn into(self) -> WasmScript {
-        WasmScript(self.to_bytes())
+impl From<ScriptBuf> for WasmScript {
+    fn from(val: ScriptBuf) -> Self {
+        WasmScript(val.to_bytes())
     }
 }
 
@@ -92,9 +92,9 @@ impl TryInto<OutPoint> for WasmOutPoint {
     }
 }
 
-impl Into<WasmOutPoint> for OutPoint {
-    fn into(self) -> WasmOutPoint {
-        WasmOutPoint(self.to_string())
+impl From<OutPoint> for WasmOutPoint {
+    fn from(val: OutPoint) -> Self {
+        WasmOutPoint(val.to_string())
     }
 }
 
@@ -102,9 +102,9 @@ impl Into<WasmOutPoint> for OutPoint {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct WasmSequence(pub u32);
 
-impl Into<WasmSequence> for Sequence {
-    fn into(self) -> WasmSequence {
-        WasmSequence(self.0)
+impl From<Sequence> for WasmSequence {
+    fn from(val: Sequence) -> Self {
+        WasmSequence(val.0)
     }
 }
 
@@ -117,12 +117,12 @@ pub struct WasmDetailledTxIn {
     // pub witness: Vec<u8>, Skip this for now as not needed and didn't find convenient serialisation way
 }
 
-impl Into<WasmDetailledTxIn> for DetailledTxIn {
-    fn into(self) -> WasmDetailledTxIn {
+impl From<DetailledTxIn> for WasmDetailledTxIn {
+    fn from(val: DetailledTxIn) -> Self {
         WasmDetailledTxIn {
-            previous_output: self.previous_output.map(|o| o.into()),
-            script_sig: self.script_sig.into(),
-            sequence: self.sequence.into(),
+            previous_output: val.previous_output.map(|o| o.into()),
+            script_sig: val.script_sig.into(),
+            sequence: val.sequence.into(),
         }
     }
 }
@@ -136,13 +136,13 @@ pub struct WasmTxOut {
     pub address: Option<String>,
 }
 
-impl Into<WasmTxOut> for DetailledTxOutput {
-    fn into(self) -> WasmTxOut {
+impl From<DetailledTxOutput> for WasmTxOut {
+    fn from(val: DetailledTxOutput) -> Self {
         WasmTxOut {
-            value: self.value,
-            script_pubkey: self.script_pubkey.into(),
-            address: self.address.map(|a| a.to_string()),
-            is_mine: self.is_mine,
+            value: val.value,
+            script_pubkey: val.script_pubkey.into(),
+            address: val.address.map(|a| a.to_string()),
+            is_mine: val.is_mine,
         }
     }
 }
@@ -174,18 +174,18 @@ pub struct WasmTransactionDetailsData {
 #[wasm_bindgen(getter_with_clone)]
 pub struct WasmTransactionDetailsArray(pub Vec<WasmTransactionDetailsData>);
 
-impl Into<WasmTransactionDetails> for TransactionDetails {
-    fn into(self) -> WasmTransactionDetails {
+impl From<TransactionDetails> for WasmTransactionDetails {
+    fn from(val: TransactionDetails) -> Self {
         WasmTransactionDetails {
-            txid: self.txid.to_string(),
-            received: self.received,
-            sent: self.sent,
-            fee: self.fees,
-            size: self.vbytes_size,
-            time: self.time.into(),
-            inputs: self.inputs.into_iter().map(|input| input.into()).collect::<Vec<_>>(),
-            outputs: self.outputs.into_iter().map(|output| output.into()).collect::<Vec<_>>(),
-            account_derivation_path: self.account_derivation_path.to_string(),
+            txid: val.txid.to_string(),
+            received: val.received,
+            sent: val.sent,
+            fee: val.fees,
+            size: val.vbytes_size,
+            time: val.time.into(),
+            inputs: val.inputs.into_iter().map(|input| input.into()).collect::<Vec<_>>(),
+            outputs: val.outputs.into_iter().map(|output| output.into()).collect::<Vec<_>>(),
+            account_derivation_path: val.account_derivation_path.to_string(),
         }
     }
 }
@@ -213,9 +213,9 @@ pub struct WasmTransactionTime {
     pub last_seen: Option<u64>,
 }
 
-impl Into<WasmTransactionTime> for TransactionTime {
-    fn into(self) -> WasmTransactionTime {
-        match self {
+impl From<TransactionTime> for WasmTransactionTime {
+    fn from(val: TransactionTime) -> Self {
+        match val {
             TransactionTime::Confirmed { confirmation_time } => WasmTransactionTime {
                 confirmed: true,
                 confirmation_time: Some(confirmation_time),

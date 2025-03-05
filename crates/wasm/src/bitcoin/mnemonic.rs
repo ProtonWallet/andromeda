@@ -22,10 +22,8 @@ pub enum WasmLanguage {
 }
 
 impl From<WasmLanguage> for BdkLanguage {
-    fn from(value: WasmLanguage) -> Self {
-        match value {
-            _ => BdkLanguage::English,
-        }
+    fn from(_: WasmLanguage) -> Self {
+        BdkLanguage::English
     }
 }
 
@@ -48,7 +46,7 @@ impl WasmMnemonic {
     #[wasm_bindgen(js_name = fromString)]
     pub fn from_string(mnemonic: &str) -> Result<WasmMnemonic, JsValue> {
         Mnemonic::from_string(mnemonic.to_string())
-            .map(|mnemonic| WasmMnemonic { inner: mnemonic.into() })
+            .map(|mnemonic| WasmMnemonic { inner: mnemonic })
             .map_err(|e| e.to_js_error())
     }
 

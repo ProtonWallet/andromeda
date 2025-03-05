@@ -15,14 +15,14 @@ pub struct WasmUtxo {
     pub is_spent: bool,
 }
 
-impl Into<WasmUtxo> for LocalOutput {
-    fn into(self) -> WasmUtxo {
+impl From<LocalOutput> for WasmUtxo {
+    fn from(val: LocalOutput) -> Self {
         WasmUtxo {
-            value: self.txout.value.to_sat(),
-            outpoint: self.outpoint.into(),
-            script_pubkey: self.txout.script_pubkey.into(),
-            keychain: self.keychain.into(),
-            is_spent: self.is_spent,
+            value: val.txout.value.to_sat(),
+            outpoint: val.outpoint.into(),
+            script_pubkey: val.txout.script_pubkey.into(),
+            keychain: val.keychain.into(),
+            is_spent: val.is_spent,
         }
     }
 }

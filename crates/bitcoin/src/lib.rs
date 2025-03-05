@@ -1,4 +1,5 @@
 pub mod account;
+pub mod account_trait;
 pub mod address;
 pub mod bdk_wallet_ext;
 pub mod bdk_wallet_secp_ext;
@@ -6,9 +7,11 @@ pub mod blockchain_client;
 pub mod error;
 pub mod message_signer;
 pub mod mnemonic;
+pub mod paper_account;
 pub mod payment_link;
 pub mod psbt;
 pub mod storage;
+pub mod tests;
 pub mod transaction_builder;
 pub mod transactions;
 pub mod utils;
@@ -29,6 +32,7 @@ pub use bdk_wallet::{
             locktime::absolute::{Height, LockTime, Time},
         },
         consensus::Params as ConsensusParams,
+        secp256k1::Secp256k1,
         Address, Amount, BlockHash, Network as BdkNetwork, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut,
         Witness,
     },

@@ -8,16 +8,14 @@ use andromeda_api::{ApiConfig, ProtonWalletApiClient};
 use andromeda_bitcoin::{
     account::Account,
     blockchain_client::BlockchainClient,
-    storage::MemoryPersisted,
+    storage::WalletMemoryPersisterFactory,
     transactions::{Pagination, TransactionTime},
     wallet::Wallet,
     DerivationPath,
 };
 use andromeda_common::{Network, ScriptType};
 
-fn create_wallet(
-    words: &mut SplitWhitespace<'_>,
-) -> Result<Arc<Mutex<Wallet<MemoryPersisted, MemoryPersisted>>>, &'static str> {
+fn create_wallet(words: &mut SplitWhitespace<'_>) -> Result<Arc<Mutex<Wallet>>, &'static str> {
     let (bip39, bip38, network) = words.fold((None, None, None), |acc, word| {
         let bip39 = if acc.0.is_none() {
             word.strip_prefix("--bip39=")
@@ -55,9 +53,7 @@ fn create_wallet(
     })
 }
 
-fn require_wallet(
-    wallet: Option<Arc<Mutex<Wallet<MemoryPersisted, MemoryPersisted>>>>,
-) -> Result<Arc<Mutex<Wallet<MemoryPersisted, MemoryPersisted>>>, &'static str> {
+fn require_wallet(wallet: Option<Arc<Mutex<Wallet>>>) -> Result<Arc<Mutex<Wallet>>, &'static str> {
     wallet.ok_or("ERROR: you need to create a wallet first. use onchain:wallet command")
 }
 
@@ -81,18 +77,16 @@ fn require_derivation_arg(words: &SplitWhitespace<'_>) -> Result<DerivationPath,
 }
 
 fn require_account_lock(
-    wallet: Arc<Mutex<Wallet<MemoryPersisted, MemoryPersisted>>>,
+    wallet: Arc<Mutex<Wallet>>,
     derivation_path: &DerivationPath,
-) -> Result<Arc<Account<MemoryPersisted, MemoryPersisted>>, &'static str> {
+) -> Result<Arc<Account>, &'static str> {
     let lock = wallet.lock().unwrap();
     let account = lock.get_account(derivation_path).ok_or("ERROR: account not found")?;
 
     Ok(account.clone())
 }
 
-async fn get_wallet_balance(
-    wallet: Option<Arc<Mutex<Wallet<MemoryPersisted, MemoryPersisted>>>>,
-) -> Result<(), &'static str> {
+async fn get_wallet_balance(wallet: Option<Arc<Mutex<Wallet>>>) -> Result<(), &'static str> {
     let wallet = require_wallet(wallet)?;
 
     let lock = wallet.lock().unwrap();
@@ -109,14 +103,14 @@ async fn get_wallet_balance(
 
 fn add_account(
     words: &mut SplitWhitespace<'_>,
-    wallet: Option<Arc<Mutex<Wallet<MemoryPersisted, MemoryPersisted>>>>,
+    wallet: Option<Arc<Mutex<Wallet>>>,
 ) -> Result<DerivationPath, &'static str> {
     let wallet = require_wallet(wallet)?;
 
     let (script_type, derivation_path) = words.fold((None, None), |acc, word| {
         let script_type = if acc.0.is_none() {
             word.strip_prefix("--scriptType=")
-                .map(|word| word.split("_").collect::<Vec<_>>().join(" "))
+                .map(|word| word.split('_').collect::<Vec<_>>().join(" "))
         } else {
             acc.0
         };
@@ -146,7 +140,7 @@ fn add_account(
 
     let mut lock = wallet.lock().unwrap();
 
-    lock.add_account(script_type, derivation_path.clone(), MemoryPersisted)
+    lock.add_account(script_type, derivation_path.clone(), WalletMemoryPersisterFactory)
         .map_err(|_| "ERROR: could not add account")?;
 
     Ok(derivation_path)
@@ -154,7 +148,7 @@ fn add_account(
 
 async fn sync_account(
     words: &mut SplitWhitespace<'_>,
-    wallet: Option<Arc<Mutex<Wallet<MemoryPersisted, MemoryPersisted>>>>,
+    wallet: Option<Arc<Mutex<Wallet>>>,
 ) -> Result<DerivationPath, &'static str> {
     println!("in sync_account");
     let wallet = require_wallet(wallet)?;
@@ -180,7 +174,7 @@ async fn sync_account(
 
     let chain = BlockchainClient::new(proton_api_client);
 
-    let update = chain.full_sync(&account, None).await.unwrap();
+    let update = chain.full_sync(account.as_ref(), None).await.unwrap();
     account
         .apply_update(update)
         .await
@@ -191,7 +185,7 @@ async fn sync_account(
 
 async fn get_account_balance(
     words: &mut SplitWhitespace<'_>,
-    wallet: Option<Arc<Mutex<Wallet<MemoryPersisted, MemoryPersisted>>>>,
+    wallet: Option<Arc<Mutex<Wallet>>>,
 ) -> Result<(), &'static str> {
     let wallet = require_wallet(wallet)?;
 
@@ -211,7 +205,7 @@ async fn get_account_balance(
 
 async fn get_account_transactions(
     words: &mut SplitWhitespace<'_>,
-    wallet: Option<Arc<Mutex<Wallet<MemoryPersisted, MemoryPersisted>>>>,
+    wallet: Option<Arc<Mutex<Wallet>>>,
 ) -> Result<(), &'static str> {
     let wallet = require_wallet(wallet)?;
 
@@ -246,7 +240,7 @@ async fn get_account_transactions(
 
 async fn get_account_utxos(
     words: &mut SplitWhitespace<'_>,
-    wallet: Option<Arc<Mutex<Wallet<MemoryPersisted, MemoryPersisted>>>>,
+    wallet: Option<Arc<Mutex<Wallet>>>,
 ) -> Result<(), &'static str> {
     let wallet = require_wallet(wallet)?;
 
@@ -267,7 +261,7 @@ async fn get_account_utxos(
 async fn poll_for_user_input() {
     println!("Proton Wallet CLI launched. Enter \"help\" to view available commands. Press Ctrl-D to quit.");
 
-    let mut onchain_wallet: Option<Arc<Mutex<Wallet<MemoryPersisted, MemoryPersisted>>>> = None;
+    let mut onchain_wallet: Option<Arc<Mutex<Wallet>>> = None;
 
     loop {
         print!("> ");
@@ -297,7 +291,7 @@ async fn poll_for_user_input() {
                             println!(
                                 "INFO: wallet was succesfully created. fingerprint: {}. network: {}",
                                 created.get_fingerprint(),
-                                created.get_network().to_string()
+                                created.get_network()
                             );
                         }
                     }

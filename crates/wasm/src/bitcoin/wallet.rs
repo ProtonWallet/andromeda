@@ -6,7 +6,7 @@ use wasm_bindgen::prelude::*;
 
 use super::{
     account::WasmAccount,
-    storage::{WalletWebConnector, WalletWebPersister, WalletWebPersisterFactory},
+    storage::WalletWebPersisterFactory,
     types::{
         balance::WasmBalanceWrapper,
         derivation_path::WasmDerivationPath,
@@ -24,7 +24,7 @@ use crate::{
 
 #[wasm_bindgen]
 pub struct WasmWallet {
-    inner: Wallet<WalletWebConnector, WalletWebPersister>,
+    inner: Wallet,
 }
 
 #[wasm_bindgen]
@@ -34,7 +34,7 @@ extern "C" {
 }
 
 impl WasmWallet {
-    pub fn get_inner(&self) -> &Wallet<WalletWebConnector, WalletWebPersister> {
+    pub fn get_inner(&self) -> &Wallet {
         &self.inner
     }
 }
@@ -166,8 +166,8 @@ impl WasmWallet {
     }
 
     #[wasm_bindgen(js_name = clearStore)]
-    pub fn clear_store(&self) -> Result<(), js_sys::Error> {
-        self.inner.clear_store().map_err(|e| e.to_js_error())?;
+    pub async fn clear_store(&self) -> Result<(), js_sys::Error> {
+        self.inner.clear_store().await.map_err(|e| e.to_js_error())?;
         Ok(())
     }
 }

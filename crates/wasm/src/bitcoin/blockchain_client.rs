@@ -3,7 +3,10 @@ use std::{collections::HashMap, sync::Arc};
 use super::{account::WasmAccount, psbt::WasmPsbt};
 use crate::{api::WasmProtonWalletApiClient, common::error::ErrorExt};
 use andromeda_api::transaction::{BroadcastMessage, ExchangeRateOrTransactionTime, RecommendedFees};
-use andromeda_bitcoin::blockchain_client::{self, BlockchainClient, MinimumFees};
+use andromeda_bitcoin::{
+    account_trait::AccessWallet,
+    blockchain_client::{self, BlockchainClient, MinimumFees},
+};
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
@@ -62,9 +65,9 @@ impl From<RecommendedFees> for WasmRecommendedFees {
     }
 }
 
-impl Into<Arc<BlockchainClient>> for &WasmBlockchainClient {
-    fn into(self) -> Arc<BlockchainClient> {
-        self.inner.clone()
+impl From<&WasmBlockchainClient> for Arc<BlockchainClient> {
+    fn from(val: &WasmBlockchainClient) -> Self {
+        val.inner.clone()
     }
 }
 
@@ -82,14 +85,14 @@ pub struct WasmExchangeRateOrTransactionTime {
     value: String,
 }
 
-impl Into<ExchangeRateOrTransactionTime> for WasmExchangeRateOrTransactionTime {
-    fn into(self) -> ExchangeRateOrTransactionTime {
-        match self.key {
+impl From<WasmExchangeRateOrTransactionTime> for ExchangeRateOrTransactionTime {
+    fn from(val: WasmExchangeRateOrTransactionTime) -> Self {
+        match val.key {
             WasmExchangeRateOrTransactionTimeEnum::ExchangeRate => {
-                ExchangeRateOrTransactionTime::ExchangeRate(self.value)
+                ExchangeRateOrTransactionTime::ExchangeRate(val.value)
             }
             WasmExchangeRateOrTransactionTimeEnum::TransactionTime => {
-                ExchangeRateOrTransactionTime::TransactionTime(self.value)
+                ExchangeRateOrTransactionTime::TransactionTime(val.value)
             }
         }
     }
@@ -109,11 +112,11 @@ pub struct WasmBroadcastMessage {
     pub key_packets: HashMap<String, String>,
 }
 
-impl Into<BroadcastMessage> for WasmBroadcastMessage {
-    fn into(self) -> BroadcastMessage {
+impl From<WasmBroadcastMessage> for BroadcastMessage {
+    fn from(val: WasmBroadcastMessage) -> Self {
         BroadcastMessage {
-            DataPacket: self.data_packet,
-            KeyPackets: self.key_packets,
+            DataPacket: val.data_packet,
+            KeyPackets: val.key_packets,
         }
     }
 }
@@ -162,10 +165,9 @@ impl WasmBlockchainClient {
     #[wasm_bindgen(js_name = fullSync)]
     pub async fn full_sync(&self, account: &WasmAccount, stop_gap: Option<usize>) -> Result<(), JsValue> {
         let account_inner = account.get_inner();
-
         let update = self
             .inner
-            .full_sync(&account_inner, stop_gap)
+            .full_sync(account_inner.as_ref(), stop_gap)
             .await
             .map_err(|e| e.to_js_error())?;
 

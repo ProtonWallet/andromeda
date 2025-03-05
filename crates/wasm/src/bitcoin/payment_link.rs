@@ -25,15 +25,15 @@ pub struct WasmOnchainPaymentLink {
     pub label: Option<String>,
 }
 
-impl Into<WasmPaymentLink> for PaymentLink {
-    fn into(self) -> WasmPaymentLink {
-        WasmPaymentLink { inner: self }
+impl From<PaymentLink> for WasmPaymentLink {
+    fn from(val: PaymentLink) -> Self {
+        WasmPaymentLink { inner: val }
     }
 }
 
-impl Into<PaymentLink> for WasmPaymentLink {
-    fn into(self) -> PaymentLink {
-        self.inner
+impl From<WasmPaymentLink> for PaymentLink {
+    fn from(val: WasmPaymentLink) -> Self {
+        val.inner
     }
 }
 

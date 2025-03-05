@@ -9,16 +9,17 @@ use bdk_wallet::{
         secp256k1::Secp256k1,
         Amount, NetworkKind,
     },
-    Balance, WalletPersister,
+    Balance,
 };
 use futures::future::try_join_all;
 
 use super::{account::Account, transactions::Pagination, utils::sort_and_paginate_txs};
 use crate::{
+    account_trait::AccessWallet,
     blockchain_client::BlockchainClient,
     error::Error,
     mnemonic::Mnemonic,
-    storage::{WalletConnectorFactory, WalletPersisterConnector},
+    storage::{WalletPersisterFactory, WalletStorage},
     transactions::{ToTransactionDetails, TransactionDetails},
     utils::SortOrder,
 };
@@ -27,13 +28,13 @@ const ACCOUNT_DISCOVERY_STOP_GAP: u32 = 2;
 const ADDRESS_DISCOVERY_STOP_GAP: usize = 10;
 
 #[derive(Debug)]
-pub struct Wallet<C: WalletPersisterConnector<P>, P: WalletPersister> {
+pub struct Wallet {
     mprv: Xpriv,
-    accounts: HashMap<DerivationPath, Arc<Account<C, P>>>,
+    accounts: HashMap<DerivationPath, Arc<Account>>,
     network: Network,
 }
 
-impl<C: WalletPersisterConnector<P>, P: WalletPersister> Wallet<C, P> {
+impl Wallet {
     pub fn new(network: Network, bip39_mnemonic: String, bip38_passphrase: Option<String>) -> Result<Self, Error> {
         let mnemonic = Mnemonic::from_string(bip39_mnemonic)?;
 
@@ -67,11 +68,21 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Wallet<C, P> {
         script_type: ScriptType,
         derivation_path: DerivationPath,
         factory: F,
-    ) -> Result<Arc<Account<C, P>>, Error>
+    ) -> Result<Arc<Account>, Error>
     where
-        F: WalletConnectorFactory<C, P>,
+        F: WalletPersisterFactory,
     {
-        let account = Account::new(self.mprv, self.network, script_type, derivation_path, factory)?;
+        let secp = Secp256k1::new();
+        let store_key = format!("{}_{}", self.mprv.fingerprint(&secp), derivation_path);
+        let persister = factory.build(store_key);
+
+        let account = Account::new(
+            self.mprv,
+            self.network,
+            script_type,
+            derivation_path,
+            WalletStorage(persister),
+        )?;
 
         let derivation_path = account.get_derivation_path();
 
@@ -82,11 +93,11 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Wallet<C, P> {
         Ok(account_arc)
     }
 
-    pub fn get_account(&self, derivation_path: &DerivationPath) -> Option<Arc<Account<C, P>>> {
+    pub fn get_account(&self, derivation_path: &DerivationPath) -> Option<Arc<Account>> {
         self.accounts.get(derivation_path).cloned()
     }
 
-    pub fn get_accounts(&self) -> Vec<Arc<Account<C, P>>> {
+    pub fn get_accounts(&self) -> Vec<Arc<Account>> {
         self.accounts.values().cloned().collect::<Vec<_>>()
     }
 
@@ -121,7 +132,7 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Wallet<C, P> {
         discovery_address_stop_gap: Option<usize>,
     ) -> Result<Vec<(ScriptType, u32, DerivationPath)>, Error>
     where
-        F: WalletConnectorFactory<C, P>,
+        F: WalletPersisterFactory,
     {
         let client = BlockchainClient::new(proton_api_client);
         let mut index: u32;
@@ -138,12 +149,17 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Wallet<C, P> {
 
             loop {
                 let derivation_path = DerivationPath::from_parts(script_type, self.network, index);
+
+                let secp = Secp256k1::new();
+                let store_key = format!("{}_{}", self.mprv.fingerprint(&secp), derivation_path);
+                let persister = factory.clone().build(store_key);
+
                 let account = Account::new(
                     self.mprv,
                     self.network,
                     script_type,
                     derivation_path.clone(),
-                    factory.clone(),
+                    WalletStorage(persister),
                 )
                 .expect("Account should be valid here");
 
@@ -217,11 +233,10 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Wallet<C, P> {
         self.mprv.fingerprint(&secp).to_string()
     }
 
-    pub fn clear_store(&self) -> Result<(), Error> {
+    pub async fn clear_store(&self) -> Result<(), Error> {
         for a in self.get_accounts().into_iter() {
-            a.clear_store()?;
+            a.clear_store().await?;
         }
-
         Ok(())
     }
 }

@@ -10,7 +10,7 @@ use bdk_wallet::{
 };
 use bitcoin::Transaction;
 
-use crate::{account::Account, error::Error, psbt::Psbt, storage::WalletPersisterConnector};
+use crate::{account::Account, account_trait::AccessWallet, error::Error, psbt::Psbt};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TransactionTime {
@@ -188,10 +188,7 @@ where
 }
 
 impl TransactionDetails {
-    pub async fn from_psbt<C: WalletPersisterConnector<P>, P: WalletPersister>(
-        psbt: &Psbt,
-        account: Arc<Account<C, P>>,
-    ) -> Result<Self, Error> {
+    pub async fn from_psbt(psbt: &Psbt, account: Arc<Account>) -> Result<Self, Error> {
         let tx = psbt.extract_tx()?;
 
         let wallet_lock = account.get_wallet().await;

@@ -1,12 +1,16 @@
 use std::sync::Arc;
-
-use andromeda_bitcoin::account::Account;
 use wasm_bindgen::prelude::*;
+
+use andromeda_bitcoin::{
+    account::Account,
+    storage::{WalletPersisterFactory, WalletStorage},
+    Secp256k1,
+};
 
 use super::{
     blockchain_client::WasmBlockchainClient,
     psbt::WasmPsbt,
-    storage::{WalletWebConnector, WalletWebPersister, WalletWebPersisterFactory},
+    storage::WalletWebPersisterFactory,
     types::{
         address::{WasmAddress, WasmAddressDetailsArray, WasmAddressDetailsData},
         address_info::WasmAddressInfo,
@@ -25,18 +29,18 @@ use crate::common::{
 
 #[wasm_bindgen]
 pub struct WasmAccount {
-    inner: Arc<Account<WalletWebConnector, WalletWebPersister>>,
+    inner: Arc<Account>,
 }
 
 impl WasmAccount {
-    pub fn get_inner(&self) -> Arc<Account<WalletWebConnector, WalletWebPersister>> {
+    pub fn get_inner(&self) -> Arc<Account> {
         self.inner.clone()
     }
 }
 
-impl Into<WasmAccount> for Arc<Account<WalletWebConnector, WalletWebPersister>> {
-    fn into(self) -> WasmAccount {
-        WasmAccount { inner: self.clone() }
+impl From<Arc<Account>> for WasmAccount {
+    fn from(val: Arc<Account>) -> Self {
+        WasmAccount { inner: val.clone() }
     }
 }
 
@@ -49,10 +53,19 @@ impl WasmAccount {
         derivation_path: WasmDerivationPath,
     ) -> Result<WasmAccount, js_sys::Error> {
         let factory = WalletWebPersisterFactory;
-
         let (mprv, network) = wallet.get_inner().mprv();
-        let account = Account::new(mprv, network, script_type.into(), (&derivation_path).into(), factory)
-            .map_err(|e| e.to_js_error())?;
+
+        let secp = Secp256k1::new();
+        let store_key = format!("{}_{}", mprv.fingerprint(&secp), derivation_path.to_str());
+        let persister = factory.build(store_key);
+        let account = Account::new(
+            mprv,
+            network,
+            script_type.into(),
+            (&derivation_path).into(),
+            WalletStorage(persister),
+        )
+        .map_err(|e| e.to_js_error())?;
 
         Ok(Arc::new(account).into())
     }
@@ -236,7 +249,7 @@ impl WasmAccount {
 
     #[wasm_bindgen(js_name = clearStore)]
     pub async fn clear_store(&self) -> Result<(), js_sys::Error> {
-        self.inner.clear_store().map_err(|e| e.to_js_error())?;
+        self.inner.clear_store().await.map_err(|e| e.to_js_error())?;
         Ok(())
     }
 }

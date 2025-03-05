@@ -10,9 +10,9 @@ pub struct WasmPagination {
     take: usize,
 }
 
-impl Into<Pagination> for WasmPagination {
-    fn into(self) -> Pagination {
-        Pagination::new(self.skip, self.take)
+impl From<WasmPagination> for Pagination {
+    fn from(val: WasmPagination) -> Self {
+        Pagination::new(val.skip, val.take)
     }
 }
 
@@ -22,9 +22,9 @@ pub enum WasmSortOrder {
     Desc,
 }
 
-impl Into<SortOrder> for WasmSortOrder {
-    fn into(self) -> SortOrder {
-        match self {
+impl From<WasmSortOrder> for SortOrder {
+    fn from(val: WasmSortOrder) -> Self {
+        match val {
             WasmSortOrder::Asc => SortOrder::Asc,
             WasmSortOrder::Desc => SortOrder::Desc,
         }

@@ -35,16 +35,15 @@ impl<'de> Deserialize<'de> for WasmAddress {
     }
 }
 
-impl Into<Address> for &WasmAddress {
-    fn into(self) -> Address {
-        let addr = self.inner.clone();
-        addr
+impl From<&WasmAddress> for Address {
+    fn from(val: &WasmAddress) -> Self {
+        val.inner.clone()
     }
 }
 
-impl Into<WasmAddress> for Address {
-    fn into(self) -> WasmAddress {
-        WasmAddress { inner: self.clone() }
+impl From<Address> for WasmAddress {
+    fn from(val: Address) -> Self {
+        WasmAddress { inner: val.clone() }
     }
 }
 
@@ -94,14 +93,14 @@ pub struct WasmAddressDetails {
     pub keychain: WasmKeychainKind,
 }
 
-impl Into<WasmAddressDetails> for AddressDetails {
-    fn into(self) -> WasmAddressDetails {
+impl From<AddressDetails> for WasmAddressDetails {
+    fn from(val: AddressDetails) -> Self {
         WasmAddressDetails {
-            index: self.index,
-            address: self.address,
-            transactions: self.transactions.into_iter().map(|t| t.into()).collect::<Vec<_>>(),
-            balance: self.balance.into(),
-            keychain: self.keychain.into(),
+            index: val.index,
+            address: val.address,
+            transactions: val.transactions.into_iter().map(|t| t.into()).collect::<Vec<_>>(),
+            balance: val.balance.into(),
+            keychain: val.keychain.into(),
         }
     }
 }

@@ -466,10 +466,6 @@ impl WasmSettingsClient {
 
     #[wasm_bindgen(js_name = "getUserWalletEligibility")]
     pub async fn get_user_wallet_eligibility(&self) -> Result<u8, JsValue> {
-        self.0
-            .get_user_wallet_eligibility()
-            .await
-            .map_err(|e| e.to_js_error())
-            .map(|is_eligible| is_eligible)
+        self.0.get_user_wallet_eligibility().await.map_err(|e| e.to_js_error())
     }
 }

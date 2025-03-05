@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use crate::{account::Account, error::Error, storage::WalletPersisterConnector};
+use crate::account_trait::AccessWallet;
+use crate::error::Error;
 use andromeda_api::transaction::RecommendedFees;
 use andromeda_api::{
     transaction::{BroadcastMessage, ExchangeRateOrTransactionTime},
@@ -60,15 +61,11 @@ impl BlockchainClient {
     ///   hardcoded so far. We should soon offer to change the stop gap setting
     ///   for a given account, so that he can find transactions sent above the
     ///   previously defined one.
-    pub async fn full_sync<'a, C, P>(
+    pub async fn full_sync(
         &self,
-        account: &Account<C, P>,
+        account: &impl AccessWallet,
         stop_gap: Option<usize>,
-    ) -> Result<FullScanResponse<KeychainKind>, Error>
-    where
-        C: WalletPersisterConnector<P>,
-        P: WalletPersister,
-    {
+    ) -> Result<FullScanResponse<KeychainKind>, Error> {
         let read_lock = account.get_wallet().await;
         let request = read_lock.start_full_scan();
         let update = self.0.full_scan(request, stop_gap.unwrap_or(DEFAULT_STOP_GAP)).await?;

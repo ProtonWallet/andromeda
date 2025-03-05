@@ -1,11 +1,10 @@
 use std::str::FromStr;
 
-use crate::{account::Account, bdk_wallet_secp_ext::BdkWalletSecpExt, error::Error, storage::WalletPersisterConnector};
+use crate::{account::Account, account_trait::AccessWallet, bdk_wallet_secp_ext::BdkWalletSecpExt, error::Error};
 use andromeda_crypto::{
     message::BitcoinMessage,
     message_signature::{MessageSignature, SigningType},
 };
-use bdk_wallet::WalletPersister;
 use bitcoin::Address;
 
 #[derive(Clone, Copy)]
@@ -23,9 +22,9 @@ impl MessageSigner {
     /// # Returns
     /// * `Result<String>` - Base64 encoded signature
     ///
-    pub async fn sign_message<C: WalletPersisterConnector<P>, P: WalletPersister>(
+    pub async fn sign_message(
         &self,
-        account: &Account<C, P>,
+        account: &Account,
         message: &str,
         signing_type: SigningType,
         btc_address: &str,
@@ -48,9 +47,9 @@ impl MessageSigner {
     /// * `btc_address` - Bitcoin address to verify the message
     /// # Returns
     /// * `Result<(), Error>`
-    pub async fn verify_message<C: WalletPersisterConnector<P>, P: WalletPersister>(
+    pub async fn verify_message(
         &self,
-        account: &Account<C, P>,
+        account: &Account,
         message: &str,
         signature: &str,
         btc_address: &str,
@@ -66,17 +65,13 @@ impl MessageSigner {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
 
     use andromeda_common::{Network, ScriptType};
     use andromeda_crypto::message_signature::SigningType;
-    use bitcoin::{
-        bip32::{DerivationPath, Xpriv},
-        NetworkKind,
-    };
+    use bitcoin::NetworkKind;
     use tokio_test::{assert_err, assert_ok};
 
-    use crate::{account::Account, message_signer::MessageSigner, mnemonic::Mnemonic, storage::MemoryPersisted};
+    use crate::{account::Account, message_signer::MessageSigner, tests::utils::tests::set_test_wallet_account};
 
     #[tokio::test]
     async fn test_signer_with_legacy_account() {
@@ -264,26 +259,15 @@ mod tests {
         assert_err!(result);
     }
 
-    fn set_test_account_for_mainnet(
-        script_type: ScriptType,
-        derivation_path: &str,
-    ) -> Account<MemoryPersisted, MemoryPersisted> {
-        let network = NetworkKind::Main;
-        let mnemonic = Mnemonic::from_string(
-            "they velvet shoot decide timber stadium inch volcano iron ten eye priority".to_string(),
-        )
-        .unwrap();
-        let master_secret_key = Xpriv::new_master(network, &mnemonic.inner().to_seed("")).unwrap();
-
-        let derivation_path = DerivationPath::from_str(derivation_path).unwrap();
-
-        Account::new(
-            master_secret_key,
-            Network::Bitcoin,
+    fn set_test_account_for_mainnet(script_type: ScriptType, derivation_path: &str) -> Account {
+        set_test_wallet_account(
+            "they velvet shoot decide timber stadium inch volcano iron ten eye priority",
             script_type,
             derivation_path,
-            MemoryPersisted {},
+            None,
+            None,
+            Some(Network::Bitcoin),
+            Some(NetworkKind::Main),
         )
-        .unwrap()
     }
 }
