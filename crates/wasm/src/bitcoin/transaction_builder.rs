@@ -7,7 +7,6 @@ use wasm_bindgen::prelude::*;
 use super::{
     account::WasmAccount,
     psbt::WasmPsbt,
-    storage::{WalletWebConnector, WalletWebPersister},
     types::{locktime::WasmLockTime, transaction::WasmOutPoint},
 };
 use crate::common::{error::ErrorExt, types::WasmNetwork};
@@ -15,7 +14,7 @@ use crate::common::{error::ErrorExt, types::WasmNetwork};
 #[wasm_bindgen]
 #[derive(Clone)]
 pub struct WasmTxBuilder {
-    inner: TxBuilder<WalletWebConnector, WalletWebPersister>,
+    inner: TxBuilder,
 }
 
 #[wasm_bindgen]
@@ -27,9 +26,9 @@ pub enum WasmCoinSelection {
     Manual,
 }
 
-impl Into<CoinSelection> for WasmCoinSelection {
-    fn into(self) -> CoinSelection {
-        match self {
+impl From<WasmCoinSelection> for CoinSelection {
+    fn from(val: WasmCoinSelection) -> Self {
+        match val {
             WasmCoinSelection::BranchAndBound => CoinSelection::BranchAndBound,
             WasmCoinSelection::LargestFirst => CoinSelection::LargestFirst,
             WasmCoinSelection::OldestFirst => CoinSelection::OldestFirst,
@@ -38,9 +37,9 @@ impl Into<CoinSelection> for WasmCoinSelection {
     }
 }
 
-impl Into<WasmCoinSelection> for CoinSelection {
-    fn into(self) -> WasmCoinSelection {
-        match self {
+impl From<CoinSelection> for WasmCoinSelection {
+    fn from(val: CoinSelection) -> Self {
+        match val {
             CoinSelection::BranchAndBound => WasmCoinSelection::BranchAndBound,
             CoinSelection::LargestFirst => WasmCoinSelection::LargestFirst,
             CoinSelection::OldestFirst => WasmCoinSelection::OldestFirst,
@@ -57,9 +56,9 @@ pub enum WasmChangeSpendPolicy {
     ChangeForbidden,
 }
 
-impl Into<ChangeSpendPolicy> for WasmChangeSpendPolicy {
-    fn into(self) -> ChangeSpendPolicy {
-        match self {
+impl From<WasmChangeSpendPolicy> for ChangeSpendPolicy {
+    fn from(val: WasmChangeSpendPolicy) -> Self {
+        match val {
             WasmChangeSpendPolicy::ChangeAllowed => ChangeSpendPolicy::ChangeAllowed,
             WasmChangeSpendPolicy::OnlyChange => ChangeSpendPolicy::OnlyChange,
             WasmChangeSpendPolicy::ChangeForbidden => ChangeSpendPolicy::ChangeForbidden,
@@ -67,9 +66,9 @@ impl Into<ChangeSpendPolicy> for WasmChangeSpendPolicy {
     }
 }
 
-impl Into<WasmChangeSpendPolicy> for ChangeSpendPolicy {
-    fn into(self) -> WasmChangeSpendPolicy {
-        match self {
+impl From<ChangeSpendPolicy> for WasmChangeSpendPolicy {
+    fn from(val: ChangeSpendPolicy) -> Self {
+        match val {
             ChangeSpendPolicy::ChangeAllowed => WasmChangeSpendPolicy::ChangeAllowed,
             ChangeSpendPolicy::OnlyChange => WasmChangeSpendPolicy::OnlyChange,
             ChangeSpendPolicy::ChangeForbidden => WasmChangeSpendPolicy::ChangeForbidden,
@@ -143,8 +142,7 @@ impl WasmTxBuilder {
 
     #[wasm_bindgen(js_name = getRecipients)]
     pub fn get_recipients(&self) -> Vec<WasmRecipient> {
-        let recipients = self
-            .inner
+        self.inner
             .recipients
             .clone()
             .into_iter()
@@ -152,9 +150,7 @@ impl WasmTxBuilder {
                 let TmpRecipient(uuid, address, amount) = recipient;
                 WasmRecipient(uuid, address, amount.to_sat())
             })
-            .collect();
-
-        recipients
+            .collect()
     }
 
     /**

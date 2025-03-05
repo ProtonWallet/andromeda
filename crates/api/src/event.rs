@@ -138,7 +138,7 @@ impl EventClient {
 
             let event = self.get_event(&next_event_id).await?;
             has_more = event.More == 1;
-            next_event_id = event.EventID.clone();
+            next_event_id.clone_from(&event.EventID);
             events.push(ApiProtonEvent {
                 Code: event.Code,
                 EventID: event.EventID,

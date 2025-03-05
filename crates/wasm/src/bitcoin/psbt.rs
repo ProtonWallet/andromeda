@@ -1,4 +1,6 @@
-use andromeda_bitcoin::{error::Error as BitcoinError, psbt::Psbt, Address, ConsensusParams, SignOptions};
+use andromeda_bitcoin::{
+    account_trait::AccessWallet, error::Error as BitcoinError, psbt::Psbt, Address, ConsensusParams, SignOptions,
+};
 use andromeda_common::Network;
 use wasm_bindgen::prelude::*;
 
@@ -44,9 +46,9 @@ impl WasmPsbt {
     }
 }
 
-impl Into<Psbt> for &WasmPsbt {
-    fn into(self) -> Psbt {
-        self.inner.clone()
+impl From<&WasmPsbt> for Psbt {
+    fn from(val: &WasmPsbt) -> Self {
+        val.inner.clone()
     }
 }
 

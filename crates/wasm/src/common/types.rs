@@ -12,9 +12,9 @@ pub enum WasmBitcoinUnit {
     SATS,
 }
 
-impl Into<WasmBitcoinUnit> for BitcoinUnit {
-    fn into(self) -> WasmBitcoinUnit {
-        match self {
+impl From<BitcoinUnit> for WasmBitcoinUnit {
+    fn from(val: BitcoinUnit) -> Self {
+        match val {
             BitcoinUnit::BTC => WasmBitcoinUnit::BTC,
             BitcoinUnit::MBTC => WasmBitcoinUnit::MBTC,
             BitcoinUnit::SATS => WasmBitcoinUnit::SATS,
@@ -22,9 +22,9 @@ impl Into<WasmBitcoinUnit> for BitcoinUnit {
     }
 }
 
-impl Into<BitcoinUnit> for WasmBitcoinUnit {
-    fn into(self) -> BitcoinUnit {
-        match self {
+impl From<WasmBitcoinUnit> for BitcoinUnit {
+    fn from(val: WasmBitcoinUnit) -> Self {
+        match val {
             WasmBitcoinUnit::BTC => BitcoinUnit::BTC,
             WasmBitcoinUnit::MBTC => BitcoinUnit::MBTC,
             WasmBitcoinUnit::SATS => BitcoinUnit::SATS,
@@ -107,9 +107,9 @@ impl From<WasmKeychainKind> for KeychainKind {
     }
 }
 
-impl Into<WasmKeychainKind> for KeychainKind {
-    fn into(self) -> WasmKeychainKind {
-        match self {
+impl From<KeychainKind> for WasmKeychainKind {
+    fn from(val: KeychainKind) -> Self {
+        match val {
             KeychainKind::External => WasmKeychainKind::External,
             KeychainKind::Internal => WasmKeychainKind::Internal,
         }
@@ -136,9 +136,9 @@ impl From<ScriptType> for WasmScriptType {
     }
 }
 
-impl Into<ScriptType> for WasmScriptType {
-    fn into(self) -> ScriptType {
-        match self {
+impl From<WasmScriptType> for ScriptType {
+    fn from(val: WasmScriptType) -> Self {
+        match val {
             WasmScriptType::Legacy => ScriptType::Legacy,
             WasmScriptType::NestedSegwit => ScriptType::NestedSegwit,
             WasmScriptType::NativeSegwit => ScriptType::NativeSegwit,
@@ -147,9 +147,9 @@ impl Into<ScriptType> for WasmScriptType {
     }
 }
 
-impl Into<u8> for WasmScriptType {
-    fn into(self) -> u8 {
-        let script_type: ScriptType = self.into();
+impl From<WasmScriptType> for u8 {
+    fn from(val: WasmScriptType) -> Self {
+        let script_type: ScriptType = val.into();
         script_type.into()
     }
 }

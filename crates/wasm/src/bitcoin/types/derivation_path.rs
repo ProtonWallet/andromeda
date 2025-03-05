@@ -51,14 +51,14 @@ impl WasmDerivationPath {
     }
 }
 
-impl Into<DerivationPath> for &WasmDerivationPath {
-    fn into(self) -> DerivationPath {
-        self.inner.clone()
+impl From<&WasmDerivationPath> for DerivationPath {
+    fn from(val: &WasmDerivationPath) -> Self {
+        val.inner.clone()
     }
 }
 
-impl Into<WasmDerivationPath> for DerivationPath {
-    fn into(self) -> WasmDerivationPath {
-        WasmDerivationPath { inner: self.clone() }
+impl From<DerivationPath> for WasmDerivationPath {
+    fn from(val: DerivationPath) -> Self {
+        WasmDerivationPath { inner: val.clone() }
     }
 }

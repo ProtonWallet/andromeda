@@ -7,9 +7,9 @@ pub struct WasmLockTime {
     lock_time: LockTime,
 }
 
-impl Into<WasmLockTime> for LockTime {
-    fn into(self) -> WasmLockTime {
-        WasmLockTime { lock_time: self }
+impl From<LockTime> for WasmLockTime {
+    fn from(val: LockTime) -> Self {
+        WasmLockTime { lock_time: val }
     }
 }
 

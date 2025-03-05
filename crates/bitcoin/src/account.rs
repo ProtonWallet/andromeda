@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, fmt::Debug, str::FromStr, sync::Arc};
 
-use andromeda_common::{utils::now, Network, ScriptType};
+use andromeda_common::{async_trait_impl, utils::now, Network, ScriptType};
 use async_std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use bdk_wallet::{
     bitcoin::{
@@ -18,12 +18,13 @@ use miniscript::{descriptor::DescriptorSecretKey, DescriptorPublicKey};
 
 use super::{payment_link::PaymentLink, transactions::Pagination, utils::sort_and_paginate_txs};
 use crate::{
+    account_trait::AccessWallet,
     address::AddressDetails,
     bdk_wallet_ext::BdkWalletExt,
     blockchain_client::BlockchainClient,
     error::Error,
     psbt::Psbt,
-    storage::{WalletConnectorFactory, WalletPersisterConnector},
+    storage::WalletStorage,
     transactions::{ToTransactionDetails, TransactionDetails},
     utils::SortOrder,
 };
@@ -52,11 +53,24 @@ const EXTERNAL_KEYCHAIN: KeychainKind = KeychainKind::External;
 /// Wallet generated from mnemonic, derived into an Account that instantiates a
 /// BDK Wallet.
 #[derive(Debug, Clone)]
-pub struct Account<C: WalletPersisterConnector<P>, P: WalletPersister> {
+pub struct Account {
     derivation_path: DerivationPath,
-    wallet: Arc<RwLock<PersistedWallet<P>>>,
-    persister_connector: C,
+    wallet: Arc<RwLock<PersistedWallet<WalletStorage>>>,
+    persister: Arc<RwLock<WalletStorage>>,
 }
+
+async_trait_impl! {
+impl AccessWallet for Account {
+    /// Returns mutable lock a reference to account's BdkWallet struct
+    async fn get_mutable_wallet(&self) -> RwLockWriteGuard<PersistedWallet<WalletStorage>> {
+        self.wallet.write().await
+    }
+
+    /// Returns a readable lock to account's BdkWallet struct
+    async fn get_wallet(&self) -> RwLockReadGuard<PersistedWallet<WalletStorage>> {
+        self.wallet.read().await
+    }
+}}
 
 type ReturnedDescriptor = (
     miniscript::Descriptor<DescriptorPublicKey>,
@@ -94,17 +108,13 @@ fn build_account_descriptors(
     Ok((external, internal))
 }
 
-impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
+impl Account {
     fn build_wallet_with_descriptors(
         external_descriptor: ReturnedDescriptor,
         internal_descriptor: ReturnedDescriptor,
         network: Network,
-        persister: &mut P,
-    ) -> Result<PersistedWallet<P>, Error>
-    where
-        C: WalletPersisterConnector<P>,
-        P: WalletPersister,
-    {
+        persister: &mut WalletStorage,
+    ) -> Result<PersistedWallet<WalletStorage>, Error> {
         let genesis_block_hash = genesis_block(Params::from(&network.into())).block_hash();
 
         let wallet_opt = BdkWallet::load()
@@ -134,8 +144,8 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
         account_xprv: Xpriv,
         network: Network,
         script_type: ScriptType,
-        persister: &mut P,
-    ) -> Result<PersistedWallet<P>, Error> {
+        persister: &mut WalletStorage,
+    ) -> Result<PersistedWallet<WalletStorage>, Error> {
         let (external_descriptor, internal_descriptor) = build_account_descriptors(account_xprv, script_type)?;
 
         let wallet = Self::build_wallet_with_descriptors(
@@ -153,16 +163,6 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
         Self::build_wallet_with_descriptors(external_descriptor, internal_descriptor, network, persister)
     }
 
-    /// Returns a readable lock to account's BdkWallet struct
-    pub async fn get_wallet(&self) -> RwLockReadGuard<PersistedWallet<P>> {
-        self.wallet.read().await
-    }
-
-    /// Returns mutable lock a reference to account's BdkWallet struct
-    pub async fn get_mutable_wallet(&self) -> RwLockWriteGuard<PersistedWallet<P>> {
-        self.wallet.write().await
-    }
-
     /// From a master private key, returns a bitcoin account (as defined in https://bips.dev/44/)
     ///
     /// # Arguments
@@ -174,50 +174,44 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
     ///
     /// ```rust
     /// # use std::str::FromStr;
+    /// # use std::sync::Arc;
     /// # use bdk_wallet::bitcoin::{NetworkKind, bip32::{DerivationPath, Xpriv}};
     /// #
     /// # use andromeda_bitcoin::account::{Account};
     /// # use andromeda_bitcoin::mnemonic::Mnemonic;
     /// # use andromeda_bitcoin::storage::MemoryPersisted;
+    /// # use andromeda_bitcoin::storage::WalletStorage;
     /// # use andromeda_common::{Network, ScriptType};
     /// # tokio_test::block_on(async {
     /// #
     /// let mnemonic = Mnemonic::from_string(String::from("desk prevent enhance husband hungry idle member vessel room moment simple behave")).unwrap();
     /// let mprv = Xpriv::new_master(NetworkKind::Test, &mnemonic.inner().to_seed("")).unwrap();
-    /// let account = Account::new(mprv, Network::Testnet, ScriptType::NativeSegwit, DerivationPath::from_str("m/86'/1'/0'").unwrap(), MemoryPersisted);
+    /// let account = Account::new(mprv, Network::Testnet, ScriptType::NativeSegwit, DerivationPath::from_str("m/86'/1'/0'").unwrap(), WalletStorage(Arc::new(MemoryPersisted {})));
     /// # })
     /// ```
-    pub fn new<F>(
+    pub fn new(
         master_secret_key: Xpriv,
         network: Network,
         script_type: ScriptType,
         derivation_path: DerivationPath,
-        factory: F,
-    ) -> Result<Self, Error>
-    where
-        F: WalletConnectorFactory<C, P>,
-    {
+        mut persister: WalletStorage,
+    ) -> Result<Self, Error> {
         let secp = Secp256k1::new();
-
         let account_xprv = master_secret_key.derive_priv(&secp, &derivation_path)?;
 
-        let store_key = format!("{}_{}", master_secret_key.fingerprint(&secp), derivation_path);
-
-        let connector = factory.build(store_key);
-        let mut persister = connector.connect();
+        let wallet = Arc::new(RwLock::new(Self::build_wallet(
+            account_xprv,
+            network,
+            script_type,
+            &mut persister,
+        )?));
 
         Ok(Self {
             derivation_path,
-            persister_connector: connector.clone(),
-            wallet: Arc::new(RwLock::new(Self::build_wallet(
-                account_xprv,
-                network,
-                script_type,
-                &mut persister,
-            )?)),
+            persister: Arc::new(RwLock::new(persister)),
+            wallet,
         })
     }
-
     /// Returns cloned derivation path
     pub fn get_derivation_path(&self) -> DerivationPath {
         self.derivation_path.clone()
@@ -286,7 +280,6 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
             .get_wallet()
             .await
             .list_output()
-            .into_iter()
             .filter(|output| output.keychain == keychain)
             .map(|output| output.derivation_index)
             .reduce(|a, b| a.max(b));
@@ -482,7 +475,7 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
         Ok(None)
     }
 
-    /// Returns a paginated list of addresses.
+    /// Returns a paginated list of addresses for a given keychain.
     ///
     /// # Notes
     ///
@@ -500,10 +493,11 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
         let (skip, take) = (pagination.skip as u32, pagination.take as u32);
         let spks_range = skip..(skip + take - 1);
 
-        // We need to reveal addresses to be able to sync them
-        let mut wallet_lock = self.get_mutable_wallet().await;
-        let _ = wallet_lock.reveal_addresses_to(keychain, spks_range.end);
-        drop(wallet_lock);
+        {
+            let mut wallet_lock = self.get_mutable_wallet().await;
+            let _ = wallet_lock.reveal_addresses_to(keychain, spks_range.end);
+            // No persist needed here as we are just revealing indexes in memory
+        }
 
         let update = {
             let wallet_lock = self.get_wallet().await;
@@ -532,7 +526,6 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
         }
 
         let wallet_lock = self.get_wallet().await;
-
         // Find tx data from spk
         let mut address_details = Vec::new();
         for spk_index in spks_range {
@@ -564,7 +557,7 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
         Ok(address_details)
     }
 
-    /// Given a txid, returns a complete transaction    
+    /// Given a txid, returns a complete transaction details.
     pub async fn get_transaction(&self, txid: String) -> Result<TransactionDetails, Error> {
         let txid = Txid::from_str(&txid)?;
 
@@ -577,55 +570,52 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> Account<C, P> {
         tx.to_transaction_details((&wallet_lock, self.get_derivation_path()))
     }
 
-    /// Given a mutable reference to a PSBT, and sign options, tries to sign
-    /// inputs elligible
+    /// Attempts to sign all inputs of the given PSBT using the account's keys.
     pub async fn sign(&self, psbt: &mut BdkPsbt, sign_options: Option<SignOptions>) -> Result<(), Error> {
         let sign_options = sign_options.unwrap_or_default();
         self.get_wallet().await.sign(psbt, sign_options)?;
-
         Ok(())
     }
 
-    /// Returns whether or not the account's wallet has already been synced at
-    /// least once
+    /// Returns true if the wallet has been synced at least once.
     pub async fn has_sync_data(&self) -> bool {
         let wallet_lock = self.get_wallet().await;
         wallet_lock.latest_checkpoint().hash() != genesis_block(wallet_lock.network()).block_hash()
     }
 
     pub async fn bump_transactions_fees(&self, txid: String, fees: u64) -> Result<Psbt, Error> {
-        let mut wallet_lock: RwLockWriteGuard<'_, PersistedWallet<P>> = self.get_mutable_wallet().await;
+        let mut wallet_lock = self.get_mutable_wallet().await;
         let mut fee_bump_tx = wallet_lock.build_fee_bump(Txid::from_str(&txid)?)?;
 
         fee_bump_tx.fee_absolute(Amount::from_sat(fees));
 
         let psbt = fee_bump_tx.finish()?;
-
         Ok(psbt.into())
     }
 
+    /// Applies an update to the wallet and persists it.
     pub async fn apply_update(&self, update: impl Into<Update>) -> Result<(), Error> {
         let mut wallet_lock = self.get_mutable_wallet().await;
         wallet_lock.apply_update_at(update, now().as_secs())?;
 
         self.persist(wallet_lock).await?;
-
         Ok(())
     }
 
-    async fn persist(&self, mut wallet_lock: RwLockWriteGuard<'_, PersistedWallet<P>>) -> Result<(), Error> {
-        let mut persister = self.persister_connector.connect();
-
-        wallet_lock.persist(&mut persister).map_err(|_e| Error::PersistError)?;
-        drop(wallet_lock);
-
+    /// Persist the current wallet state.
+    async fn persist(
+        &self,
+        mut wallet_lock: RwLockWriteGuard<'_, PersistedWallet<WalletStorage>>,
+    ) -> Result<(), Error> {
+        let mut persister = self.persister.write().await;
+        wallet_lock.persist(&mut *persister).map_err(|_e| Error::PersistError)?;
         Ok(())
     }
 
-    pub fn clear_store(&self) -> Result<(), Error> {
-        let mut persister = self.persister_connector.connect();
-
-        P::persist(&mut persister, &ChangeSet::default()).map_err(|_e| Error::PersistError)?;
+    /// Clears all persisted data from the store.
+    pub async fn clear_store(&self) -> Result<(), Error> {
+        let mut persister = self.persister.write().await;
+        WalletStorage::persist(&mut *persister, &ChangeSet::default()).map_err(|_e| Error::PersistError)?;
         Ok(())
     }
 }
@@ -640,10 +630,7 @@ mod tests {
     };
     use andromeda_common::Network;
     use bdk_wallet::{
-        bitcoin::{
-            bip32::{DerivationPath, Xpriv},
-            Address, NetworkKind,
-        },
+        bitcoin::{Address, NetworkKind},
         serde_json,
     };
     use wiremock::{
@@ -653,117 +640,68 @@ mod tests {
 
     use super::{Account, ScriptType};
     use crate::{
-        blockchain_client::BlockchainClient, mnemonic::Mnemonic, read_mock_file, storage::MemoryPersisted,
-        transactions::Pagination, utils::SortOrder,
+        account_trait::AccessWallet, blockchain_client::BlockchainClient, read_mock_file,
+        tests::utils::tests::set_test_wallet_account, transactions::Pagination, utils::SortOrder,
     };
 
-    fn set_test_account(script_type: ScriptType, derivation_path: &str) -> Account<MemoryPersisted, MemoryPersisted> {
-        let network = NetworkKind::Test;
-        let mnemonic = Mnemonic::from_string("category law logic swear involve banner pink room diesel fragile sunset remove whale lounge captain code hobby lesson material current moment funny vast fade".to_string()).unwrap();
-        let master_secret_key = Xpriv::new_master(network, &mnemonic.inner().to_seed("")).unwrap();
-
-        let derivation_path = DerivationPath::from_str(derivation_path).unwrap();
-
-        Account::new(
-            master_secret_key,
-            Network::Testnet,
+    fn set_test_account(script_type: ScriptType, derivation_path: &str) -> Account {
+        set_test_wallet_account(
+            "category law logic swear involve banner pink room diesel fragile sunset remove whale lounge captain code hobby lesson material current moment funny vast fade",
             script_type,
             derivation_path,
-            MemoryPersisted {},
+            None,
+            None,
+            Some(Network::Testnet),
+            Some(NetworkKind::Test),
         )
-        .unwrap()
     }
 
-    fn set_test_account_regtest(
-        script_type: ScriptType,
-        derivation_path: &str,
-    ) -> Account<MemoryPersisted, MemoryPersisted> {
-        let network = NetworkKind::Test;
-        let mnemonic = Mnemonic::from_string(
-            "onion ancient develop team busy purchase salmon robust danger wheat rich empower".to_string(),
-        )
-        .unwrap();
-        let master_secret_key = Xpriv::new_master(network, &mnemonic.inner().to_seed("")).unwrap();
-
-        let derivation_path = DerivationPath::from_str(derivation_path).unwrap();
-
-        Account::new(
-            master_secret_key,
-            Network::Regtest,
+    fn set_test_account_regtest(script_type: ScriptType, derivation_path: &str) -> Account {
+        set_test_wallet_account(
+            "onion ancient develop team busy purchase salmon robust danger wheat rich empower",
             script_type,
             derivation_path,
-            MemoryPersisted {},
+            None,
+            None,
+            Some(Network::Regtest),
+            Some(NetworkKind::Test),
         )
-        .unwrap()
     }
 
-    fn set_test_account_regtest2(
-        script_type: ScriptType,
-        derivation_path: &str,
-    ) -> Account<MemoryPersisted, MemoryPersisted> {
-        let network = NetworkKind::Test;
-        let mnemonic = Mnemonic::from_string(
-            "remove over athlete patient priority unable memory axis sunset home balance sausage".to_string(),
-        )
-        .unwrap();
-        let master_secret_key = Xpriv::new_master(network, &mnemonic.inner().to_seed("")).unwrap();
-
-        let derivation_path = DerivationPath::from_str(derivation_path).unwrap();
-
-        Account::new(
-            master_secret_key,
-            Network::Regtest,
+    fn set_test_account_regtest2(script_type: ScriptType, derivation_path: &str) -> Account {
+        set_test_wallet_account(
+            "remove over athlete patient priority unable memory axis sunset home balance sausage",
             script_type,
             derivation_path,
-            MemoryPersisted {},
+            None,
+            None,
+            Some(Network::Regtest),
+            Some(NetworkKind::Test),
         )
-        .unwrap()
     }
 
-    fn set_test_account_regtest3(
-        script_type: ScriptType,
-        derivation_path: &str,
-    ) -> Account<MemoryPersisted, MemoryPersisted> {
-        let network = NetworkKind::Test;
-        let mnemonic = Mnemonic::from_string(
-            "submit exhibit banner enter situate exact north fog era family south style".to_string(),
-        )
-        .unwrap();
-        let master_secret_key = Xpriv::new_master(network, &mnemonic.inner().to_seed("")).unwrap();
-
-        let derivation_path = DerivationPath::from_str(derivation_path).unwrap();
-
-        Account::new(
-            master_secret_key,
-            Network::Regtest,
+    fn set_test_account_regtest3(script_type: ScriptType, derivation_path: &str) -> Account {
+        set_test_wallet_account(
+            "submit exhibit banner enter situate exact north fog era family south style",
             script_type,
             derivation_path,
-            MemoryPersisted {},
+            None,
+            None,
+            Some(Network::Regtest),
+            Some(NetworkKind::Test),
         )
-        .unwrap()
     }
 
-    fn set_test_account_for_mainnet(
-        script_type: ScriptType,
-        derivation_path: &str,
-    ) -> Account<MemoryPersisted, MemoryPersisted> {
-        let network = NetworkKind::Main;
-        let mnemonic = Mnemonic::from_string(
-            "sense giggle bulb easily canal since toilet diagram deer able inflict bacon".to_string(),
-        )
-        .unwrap();
-        let master_secret_key = Xpriv::new_master(network, &mnemonic.inner().to_seed("")).unwrap();
-
-        let derivation_path = DerivationPath::from_str(derivation_path).unwrap();
-
-        Account::new(
-            master_secret_key,
-            Network::Bitcoin,
+    fn set_test_account_for_mainnet(script_type: ScriptType, derivation_path: &str) -> Account {
+        set_test_wallet_account(
+            "sense giggle bulb easily canal since toilet diagram deer able inflict bacon",
             script_type,
             derivation_path,
-            MemoryPersisted {},
+            None,
+            None,
+            Some(Network::Bitcoin),
+            Some(NetworkKind::Main),
         )
-        .unwrap()
     }
 
     async fn get_mock_server_for_mainnet() -> MockServer {

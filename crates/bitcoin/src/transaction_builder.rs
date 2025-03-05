@@ -8,18 +8,13 @@ use bdk_wallet::{
     },
     error::CreateTxError,
     tx_builder::{ChangeSpendPolicy, TxBuilder as BdkTxBuilder},
-    WalletPersister,
 };
 use bitcoin::key::rand::RngCore;
 use hashbrown::HashSet;
 use uuid::Uuid;
 
 use super::account::Account;
-use crate::{
-    error::Error,
-    psbt::Psbt,
-    storage::{MemoryPersisted, WalletPersisterConnector},
-};
+use crate::{account_trait::AccessWallet, error::Error, psbt::Psbt};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum CoinSelection {
@@ -74,9 +69,9 @@ pub struct TmpRecipient(pub String, pub String, pub Amount);
 /// raw transaction building and bitcoin URI processing
 /// (bitcoin:tb1....?amount=x&label=y)
 #[derive(Debug)]
-pub struct TxBuilder<C: WalletPersisterConnector<P>, P: WalletPersister = MemoryPersisted> {
+pub struct TxBuilder {
     /// The account associated with the transaction, if any.
-    account: Option<Arc<Account<C, P>>>,
+    account: Option<Arc<Account>>,
     // A random number set on each tx builder instance to randomize coin selection on BNB fallback algorithm, while
     // keeping deterministic inside the same txbuilder
     random_number: u32,
@@ -108,7 +103,7 @@ pub struct TxBuilder<C: WalletPersisterConnector<P>, P: WalletPersister = Memory
     pub locktime: Option<LockTime>,
 }
 
-impl<C: WalletPersisterConnector<P>, P: WalletPersister> Clone for TxBuilder<C, P> {
+impl Clone for TxBuilder {
     fn clone(&self) -> Self {
         TxBuilder {
             account: self.account.clone(),
@@ -168,13 +163,13 @@ fn correct_recipients_amounts(recipients: Vec<TmpRecipient>, amount_to_remove: A
     acc_result.recipients
 }
 
-impl<C: WalletPersisterConnector<P>, P: WalletPersister> Default for TxBuilder<C, P> {
+impl Default for TxBuilder {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<C: WalletPersisterConnector<P>, P: WalletPersister> TxBuilder<C, P> {
+impl TxBuilder {
     pub fn new() -> Self {
         TxBuilder {
             account: None,
@@ -200,10 +195,7 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> TxBuilder<C, P> {
     /// # ...
     /// let updated = tx_builder.set_account(account);
     /// ```
-    pub fn set_account(&self, account: Arc<Account<C, P>>) -> Self
-    where
-        C: WalletPersisterConnector<P>,
-    {
+    pub fn set_account(&self, account: Arc<Account>) -> Self {
         TxBuilder {
             account: Some(account),
             ..self.clone()
@@ -520,21 +512,15 @@ impl<C: WalletPersisterConnector<P>, P: WalletPersister> TxBuilder<C, P> {
 
 #[cfg(test)]
 mod tests {
-    use super::Account;
     use andromeda_common::ScriptType;
 
     use super::{super::transaction_builder::CoinSelection, correct_recipients_amounts, TmpRecipient, TxBuilder};
 
-    use std::{str::FromStr, sync::Arc};
+    use std::sync::Arc;
 
     use andromeda_api::{tests::utils::setup_test_connection, BASE_WALLET_API_V1};
-    use andromeda_common::Network;
     use bdk_wallet::{
-        bitcoin::{
-            absolute::LockTime,
-            bip32::{DerivationPath, Xpriv},
-            Amount, FeeRate, NetworkKind,
-        },
+        bitcoin::{absolute::LockTime, Amount, FeeRate},
         tx_builder::ChangeSpendPolicy,
     };
     use wiremock::{
@@ -542,7 +528,7 @@ mod tests {
         Mock, MockServer, ResponseTemplate,
     };
 
-    use crate::{blockchain_client::BlockchainClient, mnemonic::Mnemonic, read_mock_file, storage::MemoryPersisted};
+    use crate::{blockchain_client::BlockchainClient, read_mock_file, tests::utils::tests::set_test_wallet_account};
 
     #[test]
     fn should_remove_correct_amount() {
@@ -596,7 +582,7 @@ mod tests {
 
     #[test]
     fn should_set_enable_rbf() {
-        let tx_builder = TxBuilder::<MemoryPersisted>::new();
+        let tx_builder = TxBuilder::new();
 
         let updated = tx_builder.enable_rbf();
         assert!(updated.rbf_enabled);
@@ -607,7 +593,7 @@ mod tests {
 
     #[test]
     fn should_set_locktime() {
-        let tx_builder = TxBuilder::<MemoryPersisted>::new();
+        let tx_builder = TxBuilder::new();
 
         let updated = tx_builder.add_locktime(LockTime::from_consensus(788373));
         assert_eq!(updated.locktime, Some(LockTime::from_consensus(788373)));
@@ -618,7 +604,7 @@ mod tests {
 
     #[test]
     fn should_set_coin_selection() {
-        let tx_builder = TxBuilder::<MemoryPersisted>::new();
+        let tx_builder = TxBuilder::new();
 
         let updated = tx_builder.set_coin_selection(CoinSelection::LargestFirst);
         assert_eq!(updated.coin_selection, CoinSelection::LargestFirst);
@@ -629,7 +615,7 @@ mod tests {
 
     #[test]
     fn should_set_change_policy() {
-        let tx_builder = TxBuilder::<MemoryPersisted>::new();
+        let tx_builder = TxBuilder::new();
 
         let updated = tx_builder.set_change_policy(ChangeSpendPolicy::ChangeAllowed);
         assert_eq!(updated.change_policy, ChangeSpendPolicy::ChangeAllowed);
@@ -640,7 +626,7 @@ mod tests {
 
     #[test]
     fn should_change_fee_rate() {
-        let tx_builder = TxBuilder::<MemoryPersisted>::new();
+        let tx_builder = TxBuilder::new();
 
         let updated = tx_builder.set_fee_rate(15);
         assert_eq!(updated.fee_rate, FeeRate::from_sat_per_vb(15));
@@ -648,7 +634,7 @@ mod tests {
 
     #[test]
     fn should_add_recipient() {
-        let tx_builder = TxBuilder::<MemoryPersisted>::new();
+        let tx_builder = TxBuilder::new();
 
         let updated = tx_builder.add_recipient(None);
         assert_eq!(updated.recipients.len(), 2);
@@ -656,7 +642,7 @@ mod tests {
 
     #[test]
     fn test_remove_recipient() {
-        let mut tx_builder = TxBuilder::<MemoryPersisted>::new();
+        let mut tx_builder = TxBuilder::new();
 
         tx_builder = tx_builder.add_recipient(None);
         assert_eq!(tx_builder.recipients.len(), 2);
@@ -667,7 +653,7 @@ mod tests {
 
     #[tokio::test]
     async fn should_update_recipient() {
-        let tx_builder = TxBuilder::<MemoryPersisted>::new();
+        let tx_builder = TxBuilder::new();
 
         let updated = tx_builder.update_recipient(0, (Some("tb1...xyz".to_string()), Some(15837)));
 
@@ -678,40 +664,20 @@ mod tests {
         assert_eq!(updated.recipients[0].2, Amount::from_sat(668932));
     }
 
-    fn set_test_account_regtest(
-        script_type: ScriptType,
-        derivation_path: &str,
-    ) -> Account<MemoryPersisted, MemoryPersisted> {
-        let network = NetworkKind::Test;
-        let mnemonic = Mnemonic::from_string(
-            "onion ancient develop team busy purchase salmon robust danger wheat rich empower".to_string(),
-        )
-        .unwrap();
-        let master_secret_key = Xpriv::new_master(network, &mnemonic.inner().to_seed("")).unwrap();
-
-        let derivation_path = DerivationPath::from_str(derivation_path).unwrap();
-
-        Account::new(
-            master_secret_key,
-            Network::Regtest,
-            script_type,
-            derivation_path,
-            MemoryPersisted {},
-        )
-        .unwrap()
-    }
-
     #[tokio::test]
     async fn test_build_transaction_flow() {
-        let mut tx_builder = TxBuilder::<MemoryPersisted>::new();
-
-        // create account and do full sync, balance will be 8781
-        let account = set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'");
-
+        let mut tx_builder = TxBuilder::new();
+        let account = set_test_wallet_account(
+            "onion ancient develop team busy purchase salmon robust danger wheat rich empower",
+            ScriptType::NativeSegwit,
+            "m/84'/1'/0'",
+            None,
+            None,
+            None,
+            None,
+        );
         let mock_server = MockServer::start().await;
-
         let req_path_blocks: String = format!("{}/blocks", BASE_WALLET_API_V1);
-
         let response_contents = read_mock_file!("get_blocks_body");
         let response = ResponseTemplate::new(200).set_body_string(response_contents);
         Mock::given(method("GET"))
@@ -719,9 +685,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-
         let req_path: String = format!("{}/addresses/scripthashes/transactions", BASE_WALLET_API_V1);
-
         let response_contents1 = read_mock_file!("get_scripthashes_transactions_body_1");
         let response1 = ResponseTemplate::new(200).set_body_string(response_contents1);
         Mock::given(method("POST"))
@@ -849,9 +813,9 @@ mod tests {
 
         // test rbf enable/disable
         tx_builder = tx_builder.disable_rbf();
-        assert_eq!(tx_builder.rbf_enabled, false);
+        assert!(!tx_builder.rbf_enabled);
         tx_builder = tx_builder.enable_rbf();
-        assert_eq!(tx_builder.rbf_enabled, true);
+        assert!(tx_builder.rbf_enabled);
 
         // test set/unset locktime
         let seconds: u32 = 1653195600; // May 22nd, 5am UTC.

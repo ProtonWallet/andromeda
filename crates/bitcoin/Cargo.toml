@@ -26,6 +26,7 @@ thiserror = { workspace = true }
 anyhow = { workspace = true }
 
 async-std = { workspace = true }
+async-trait = { workspace = true }
 
 serde = { workspace = true }
 
@@ -45,4 +46,5 @@ bech32 = "0.11.0"
 [features]
 sqlite = ["bdk_wallet/rusqlite"]
 default = []
+file_store = []
 test = ["andromeda-api/allow-dangerous-env"]

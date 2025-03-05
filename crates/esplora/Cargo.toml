@@ -5,11 +5,10 @@ description = "Bitcoin Esplora API client library for Proton, based on BDK's esp
 edition = "2021"
 
 [dependencies]
-thiserror = { workspace = true }
-
 andromeda-api = { version = "0.1.0", path = "../api" }
 
-async-trait = { version = "0.1.66" }
+thiserror = { workspace = true }
+async-trait = { workspace = true }
 futures = { version = "0.3.26" }
 
 serde = { workspace = true }

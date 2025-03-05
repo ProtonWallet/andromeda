@@ -79,4 +79,11 @@ pub enum Error {
     MessageSignatureCryto(#[from] andromeda_crypto::error::Error),
     #[error("Unknown purpose in derivation path: {0}")]
     UnknownPurpose(u32),
+    #[error("Script type is invalid")]
+    InvalidScriptType,
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(feature = "sqlite")]
+    #[error("Rusqlite persist error occurred: \n\t{0}")]
+    Rusqlite(#[from] bdk_chain::rusqlite::Error),
 }

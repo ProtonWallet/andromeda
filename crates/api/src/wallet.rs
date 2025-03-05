@@ -2829,11 +2829,7 @@ mod tests {
         let mock_server = MockServer::start().await;
         let req_path = format!(
             "{}/wallets/{}/accounts/{}/transactions/{}/{}",
-            BASE_WALLET_API_V1,
-            wallet_id,
-            wallet_account_id,
-            wallet_transaction_id,
-            flag.to_string()
+            BASE_WALLET_API_V1, wallet_id, wallet_account_id, wallet_transaction_id, flag
         );
         let response_body = serde_json::json!({
             "Code": 1000,
@@ -2903,11 +2899,7 @@ mod tests {
         let mock_server = MockServer::start().await;
         let req_path = format!(
             "{}/wallets/{}/accounts/{}/transactions/{}/{}",
-            BASE_WALLET_API_V1,
-            wallet_id,
-            wallet_account_id,
-            wallet_transaction_id,
-            flag.to_string()
+            BASE_WALLET_API_V1, wallet_id, wallet_account_id, wallet_transaction_id, flag
         );
         let response_body = serde_json::json!({
             "Code": 1000,
@@ -2999,7 +2991,7 @@ mod tests {
         match result {
             Ok(wallet_settings) => {
                 assert_eq!(wallet_settings.WalletID, wallet_id);
-                assert!(wallet_settings.ShowWalletRecovery.unwrap() == false);
+                assert!(!wallet_settings.ShowWalletRecovery.unwrap());
             }
             Err(e) => panic!("Got Err. {:?}", e),
         }

@@ -11,6 +11,7 @@ pub const SATOSHI: u64 = 1;
 pub const BITCOIN: u64 = 100_000_000 * SATOSHI;
 pub const MILLI_BITCOIN: u64 = BITCOIN / 1000;
 
+pub mod async_trait;
 pub mod error;
 pub mod utils;
 
