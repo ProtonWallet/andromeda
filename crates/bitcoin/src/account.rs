@@ -13,8 +13,8 @@ use bdk_wallet::{
     descriptor, AddressInfo, Balance as BdkBalance, ChangeSet, KeychainKind, LocalOutput as LocalUtxo, PersistedWallet,
     SignOptions, Update, Wallet as BdkWallet, WalletPersister,
 };
-use bitcoin::{params::Params, Amount};
-use miniscript::{descriptor::DescriptorSecretKey, DescriptorPublicKey};
+use bitcoin::{bip32::Xpub, params::Params, Amount};
+use miniscript::{descriptor::DescriptorSecretKey, DescriptorPublicKey, ForEachKey};
 
 use super::{payment_link::PaymentLink, transactions::Pagination, utils::sort_and_paginate_txs};
 use crate::{
@@ -618,6 +618,21 @@ impl Account {
         WalletStorage::persist(&mut *persister, &ChangeSet::default()).map_err(|_e| Error::PersistError)?;
         Ok(())
     }
+
+    pub async fn get_xpub(&self) -> Option<Xpub> {
+        let wallet_lock = self.get_wallet().await;
+        let descriptor = wallet_lock.public_descriptor(KeychainKind::External);
+        let mut founded_xpub: Option<Xpub> = None;
+        descriptor.for_each_key(|key| {
+            if let DescriptorPublicKey::XPub(xpub) = key {
+                founded_xpub = Some(xpub.xkey);
+                return true;
+            }
+            return false;
+        });
+
+        founded_xpub
+    }
 }
 
 #[cfg(test)]
@@ -643,6 +658,18 @@ mod tests {
         account_trait::AccessWallet, blockchain_client::BlockchainClient, read_mock_file,
         tests::utils::tests::set_test_wallet_account, transactions::Pagination, utils::SortOrder,
     };
+
+    fn set_mainnet_test_account(script_type: ScriptType, derivation_path: &str) -> Account {
+        set_test_wallet_account(
+            "category law logic swear involve banner pink room diesel fragile sunset remove whale lounge captain code hobby lesson material current moment funny vast fade",
+            script_type,
+            derivation_path,
+            None,
+            None,
+            Some(Network::Bitcoin),
+            Some(NetworkKind::Main),
+        )
+    }
 
     fn set_test_account(script_type: ScriptType, derivation_path: &str) -> Account {
         set_test_wallet_account(
@@ -1626,6 +1653,73 @@ mod tests {
                         .assume_checked()
                 )
                 .await
+        );
+    }
+
+    #[tokio::test]
+    async fn get_xpub() {
+        let account = set_mainnet_test_account(ScriptType::NativeSegwit, "m/84'/0'/0'");
+        let xpub = account.get_xpub().await.unwrap();
+
+        assert_eq!(
+            xpub.to_string(),
+            "xpub6DBNnY1ewRmP4HCmfAfxod8k8V4dNXN6FcnkorJa26Pu6BpEiJh15aKGFpSLayyBXZUzw9ERcFf5z7kib4ekGW5DvGuLoE5ZExxxQqppYCf".to_string()
+        );
+
+        let account = set_mainnet_test_account(ScriptType::NativeSegwit, "m/84'/0'/1'");
+        let xpub = account.get_xpub().await.unwrap();
+
+        assert_eq!(
+            xpub.to_string(),
+            "xpub6DBNnY1ewRmP77XRB9ZTrkM2fCV2ZHANppqpCLYGtkC8KWmQHGmNWXAZDhDybscBMAzh1gmTTDYymQKAJ7AA11AKsEAi42uADzTWV6eSmfP".to_string()
+        );
+
+        let account = set_mainnet_test_account(ScriptType::Legacy, "m/44'/0'/0'");
+        let xpub = account.get_xpub().await.unwrap();
+
+        assert_eq!(
+            xpub.to_string(),
+            "xpub6CWuhJFaWxg1xsrgeLgUrR4BpGEU61mFEh3UsiEsVkFXf9SV5NgGx7FdwcSibzzLXD8s7R2EMt5hZjAkr89r9UiNAL51wfZEvU7HvRBnfwW".to_string()
+        );
+
+        let account = set_mainnet_test_account(ScriptType::Legacy, "m/44'/0'/1'");
+        let xpub = account.get_xpub().await.unwrap();
+
+        assert_eq!(
+            xpub.to_string(),
+            "xpub6CWuhJFaWxg1ykKqVhQHvqXbHL6gvpQcLbgqgz3KjVPmFqS9QDfgxDb7S92p7FBDRxEenBLphbwB7JzKNzrUgJGbmjwPg3CuGrRPmf7RHsx".to_string()
+        );
+
+        let account = set_mainnet_test_account(ScriptType::NestedSegwit, "m/49'/0'/0'");
+        let xpub = account.get_xpub().await.unwrap();
+
+        assert_eq!(
+            xpub.to_string(),
+            "xpub6CdBQHMbC6Ecyr6fye91nmSLicyDdZp3ydwWe6bRRNFAzp1Lqqn7HVXQRJnTKwSdhbvgKgy3BXt9c8XuQLega8Bv9LaN4V7zcoNXm2xjEJo".to_string()
+        );
+
+        let account = set_mainnet_test_account(ScriptType::NestedSegwit, "m/49'/0'/1'");
+        let xpub = account.get_xpub().await.unwrap();
+
+        assert_eq!(
+            xpub.to_string(),
+            "xpub6CdBQHMbC6Ed21QmcNmmGJLyy65bJH82ssDbuGPGgjc2VhSot28159k4R576A821onVCpAx8FnJ1TbhjdRNGnbndf4pvPGa5LhLtAMsvWZv".to_string()
+        );
+
+        let account = set_mainnet_test_account(ScriptType::Taproot, "m/86'/0'/0'");
+        let xpub = account.get_xpub().await.unwrap();
+
+        assert_eq!(
+            xpub.to_string(),
+            "xpub6CPQTtCJ3z76DupvHb2PjfgNcF7jAZMoyeYJADSFuw3ZjSBJpo3KojEYvdr2dR1jyrtLuKzN2Z5Xwyaftov4M3cpVWLQySDY4M6mXoEkwSA".to_string()
+        );
+
+        let account = set_mainnet_test_account(ScriptType::Taproot, "m/86'/0'/1'");
+        let xpub = account.get_xpub().await.unwrap();
+
+        assert_eq!(
+            xpub.to_string(),
+            "xpub6CPQTtCJ3z76EMZMQmLpyYf5qhkC2zDm6YRjKbX8VwZ3cknmET7VVXivHeMigEqSxZeAnr9d9j3VhvXSEb8Zuy9PtGje2TFM3CdXH1UxRXA".to_string()
         );
     }
 }
