@@ -9,7 +9,7 @@ use bdk_wallet::{
     error::CreateTxError,
     tx_builder::{ChangeSpendPolicy, TxBuilder as BdkTxBuilder},
 };
-use bitcoin::key::rand::RngCore;
+use bitcoin::key::rand::{Error as RandCoreError, RngCore};
 use hashbrown::HashSet;
 use uuid::Uuid;
 
@@ -44,7 +44,7 @@ impl RngCore for FixedRng {
         }
     }
 
-    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand_core::Error> {
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), RandCoreError> {
         self.fill_bytes(dest);
         Ok(())
     }
