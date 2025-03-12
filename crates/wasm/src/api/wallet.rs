@@ -530,6 +530,21 @@ impl WasmWalletClient {
         Ok(())
     }
 
+    #[wasm_bindgen(js_name = "sendWalletAccountMetrics")]
+    pub async fn send_wallet_account_metrics(
+        &self,
+        wallet_id: String,
+        wallet_account_id: String,
+        has_positive_balance: bool,
+    ) -> Result<(), JsValue> {
+        self.0
+            .send_wallet_account_metrics(wallet_id, wallet_account_id, has_positive_balance)
+            .await
+            .map_err(|e| e.to_js_error())?;
+
+        Ok(())
+    }
+
     #[wasm_bindgen(js_name = "deleteWallet")]
     pub async fn delete_wallets(&self, wallet_id: String) -> Result<(), JsValue> {
         self.0.delete_wallet(wallet_id).await.map_err(|e| e.to_js_error())?;
