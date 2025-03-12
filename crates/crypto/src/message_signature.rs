@@ -123,7 +123,7 @@ mod tests {
     };
     use bitcoin::{
         hashes::Hash,
-        key::Keypair,
+        key::{rand::thread_rng, Keypair},
         secp256k1::{self, SecretKey},
         sign_message::signed_msg_hash,
         Address, Network,
@@ -215,7 +215,7 @@ mod tests {
     #[tokio::test]
     async fn test_message_signature_from_valid_slice() {
         let secp_ctx = secp256k1::Secp256k1::new();
-        let secret_key = SecretKey::new(&mut rand::thread_rng());
+        let secret_key = SecretKey::new(&mut thread_rng());
         let keypair = Keypair::from_secret_key(&secp_ctx, &secret_key);
         let msg = secp256k1::Message::from_digest(signed_msg_hash("Hello, Bitcoin!").to_byte_array());
         let signature = secp_ctx.sign_ecdsa_recoverable(&msg, &keypair.secret_key());

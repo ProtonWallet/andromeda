@@ -50,7 +50,7 @@ mod tests {
     use super::*;
     use bitcoin::hashes::sha256d;
     use bitcoin::key::Keypair;
-    use bitcoin::secp256k1::{Secp256k1, SecretKey};
+    use bitcoin::secp256k1::{rand::thread_rng, Secp256k1, SecretKey};
     use std::str::FromStr;
 
     #[test]
@@ -70,7 +70,7 @@ mod tests {
     #[test]
     fn test_sign_message() {
         let secp = Secp256k1::new();
-        let secret_key = SecretKey::new(&mut rand::thread_rng());
+        let secret_key = SecretKey::new(&mut thread_rng());
         let keypair = Keypair::from_secret_key(&secp, &secret_key);
         let message = BitcoinMessage::from_str("Test message").unwrap();
         let signature = message.sign(&secp, &keypair);
@@ -80,7 +80,7 @@ mod tests {
     #[test]
     fn test_invalid_signing() {
         let secp = Secp256k1::new();
-        let secret_key = SecretKey::new(&mut rand::thread_rng());
+        let secret_key = SecretKey::new(&mut thread_rng());
         let keypair = Keypair::from_secret_key(&secp, &secret_key);
         let invalid_message = BitcoinMessage::from_hash(sha256d::Hash::from_slice(&[0; 32]).unwrap());
         assert!(invalid_message.is_ok());

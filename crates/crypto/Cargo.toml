@@ -10,7 +10,6 @@ bitcoin = { workspace = true, features = ["base64"] }
 thiserror = { workspace = true }
 
 [dev-dependencies]
-rand = { version = "0.8.4", features = ["std"] }
 tokio = { workspace = true }
 tokio-test = { workspace = true }
 
