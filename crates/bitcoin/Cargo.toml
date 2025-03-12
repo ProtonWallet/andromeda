@@ -15,6 +15,7 @@ querystring = "1.1.0"
 futures = "0.3.30"
 hashbrown = "0.15.0"
 rand_core = "0.6.4"
+regex = "1.11.1"
 
 bitcoin = { workspace = true }
 miniscript = { version = "12.0.0", default-features = false }

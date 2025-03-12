@@ -81,6 +81,8 @@ pub enum Error {
     UnknownPurpose(u32),
     #[error("Script type is invalid")]
     InvalidScriptType,
+    #[error("Bitcoin signed message parser error occurred: \n\t{0}")]
+    BSMError(#[from] crate::bitcoin_signed_message::Error),
 
     #[cfg(not(target_arch = "wasm32"))]
     #[cfg(feature = "sqlite")]

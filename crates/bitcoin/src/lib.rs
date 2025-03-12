@@ -3,6 +3,7 @@ pub mod account_trait;
 pub mod address;
 pub mod bdk_wallet_ext;
 pub mod bdk_wallet_secp_ext;
+pub mod bitcoin_signed_message;
 pub mod blockchain_client;
 pub mod error;
 pub mod message_signer;
