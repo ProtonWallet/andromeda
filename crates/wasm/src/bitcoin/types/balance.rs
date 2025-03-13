@@ -15,6 +15,11 @@ pub struct WasmBalance {
     pub untrusted_pending: u64,
     /// Confirmed and immediately spendable balance
     pub confirmed: u64,
+    /// Get sum of trusted_pending and confirmed coins.
+    ///
+    /// This is the balance you can spend right now that shouldn't get cancelled via another party
+    /// double spending it.
+    pub trusted_spendable: u64,
 }
 
 impl From<Balance> for WasmBalance {
@@ -24,6 +29,7 @@ impl From<Balance> for WasmBalance {
             trusted_pending: val.trusted_pending.to_sat(),
             untrusted_pending: val.untrusted_pending.to_sat(),
             confirmed: val.confirmed.to_sat(),
+            trusted_spendable: val.trusted_spendable().to_sat(),
         }
     }
 }
