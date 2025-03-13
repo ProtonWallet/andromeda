@@ -619,19 +619,19 @@ impl Account {
         Ok(())
     }
 
-    pub async fn get_xpub(&self) -> Option<Xpub> {
+    pub async fn get_xpub(&self) -> Result<Xpub, Error> {
         let wallet_lock = self.get_wallet().await;
         let descriptor = wallet_lock.public_descriptor(KeychainKind::External);
-        let mut founded_xpub: Option<Xpub> = None;
+        let mut xpub: Option<Xpub> = None;
         descriptor.for_each_key(|key| {
-            if let DescriptorPublicKey::XPub(xpub) = key {
-                founded_xpub = Some(xpub.xkey);
+            if let DescriptorPublicKey::XPub(descriptor_xkey) = key {
+                xpub = Some(descriptor_xkey.xkey);
                 return true;
             }
-            return false;
+            false
         });
 
-        founded_xpub
+        xpub.ok_or(Error::ExtendedPublicKeyNotFound)
     }
 }
 

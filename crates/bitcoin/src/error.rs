@@ -83,6 +83,8 @@ pub enum Error {
     InvalidScriptType,
     #[error("Bitcoin signed message parser error occurred: \n\t{0}")]
     BSMError(#[from] crate::bitcoin_signed_message::Error),
+    #[error("Extended public key not found")]
+    ExtendedPublicKeyNotFound,
 
     #[cfg(not(target_arch = "wasm32"))]
     #[cfg(feature = "sqlite")]

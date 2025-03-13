@@ -1,12 +1,6 @@
 use std::sync::Arc;
 use wasm_bindgen::prelude::*;
 
-use andromeda_bitcoin::{
-    account::Account,
-    storage::{WalletPersisterFactory, WalletStorage},
-    Secp256k1,
-};
-
 use super::{
     blockchain_client::WasmBlockchainClient,
     psbt::WasmPsbt,
@@ -25,6 +19,12 @@ use super::{
 use crate::common::{
     error::ErrorExt,
     types::{WasmKeychainKind, WasmNetwork, WasmScriptType},
+};
+use andromeda_bitcoin::error::Error;
+use andromeda_bitcoin::{
+    account::Account,
+    storage::{WalletPersisterFactory, WalletStorage},
+    Secp256k1,
 };
 
 #[wasm_bindgen]
@@ -251,5 +251,12 @@ impl WasmAccount {
     pub async fn clear_store(&self) -> Result<(), js_sys::Error> {
         self.inner.clear_store().await.map_err(|e| e.to_js_error())?;
         Ok(())
+    }
+
+    #[wasm_bindgen(js_name = getXpub)]
+    pub async fn get_xpub(&self) -> Result<String, js_sys::Error> {
+        let xpub = self.inner.get_xpub().await.map_err(|e| e.to_js_error())?;
+
+        Ok(xpub.to_string())
     }
 }
