@@ -16,6 +16,8 @@ use event::EventClient;
 use exchange_rate::ExchangeRateClient;
 use invite::InviteClient;
 use log::info;
+#[cfg(not(target_arch = "wasm32"))]
+use muon::common::{ConstProxy, Endpoint, Scheme};
 pub use muon::{
     app::Product,
     client::{flow::LoginFlow, Auth, Tokens},
@@ -28,9 +30,10 @@ pub use muon::{
 };
 use muon::{
     client::flow::ForkFlowResult,
-    common::{ConstProxy, Endpoint, Host, Scheme},
+    common::Host,
     tls::{TlsCert, Verifier, VerifyRes},
 };
+
 use network::NetworkClient;
 use payment_gateway::PaymentGatewayClient;
 use price_graph::PriceGraphClient;
@@ -200,7 +203,10 @@ impl ProtonWalletApiClient {
             }
         });
 
+        #[cfg(not(target_arch = "wasm32"))]
         let mut builder = Client::builder(app, store);
+        #[cfg(target_arch = "wasm32")]
+        let builder = Client::builder(app, store);
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(proxy) = config.proxy {
             if let Ok(host) = Host::direct(proxy.host) {

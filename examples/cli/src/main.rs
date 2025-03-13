@@ -7,6 +7,7 @@ use std::{
 use andromeda_api::{ApiConfig, ProtonWalletApiClient};
 use andromeda_bitcoin::{
     account::Account,
+    account_syncer::AccountSyncer,
     blockchain_client::BlockchainClient,
     storage::WalletMemoryPersisterFactory,
     transactions::{Pagination, TransactionTime},
@@ -168,17 +169,13 @@ async fn sync_account(
         proxy: None,
     };
 
-    let proton_api_client = ProtonWalletApiClient::from_config(config).unwrap();
-
+    let proton_api_client = Arc::new(ProtonWalletApiClient::from_config(config).unwrap());
     proton_api_client.login("pro", "pro").await.unwrap();
-
-    let chain = BlockchainClient::new(proton_api_client);
-
-    let update = chain.full_sync(account.as_ref(), None).await.unwrap();
-    account
-        .apply_update(update)
+    let chain = Arc::new(BlockchainClient::new(proton_api_client));
+    AccountSyncer::new(chain, account.clone())
+        .full_sync(None)
         .await
-        .map_err(|_e| "ERROR: could not apply sync update")?;
+        .unwrap();
 
     Ok(derivation_path)
 }

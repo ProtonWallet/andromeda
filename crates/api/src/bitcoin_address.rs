@@ -196,8 +196,6 @@ impl BitcoinAddressClient {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use wiremock::{
         matchers::{body_json, method, path},
         Mock, MockServer, ResponseTemplate,
@@ -253,7 +251,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = BitcoinAddressClient::new(Arc::new(api_client));
+        let client = BitcoinAddressClient::new(api_client);
         let result = client
             .get_bitcoin_addresses(wallet_id.to_string(), wallet_account_id.to_string(), None)
             .await;
@@ -329,7 +327,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = BitcoinAddressClient::new(Arc::new(api_client));
+        let client = BitcoinAddressClient::new(api_client);
         let result = client
             .get_bitcoin_address_highest_index(wallet_id.to_string(), wallet_account_id.to_string())
             .await;
@@ -364,7 +362,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = BitcoinAddressClient::new(Arc::new(api_client));
+        let client = BitcoinAddressClient::new(api_client);
         let result = client
             .get_used_indexes(wallet_id.to_string(), wallet_account_id.to_string())
             .await;
@@ -428,7 +426,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = BitcoinAddressClient::new(Arc::new(api_client));
+        let client = BitcoinAddressClient::new(api_client);
         let result = client
             .add_bitcoin_addresses(wallet_id.to_string(), wallet_account_id.to_string(), bitcoin_addresses)
             .await;
@@ -513,7 +511,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = BitcoinAddressClient::new(Arc::new(api_client));
+        let client = BitcoinAddressClient::new(api_client);
         let result = client
             .update_bitcoin_address(
                 wallet_id.to_string(),

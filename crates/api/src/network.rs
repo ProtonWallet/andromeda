@@ -65,7 +65,7 @@ mod tests {
     use super::NetworkClient;
     use crate::{
         core::ApiClient,
-        tests::utils::{common_api_client, setup_test_connection_arc},
+        tests::utils::{common_api_client, setup_test_connection},
         BASE_WALLET_API_V1,
     };
 
@@ -111,7 +111,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let network_client = NetworkClient::new(api_client);
         let res = network_client.get_network().await;
         println!("test_get_network_1000 done: {:?}", res);
@@ -134,7 +134,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let network_client = NetworkClient::new(api_client);
         let res = network_client.get_network().await;
         println!("test_get_network_timeout done: {:?}", res);

@@ -189,7 +189,7 @@ mod tests {
     use crate::{
         core::ApiClient,
         read_mock_file,
-        tests::utils::{common_api_client, setup_test_connection_arc},
+        tests::utils::{common_api_client, setup_test_connection},
         BASE_CORE_API_V4, BASE_CORE_API_V5,
     };
 
@@ -232,7 +232,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let event_client = EventClient::new(api_client);
         let events = event_client.get_event(latest_event_id).await.unwrap();
 
@@ -271,7 +271,7 @@ mod tests {
             .respond_with(response2)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = EventClient::new(api_client);
         let result = client.collect_events(latest_event_id.to_string()).await;
         match result {
@@ -321,7 +321,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = EventClient::new(api_client);
         let result = client.get_latest_event_id().await;
         match result {

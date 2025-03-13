@@ -81,6 +81,7 @@ pub mod tests {
         } else {
             WalletMemoryPersisterFactory.build(clean_key)
         };
+
         Account::new(
             master_secret_key,
             account_network,

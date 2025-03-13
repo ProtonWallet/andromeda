@@ -334,7 +334,7 @@ mod tests {
         BASE_WALLET_API_V1,
     };
     use bitcoin::transaction::Version;
-    use std::{collections::HashMap, sync::Arc};
+    use std::collections::HashMap;
     use wiremock::{
         matchers::{method, path},
         Mock, MockServer, ResponseTemplate,
@@ -453,7 +453,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = TransactionClient::new(Arc::new(api_client));
+        let client = TransactionClient::new(api_client);
         let result = client.get_raw_transaction(txid.to_string()).await;
         match result {
             Ok(transaction) => {
@@ -498,7 +498,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = TransactionClient::new(Arc::new(api_client));
+        let client = TransactionClient::new(api_client);
         let result = client.get_transaction_status(txid.to_string()).await;
         match result {
             Ok(status) => {
@@ -526,7 +526,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = TransactionClient::new(Arc::new(api_client));
+        let client = TransactionClient::new(api_client);
         let result = client.get_transaction_info(txid.to_string()).await;
         match result {
             Ok(api_tx) => {
@@ -570,7 +570,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = TransactionClient::new(Arc::new(api_client));
+        let client = TransactionClient::new(api_client);
         let result = client.get_transaction_merkle_proof(txid.to_string()).await;
         match result {
             Ok(merkle) => {
@@ -602,7 +602,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = TransactionClient::new(Arc::new(api_client));
+        let client = TransactionClient::new(api_client);
         let result = client.get_transaction_merkle_block_proof(txid.to_string()).await;
         match result {
             Ok(value) => {
@@ -634,7 +634,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = TransactionClient::new(Arc::new(api_client));
+        let client = TransactionClient::new(api_client);
         let result = client.get_outpoint_spending_status(txid.to_string(), index).await;
         match result {
             Ok(status) => {
@@ -665,7 +665,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = TransactionClient::new(Arc::new(api_client));
+        let client = TransactionClient::new(api_client);
         let result = client.get_fee_estimates().await;
         match result {
             Ok(fees) => {
@@ -692,7 +692,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = TransactionClient::new(Arc::new(api_client));
+        let client = TransactionClient::new(api_client);
         let result = client.get_mempool_info().await;
         match result {
             Ok(info) => {
@@ -757,7 +757,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = TransactionClient::new(Arc::new(api_client));
+        let client = TransactionClient::new(api_client);
         let result = client
             .broadcast_raw_transaction(
                 signed_transaction_hex.to_string(),

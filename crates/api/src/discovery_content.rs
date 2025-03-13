@@ -72,7 +72,7 @@ mod tests {
     use crate::{
         core::ApiClient,
         discovery_content::{Content, DiscoverContentClient},
-        tests::utils::setup_test_connection_arc,
+        tests::utils::setup_test_connection,
         BASE_WALLET_API_V1,
     };
 
@@ -113,7 +113,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = DiscoverContentClient::new(api_client);
         let data = client.get_discovery_contents().await;
 

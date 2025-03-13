@@ -46,7 +46,6 @@ mod tests {
         core::ApiClient, read_mock_file, tests::utils::common_api_client, tests::utils::setup_test_connection,
         unleash::UnleashClient,
     };
-    use std::sync::Arc;
     use wiremock::{
         matchers::{method, path},
         Mock, MockServer, ResponseTemplate,
@@ -76,7 +75,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = UnleashClient::new(Arc::new(api_client));
+        let client = UnleashClient::new(api_client);
         let result = client.fetch_toggles().await;
         match result {
             Ok(response) => {

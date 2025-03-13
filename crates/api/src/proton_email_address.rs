@@ -121,7 +121,6 @@ mod tests {
         core::ApiClient, read_mock_file, tests::utils::common_api_client, tests::utils::setup_test_connection,
         BASE_CORE_API_V4,
     };
-    use std::sync::Arc;
     use wiremock::{
         matchers::{method, path, query_param},
         Mock, MockServer, ResponseTemplate,
@@ -165,7 +164,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = ProtonEmailAddressClient::new(Arc::new(api_client));
+        let client = ProtonEmailAddressClient::new(api_client);
         let result = client.get_proton_email_addresses().await;
         match result {
             Ok(proton_addresses) => {
@@ -252,7 +251,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = ProtonEmailAddressClient::new(Arc::new(api_client));
+        let client = ProtonEmailAddressClient::new(api_client);
         let result = client.get_all_public_keys(email.to_string(), None).await;
         match result {
             Ok(keys) => {

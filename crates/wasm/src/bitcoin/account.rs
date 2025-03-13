@@ -1,6 +1,13 @@
 use std::sync::Arc;
 use wasm_bindgen::prelude::*;
 
+use andromeda_bitcoin::{
+    account::Account,
+    account_trait::AccessWallet,
+    storage::{WalletPersisterFactory, WalletStorage},
+    Secp256k1,
+};
+
 use super::{
     blockchain_client::WasmBlockchainClient,
     psbt::WasmPsbt,
@@ -19,12 +26,6 @@ use super::{
 use crate::common::{
     error::ErrorExt,
     types::{WasmKeychainKind, WasmNetwork, WasmScriptType},
-};
-use andromeda_bitcoin::error::Error;
-use andromeda_bitcoin::{
-    account::Account,
-    storage::{WalletPersisterFactory, WalletStorage},
-    Secp256k1,
 };
 
 #[wasm_bindgen]

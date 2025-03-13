@@ -328,7 +328,7 @@ mod tests {
     use crate::{
         core::ApiClient,
         proton_users::{ProtonSrpClientProofs, ProtonUsersClientExt},
-        tests::utils::{common_api_client, setup_test_connection_arc},
+        tests::utils::{common_api_client, setup_test_connection},
         BASE_CORE_API_V4,
     };
 
@@ -397,7 +397,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let users_client = ProtonUsersClient::new(api_client);
         let user_info = users_client.get_user_info().await;
         match user_info {
@@ -424,7 +424,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let users_client = ProtonUsersClient::new(api_client);
         let user_info = users_client.get_user_info().await;
         assert!(user_info.is_err());
@@ -515,7 +515,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let users_client = ProtonUsersClient::new(api_client);
         let user_settings = users_client.get_user_settings().await;
         println!("user_settings {:?}", user_settings);
@@ -548,7 +548,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let users_client = ProtonUsersClient::new(api_client);
         let user_settings = users_client.get_user_settings().await;
         assert!(user_settings.is_err());
@@ -572,7 +572,7 @@ mod tests {
             .with_priority(1)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let users_client = ProtonUsersClient::new(api_client);
         let modulus = users_client.get_auth_modulus().await.unwrap();
 
@@ -616,7 +616,7 @@ mod tests {
             .with_priority(1)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let users_client = ProtonUsersClient::new(api_client);
 
         let req = super::GetAuthInfoRequest {
@@ -655,7 +655,7 @@ mod tests {
             .with_priority(1)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let users_client = ProtonUsersClient::new(api_client);
 
         let proofs = ProtonSrpClientProofs {
@@ -692,7 +692,7 @@ mod tests {
             .with_priority(1)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let users_client = ProtonUsersClient::new(api_client);
 
         let proofs = ProtonSrpClientProofs {
@@ -721,7 +721,7 @@ mod tests {
             .with_priority(1)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let users_client = ProtonUsersClient::new(api_client);
         let code = users_client.lock_sensitive_settings().await.unwrap();
         assert!(code == 1000);

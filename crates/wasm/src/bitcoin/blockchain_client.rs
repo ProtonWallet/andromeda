@@ -1,11 +1,14 @@
 use std::{collections::HashMap, sync::Arc};
 
-use super::{account::WasmAccount, psbt::WasmPsbt};
+use super::psbt::WasmPsbt;
 use crate::{api::WasmProtonWalletApiClient, common::error::ErrorExt};
-use andromeda_api::transaction::{BroadcastMessage, ExchangeRateOrTransactionTime, RecommendedFees};
+use andromeda_api::{
+    transaction::{BroadcastMessage, ExchangeRateOrTransactionTime, RecommendedFees},
+    ProtonWalletApiClient,
+};
 use andromeda_bitcoin::{
-    account_trait::AccessWallet,
-    blockchain_client::{self, BlockchainClient, MinimumFees},
+    account_syncer::DEFAULT_STOP_GAP,
+    blockchain_client::{BlockchainClient, MinimumFees},
 };
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
@@ -13,12 +16,18 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(js_name = getDefaultStopGap)]
 pub fn get_default_stop_gap() -> usize {
-    blockchain_client::DEFAULT_STOP_GAP
+    DEFAULT_STOP_GAP
 }
 
 #[wasm_bindgen(getter_with_clone)]
 pub struct WasmBlockchainClient {
     inner: Arc<BlockchainClient>,
+}
+
+impl WasmBlockchainClient {
+    pub fn get_inner(&self) -> Arc<BlockchainClient> {
+        self.inner.clone()
+    }
 }
 
 #[wasm_bindgen]
@@ -137,7 +146,8 @@ impl WasmBlockchainClient {
     /// count.
     #[wasm_bindgen(constructor)]
     pub fn new(proton_api_client: &WasmProtonWalletApiClient) -> Result<WasmBlockchainClient, JsValue> {
-        let inner = BlockchainClient::new(proton_api_client.into());
+        let api_client: ProtonWalletApiClient = proton_api_client.into();
+        let inner = BlockchainClient::new(Arc::new(api_client));
         Ok(WasmBlockchainClient { inner: Arc::new(inner) })
     }
 
@@ -158,47 +168,7 @@ impl WasmBlockchainClient {
     #[wasm_bindgen(js_name = getRecommendedFees)]
     pub async fn get_recommended_fees(&self) -> Result<WasmRecommendedFees, JsValue> {
         let recommended_fees = self.inner.get_recommended_fees().await.map_err(|e| e.to_js_error())?;
-
         Ok(WasmRecommendedFees::from(recommended_fees))
-    }
-
-    #[wasm_bindgen(js_name = fullSync)]
-    pub async fn full_sync(&self, account: &WasmAccount, stop_gap: Option<usize>) -> Result<(), JsValue> {
-        let account_inner = account.get_inner();
-        let update = self
-            .inner
-            .full_sync(account_inner.as_ref(), stop_gap)
-            .await
-            .map_err(|e| e.to_js_error())?;
-
-        account_inner.apply_update(update).await.map_err(|e| e.to_js_error())?;
-
-        Ok(())
-    }
-
-    #[wasm_bindgen(js_name = partialSync)]
-    pub async fn partial_sync(&self, account: &WasmAccount) -> Result<(), JsValue> {
-        let account_inner = account.get_inner();
-
-        let wallet_lock = account_inner.get_wallet().await;
-        let update = self
-            .inner
-            .partial_sync(wallet_lock)
-            .await
-            .map_err(|e| e.to_js_error())?;
-
-        account_inner.apply_update(update).await.map_err(|e| e.to_js_error())?;
-
-        Ok(())
-    }
-
-    #[wasm_bindgen(js_name = shouldSync)]
-    pub async fn should_sync(&self, account: &WasmAccount) -> Result<bool, JsValue> {
-        let account_inner = account.get_inner();
-
-        let wallet_lock = account_inner.get_wallet().await;
-
-        self.inner.should_sync(wallet_lock).await.map_err(|e| e.to_js_error())
     }
 
     #[wasm_bindgen(js_name = broadcastPsbt)]

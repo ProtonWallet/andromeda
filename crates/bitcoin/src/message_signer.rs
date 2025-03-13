@@ -29,7 +29,7 @@ impl MessageSigner {
         signing_type: SigningType,
         btc_address: &str,
     ) -> Result<String, Error> {
-        let wallet = account.get_wallet().await;
+        let wallet = account.lock_wallet().await;
         let script_type = account.get_script_type()?;
         let secp = wallet.secp_ctx();
 
@@ -54,7 +54,7 @@ impl MessageSigner {
         signature: &str,
         btc_address: &str,
     ) -> Result<(), Error> {
-        let wallet = account.get_wallet().await;
+        let wallet = account.lock_wallet().await;
         let secp_ctx = wallet.secp_ctx();
         let signature = MessageSignature::from_base64(signature)?;
         let address = Address::from_str(btc_address)?.require_network(wallet.network())?;

@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use bdk_wallet::bitcoin::psbt::Psbt as BdkPsbt;
-use bitcoin::{Amount, Transaction};
+use bitcoin::{psbt::Error as PsbtError, Amount, Transaction};
 
 use crate::error::Error;
 
@@ -33,5 +33,13 @@ impl Psbt {
 
     pub fn compute_tx_vbytes(&self) -> Result<u64, Error> {
         Ok(self.extract_tx()?.weight().to_vbytes_ceil())
+    }
+
+    pub fn outputs_amount(&self) -> Result<Amount, Error> {
+        let mut outputs: u64 = 0;
+        for out in self.0.clone().unsigned_tx.output {
+            outputs = outputs.checked_add(out.value.to_sat()).ok_or(PsbtError::FeeOverflow)?;
+        }
+        Ok(Amount::from_sat(outputs))
     }
 }

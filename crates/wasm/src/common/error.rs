@@ -1,7 +1,9 @@
 use std::error::Error;
 
 use andromeda_api::error::Error as ApiError;
-use andromeda_bitcoin::error::{Bip39Error, CreateTxError, Error as BitcoinError, InsufficientFundsError};
+use andromeda_bitcoin::error::{
+    Bip39Error, BitcoinAddressParseError, CreateTxError, Error as BitcoinError, ExtractTxError, InsufficientFundsError,
+};
 use andromeda_common::error::Error as CommonError;
 use andromeda_esplora::error::Error as EsploraError;
 use serde::Serialize;
@@ -75,6 +77,21 @@ impl ErrorExt for BitcoinError {
         );
 
         match self {
+            BitcoinError::InvalidFeeRate => json_to_jsvalue(json!({
+                "kind": "InvalidFeeRate",
+            })),
+            BitcoinError::BitcoinAddressParse(error) => match error {
+                BitcoinAddressParseError::Base58(_) => json_to_jsvalue(json!({
+                    "kind": "Base58",
+                })),
+                BitcoinAddressParseError::Bech32(_) => json_to_jsvalue(json!({
+                    "kind": "Bech32",
+                })),
+                BitcoinAddressParseError::NetworkValidation(_) => json_to_jsvalue(json!({
+                    "kind": "NetworkValidation",
+                })),
+                _ => common_error,
+            },
             BitcoinError::CreateTx(error) => match error {
                 CreateTxError::CoinSelection(InsufficientFundsError { needed, available }) => json_to_jsvalue(json!({
                     "kind": "InsufficientFunds",
@@ -84,6 +101,18 @@ impl ErrorExt for BitcoinError {
                 CreateTxError::OutputBelowDustLimit(limit) => json_to_jsvalue(json!({
                     "kind": "OutputBelowDustLimit",
                     "limit": limit,
+                })),
+                _ => common_error,
+            },
+            BitcoinError::ExtractTx(error) => match error {
+                ExtractTxError::AbsurdFeeRate { .. } => json_to_jsvalue(json!({
+                    "kind": "AbsurdFeeRate",
+                })),
+                ExtractTxError::MissingInputValue { .. } => json_to_jsvalue(json!({
+                    "kind": "MissingInputValue",
+                })),
+                ExtractTxError::SendingTooMuch { .. } => json_to_jsvalue(json!({
+                    "kind": "SendingTooMuch",
                 })),
                 _ => common_error,
             },
@@ -108,6 +137,12 @@ impl ErrorExt for BitcoinError {
                 })),
             },
             BitcoinError::EsploraClient(EsploraError::ApiError(error)) => error.to_js_error(),
+            BitcoinError::InsufficientFundsInPaperWallet => json_to_jsvalue(json!({
+                "kind": "InsufficientFundsInPaperWallet",
+            })),
+            BitcoinError::InvalidPaperWallet => json_to_jsvalue(json!({
+                "kind": "InvalidPaperWallet",
+            })),
             _ => common_error,
         }
     }

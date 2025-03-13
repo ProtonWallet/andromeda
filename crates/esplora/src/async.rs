@@ -56,7 +56,7 @@ fn hash_spk(spk: &ScriptBuf) -> String {
 
 impl AsyncClient {
     /// build an async client from the base url and [`Client`]
-    pub fn from_client(api_client: ProtonWalletApiClient) -> Self {
+    pub fn from_client(api_client: Arc<ProtonWalletApiClient>) -> Self {
         let clients = api_client.clients();
 
         let transaction = clients.transaction;

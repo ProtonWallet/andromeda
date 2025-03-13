@@ -93,7 +93,7 @@ mod tests {
         core::ApiClient,
         price_graph::{DataPoint, PriceGraph, PriceGraphClient, Timeframe},
         settings::FiatCurrencySymbol,
-        tests::utils::setup_test_connection_arc,
+        tests::utils::setup_test_connection,
         BASE_WALLET_API_V1,
     };
 
@@ -251,7 +251,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let gateway_client = PriceGraphClient::new(api_client);
         let graph_data = gateway_client
             .get_graph_data(FiatCurrencySymbol::EUR, Timeframe::OneDay)

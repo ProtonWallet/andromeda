@@ -20,6 +20,13 @@ pub trait WalletPersisterFactory: Clone + Debug {
 /// this is memory storage, mostly for testing purposes, could preload cache to preload wallet
 #[derive(Clone, Debug)]
 pub struct MemoryPersisted;
+
+impl MemoryPersisted {
+    pub fn new_storage() -> Arc<dyn Storage> {
+        Arc::new(MemoryPersisted {})
+    }
+}
+
 impl Storage for MemoryPersisted {
     fn initialize(&self) -> Result<ChangeSet, Error> {
         Ok(ChangeSet::default())
@@ -32,7 +39,7 @@ impl Storage for MemoryPersisted {
 pub struct WalletMemoryPersisterFactory;
 impl WalletPersisterFactory for WalletMemoryPersisterFactory {
     fn build(self, _key: String) -> Arc<dyn Storage> {
-        Arc::new(MemoryPersisted {})
+        MemoryPersisted::new_storage()
     }
 }
 
@@ -46,6 +53,13 @@ pub trait Storage: Debug + Send + Sync + 'static {
 /// WalletStorage is a wrapper around the storage trait to be used with bdk_wallet
 #[derive(Debug, Clone)]
 pub struct WalletStorage(pub Arc<dyn Storage>);
+
+impl WalletStorage {
+    /// Create a new WalletStorage with a memory only storage
+    pub fn memory_persist() -> Self {
+        Self(MemoryPersisted::new_storage())
+    }
+}
 impl WalletPersister for WalletStorage {
     type Error = Error;
 
@@ -98,6 +112,8 @@ impl WalletFilePersister {
         let mut contents = String::new();
         file.read_to_string(&mut contents).ok()?;
 
+        println!("contents: {:?}", self.changeset_file);
+
         serde_json::from_str(&contents).ok()
     }
 
@@ -132,15 +148,20 @@ impl Storage for WalletFilePersister {
 #[cfg(test)]
 mod tests {
 
+    use std::sync::Arc;
+
     use andromeda_api::tests::utils::common_api_client;
     use andromeda_common::{Network, ScriptType};
 
-    use crate::{blockchain_client::BlockchainClient, tests::utils::tests::set_test_wallet_account};
+    use crate::{
+        account_syncer::AccountSyncer, blockchain_client::BlockchainClient,
+        tests::utils::tests::set_test_wallet_account,
+    };
 
     #[tokio::test]
     #[ignore]
     async fn dump_wallet_to_file_1() {
-        let account = set_test_wallet_account(
+        let account = Arc::new(set_test_wallet_account(
             "your mnemonic here",
             ScriptType::NativeSegwit,
             "m/84'/1'/0'",
@@ -148,17 +169,14 @@ mod tests {
             Some(false),
             Some(Network::Regtest),
             None,
-        );
+        ));
         account.mark_receive_addresses_used_to(0, Some(210)).await.unwrap();
         let api_client = common_api_client().await;
-        let client = BlockchainClient::new(api_client.as_ref().clone());
+        let client = Arc::new(BlockchainClient::new(api_client.clone()));
+        let sync = AccountSyncer::new(client, account.clone());
         // do full sync
-        let update = client.full_sync(&account, Some(200)).await.unwrap();
-        account
-            .apply_update(update)
-            .await
-            .map_err(|_e| "ERROR: could not apply sync update")
-            .unwrap();
+        sync.full_sync(Some(200)).await.unwrap();
+
         let highest = account
             .get_highest_used_address_index_in_output(bdk_wallet::KeychainKind::External)
             .await

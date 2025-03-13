@@ -1,7 +1,10 @@
 pub mod account;
+pub mod account_sweeper;
+pub mod account_syncer;
 pub mod blockchain_client;
 pub mod message_signer;
 pub mod mnemonic;
+pub mod paper_account;
 pub mod payment_link;
 pub mod psbt;
 pub mod storage;

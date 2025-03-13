@@ -1,5 +1,6 @@
-use std::str::FromStr;
+use std::{str::FromStr, sync::Arc};
 
+use andromeda_api::ProtonWalletApiClient;
 use andromeda_bitcoin::{error::Error as BitcoinError, wallet::Wallet, DerivationPath};
 use andromeda_common::error::Error;
 use wasm_bindgen::prelude::*;
@@ -86,10 +87,10 @@ impl WasmWallet {
         api_client: &WasmProtonWalletApiClient,
     ) -> Result<WasmDiscoveredAccounts, js_sys::Error> {
         let factory = WalletWebPersisterFactory;
-
+        let client: ProtonWalletApiClient = api_client.into();
         let accounts = self
             .inner
-            .discover_accounts(api_client.into(), factory, None, None)
+            .discover_accounts(Arc::new(client), factory, None, None)
             .await
             .map_err(|e| BitcoinError::from(e).to_js_error())?;
 
