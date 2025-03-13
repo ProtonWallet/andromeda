@@ -172,7 +172,7 @@ mod tests {
         },
         proton_users::ProtonSrpClientProofs,
         read_mock_file,
-        tests::utils::{common_api_client, setup_test_connection_arc},
+        tests::utils::{common_api_client, setup_test_connection},
         BASE_CORE_API_V4,
     };
 
@@ -271,7 +271,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let settings_client = ProtonSettingsClient::new(api_client);
         let userkeys = settings_client.get_mnemonic_settings().await.unwrap();
 
@@ -314,7 +314,7 @@ mod tests {
             .with_priority(1)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let settings_client = ProtonSettingsClient::new(api_client);
 
         let mnemonic_user_keys = vec![MnemonicUserKey {
@@ -361,7 +361,7 @@ mod tests {
             .with_priority(1)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let settings_client = ProtonSettingsClient::new(api_client);
         let req = ProtonSrpClientProofs {
             ClientEphemeral: "<base64_encoded_ephemeral>".to_string(),
@@ -405,7 +405,7 @@ mod tests {
             .with_priority(1)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let settings_client = ProtonSettingsClient::new(api_client);
 
         let mnemonic_user_keys = vec![MnemonicUserKey {
@@ -446,7 +446,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = ProtonSettingsClient::new(api_client);
         let data = crate::proton_settings::SetTwoFaTOTPRequestBody {
             TOTPConfirmation: code.to_string(),
@@ -493,7 +493,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = ProtonSettingsClient::new(api_client);
         let req = ProtonSrpClientProofs {
             ClientEphemeral: "<base64_encoded_ephemeral>".to_string(),

@@ -15,6 +15,7 @@ use futures::future::try_join_all;
 
 use super::{account::Account, transactions::Pagination, utils::sort_and_paginate_txs};
 use crate::{
+    account_syncer::AccountSyncer,
     account_trait::AccessWallet,
     blockchain_client::BlockchainClient,
     error::Error,
@@ -126,7 +127,7 @@ impl Wallet {
 
     pub async fn discover_accounts<F>(
         &self,
-        proton_api_client: ProtonWalletApiClient,
+        proton_api_client: Arc<ProtonWalletApiClient>,
         factory: F,
         discovery_account_stop_gap: Option<u32>,
         discovery_address_stop_gap: Option<usize>,
@@ -134,7 +135,7 @@ impl Wallet {
     where
         F: WalletPersisterFactory,
     {
-        let client = BlockchainClient::new(proton_api_client);
+        let client = Arc::new(BlockchainClient::new(proton_api_client));
         let mut index: u32;
         let mut last_active_index: u32;
         let mut discovered_accounts: Vec<(ScriptType, u32, DerivationPath)> = Vec::new();
@@ -163,8 +164,8 @@ impl Wallet {
                 )
                 .expect("Account should be valid here");
 
-                let exists = client
-                    .check_account_existence(account.get_wallet().await, discovery_address_stop_gap)
+                let exists = AccountSyncer::new(client.clone(), Arc::new(account))
+                    .check_account_existence(discovery_address_stop_gap)
                     .await?;
 
                 // If an account has at least one output, it means that it has already been used
@@ -192,7 +193,7 @@ impl Wallet {
         let pagination = pagination.unwrap_or_default();
 
         let async_iter = self.accounts.values().map(|account| async move {
-            let wallet_lock = account.get_wallet().await;
+            let wallet_lock = account.lock_wallet().await;
             let transactions = wallet_lock.transactions().collect::<Vec<_>>();
 
             let transactions = transactions

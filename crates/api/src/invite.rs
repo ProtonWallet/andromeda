@@ -134,8 +134,6 @@ impl InviteClient {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use wiremock::{
         matchers::{method, path, query_param},
         Mock, MockServer, ResponseTemplate,
@@ -164,7 +162,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = InviteClient::new(Arc::new(api_client));
+        let client = InviteClient::new(api_client);
         let result = client
             .send_newcomer_invite("test@pm.me".to_owned(), inviter_address_id.to_owned())
             .await;
@@ -196,7 +194,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = InviteClient::new(Arc::new(api_client));
+        let client = InviteClient::new(api_client);
         let result = client
             .check_invite_status(
                 "test@pm.me".to_owned(),
@@ -231,7 +229,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = InviteClient::new(Arc::new(api_client));
+        let client = InviteClient::new(api_client);
         let result = client
             .check_invite_status(
                 "test@pm.me".to_owned(),
@@ -263,7 +261,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = InviteClient::new(Arc::new(api_client));
+        let client = InviteClient::new(api_client);
         let result = client
             .send_email_integration_invite("test@pm.me".to_owned(), inviter_address_id.to_owned())
             .await;
@@ -295,7 +293,7 @@ mod tests {
             .await;
 
         let api_client = setup_test_connection(mock_server.uri());
-        let client = InviteClient::new(Arc::new(api_client));
+        let client = InviteClient::new(api_client);
 
         let result = client.get_remaining_monthly_invitation().await.unwrap();
 

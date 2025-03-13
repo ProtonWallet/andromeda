@@ -197,7 +197,7 @@ mod tests {
     use crate::{
         core::ApiClient,
         read_mock_file,
-        tests::utils::{common_api_client, setup_test_connection_arc},
+        tests::utils::{common_api_client, setup_test_connection},
         BASE_WALLET_API_V1,
     };
 
@@ -488,7 +488,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let address_client = AddressClient::new(api_client);
         let transactions = address_client.get_scripthashes_transactions(script_hashes).await;
         println!("request done: {:?}", transactions);
@@ -526,7 +526,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = AddressClient::new(api_client);
 
         let result = client.get_address_balance(address.to_string()).await;
@@ -564,7 +564,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = AddressClient::new(api_client);
 
         let result = client.get_scripthash_transactions(script_hash_1.to_string()).await;
@@ -599,7 +599,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = AddressClient::new(api_client);
 
         let result = client

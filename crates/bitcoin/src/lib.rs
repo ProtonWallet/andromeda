@@ -1,4 +1,6 @@
 pub mod account;
+pub mod account_sweeper;
+pub mod account_syncer;
 pub mod account_trait;
 pub mod address;
 pub mod bdk_wallet_ext;
@@ -12,11 +14,16 @@ pub mod paper_account;
 pub mod payment_link;
 pub mod psbt;
 pub mod storage;
-pub mod tests;
 pub mod transaction_builder;
 pub mod transactions;
 pub mod utils;
 pub mod wallet;
+
+#[cfg(test)]
+pub mod tests {
+    pub mod test_utils;
+    pub mod utils;
+}
 
 // Define a type alias for the common result type used in this crate
 type Result<T> = std::result::Result<T, error::Error>;

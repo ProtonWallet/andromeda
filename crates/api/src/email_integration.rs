@@ -83,7 +83,6 @@ mod tests {
     use crate::{
         core::ApiClient, tests::utils::common_api_client, tests::utils::setup_test_connection, BASE_WALLET_API_V1,
     };
-    use std::sync::Arc;
     use wiremock::{
         matchers::{body_json, method, path, query_param},
         Mock, MockServer, ResponseTemplate,
@@ -121,7 +120,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = EmailIntegrationClient::new(Arc::new(api_client));
+        let client = EmailIntegrationClient::new(api_client);
         let result = client.lookup_bitcoin_address(email.to_string()).await;
         match result {
             Ok(wallet_bitcoin_address) => {
@@ -158,7 +157,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = EmailIntegrationClient::new(Arc::new(api_client));
+        let client = EmailIntegrationClient::new(api_client);
         let result = client.create_bitcoin_addresses_request(email.to_string()).await;
         assert!(result.is_ok());
     }

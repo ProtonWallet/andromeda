@@ -191,7 +191,7 @@ impl TransactionDetails {
     pub async fn from_psbt(psbt: &Psbt, account: Arc<Account>) -> Result<Self, Error> {
         let tx = psbt.extract_tx()?;
 
-        let wallet_lock = account.get_wallet().await;
+        let wallet_lock = account.lock_wallet().await;
 
         let outputs = get_detailled_outputs(tx.output.clone(), &wallet_lock)?;
         let inputs = get_detailled_inputs(tx.input.clone(), &wallet_lock)?;

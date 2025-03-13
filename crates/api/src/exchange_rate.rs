@@ -111,7 +111,6 @@ mod tests {
         tests::utils::setup_test_connection, BASE_WALLET_API_V1,
     };
     use andromeda_common::BitcoinUnit;
-    use std::sync::Arc;
     use wiremock::{
         matchers::{method, path, query_param},
         Mock, MockServer, ResponseTemplate,
@@ -170,7 +169,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = ExchangeRateClient::new(Arc::new(api_client));
+        let client = ExchangeRateClient::new(api_client);
         let result = client.get_exchange_rate(fiat_currency, None).await;
         match result {
             Ok(exchange_rate) => {
@@ -222,7 +221,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = ExchangeRateClient::new(Arc::new(api_client));
+        let client = ExchangeRateClient::new(api_client);
         let result = client.get_all_fiat_currencies().await;
         match result {
             Ok(fiat_currencies) => {

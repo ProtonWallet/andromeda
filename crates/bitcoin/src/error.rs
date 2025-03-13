@@ -1,21 +1,19 @@
 use std::fmt::Debug;
 
 use andromeda_esplora::error::Error as EsploraClientError;
+pub use bdk_wallet::{
+    bitcoin::{address::ParseError as BitcoinAddressParseError, psbt::ExtractTxError},
+    coin_selection::InsufficientFunds as InsufficientFundsError,
+    error::CreateTxError,
+    keys::bip39::Error as Bip39Error,
+};
 use bdk_wallet::{
-    bitcoin::{
-        address::ParseError as BitcoinAddressParseError,
-        bip32::Error as Bip32Error,
-        psbt::{Error as PsbtError, ExtractTxError},
-        OutPoint,
-    },
+    bitcoin::{bip32::Error as Bip32Error, psbt::Error as PsbtError, OutPoint},
     chain::local_chain::CannotConnectError,
     descriptor::DescriptorError,
     error::{BuildFeeBumpError, MiniscriptPsbtError},
     signer::SignerError,
     tx_builder::AddUtxoError,
-};
-pub use bdk_wallet::{
-    coin_selection::InsufficientFunds as InsufficientFundsError, error::CreateTxError, keys::bip39::Error as Bip39Error,
 };
 use bitcoin::address::FromScriptError;
 
@@ -24,7 +22,7 @@ pub enum Error {
     #[error("Account wasn't found")]
     AccountNotFound,
     #[error("An error occurred when trying to create persisted wallet")]
-    CreateWithPersistError, /* (#[from] CreateWithPersistError) */
+    CreateWithPersistError(String), /* (#[from] CreateWithPersistError) */
     #[error("An error occurred when trying to load persisted wallet")]
     LoadWithPersistError,
     #[error("Could not persist changes")]
@@ -73,6 +71,9 @@ pub enum Error {
     Other(#[from] anyhow::Error),
     #[error("No signer found")]
     NoSignerFound,
+    #[error("No signer key found")]
+    NoSignerKeyFound,
+
     #[error("Invalid network")]
     InvalidNetwork,
     #[error("Message sign crypto error occurred: \n\t{0}")]
@@ -85,6 +86,16 @@ pub enum Error {
     BSMError(#[from] crate::bitcoin_signed_message::Error),
     #[error("Extended public key not found")]
     ExtendedPublicKeyNotFound,
+    #[error("Wallet is not synced")]
+    WalletNotSynced,
+    #[error("Paper wallet is invalid")]
+    InvalidPaperWallet,
+    #[error("Paper wallet wif is invalid")]
+    InvalidWalletWIF,
+    #[error("Paper wallet has insufficient funds")]
+    InsufficientFundsInPaperWallet,
+    #[error("Fee rate is invalid")]
+    InvalidFeeRate,
 
     #[cfg(not(target_arch = "wasm32"))]
     #[cfg(feature = "sqlite")]

@@ -320,7 +320,6 @@ mod tests {
         tests::utils::setup_test_connection, BASE_WALLET_API_V1,
     };
     use andromeda_common::BitcoinUnit;
-    use std::sync::Arc;
     use wiremock::{
         matchers::{body_json, method, path},
         Mock, MockServer, ResponseTemplate,
@@ -450,7 +449,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = SettingsClient::new(Arc::new(api_client));
+        let client = SettingsClient::new(api_client);
         let result = client.get_user_settings().await;
         match result {
             Ok(settings) => {
@@ -498,7 +497,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = SettingsClient::new(Arc::new(api_client));
+        let client = SettingsClient::new(api_client);
         let bitcoin_unit = BitcoinUnit::SATS;
         let result = client.update_bitcoin_unit(bitcoin_unit).await;
         match result {
@@ -540,7 +539,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = SettingsClient::new(Arc::new(api_client));
+        let client = SettingsClient::new(api_client);
         let currency = FiatCurrencySymbol::TWD;
         let result = client.update_fiat_currency(currency).await;
         match result {
@@ -582,7 +581,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = SettingsClient::new(Arc::new(api_client));
+        let client = SettingsClient::new(api_client);
         let amount = 3000;
         let result = client.update_two_fa_threshold(amount).await;
         match result {
@@ -624,7 +623,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = SettingsClient::new(Arc::new(api_client));
+        let client = SettingsClient::new(api_client);
         let hide = false;
         let result = client.update_hide_empty_used_addresses(hide).await;
         match result {
@@ -667,7 +666,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = SettingsClient::new(Arc::new(api_client));
+        let client = SettingsClient::new(api_client);
         let result = client
             .update_receive_notification_email(
                 crate::settings::UserReceiveNotificationEmailTypes::NotificationToInviter,
@@ -710,7 +709,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = SettingsClient::new(Arc::new(api_client));
+        let client = SettingsClient::new(api_client);
         let result = client.accept_terms_and_conditions().await;
         match result {
             Ok(settings) => {
@@ -738,7 +737,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = SettingsClient::new(Arc::new(api_client));
+        let client = SettingsClient::new(api_client);
         let result = client.get_user_wallet_eligibility().await;
         match result {
             Ok(eligible) => {

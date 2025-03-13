@@ -207,7 +207,6 @@ mod tests {
         core::ApiClient, read_mock_file, read_mock_raw_file, tests::utils::common_api_client,
         tests::utils::setup_test_connection, BASE_WALLET_API_V1,
     };
-    use std::sync::Arc;
     use wiremock::{
         matchers::{method, path},
         Mock, MockServer, ResponseTemplate,
@@ -331,7 +330,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = BlockClient::new(Arc::new(api_client));
+        let client = BlockClient::new(api_client);
         let result = client.get_blocks(None).await;
         match result {
             Ok(blocks) => {
@@ -401,7 +400,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = BlockClient::new(Arc::new(api_client));
+        let client = BlockClient::new(api_client);
         let result = client.get_header_by_hash(&block_hash).await;
         match result {
             Ok(block) => {
@@ -436,7 +435,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = BlockClient::new(Arc::new(api_client));
+        let client = BlockClient::new(api_client);
         let result = client.get_block_hash(block_height).await;
         match result {
             Ok(block_hash) => {
@@ -464,7 +463,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = BlockClient::new(Arc::new(api_client));
+        let client = BlockClient::new(api_client);
         let result = client.get_block_status(&block_hash).await;
         match result {
             Ok(block_status) => {
@@ -495,7 +494,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = BlockClient::new(Arc::new(api_client));
+        let client = BlockClient::new(api_client);
         let result = client.get_block_by_hash(&block_hash).await;
         match result {
             Ok(block) => {
@@ -536,7 +535,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = BlockClient::new(Arc::new(api_client));
+        let client = BlockClient::new(api_client);
         let result = client.get_txid_at_block_index(&block_hash, index).await;
         match result {
             Ok(txid) => {
@@ -566,7 +565,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = BlockClient::new(Arc::new(api_client));
+        let client = BlockClient::new(api_client);
         let result = client.get_tip_height().await;
         match result {
             Ok(height) => {
@@ -589,7 +588,7 @@ mod tests {
             .mount(&mock_server)
             .await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = BlockClient::new(Arc::new(api_client));
+        let client = BlockClient::new(api_client);
         let result = client.get_tip_hash().await;
         match result {
             Ok(block_hash) => {

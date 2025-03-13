@@ -347,7 +347,7 @@ mod tests {
             GatewayProvider, GetCountriesResponseBody, GetFiatCurrenciesResponseBody, GetPaymentMethodsResponseBody,
             GetQuotesResponseBody, PaymentGatewayClient, PaymentMethod, SignUrlRequestBody,
         },
-        tests::utils::{common_api_client, setup_test_connection_arc},
+        tests::utils::{common_api_client, setup_test_connection},
         BASE_WALLET_API_V1,
     };
 
@@ -632,7 +632,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let gateway_client = PaymentGatewayClient::new(api_client);
         let countries = gateway_client.get_countries().await;
         match countries {
@@ -677,7 +677,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let gateway_client = PaymentGatewayClient::new(api_client);
         let fiat_currencies = gateway_client.get_fiat_currencies().await;
         match fiat_currencies {
@@ -711,7 +711,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let gateway_client = PaymentGatewayClient::new(api_client);
         let fiat_currencies = gateway_client.get_payment_methods("AUD".to_string()).await;
         match fiat_currencies {
@@ -765,7 +765,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let gateway_client = PaymentGatewayClient::new(api_client);
         let quotes = gateway_client
             .get_quotes(
@@ -830,7 +830,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let gateway_client = PaymentGatewayClient::new(api_client);
         let res = gateway_client
             .create_on_ramp_checkout(
@@ -883,7 +883,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let gateway_client = PaymentGatewayClient::new(api_client);
         let res = gateway_client
             .create_on_ramp_checkout_url(
@@ -920,7 +920,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let gateway_client = PaymentGatewayClient::new(api_client);
         let res = gateway_client
             .create_on_ramp_checkout_url(
@@ -957,7 +957,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let gateway_client = PaymentGatewayClient::new(api_client);
         let res = gateway_client
             .sign_url("https://example.com".to_string(), GatewayProvider::MoonPay)
@@ -1053,7 +1053,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let gateway_client = PaymentGatewayClient::new(api_client);
         let public_api_key = gateway_client
             .get_public_api_key(GatewayProvider::MoonPay)
@@ -1065,7 +1065,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_checkout_iframe() {
-        let api = setup_test_connection_arc("atlas".to_owned());
+        let api = setup_test_connection("atlas".to_owned());
         let client = PaymentGatewayClient::new(api);
         let iframe = client.get_checkout_iframe_src(
             100,

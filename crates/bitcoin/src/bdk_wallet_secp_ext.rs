@@ -7,6 +7,7 @@ use crate::error::Error;
 
 pub(crate) trait BdkWalletSecpExt {
     fn get_secp256k1_keypair(&self, address: &str) -> Result<(secp256k1::Keypair, bool), Error>;
+    fn get_wif_string(&self) -> Result<String, Error>;
 }
 
 impl BdkWalletSecpExt for Wallet {
@@ -62,5 +63,18 @@ impl BdkWalletSecpExt for Wallet {
 
         // return
         Ok((derived_keypair, is_compressed))
+    }
+
+    fn get_wif_string(&self) -> Result<String, Error> {
+        // 1) Get the signer
+        let signers_container = self.get_signers(bdk_wallet::KeychainKind::External);
+        let signers = signers_container.signers();
+        let signer = signers.first().ok_or(Error::NoSignerFound)?;
+        // 2) Extract the descriptor secret key (xprv) from the signer
+        let xkey = match signer.descriptor_secret_key() {
+            Some(DescriptorSecretKey::Single(xkey)) => xkey,
+            _ => return Err(Error::NoSignerKeyFound),
+        };
+        Ok(xkey.key.to_wif())
     }
 }

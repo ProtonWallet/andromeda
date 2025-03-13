@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, fmt::Debug, str::FromStr, sync::Arc};
 
-use andromeda_common::{async_trait_impl, utils::now, Network, ScriptType};
+use andromeda_common::{async_trait_impl, Network, ScriptType};
 use async_std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use bdk_wallet::{
     bitcoin::{
@@ -11,7 +11,7 @@ use bdk_wallet::{
         Address, Network as BdkNetwork, Txid,
     },
     descriptor, AddressInfo, Balance as BdkBalance, ChangeSet, KeychainKind, LocalOutput as LocalUtxo, PersistedWallet,
-    SignOptions, Update, Wallet as BdkWallet, WalletPersister,
+    SignOptions, Wallet as BdkWallet, WalletPersister,
 };
 use bitcoin::{bip32::Xpub, params::Params, Amount};
 use miniscript::{descriptor::DescriptorSecretKey, DescriptorPublicKey, ForEachKey};
@@ -62,13 +62,20 @@ pub struct Account {
 async_trait_impl! {
 impl AccessWallet for Account {
     /// Returns mutable lock a reference to account's BdkWallet struct
-    async fn get_mutable_wallet(&self) -> RwLockWriteGuard<PersistedWallet<WalletStorage>> {
+    async fn lock_wallet_mut(&self) -> RwLockWriteGuard<PersistedWallet<WalletStorage>> {
         self.wallet.write().await
     }
 
     /// Returns a readable lock to account's BdkWallet struct
-    async fn get_wallet(&self) -> RwLockReadGuard<PersistedWallet<WalletStorage>> {
+    /// read lock
+    async fn lock_wallet(&self) -> RwLockReadGuard<PersistedWallet<WalletStorage>> {
         self.wallet.read().await
+    }
+
+    /// Returns a mutable lock to the account's BdkWallet struct.
+    /// write lock
+    async fn lock_persister_mut(&self) -> RwLockWriteGuard<WalletStorage> {
+        self.persister.write().await
     }
 }}
 
@@ -134,7 +141,7 @@ impl Account {
                 .network(network.into())
                 .genesis_hash(genesis_block_hash)
                 .create_wallet(persister)
-                .map_err(|_e| Error::CreateWithPersistError)?,
+                .map_err(|e| Error::CreateWithPersistError(e.to_string()))?,
         };
 
         Ok(wallet)
@@ -186,7 +193,7 @@ impl Account {
     /// #
     /// let mnemonic = Mnemonic::from_string(String::from("desk prevent enhance husband hungry idle member vessel room moment simple behave")).unwrap();
     /// let mprv = Xpriv::new_master(NetworkKind::Test, &mnemonic.inner().to_seed("")).unwrap();
-    /// let account = Account::new(mprv, Network::Testnet, ScriptType::NativeSegwit, DerivationPath::from_str("m/86'/1'/0'").unwrap(), WalletStorage(Arc::new(MemoryPersisted {})));
+    /// let account = Account::new(mprv, Network::Testnet, ScriptType::NativeSegwit, DerivationPath::from_str("m/86'/1'/0'").unwrap(), WalletStorage::memory_persist());
     /// # })
     /// ```
     pub fn new(
@@ -240,7 +247,7 @@ impl Account {
     /// * untrusted pending (unconfirmed external)
     /// * confirmed coins
     pub async fn get_balance(&self) -> BdkBalance {
-        self.get_wallet().await.balance()
+        self.lock_wallet().await.balance()
     }
 
     /// Returns a list of unspent outputs as a vector
@@ -249,7 +256,7 @@ impl Account {
     ///
     /// Later we might want to add pagination on top of that.
     pub async fn get_utxos(&self) -> Vec<LocalUtxo> {
-        self.get_wallet().await.list_unspent().collect::<Vec<_>>()
+        self.lock_wallet().await.list_unspent().collect::<Vec<_>>()
     }
 
     /// Marks a range of receive addresses (external keychain) as used and
@@ -263,10 +270,8 @@ impl Account {
     /// - `from`: Starting index of addresses to mark as used.
     /// - `to`: Optional ending index (exclusive).
     pub async fn mark_receive_addresses_used_to(&self, from: u32, to: Option<u32>) -> Result<(), Error> {
-        let mut write_lock = self.get_mutable_wallet().await;
-
+        let mut write_lock = self.lock_wallet_mut().await;
         write_lock.mark_used_to(EXTERNAL_KEYCHAIN, from, to);
-
         Ok(())
     }
 
@@ -277,7 +282,7 @@ impl Account {
     /// - `keychain`: The type of keychain (e.g., external or internal) to filter the outputs by.
     pub async fn get_highest_used_address_index_in_output(&self, keychain: KeychainKind) -> Result<Option<u32>, Error> {
         let highest_index = self
-            .get_wallet()
+            .lock_wallet()
             .await
             .list_output()
             .filter(|output| output.keychain == keychain)
@@ -296,7 +301,7 @@ impl Account {
     /// - Mark indexes up to LastUsedIndex (returned from API) as used
     /// - BvE pool bitcoin addresses must be marked as used
     pub async fn get_next_receive_address(&self) -> Result<AddressInfo, Error> {
-        let mut write_lock = self.get_mutable_wallet().await;
+        let mut write_lock = self.lock_wallet_mut().await;
 
         let address = write_lock.next_unused_address(EXTERNAL_KEYCHAIN);
         write_lock.mark_used(EXTERNAL_KEYCHAIN, address.index);
@@ -307,18 +312,12 @@ impl Account {
     /// Peeks a specific address to be used to receive coins and marks it as
     /// used
     pub async fn peek_receive_address(&self, index: u32) -> Result<AddressInfo, Error> {
-        let mut write_lock = self.get_mutable_wallet().await;
+        let mut write_lock = self.lock_wallet_mut().await;
 
         let address = write_lock.peek_address(EXTERNAL_KEYCHAIN, index);
         write_lock.mark_used(EXTERNAL_KEYCHAIN, address.index);
 
         Ok(address)
-    }
-
-    /// Returns a boolean indicating whether or not the account owns the
-    /// provided address
-    pub async fn owns(&self, address: &Address) -> bool {
-        self.get_wallet().await.is_mine(address.script_pubkey())
     }
 
     /// Returns the maximum gap size `Some(u32)` from the wallet's outputs for a specific keychain,
@@ -328,7 +327,7 @@ impl Account {
     /// - `keychain`: The type of keychain (e.g., external or internal) to filter the outputs by.
     pub async fn get_maximum_gap_size(&self, keychain: KeychainKind) -> Result<Option<u32>, Error> {
         let mut used_indices: Vec<u32> = self
-            .get_wallet()
+            .lock_wallet()
             .await
             .list_output()
             .into_iter()
@@ -398,7 +397,7 @@ impl Account {
         pagination: Pagination,
         sort: Option<SortOrder>,
     ) -> Result<Vec<TransactionDetails>, Error> {
-        let wallet_lock = self.get_wallet().await;
+        let wallet_lock = self.lock_wallet().await;
         let transactions = wallet_lock.transactions().collect::<Vec<_>>();
 
         // We first need to sort transactions by their time (last_seen for unconfirmed
@@ -431,23 +430,23 @@ impl Account {
             .require_network(network.into())?
             .script_pubkey();
 
-        let wallet_lock = self.get_wallet().await;
+        let wallet_lock = self.lock_wallet().await;
 
         if let Some((keychain, spk_index)) = wallet_lock.derivation_of_spk(spk.clone()) {
             let update = {
                 if sync {
-                    Some(client.sync_spks(&wallet_lock, vec![spk]).await?)
+                    let tip = wallet_lock.local_chain().tip();
+                    Some(client.sync_spks(vec![spk], tip).await?)
                 } else {
                     None
                 }
             };
 
             if let Some(update) = update {
-                self.apply_update(update).await?;
+                self.apply_update(update.into()).await?;
             }
 
-            let wallet_lock = self.get_wallet().await;
-
+            let wallet_lock = self.lock_wallet().await;
             let outpoints = wallet_lock.outpoints_from_spk_index(keychain, spk_index);
             let spk_balance = wallet_lock.tx_graph().balance(
                 wallet_lock.local_chain(),
@@ -494,13 +493,13 @@ impl Account {
         let spks_range = skip..(skip + take - 1);
 
         {
-            let mut wallet_lock = self.get_mutable_wallet().await;
+            let mut wallet_lock = self.lock_wallet_mut().await;
             let _ = wallet_lock.reveal_addresses_to(keychain, spks_range.end);
             // No persist needed here as we are just revealing indexes in memory
         }
 
         let update = {
-            let wallet_lock = self.get_wallet().await;
+            let wallet_lock = self.lock_wallet().await;
 
             let spks = spks_range
                 .clone()
@@ -515,17 +514,18 @@ impl Account {
             };
 
             if !spks_to_sync.is_empty() {
-                Some(client.sync_spks(&wallet_lock, spks_to_sync).await?)
+                let cp = wallet_lock.local_chain().tip();
+                Some(client.sync_spks(spks_to_sync, cp).await?)
             } else {
                 None
             }
         };
 
         if let Some(update) = update {
-            self.apply_update(update).await?;
+            self.apply_update(update.into()).await?;
         }
 
-        let wallet_lock = self.get_wallet().await;
+        let wallet_lock = self.lock_wallet().await;
         // Find tx data from spk
         let mut address_details = Vec::new();
         for spk_index in spks_range {
@@ -561,7 +561,7 @@ impl Account {
     pub async fn get_transaction(&self, txid: String) -> Result<TransactionDetails, Error> {
         let txid = Txid::from_str(&txid)?;
 
-        let wallet_lock = self.get_wallet().await;
+        let wallet_lock = self.lock_wallet().await;
         let tx = wallet_lock
             .transactions()
             .find(|tx| tx.tx_node.compute_txid() == txid)
@@ -573,18 +573,12 @@ impl Account {
     /// Attempts to sign all inputs of the given PSBT using the account's keys.
     pub async fn sign(&self, psbt: &mut BdkPsbt, sign_options: Option<SignOptions>) -> Result<(), Error> {
         let sign_options = sign_options.unwrap_or_default();
-        self.get_wallet().await.sign(psbt, sign_options)?;
+        self.lock_wallet().await.sign(psbt, sign_options)?;
         Ok(())
     }
 
-    /// Returns true if the wallet has been synced at least once.
-    pub async fn has_sync_data(&self) -> bool {
-        let wallet_lock = self.get_wallet().await;
-        wallet_lock.latest_checkpoint().hash() != genesis_block(wallet_lock.network()).block_hash()
-    }
-
     pub async fn bump_transactions_fees(&self, txid: String, fees: u64) -> Result<Psbt, Error> {
-        let mut wallet_lock = self.get_mutable_wallet().await;
+        let mut wallet_lock = self.lock_wallet_mut().await;
         let mut fee_bump_tx = wallet_lock.build_fee_bump(Txid::from_str(&txid)?)?;
 
         fee_bump_tx.fee_absolute(Amount::from_sat(fees));
@@ -593,34 +587,15 @@ impl Account {
         Ok(psbt.into())
     }
 
-    /// Applies an update to the wallet and persists it.
-    pub async fn apply_update(&self, update: impl Into<Update>) -> Result<(), Error> {
-        let mut wallet_lock = self.get_mutable_wallet().await;
-        wallet_lock.apply_update_at(update, now().as_secs())?;
-
-        self.persist(wallet_lock).await?;
-        Ok(())
-    }
-
-    /// Persist the current wallet state.
-    async fn persist(
-        &self,
-        mut wallet_lock: RwLockWriteGuard<'_, PersistedWallet<WalletStorage>>,
-    ) -> Result<(), Error> {
-        let mut persister = self.persister.write().await;
-        wallet_lock.persist(&mut *persister).map_err(|_e| Error::PersistError)?;
-        Ok(())
-    }
-
     /// Clears all persisted data from the store.
     pub async fn clear_store(&self) -> Result<(), Error> {
-        let mut persister = self.persister.write().await;
+        let mut persister = self.lock_persister_mut().await;
         WalletStorage::persist(&mut *persister, &ChangeSet::default()).map_err(|_e| Error::PersistError)?;
         Ok(())
     }
 
     pub async fn get_xpub(&self) -> Result<Xpub, Error> {
-        let wallet_lock = self.get_wallet().await;
+        let wallet_lock = self.lock_wallet().await;
         let descriptor = wallet_lock.public_descriptor(KeychainKind::External);
         let mut xpub: Option<Xpub> = None;
         descriptor.for_each_key(|key| {
@@ -655,8 +630,8 @@ mod tests {
 
     use super::{Account, ScriptType};
     use crate::{
-        account_trait::AccessWallet, blockchain_client::BlockchainClient, read_mock_file,
-        tests::utils::tests::set_test_wallet_account, transactions::Pagination, utils::SortOrder,
+        account_syncer::AccountSyncer, account_trait::AccessWallet, blockchain_client::BlockchainClient,
+        read_mock_file, tests::utils::tests::set_test_wallet_account, transactions::Pagination, utils::SortOrder,
     };
 
     fn set_mainnet_test_account(script_type: ScriptType, derivation_path: &str) -> Account {
@@ -834,9 +809,9 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_wallet() {
+    async fn test_lock_wallet() {
         let account = set_test_account(ScriptType::Legacy, "m/44'/1'/0'");
-        let wallet = account.get_wallet().await;
+        let wallet = account.lock_wallet().await;
         assert!(wallet.balance().total().to_sat() == 0);
     }
 
@@ -848,7 +823,7 @@ mod tests {
         let address_str = "bcrt1q4zpmdp77e9ff4ls8ajgqapdhgqutrkcpqpzcqw".to_string();
 
         let api_client = common_api_client().await;
-        let client = BlockchainClient::new(api_client.as_ref().clone());
+        let client = BlockchainClient::new(api_client);
         let address_detail = account
             .get_address(network, address_str.clone(), Arc::new(client.clone()), true)
             .await
@@ -865,7 +840,7 @@ mod tests {
         let address_str = "bcrt1q4zpmdp77e9ff4ls8ajgqapdhgqutrkcpqpzcqw".to_string();
 
         let api_client = common_api_client().await;
-        let client = BlockchainClient::new(api_client.as_ref().clone());
+        let client = BlockchainClient::new(api_client);
         let address_detail = account
             .get_address(network, address_str.clone(), Arc::new(client.clone()), false)
             .await
@@ -880,7 +855,7 @@ mod tests {
         let account = set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'");
 
         let api_client = common_api_client().await;
-        let client = BlockchainClient::new(api_client.as_ref().clone());
+        let client = BlockchainClient::new(api_client);
         let pagination = Pagination::new(0, 10);
         let addresses = account
             .get_addresses(
@@ -896,7 +871,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_addresses() {
-        let account = set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'");
+        let account = Arc::new(set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'"));
 
         let mock_server = MockServer::start().await;
 
@@ -933,7 +908,7 @@ mod tests {
             .await;
 
         let api_client = setup_test_connection(mock_server.uri());
-        let client = BlockchainClient::new(api_client.clone());
+        let client = BlockchainClient::new(api_client);
         let pagination = Pagination::new(0, 10);
         let addresses = account
             .get_addresses(
@@ -955,7 +930,7 @@ mod tests {
 
         let mock_server = MockServer::start().await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = BlockchainClient::new(api_client.clone());
+        let client = BlockchainClient::new(api_client);
         let address_detail = account
             .get_address(network, address_str.clone(), Arc::new(client.clone()), false)
             .await
@@ -985,7 +960,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_balance() {
-        let account = set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'");
+        let account = Arc::new(set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'"));
         let balance = account.get_balance().await;
         assert_eq!(balance.total().to_sat(), 0);
 
@@ -1048,22 +1023,20 @@ mod tests {
             .await;
 
         let api_client = setup_test_connection(mock_server.uri());
-        let client = BlockchainClient::new(api_client.clone());
+        let client = Arc::new(BlockchainClient::new(api_client));
+
+        let sync = AccountSyncer::new(client, account.clone());
 
         // do full sync
-        let update = client.full_sync(&account, None).await.unwrap();
-        account
-            .apply_update(update)
-            .await
-            .map_err(|_e| "ERROR: could not apply sync update")
-            .unwrap();
+        sync.full_sync(None).await.unwrap();
+        // check balance
         let balance = account.get_balance().await;
         assert_eq!(balance.total().to_sat(), 8781);
     }
 
     #[tokio::test]
     async fn test_get_utxo() {
-        let account = set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'");
+        let account = Arc::new(set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'"));
         let utxos = account.get_utxos().await;
         assert_eq!(utxos.len(), 0);
 
@@ -1126,15 +1099,11 @@ mod tests {
             .await;
 
         let api_client = setup_test_connection(mock_server.uri());
-        let client = BlockchainClient::new(api_client.clone());
-
+        let client = Arc::new(BlockchainClient::new(api_client));
+        let sync = AccountSyncer::new(client, account.clone());
         // do full sync
-        let update = client.full_sync(&account, None).await.unwrap();
-        account
-            .apply_update(update)
-            .await
-            .map_err(|_e| "ERROR: could not apply sync update")
-            .unwrap();
+        sync.full_sync(None).await.unwrap();
+        // check utxos
         let utxos = account.get_utxos().await;
 
         assert_eq!(utxos.len(), 1);
@@ -1147,7 +1116,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_has_sync_data() {
-        let account = set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'");
+        let account = Arc::new(set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'"));
 
         let mock_server = MockServer::start().await;
 
@@ -1208,31 +1177,22 @@ mod tests {
             .await;
 
         let api_client = setup_test_connection(mock_server.uri());
-        let client = BlockchainClient::new(api_client.clone());
-
+        let client = Arc::new(BlockchainClient::new(api_client));
+        let sync = AccountSyncer::new(client, account.clone());
         let has_synced = account.has_sync_data().await;
         assert!(!has_synced);
-
         // do full sync
-        let update = client.full_sync(&account, None).await.unwrap();
-        account
-            .apply_update(update)
-            .await
-            .map_err(|_e| "ERROR: could not apply sync update")
-            .unwrap();
-
+        sync.full_sync(None).await.unwrap();
         let has_synced = account.has_sync_data().await;
         assert!(has_synced);
     }
 
     #[tokio::test]
     async fn test_get_transactions() {
-        let account = set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'");
+        let account = Arc::new(set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'"));
 
         let mock_server = MockServer::start().await;
-
         let req_path_blocks: String = format!("{}/blocks", BASE_WALLET_API_V1);
-
         let response_contents = read_mock_file!("get_blocks_body");
         let response = ResponseTemplate::new(200).set_body_string(response_contents);
         Mock::given(method("GET"))
@@ -1288,14 +1248,10 @@ mod tests {
             .await;
 
         let api_client = setup_test_connection(mock_server.uri());
-        let client = BlockchainClient::new(api_client.clone());
+        let client = Arc::new(BlockchainClient::new(api_client));
+        let sync = AccountSyncer::new(client, account.clone());
         // do full sync
-        let update = client.full_sync(&account, None).await.unwrap();
-        account
-            .apply_update(update)
-            .await
-            .map_err(|_e| "ERROR: could not apply sync update")
-            .unwrap();
+        sync.full_sync(None).await.unwrap();
 
         // get single transaction
         let txid = "6b62ad31e219c9dab4d7e24a0803b02bbc5d86ba53f6f02aa6de0f301b718e88".to_string();
@@ -1317,7 +1273,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_highest_used_address_index_in_output() {
-        let account = set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'");
+        let account = Arc::new(set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'"));
 
         // highest will be none before we sync the wallet
         let highest = account
@@ -1385,16 +1341,10 @@ mod tests {
             .await;
 
         let api_client = setup_test_connection(mock_server.uri());
-        let client = BlockchainClient::new(api_client.clone());
-
+        let client = Arc::new(BlockchainClient::new(api_client));
+        let sync = AccountSyncer::new(client, account.clone());
         // do full sync
-        let update = client.full_sync(&account, None).await.unwrap();
-        account
-            .apply_update(update)
-            .await
-            .map_err(|_e| "ERROR: could not apply sync update")
-            .unwrap();
-
+        sync.full_sync(None).await.unwrap();
         let highest = account
             .get_highest_used_address_index_in_output(bdk_wallet::KeychainKind::External)
             .await
@@ -1405,22 +1355,15 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_get_highest_from_atlas() {
-        let account = set_test_account_regtest2(ScriptType::NativeSegwit, "m/84'/1'/0'");
-
+        let account = Arc::new(set_test_account_regtest2(ScriptType::NativeSegwit, "m/84'/1'/0'"));
         // mark used to make sure it wont change the result of get_highest_used_address_index_in_output()
         account.mark_receive_addresses_used_to(0, Some(210)).await.unwrap();
 
         let api_client = common_api_client().await;
-        let client = BlockchainClient::new(api_client.as_ref().clone());
-
+        let client = Arc::new(BlockchainClient::new(api_client));
+        let sync = AccountSyncer::new(client, account.clone());
         // do full sync
-        let update = client.full_sync(&account, Some(200)).await.unwrap();
-        account
-            .apply_update(update)
-            .await
-            .map_err(|_e| "ERROR: could not apply sync update")
-            .unwrap();
-
+        sync.full_sync(None).await.unwrap();
         let highest = account
             .get_highest_used_address_index_in_output(bdk_wallet::KeychainKind::External)
             .await
@@ -1431,22 +1374,15 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_get_maximum_gap_size_from_atlas() {
-        let account = set_test_account_regtest3(ScriptType::NativeSegwit, "m/84'/1'/0'");
-
+        let account = Arc::new(set_test_account_regtest3(ScriptType::NativeSegwit, "m/84'/1'/0'"));
         // mark used to make sure it wont change the result of get_highest_used_address_index_in_output()
         account.mark_receive_addresses_used_to(0, Some(210)).await.unwrap();
 
         let api_client = common_api_client().await;
-        let client = BlockchainClient::new(api_client.as_ref().clone());
-
+        let client = Arc::new(BlockchainClient::new(api_client));
+        let sync = AccountSyncer::new(client, account.clone());
         // do full sync
-        let update = client.full_sync(&account, Some(500)).await.unwrap();
-        account
-            .apply_update(update)
-            .await
-            .map_err(|_e| "ERROR: could not apply sync update")
-            .unwrap();
-
+        sync.full_sync(None).await.unwrap();
         let maximum_gap = account
             .get_maximum_gap_size(bdk_wallet::KeychainKind::External)
             .await
@@ -1480,29 +1416,22 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_highest_used_address_index_in_output_mainnet() {
-        let account = set_test_account_for_mainnet(ScriptType::NativeSegwit, "m/84'/0'/0'");
+        let account = Arc::new(set_test_account_for_mainnet(ScriptType::NativeSegwit, "m/84'/0'/0'"));
         // highest will be none before we sync the wallet
         let highest = account
             .get_highest_used_address_index_in_output(bdk_wallet::KeychainKind::External)
             .await
             .unwrap();
         assert!(highest.is_none());
-
         // mark used to make sure it wont change the result of get_highest_used_address_index_in_output()
         account.mark_receive_addresses_used_to(0, Some(13)).await.unwrap();
 
         let mock_server = get_mock_server_for_mainnet().await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = BlockchainClient::new(api_client.clone());
-
+        let client = Arc::new(BlockchainClient::new(api_client));
+        let sync = AccountSyncer::new(client, account.clone());
         // do full sync
-        let update = client.full_sync(&account, Some(20)).await.unwrap();
-        account
-            .apply_update(update)
-            .await
-            .map_err(|_e| "ERROR: could not apply sync update")
-            .unwrap();
-
+        sync.full_sync(Some(20)).await.unwrap();
         let highest = account
             .get_highest_used_address_index_in_output(bdk_wallet::KeychainKind::External)
             .await
@@ -1512,29 +1441,22 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_maximum_gap_size_mainnet() {
-        let account = set_test_account_for_mainnet(ScriptType::NativeSegwit, "m/84'/0'/0'");
+        let account = Arc::new(set_test_account_for_mainnet(ScriptType::NativeSegwit, "m/84'/0'/0'"));
         // highest will be none before we sync the wallet
         let maximum_gap_size = account
             .get_maximum_gap_size(bdk_wallet::KeychainKind::External)
             .await
             .unwrap();
         assert!(maximum_gap_size.is_none());
-
         // mark used to make sure it wont change the result of get_highest_used_address_index_in_output()
         account.mark_receive_addresses_used_to(0, Some(13)).await.unwrap();
 
         let mock_server = get_mock_server_for_mainnet().await;
         let api_client = setup_test_connection(mock_server.uri());
-        let client = BlockchainClient::new(api_client.clone());
-
+        let client = Arc::new(BlockchainClient::new(api_client));
+        let sync = AccountSyncer::new(client, account.clone());
         // do full sync
-        let update = client.full_sync(&account, Some(20)).await.unwrap();
-        account
-            .apply_update(update)
-            .await
-            .map_err(|_e| "ERROR: could not apply sync update")
-            .unwrap();
-
+        sync.full_sync(Some(20)).await.unwrap();
         // account has used [2, 4, 7] after full sync
         let maximum_gap_size = account
             .get_maximum_gap_size(bdk_wallet::KeychainKind::External)
@@ -1546,19 +1468,12 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_get_transactions_from_atlas() {
-        let account = set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'");
-
+        let account = Arc::new(set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'"));
         let api_client = common_api_client().await;
-        let client = BlockchainClient::new(api_client.as_ref().clone());
-
+        let client = Arc::new(BlockchainClient::new(api_client));
+        let sync = AccountSyncer::new(client, account.clone());
         // do full sync
-        let update = client.full_sync(&account, None).await.unwrap();
-        account
-            .apply_update(update)
-            .await
-            .map_err(|_e| "ERROR: could not apply sync update")
-            .unwrap();
-
+        sync.full_sync(None).await.unwrap();
         let txid = "6b62ad31e219c9dab4d7e24a0803b02bbc5d86ba53f6f02aa6de0f301b718e88".to_string();
         let transaction_details = account.get_transaction(txid).await.unwrap();
         assert_eq!(transaction_details.fees.unwrap(), 141);
@@ -1626,8 +1541,11 @@ mod tests {
     #[tokio::test]
     async fn get_bitcoin_uri_with_params() {
         let mut account = set_test_account(ScriptType::NativeSegwit, "m/84'/1'/0'");
-        account.mark_receive_addresses_used_to(0, Some(5)).await.unwrap();
-
+        account
+            .clone()
+            .mark_receive_addresses_used_to(0, Some(5))
+            .await
+            .unwrap();
         assert_eq!(
             account
                 .get_bitcoin_uri(Some(788927), Some("Hello world".to_string()), None)

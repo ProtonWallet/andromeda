@@ -920,7 +920,7 @@ mod tests {
         error::Error,
         read_mock_file,
         settings::FiatCurrencySymbol,
-        tests::utils::{common_api_client, setup_test_connection_arc},
+        tests::utils::{common_api_client, setup_test_connection},
         wallet::{
             AddEmailAddressRequestBody, MigratedWallet, MigratedWalletAccount, MigratedWalletTransaction,
             UpdateWalletAccountFiatCurrencyRequestBody, UpdateWalletAccountLabelRequestBody,
@@ -1524,7 +1524,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let session = setup_test_connection_arc(mock_server.uri());
+        let session = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(session);
         let payload = CreateWalletAccountRequestBody {
             DerivationPath: DerivationPath::from_str("m/44'/1'/0'").unwrap().to_string(),
@@ -1573,7 +1573,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(api_client);
         let payload = CreateWalletAccountRequestBody {
             DerivationPath: DerivationPath::from_str("m/44'/1'/0'").unwrap().to_string(),
@@ -1642,7 +1642,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(api_client);
         let payload = WalletMigrateRequestBody {
             Wallet: MigratedWallet {
@@ -1717,7 +1717,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(api_client);
         let payload = CreateWalletTransactionRequestBody {
             TransactionID: transaction_id,
@@ -1778,7 +1778,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(api_client);
 
         let res = client.get_wallet_account_addresses(wallet_id, wallet_account_id).await;
@@ -1803,7 +1803,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(api_client);
         let result = client.get_wallets().await;
         match result {
@@ -1864,7 +1864,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(api_client);
         let result = client.create_wallet(payload).await;
         match result {
@@ -1929,7 +1929,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(api_client);
 
         let result = client.update_wallet_name(wallet_id.to_string(), name.to_string()).await;
@@ -1984,7 +1984,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(api_client);
 
         let result = client
@@ -2044,7 +2044,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(api_client);
 
         let result = client
@@ -2082,7 +2082,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(api_client);
 
         let result = client
@@ -2146,7 +2146,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(api_client);
 
         let result = client
@@ -2208,7 +2208,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(api_client);
 
         let result = client
@@ -2268,7 +2268,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(api_client);
 
         let result = client
@@ -2324,7 +2324,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(api_client);
 
         let result = client
@@ -2360,7 +2360,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(api_client);
 
         let result = client.delete_wallet(wallet_id.to_string()).await;
@@ -2387,7 +2387,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(api_client);
 
         let result = client
@@ -2418,7 +2418,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(api_client);
 
         let result = client
@@ -2443,7 +2443,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(api_client);
         let result = client.get_wallet_accounts(wallet_id.to_string()).await;
         match result {
@@ -2491,7 +2491,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(api_client);
         let result = client
             .get_wallet_transactions(wallet_id.to_string(), None, Some(hashed_ids.clone()))
@@ -2551,7 +2551,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(api_client);
         let result = client
             .get_wallet_transactions_to_hash(wallet_id.to_string(), None)
@@ -2647,7 +2647,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(api_client);
 
         let result = client
@@ -2721,7 +2721,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(api_client);
 
         let result = client
@@ -2795,7 +2795,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(api_client);
 
         let result = client
@@ -2865,7 +2865,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(api_client);
 
         let result = client
@@ -2935,7 +2935,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(api_client);
 
         let result = client
@@ -2983,7 +2983,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(api_client);
 
         let result = client.disable_show_wallet_recovery(wallet_id.to_string()).await;
@@ -3020,7 +3020,7 @@ mod tests {
             .respond_with(response)
             .mount(&mock_server)
             .await;
-        let api_client = setup_test_connection_arc(mock_server.uri());
+        let api_client = setup_test_connection(mock_server.uri());
         let client = WalletClient::new(api_client);
 
         let result = client
