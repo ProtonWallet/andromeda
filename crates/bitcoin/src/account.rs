@@ -608,6 +608,45 @@ impl Account {
 
         xpub.ok_or(Error::ExtendedPublicKeyNotFound)
     }
+
+    pub fn new_with_xpub(
+        xpub: Xpub,
+        script_type: ScriptType,
+        network: Network,
+        derivation_path: DerivationPath,
+        mut persister: WalletStorage,
+    ) -> Result<Self, Error> {
+        let builder = match script_type {
+            ScriptType::Legacy => |xkey: (Xpub, DerivationPath)| descriptor!(pkh(xkey)),
+            ScriptType::NestedSegwit => |xkey: (Xpub, DerivationPath)| descriptor!(sh(wpkh(xkey))),
+            ScriptType::NativeSegwit => |xkey: (Xpub, DerivationPath)| descriptor!(wpkh(xkey)),
+            ScriptType::Taproot => |xkey: (Xpub, DerivationPath)| descriptor!(tr(xkey)),
+        };
+
+        let external = builder((
+            xpub.clone(),
+            vec![ChildNumber::Normal {
+                index: KeychainKind::External as u32,
+            }]
+            .into(),
+        ))?;
+
+        let internal = builder((
+            xpub.clone(),
+            vec![ChildNumber::Normal {
+                index: KeychainKind::Internal as u32,
+            }]
+            .into(),
+        ))?;
+
+        let wallet = Self::build_wallet_with_descriptors(external.clone(), internal.clone(), network, &mut persister)?;
+
+        Ok(Self {
+            derivation_path,
+            persister: Arc::new(RwLock::new(persister)),
+            wallet: Arc::new(RwLock::new(wallet)),
+        })
+    }
 }
 
 #[cfg(test)]
@@ -623,6 +662,11 @@ mod tests {
         bitcoin::{Address, NetworkKind},
         serde_json,
     };
+    use bitcoin::{
+        bip32::{DerivationPath, Xpriv},
+        key::Secp256k1,
+    };
+    use tokio_test::assert_ok;
     use wiremock::{
         matchers::{body_string_contains, method, path, path_regex},
         Mock, MockServer, ResponseTemplate,
@@ -630,8 +674,15 @@ mod tests {
 
     use super::{Account, ScriptType};
     use crate::{
-        account_syncer::AccountSyncer, account_trait::AccessWallet, blockchain_client::BlockchainClient,
-        read_mock_file, tests::utils::tests::set_test_wallet_account, transactions::Pagination, utils::SortOrder,
+        account_syncer::AccountSyncer,
+        account_trait::AccessWallet,
+        blockchain_client::BlockchainClient,
+        mnemonic::Mnemonic,
+        read_mock_file,
+        storage::{WalletMemoryPersisterFactory, WalletPersisterFactory, WalletStorage},
+        tests::utils::tests::set_test_wallet_account,
+        transactions::Pagination,
+        utils::SortOrder,
     };
 
     fn set_mainnet_test_account(script_type: ScriptType, derivation_path: &str) -> Account {
@@ -1639,5 +1690,62 @@ mod tests {
             xpub.to_string(),
             "xpub6CPQTtCJ3z76EMZMQmLpyYf5qhkC2zDm6YRjKbX8VwZ3cknmET7VVXivHeMigEqSxZeAnr9d9j3VhvXSEb8Zuy9PtGje2TFM3CdXH1UxRXA".to_string()
         );
+    }
+
+    #[tokio::test]
+    async fn create_account_with_xpub() {
+        let derivation_path = "m/84'/0'/0'";
+        let network = NetworkKind::Main;
+        let mnemonic = Mnemonic::from_string("category law logic swear involve banner pink room diesel fragile sunset remove whale lounge captain code hobby lesson material current moment funny vast fade".to_string()).unwrap();
+        let master_secret_key = Xpriv::new_master(network, &mnemonic.inner().to_seed("")).unwrap();
+        dbg!(&master_secret_key.to_string());
+        let derivation_path = DerivationPath::from_str(derivation_path).unwrap();
+
+        let account_network = Network::Bitcoin;
+        let secp = Secp256k1::new();
+        let store_key = format!(
+            "{}_{}_{}",
+            account_network,
+            master_secret_key.fingerprint(&secp),
+            derivation_path
+        );
+        let clean_key = store_key.replace("'", "_").replace("/", "_");
+
+        let factory = WalletMemoryPersisterFactory.build(clean_key);
+
+        let account_with_xpriv = Account::new(
+            master_secret_key,
+            Network::Bitcoin,
+            ScriptType::NativeSegwit,
+            derivation_path.clone(),
+            WalletStorage(factory.clone()),
+        );
+        assert_ok!(&account_with_xpriv);
+        let account_with_xpriv = account_with_xpriv.unwrap();
+
+        let xpub = account_with_xpriv.get_xpub().await.unwrap();
+        let account_with_xpub = Account::new_with_xpub(
+            xpub,
+            ScriptType::NativeSegwit,
+            Network::Bitcoin,
+            derivation_path,
+            WalletStorage(factory.clone()),
+        );
+        assert_ok!(&account_with_xpub);
+        let account_with_xpub = account_with_xpub.unwrap();
+
+        assert_eq!(
+            account_with_xpriv.get_xpub().await.unwrap().to_string(),
+            account_with_xpub.get_xpub().await.unwrap().to_string()
+        );
+
+        for _ in 0..1000 {
+            let address_from_xpriv_account = account_with_xpriv.get_next_receive_address().await.unwrap().address;
+            let address_from_xpub_account = account_with_xpub.get_next_receive_address().await.unwrap().address;
+            assert_eq!(
+                address_from_xpriv_account.to_string(),
+                address_from_xpub_account.to_string()
+            );
+        }
     }
 }

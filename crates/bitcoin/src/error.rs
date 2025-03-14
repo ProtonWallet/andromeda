@@ -96,6 +96,8 @@ pub enum Error {
     InsufficientFundsInPaperWallet,
     #[error("Fee rate is invalid")]
     InvalidFeeRate,
+    #[error("Wallet is not initialized")]
+    WalletNotInitialized,
 
     #[cfg(not(target_arch = "wasm32"))]
     #[cfg(feature = "sqlite")]

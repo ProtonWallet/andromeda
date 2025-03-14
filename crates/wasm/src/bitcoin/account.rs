@@ -4,6 +4,7 @@ use wasm_bindgen::prelude::*;
 use andromeda_bitcoin::{
     account::Account,
     account_trait::AccessWallet,
+    error::Error,
     storage::{WalletPersisterFactory, WalletStorage},
     Secp256k1,
 };
@@ -54,19 +55,34 @@ impl WasmAccount {
         derivation_path: WasmDerivationPath,
     ) -> Result<WasmAccount, js_sys::Error> {
         let factory = WalletWebPersisterFactory;
-        let (mprv, network) = wallet.get_inner().mprv();
-
+        let (mprv, _network) = wallet.get_inner().mprv();
+        let (xpub, network) = wallet.get_inner().xpub();
         let secp = Secp256k1::new();
-        let store_key = format!("{}_{}", mprv.fingerprint(&secp), derivation_path.to_str());
-        let persister = factory.build(store_key);
-        let account = Account::new(
-            mprv,
-            network,
-            script_type.into(),
-            (&derivation_path).into(),
-            WalletStorage(persister),
-        )
-        .map_err(|e| e.to_js_error())?;
+        let account = if let Some(mprv) = mprv {
+            let store_key = format!("{}_{}", mprv.fingerprint(&secp), derivation_path.to_str());
+            let persister = factory.build(store_key);
+            Account::new(
+                mprv,
+                network,
+                script_type.into(),
+                (&derivation_path).into(),
+                WalletStorage(persister),
+            )
+            .map_err(|e| e.to_js_error())?
+        } else if let Some(xpub) = xpub {
+            let store_key = format!("{}_{}", xpub.fingerprint(), derivation_path.to_str());
+            let persister = factory.build(store_key);
+            Account::new_with_xpub(
+                xpub,
+                script_type.into(),
+                network,
+                (&derivation_path).into(),
+                WalletStorage(persister),
+            )
+            .map_err(|e| e.to_js_error())?
+        } else {
+            return Err(Error::WalletNotInitialized.to_js_error().into());
+        };
 
         Ok(Arc::new(account).into())
     }
