@@ -609,6 +609,79 @@ impl Account {
         xpub.ok_or(Error::ExtendedPublicKeyNotFound)
     }
 
+    /// Builds a wallet with given descriptors for external and internal keychains.
+    ///
+    /// This function attempts to load an existing wallet from the provided persister.
+    /// If loading fails, it creates a new wallet with the given descriptors.
+    ///
+    /// # Arguments
+    ///
+    /// * `external_descriptor` - Descriptor for the external keychain (receive addresses)
+    /// * `internal_descriptor` - Descriptor for the internal keychain (change addresses)
+    /// * `network` - The Bitcoin network to use (mainnet, testnet, etc.)
+    /// * `persister` - Storage mechanism to persist wallet data
+    ///
+    /// # Example:
+    /// Importing a wallet with descriptors from hardware wallets like Trezor or Ledger.
+    /// Origin and fingerprint are needed in descriptors to be able to create PSBT for hardware wallets to sign.
+    /// ```
+    /// use bitcoin::bip32::DerivationPath;
+    /// use crate::andromeda_bitcoin::storage::WalletStorage;
+    /// use crate::andromeda_bitcoin::storage::{WalletPersisterFactory, WalletMemoryPersisterFactory};
+    /// use andromeda_common::Network;
+    /// use andromeda_bitcoin::account::Account;
+    /// use std::str::FromStr;
+    ///
+    /// let derivation_path = "m/84'/0'/0'";
+    /// let receive = "wpkh([39987022/84h/0h/9990h]xpub6BsgpMy4TZXH9dzD8M6RE28ve3EQ5uy3kW6g6muJ6xtnpD198ns5yGCZrXZHFp6Wd3FCkApQ79esrdk6h91JpV9rfgTXacbhyuhK8XRz2vk/1/*)#tmhp30aa";
+    /// let internal = "wpkh([39987022/84h/0h/9990h]xpub6BsgpMy4TZXH9dzD8M6RE28ve3EQ5uy3kW6g6muJ6xtnpD198ns5yGCZrXZHFp6Wd3FCkApQ79esrdk6h91JpV9rfgTXacbhyuhK8XRz2vk/0/*)#60jqv6d9";
+    /// let derivation_path = DerivationPath::from_str(derivation_path).unwrap();
+    /// let clean_key = "test_key";
+    /// let factory = WalletMemoryPersisterFactory.build(clean_key.to_string());
+    /// let account = Account::new_with_descriptors(
+    ///     receive,
+    ///     internal,
+    ///     Network::Bitcoin,
+    ///     derivation_path,
+    ///     WalletStorage(factory.clone()),
+    /// );
+    /// ```
+    ///
+    pub fn new_with_descriptors(
+        external_descriptor: &str,
+        internal_descriptor: &str,
+        network: Network,
+        derivation_path: DerivationPath,
+        mut persister: WalletStorage,
+    ) -> Result<Self, Error> {
+        let genesis_block_hash = genesis_block(Params::from(&network.into())).block_hash();
+
+        let wallet_opt = BdkWallet::load()
+            .descriptor(KeychainKind::External, Some(external_descriptor.to_owned()))
+            .descriptor(KeychainKind::Internal, Some(internal_descriptor.to_owned()))
+            .extract_keys()
+            .check_network(network.into())
+            .check_genesis_hash(genesis_block_hash)
+            .load_wallet(&mut persister)
+            .ok()
+            .flatten();
+
+        let wallet = match wallet_opt {
+            Some(wallet) => wallet,
+            None => BdkWallet::create(external_descriptor.to_owned(), internal_descriptor.to_owned())
+                .network(network.into())
+                .genesis_hash(genesis_block_hash)
+                .create_wallet(&mut persister)
+                .map_err(|e| Error::CreateWithPersistError(e.to_string()))?,
+        };
+
+        Ok(Self {
+            derivation_path: derivation_path,
+            persister: Arc::new(RwLock::new(persister)),
+            wallet: Arc::new(RwLock::new(wallet)),
+        })
+    }
+
     pub fn new_with_xpub(
         xpub: Xpub,
         script_type: ScriptType,
@@ -1747,5 +1820,24 @@ mod tests {
                 address_from_xpub_account.to_string()
             );
         }
+    }
+
+    #[tokio::test]
+    async fn create_account_with_descriptors() {
+        let derivation_path = "m/84'/0'/0'";
+        let receive = "wpkh([39987022/84h/0h/9990h]xpub6BsgpMy4TZXH9dzD8M6RE28ve3EQ5uy3kW6g6muJ6xtnpD198ns5yGCZrXZHFp6Wd3FCkApQ79esrdk6h91JpV9rfgTXacbhyuhK8XRz2vk/1/*)#tmhp30aa";
+        let internal = "wpkh([39987022/84h/0h/9990h]xpub6BsgpMy4TZXH9dzD8M6RE28ve3EQ5uy3kW6g6muJ6xtnpD198ns5yGCZrXZHFp6Wd3FCkApQ79esrdk6h91JpV9rfgTXacbhyuhK8XRz2vk/0/*)#60jqv6d9";
+        let derivation_path = DerivationPath::from_str(derivation_path).unwrap();
+        let clean_key = "test_key";
+        let factory = WalletMemoryPersisterFactory.build(clean_key.to_string());
+        let account = Account::new_with_descriptors(
+            receive,
+            internal,
+            Network::Bitcoin,
+            derivation_path,
+            WalletStorage(factory.clone()),
+        );
+        assert_ok!(&account);
+        assert_eq!(account.unwrap().get_xpub().await.unwrap().to_string(), "xpub6BsgpMy4TZXH9dzD8M6RE28ve3EQ5uy3kW6g6muJ6xtnpD198ns5yGCZrXZHFp6Wd3FCkApQ79esrdk6h91JpV9rfgTXacbhyuhK8XRz2vk");
     }
 }
