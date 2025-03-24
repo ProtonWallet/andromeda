@@ -472,12 +472,16 @@ impl TxBuilder {
     /// Creates a PSBT from current TxBuilder
     ///
     /// The resulting psbt can then be provided to Account.sign() method
-    pub async fn create_psbt(&self, allow_dust: bool, draft: bool) -> Result<Psbt, Error> {
+    pub async fn create_psbt(&self, allow_dust: bool, draft: bool, offline_signer: bool) -> Result<Psbt, Error> {
         let account = self.account.clone().ok_or(Error::AccountNotFound)?;
         let mut write_lock = account.lock_wallet_mut().await;
 
         let psbt = {
-            let tx_builder = write_lock.build_tx();
+            let mut tx_builder = write_lock.build_tx();
+
+            if offline_signer {
+                tx_builder.add_global_xpubs().include_output_redeem_witness_script();
+            }
 
             match self.coin_selection {
                 CoinSelection::BranchAndBound => self.finish_tx(
@@ -505,7 +509,7 @@ impl TxBuilder {
     /// return potential errors. PSBTs returned from this method should not
     /// be broadcasted since indexes are not updated
     pub async fn create_draft_psbt(&self, allow_dust: bool) -> Result<Psbt, Error> {
-        let psbt = self.create_psbt(allow_dust, true).await?;
+        let psbt = self.create_psbt(allow_dust, true, false).await?;
         Ok(psbt)
     }
 }
@@ -779,7 +783,7 @@ mod tests {
         assert_eq!(tx_builder.fee_rate.unwrap().to_sat_per_vb_floor(), 399);
 
         // test create psbt
-        let psbt = tx_builder.create_psbt(true, false).await;
+        let psbt = tx_builder.create_psbt(true, false, false).await;
         // InsufficientFunds error
         assert!(psbt.is_err());
 
@@ -956,7 +960,7 @@ mod tests {
         assert_eq!(tx_builder.fee_rate.unwrap().to_sat_per_vb_floor(), 399);
 
         // test create psbt
-        let psbt = tx_builder.create_psbt(true, false).await;
+        let psbt = tx_builder.create_psbt(true, false, false).await;
         // InsufficientFunds error
         assert!(psbt.is_err());
 

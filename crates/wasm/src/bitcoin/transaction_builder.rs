@@ -291,7 +291,7 @@ impl WasmTxBuilder {
     pub async fn create_pbst(&self, network: WasmNetwork) -> Result<WasmPsbt, JsValue> {
         let psbt = self
             .inner
-            .create_psbt(false, false)
+            .create_psbt(false, false, false)
             .await
             .map_err(|e| e.to_js_error())?;
 
