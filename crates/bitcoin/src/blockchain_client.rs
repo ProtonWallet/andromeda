@@ -78,6 +78,7 @@ impl BlockchainClient {
         message: Option<BroadcastMessage>,
         recipients: Option<HashMap<String, String>>,
         is_anonymous: Option<u8>,
+        is_paper_wallet: Option<u8>,
     ) -> Result<(), Error> {
         self.0
             .broadcast(
@@ -91,6 +92,7 @@ impl BlockchainClient {
                 message,
                 recipients,
                 is_anonymous,
+                is_paper_wallet,
             )
             .await?;
 
