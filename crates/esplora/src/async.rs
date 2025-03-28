@@ -191,6 +191,7 @@ impl AsyncClient {
         message: Option<BroadcastMessage>,
         recipients: Option<HashMap<String, String>>,
         is_anonymous: Option<u8>,
+        is_paper_wallet: Option<u8>,
     ) -> Result<(), Error> {
         self.transaction
             .broadcast_raw_transaction(
@@ -204,6 +205,7 @@ impl AsyncClient {
                 message,
                 recipients,
                 is_anonymous,
+                is_paper_wallet,
             )
             .await?;
 

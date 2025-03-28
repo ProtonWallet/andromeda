@@ -31,6 +31,7 @@ struct BroadcastRawTransactionRequestBody {
     Message: Option<BroadcastMessage>,
     Recipients: Option<HashMap<String, String>>,
     IsAnonymous: u8,
+    IsPaperWallet: u8,
 }
 
 #[derive(Debug, Deserialize)]
@@ -205,6 +206,7 @@ impl TransactionClient {
         message: Option<BroadcastMessage>,
         recipients: Option<HashMap<String, String>>,
         is_anonymous: Option<u8>,
+        is_paper_wallet: Option<u8>,
     ) -> Result<String, Error> {
         let (exchange_rate_id, transaction_time) = match exchange_rate_or_transaction_time {
             ExchangeRateOrTransactionTime::ExchangeRate(exchange_rate) => (Some(exchange_rate), None),
@@ -223,6 +225,7 @@ impl TransactionClient {
             Message: message,
             Recipients: recipients,
             IsAnonymous: is_anonymous.unwrap_or(0),
+            IsPaperWallet: is_paper_wallet.unwrap_or(0),
         };
 
         let request = self.post("transactions").body_json(body)?;
@@ -732,6 +735,7 @@ mod tests {
         let address_id = "v4f03EPBAzQEogZgQX68hpaNqNuXwKN6X1us0nrJCTA6Zt3SdozXUmEmxqceBO22CccjmOWtwFyFraTAH2LE8A==";
         let body = "-----BEGIN PGP MESSAGE-----*-----END PGP MESSAGE-----\n";
         let is_anonymous = 0;
+        let is_paper_wallet = 0;
         let mut recipient_map: HashMap<String, String> = HashMap::new();
         recipient_map.insert(
             "bc1qqkaa0f63navwd5lv0axsy3fdalxc4f03xqhn0c".to_string(),
@@ -770,6 +774,7 @@ mod tests {
                 None,
                 Some(recipient_map),
                 Some(is_anonymous),
+                Some(is_paper_wallet),
             )
             .await;
         match result {
