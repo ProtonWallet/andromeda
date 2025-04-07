@@ -112,6 +112,7 @@ impl From<WasmExchangeRateOrTransactionTime> for ExchangeRateOrTransactionTime {
 pub struct WasmTransactionData {
     label: Option<String>,
     exchange_rate_or_transaction_time: WasmExchangeRateOrTransactionTime,
+    is_paper_wallet: Option<u8>,
 }
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
@@ -179,7 +180,6 @@ impl WasmBlockchainClient {
         wallet_account_id: String,
         transaction_data: WasmTransactionData,
         email_integration: Option<WasmEmailIntegrationData>,
-        is_paper_wallet: Option<u8>,
     ) -> Result<String, JsValue> {
         let tx = psbt.get_inner().extract_tx().map_err(|e| e.to_js_error())?;
 
@@ -197,7 +197,7 @@ impl WasmBlockchainClient {
                 email_integration_data.message.map(|m| m.into()),
                 email_integration_data.recipients,
                 email_integration_data.is_anonymous,
-                is_paper_wallet,
+                transaction_data.is_paper_wallet,
             )
             .await
             .map_err(|e| e.to_js_error())?;
