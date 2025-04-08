@@ -107,6 +107,14 @@ impl PaymentLink {
         }
     }
 
+    /// Returns the amount in sats as a u64, default to 0 when amount is not set in payment link.
+    pub fn to_amount_in_sats(&self) -> u64 {
+        match self {
+            Self::BitcoinURI { amount, .. } => amount.unwrap_or(0),
+            _ => 0,
+        }
+    }
+
     /// Attempts to create a Bitcoin `Address` from a string, validating against
     /// a specified network.
     fn try_create_address(address_str: &str, network: Network) -> Result<Address> {
@@ -387,6 +395,24 @@ mod tests {
                 label: Some("Fermi Pasta".to_string()),
                 message: Some("Thanks for your donation".to_string())
             }
+        );
+    }
+
+    #[test]
+    fn test_get_amount_in_sats() {
+        assert_eq!(
+            PaymentLink::try_parse(
+                "bitcoin:tb1qnmsyczn68t628m4uct5nqgjr7vf3w6mc0lvkfn?amount=0.00192880&label=Fermi%20Pasta&message=Thanks%20for%20your%20donation".to_string(),
+                Network::Testnet
+            )
+            .unwrap().to_amount_in_sats(),
+            192880
+        );
+        assert_eq!(
+            PaymentLink::try_parse(TEST_ADDRESS.to_string(), Network::Testnet)
+                .unwrap()
+                .to_amount_in_sats(),
+            0
         );
     }
 
