@@ -49,6 +49,11 @@ impl WasmPaymentLink {
         self.inner.to_uri()
     }
 
+    #[wasm_bindgen(js_name = toAmountInSats)]
+    pub fn to_amount_in_sats(&self) -> u64 {
+        self.inner.to_amount_in_sats()
+    }
+
     #[wasm_bindgen(js_name = tryParse)]
     pub fn try_parse(str: String, network: WasmNetwork) -> Result<WasmPaymentLink, js_sys::Error> {
         let inner = PaymentLink::try_parse(str, network.into()).map_err(|e| e.to_js_error())?;
