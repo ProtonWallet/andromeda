@@ -1,5 +1,4 @@
-use std::sync::{Arc, Mutex};
-
+use async_trait::async_trait;
 use cfg_if::cfg_if;
 #[cfg(feature = "allow-dangerous-env")]
 use muon::{app::AppVersion, common::Server, tls::TlsPinSet};
@@ -7,8 +6,9 @@ use muon::{
     client::Auth,
     common::IntoDyn,
     env::{Env, EnvId},
-    store::{Store, StoreFailure},
+    store::{Store, StoreError},
 };
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone)]
 pub struct WalletAuthStore {
@@ -59,17 +59,18 @@ impl WalletAuthStore {
     }
 }
 
+#[async_trait]
 impl Store for WalletAuthStore {
     fn env(&self) -> EnvId {
         self.env.clone()
     }
 
-    fn get_auth(&self) -> Auth {
+    async fn get_auth(&self) -> Auth {
         let auth = self.auth.lock().unwrap().clone();
         auth.clone()
     }
 
-    fn set_auth(&mut self, auth: Auth) -> Result<Auth, StoreFailure> {
+    async fn set_auth(&mut self, auth: Auth) -> Result<Auth, StoreError> {
         let mut old_auth = self.auth.lock().unwrap();
         *old_auth = auth.clone();
         Ok(auth)

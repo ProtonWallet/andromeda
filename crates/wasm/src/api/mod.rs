@@ -60,13 +60,18 @@ impl WasmProtonWalletApiClient {
     pub fn new(
         app_version: String,
         user_agent: String,
+        user_id_str: Option<String>,
         uid_str: Option<String>,
         origin: Option<String>,
         url_prefix: Option<String>,
     ) -> Result<WasmProtonWalletApiClient, js_sys::Error> {
+        let auth = match (user_id_str.as_deref(), uid_str.as_deref()) {
+            (Some(user_id), Some(uid)) => Auth::external(user_id.to_string(), uid.to_string()),
+            _ => Auth::None,
+        };
         let config = ApiConfig {
             spec: (app_version, user_agent),
-            auth: uid_str.map(|u| Auth::external(u)),
+            auth: Some(auth),
             env: origin,
             url_prefix,
             store: None,
@@ -106,7 +111,7 @@ mod tests {
     #[ignore]
     #[allow(dead_code)]
     async fn should_create_pw_api_client() {
-        let client = WasmProtonWalletApiClient::new(test_spec().0, test_spec().1, None, None, None).unwrap();
+        let client = WasmProtonWalletApiClient::new(test_spec().0, test_spec().1, None, None, None, None).unwrap();
         client.0.login("pro", "pro").await.unwrap();
     }
 }
