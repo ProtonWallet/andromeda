@@ -26,7 +26,7 @@ use crate::{
     psbt::Psbt,
     storage::WalletStorage,
     transactions::{ToTransactionDetails, TransactionDetails},
-    utils::SortOrder,
+    utils::{SortOrder, TransactionFilter},
 };
 
 const EXTERNAL_KEYCHAIN: KeychainKind = KeychainKind::External;
@@ -396,6 +396,7 @@ impl Account {
         &self,
         pagination: Pagination,
         sort: Option<SortOrder>,
+        filter: TransactionFilter,
     ) -> Result<Vec<TransactionDetails>, Error> {
         let wallet_lock = self.lock_wallet().await;
         let transactions = wallet_lock.transactions().collect::<Vec<_>>();
@@ -403,12 +404,19 @@ impl Account {
         // We first need to sort transactions by their time (last_seen for unconfirmed
         // ones and confirmation_time for confirmed one) The collection that
         // happen here might be consuming, maybe later we need to rework this part
-        let transactions = transactions
+        let mut txs = transactions
             .into_iter()
             .map(|tx| tx.to_transaction_details((&wallet_lock, (self.get_derivation_path()))))
             .collect::<Result<Vec<_>, _>>()?;
 
-        Ok(sort_and_paginate_txs(transactions, pagination, sort))
+        // Apply direction filter
+        txs = match filter {
+            TransactionFilter::All => txs,
+            TransactionFilter::Receive => txs.into_iter().filter(|tx| !tx.is_send()).collect(),
+            TransactionFilter::Send => txs.into_iter().filter(|tx| tx.is_send()).collect(),
+        };
+
+        Ok(sort_and_paginate_txs(txs, pagination, sort))
     }
 
     /// Returns a single address if found in the graph.
@@ -755,7 +763,7 @@ mod tests {
         storage::{WalletMemoryPersisterFactory, WalletPersisterFactory, WalletStorage},
         tests::utils::tests::set_test_wallet_account,
         transactions::Pagination,
-        utils::SortOrder,
+        utils::{SortOrder, TransactionFilter},
     };
 
     fn set_mainnet_test_account(script_type: ScriptType, derivation_path: &str) -> Account {
@@ -1386,7 +1394,7 @@ mod tests {
         // get transactions
         let pagination = Pagination::new(0, 10);
         let transactions = account
-            .get_transactions(pagination, Some(SortOrder::Asc))
+            .get_transactions(pagination, Some(SortOrder::Asc), TransactionFilter::All)
             .await
             .unwrap();
 

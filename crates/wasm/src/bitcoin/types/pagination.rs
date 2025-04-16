@@ -1,4 +1,7 @@
-use andromeda_bitcoin::{transactions::Pagination, utils::SortOrder};
+use andromeda_bitcoin::{
+    transactions::Pagination,
+    utils::{SortOrder, TransactionFilter},
+};
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
@@ -27,6 +30,23 @@ impl From<WasmSortOrder> for SortOrder {
         match val {
             WasmSortOrder::Asc => SortOrder::Asc,
             WasmSortOrder::Desc => SortOrder::Desc,
+        }
+    }
+}
+
+#[wasm_bindgen]
+pub enum WasmTransactionFilter {
+    All,
+    Receive,
+    Send,
+}
+
+impl From<WasmTransactionFilter> for TransactionFilter {
+    fn from(val: WasmTransactionFilter) -> Self {
+        match val {
+            WasmTransactionFilter::All => TransactionFilter::All,
+            WasmTransactionFilter::Receive => TransactionFilter::Receive,
+            WasmTransactionFilter::Send => TransactionFilter::Send,
         }
     }
 }

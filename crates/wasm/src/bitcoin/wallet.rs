@@ -11,7 +11,7 @@ use super::{
     types::{
         balance::WasmBalanceWrapper,
         derivation_path::WasmDerivationPath,
-        pagination::{WasmPagination, WasmSortOrder},
+        pagination::{WasmPagination, WasmSortOrder, WasmTransactionFilter},
         transaction::{WasmTransactionDetailsArray, WasmTransactionDetailsData},
     },
 };
@@ -127,12 +127,13 @@ impl WasmWallet {
     #[wasm_bindgen(js_name = getTransactions)]
     pub async fn get_transactions(
         &self,
+        filter: WasmTransactionFilter,
         pagination: Option<WasmPagination>,
         sort: Option<WasmSortOrder>,
     ) -> Result<WasmTransactionDetailsArray, js_sys::Error> {
         let transactions = self
             .inner
-            .get_transactions(pagination.map(|pa| pa.into()), sort.map(|s| s.into()))
+            .get_transactions(pagination.map(|pa| pa.into()), sort.map(|s| s.into()), filter.into())
             .await
             .map_err(|e| e.to_js_error())?
             .into_iter()

@@ -12,6 +12,7 @@ andromeda-api = { path = "../api" }
 andromeda-bitcoin = { path = "../bitcoin" }
 andromeda-common = { path = "../common" }
 andromeda-esplora = { path = "../esplora" }
+andromeda-macros = { path = "../macros" }
 
 uuid = { version = "1.6.1", features = ["v4", "fast-rng", "js"] }
 

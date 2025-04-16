@@ -2,7 +2,6 @@ use std::str::FromStr;
 
 use andromeda_bitcoin::{address::AddressDetails, error::Error as BitcoinError, Address, ConsensusParams, ScriptBuf};
 use serde::{Deserialize, Deserializer, Serialize};
-use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
 use super::{
@@ -81,27 +80,43 @@ impl WasmAddress {
 }
 
 // Address Details
-
-#[derive(Tsify, Serialize, Deserialize, Clone)]
-#[tsify(into_wasm_abi, from_wasm_abi)]
+#[wasm_bindgen]
+#[derive(Clone)]
 #[allow(non_snake_case)]
 pub struct WasmAddressDetails {
-    pub index: u32,
-    pub address: String,
-    pub transactions: Vec<WasmTransactionDetails>,
-    pub balance: WasmBalance,
-    pub keychain: WasmKeychainKind,
+    inner: AddressDetails,
 }
 
 impl From<AddressDetails> for WasmAddressDetails {
     fn from(val: AddressDetails) -> Self {
-        WasmAddressDetails {
-            index: val.index,
-            address: val.address,
-            transactions: val.transactions.into_iter().map(|t| t.into()).collect::<Vec<_>>(),
-            balance: val.balance.into(),
-            keychain: val.keychain.into(),
-        }
+        WasmAddressDetails { inner: val }
+    }
+}
+#[wasm_bindgen]
+impl WasmAddressDetails {
+    #[wasm_bindgen(js_name = getIndex)]
+    pub fn get_index(&self) -> u32 {
+        self.inner.index
+    }
+
+    #[wasm_bindgen(js_name = getAddress)]
+    pub fn get_address(&self) -> String {
+        self.inner.address.clone()
+    }
+
+    #[wasm_bindgen(js_name = getTransactions)]
+    pub fn get_transactions(&self) -> Vec<WasmTransactionDetails> {
+        self.inner.transactions.iter().map(|t| t.clone().into()).collect()
+    }
+
+    #[wasm_bindgen(js_name = getBalance)]
+    pub fn get_balance(&self) -> WasmBalance {
+        self.inner.balance.clone().into()
+    }
+
+    #[wasm_bindgen(js_name = getKeychain)]
+    pub fn get_keychain(&self) -> WasmKeychainKind {
+        self.inner.keychain.into()
     }
 }
 
