@@ -11,6 +11,7 @@ use andromeda_bitcoin::{
     blockchain_client::BlockchainClient,
     storage::WalletMemoryPersisterFactory,
     transactions::{Pagination, TransactionTime},
+    utils::TransactionFilter,
     wallet::Wallet,
     DerivationPath,
 };
@@ -211,7 +212,7 @@ async fn get_account_transactions(
 
     println!("\nTRANSACTIONS");
     account
-        .get_transactions(Pagination::default(), None)
+        .get_transactions(Pagination::default(), None, TransactionFilter::All)
         .await
         .map_err(|_| "Cannot get transactions")?
         .into_iter()

@@ -9,6 +9,13 @@ pub enum SortOrder {
     Desc,
 }
 
+#[derive(PartialEq, PartialOrd)]
+pub enum TransactionFilter {
+    All,
+    Receive,
+    Send,
+}
+
 #[cfg(target_arch = "wasm32")]
 pub fn spawn<F>(future: F)
 where

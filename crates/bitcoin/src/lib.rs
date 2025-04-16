@@ -1,3 +1,9 @@
+//! Bitcoin wallet functionality for Andromeda
+//!
+//! This crate provides Bitcoin wallet operations including account management,
+//! transaction handling, and message signing.
+
+// Core modules
 pub mod account;
 pub mod account_sweeper;
 pub mod account_syncer;
@@ -19,17 +25,24 @@ pub mod transactions;
 pub mod utils;
 pub mod wallet;
 
+// Re-export commonly used types
+pub use andromeda_crypto::message_signature::SigningType;
+pub use utils::{SortOrder, TransactionFilter};
+
 #[cfg(test)]
 pub mod tests {
     pub mod test_utils;
     pub mod utils;
 }
 
-// Define a type alias for the common result type used in this crate
+// Type alias for common result type
 type Result<T> = std::result::Result<T, error::Error>;
 
+// SQLite feature
 #[cfg(feature = "sqlite")]
 pub use bdk_wallet::rusqlite::Connection;
+
+// Re-export BDK types
 #[doc(hidden)]
 pub use bdk_wallet::{
     bitcoin::{
@@ -52,5 +65,3 @@ pub use bdk_wallet::{
     tx_builder::ChangeSpendPolicy,
     AddressInfo, Balance, ChangeSet, KeychainKind, LocalOutput, SignOptions,
 };
-
-pub use andromeda_crypto::message_signature::SigningType;

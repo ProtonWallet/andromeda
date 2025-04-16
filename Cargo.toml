@@ -7,6 +7,7 @@ members = [
   "crates/esplora",
   "crates/crypto",
   "crates/wasm",
+  "crates/macros",
   "examples/cli",
 ]
 [profile.release]

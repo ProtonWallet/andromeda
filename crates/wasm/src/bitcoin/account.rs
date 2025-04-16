@@ -18,7 +18,7 @@ use super::{
         address_info::WasmAddressInfo,
         balance::{WasmBalance, WasmBalanceWrapper},
         derivation_path::WasmDerivationPath,
-        pagination::{WasmPagination, WasmSortOrder},
+        pagination::{WasmPagination, WasmSortOrder, WasmTransactionFilter},
         transaction::{WasmTransactionDetailsArray, WasmTransactionDetailsData},
         utxo::{WasmUtxo, WasmUtxoArray},
     },
@@ -218,11 +218,12 @@ impl WasmAccount {
     pub async fn get_transactions(
         &self,
         pagination: WasmPagination,
+        filter: WasmTransactionFilter,
         sort: Option<WasmSortOrder>,
     ) -> Result<WasmTransactionDetailsArray, js_sys::Error> {
         let transactions = self
             .inner
-            .get_transactions(pagination.into(), sort.map(|s| s.into()))
+            .get_transactions(pagination.into(), sort.map(|s| s.into()), filter.into())
             .await
             .map_err(|e| e.to_js_error())?
             .into_iter()

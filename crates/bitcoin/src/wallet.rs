@@ -23,7 +23,7 @@ use crate::{
     mnemonic::Mnemonic,
     storage::{WalletPersisterFactory, WalletStorage},
     transactions::{ToTransactionDetails, TransactionDetails},
-    utils::SortOrder,
+    utils::{SortOrder, TransactionFilter},
 };
 
 const ACCOUNT_DISCOVERY_STOP_GAP: u32 = 2;
@@ -253,9 +253,9 @@ impl Wallet {
         &self,
         pagination: Option<Pagination>,
         sort: Option<SortOrder>,
+        filter: TransactionFilter,
     ) -> Result<Vec<TransactionDetails>, Error> {
         let pagination = pagination.unwrap_or_default();
-
         let async_iter = self.accounts.values().map(|account| async move {
             let wallet_lock = account.lock_wallet().await;
             let transactions = wallet_lock.transactions().collect::<Vec<_>>();
@@ -264,15 +264,21 @@ impl Wallet {
                 .into_iter()
                 .map(|tx| tx.to_transaction_details((&wallet_lock, (account.get_derivation_path()))))
                 .collect::<Result<Vec<_>, _>>()?;
-
             Ok::<Vec<TransactionDetails>, Error>(transactions)
         });
 
-        let txs = try_join_all(async_iter)
+        let mut txs = try_join_all(async_iter)
             .await?
             .into_iter()
             .flatten()
             .collect::<Vec<_>>();
+
+        // Apply direction filter
+        txs = match filter {
+            TransactionFilter::All => txs,
+            TransactionFilter::Receive => txs.into_iter().filter(|tx| !tx.is_send()).collect(),
+            TransactionFilter::Send => txs.into_iter().filter(|tx| tx.is_send()).collect(),
+        };
 
         Ok(sort_and_paginate_txs(txs, pagination, sort))
     }

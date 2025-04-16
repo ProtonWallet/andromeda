@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, sync::Arc};
+use std::{cmp::Ordering, str::FromStr, sync::Arc};
 
 use andromeda_common::utils::now;
 use async_std::sync::RwLockReadGuard;
@@ -6,13 +6,14 @@ use bdk_chain::tx_graph::TxNode;
 use bdk_wallet::{
     bitcoin::{bip32::DerivationPath, Address, ScriptBuf, Sequence, TxIn, TxOut, Txid, Witness},
     chain::{ChainPosition, ConfirmationBlockTime},
-    PersistedWallet, Wallet as BdkWallet, WalletPersister, WalletTx,
+    PersistedWallet, Wallet as BdkWallet, WalletTx,
 };
 use bitcoin::Transaction;
+use serde::{Deserialize, Serialize};
 
-use crate::{account::Account, account_trait::AccessWallet, error::Error, psbt::Psbt};
+use crate::{account::Account, account_trait::AccessWallet, error::Error, psbt::Psbt, storage::WalletStorage};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TransactionTime {
     Confirmed { confirmation_time: u64 },
     Unconfirmed { last_seen: u64 },
@@ -43,7 +44,7 @@ impl Ord for TransactionTime {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TransactionDetails {
     /// Transaction id
     pub txid: Txid,
@@ -115,13 +116,10 @@ pub trait ToTransactionDetails<A> {
     fn to_transaction_details(&self, account: A) -> Result<TransactionDetails, Error>;
 }
 
-impl<'a, P> ToTransactionDetails<(&RwLockReadGuard<'a, PersistedWallet<P>>, DerivationPath)> for WalletTx<'a>
-where
-    P: WalletPersister,
-{
+impl<'a> ToTransactionDetails<(&RwLockReadGuard<'a, PersistedWallet<WalletStorage>>, DerivationPath)> for WalletTx<'a> {
     fn to_transaction_details(
         &self,
-        (wallet_lock, account_derivation_path): (&RwLockReadGuard<'a, PersistedWallet<P>>, DerivationPath),
+        (wallet_lock, account_derivation_path): (&RwLockReadGuard<'a, PersistedWallet<WalletStorage>>, DerivationPath),
     ) -> Result<TransactionDetails, Error> {
         let (sent, received) = wallet_lock.sent_and_received(&self.tx_node.tx);
 
@@ -147,14 +145,12 @@ where
     }
 }
 
-impl<'a, P, A> ToTransactionDetails<(&RwLockReadGuard<'a, PersistedWallet<P>>, DerivationPath)>
+impl<'a, A> ToTransactionDetails<(&RwLockReadGuard<'a, PersistedWallet<WalletStorage>>, DerivationPath)>
     for TxNode<'_, Arc<Transaction>, A>
-where
-    P: WalletPersister,
 {
     fn to_transaction_details(
         &self,
-        (wallet_lock, account_derivation_path): (&RwLockReadGuard<'a, PersistedWallet<P>>, DerivationPath),
+        (wallet_lock, account_derivation_path): (&RwLockReadGuard<'a, PersistedWallet<WalletStorage>>, DerivationPath),
     ) -> Result<TransactionDetails, Error> {
         let (sent, received) = wallet_lock.sent_and_received(&self.tx);
         let tx = wallet_lock
@@ -225,9 +221,32 @@ impl TransactionDetails {
             TransactionTime::Unconfirmed { last_seen } => last_seen,
         }
     }
+
+    pub fn is_send(&self) -> bool {
+        self.sent > self.received
+    }
+
+    /// Returns the net value of the transaction (amount received minus amount sent)
+    /// For sent transactions (sent > received):
+    ///   - Returns the actual amount sent (excluding change output and fees)
+    ///   - note: send value includes fees
+    /// For received transactions (received > sent):
+    ///   - Returns the net amount received
+    ///   - note: received value doesnt include fees
+    pub fn get_value(&self) -> u64 {
+        if self.is_send() {
+            self.sent - self.fees.unwrap_or(0) - self.received
+        } else {
+            self.received - self.sent
+        }
+    }
+
+    pub fn get_value_with_fee(&self) -> u64 {
+        self.get_value() + self.fees.unwrap_or(0)
+    }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DetailledTxIn {
     pub previous_output: Option<DetailledTxOutput>, // Remove option when we know why some utxo are not found
     pub script_sig: ScriptBuf,
@@ -248,12 +267,27 @@ impl DetailledTxIn {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DetailledTxOutput {
     pub value: u64,
+    #[serde(deserialize_with = "deserialize_address_opt")]
     pub address: Option<Address>,
     pub script_pubkey: ScriptBuf,
     pub is_mine: bool,
+}
+
+fn deserialize_address_opt<'de, D>(deserializer: D) -> Result<Option<Address>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let opt_str: Option<String> = Option::deserialize(deserializer)?;
+    match opt_str {
+        Some(s) => {
+            let addr = Address::from_str(&s).map_err(serde::de::Error::custom)?;
+            Ok(Some(addr.assume_checked()))
+        }
+        None => Ok(None),
+    }
 }
 
 impl DetailledTxOutput {
