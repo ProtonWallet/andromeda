@@ -16,6 +16,7 @@ use event::EventClient;
 use exchange_rate::ExchangeRateClient;
 use invite::InviteClient;
 use log::info;
+use muon::client::flow::LoginExtraInfo;
 #[cfg(not(target_arch = "wasm32"))]
 use muon::common::{ConstProxy, Endpoint, Scheme};
 pub use muon::{
@@ -24,7 +25,7 @@ pub use muon::{
     common::ServiceType,
     env::EnvId,
     rest::core as CoreAPI,
-    store::{DynStore, Store, StoreFailure},
+    store::{DynStore, Store, StoreError},
     util::ProtonRequestExt,
     App, Client, Error as MuonError, ProtonRequest, ProtonResponse, GET,
 };
@@ -33,7 +34,6 @@ use muon::{
     common::Host,
     tls::{TlsCert, Verifier, VerifyRes},
 };
-
 use network::NetworkClient;
 use payment_gateway::PaymentGatewayClient;
 use price_graph::PriceGraphClient;
@@ -171,13 +171,13 @@ pub struct Clients {
 impl ProtonWalletApiClient {
     /// Builds a new api client from a config struct
     ///
-    /// env could be custmized url like localhost or 127.0.0.1 it requires
+    /// env can be a custom url like localhost or 127.0.0.1, but it requires
     /// `allow-dangerous-env` feature to be enabled
     ///
     /// ```rust
     /// use andromeda_api::{ProtonWalletApiClient, ApiConfig, WalletAuthStore};
     /// use muon::client::{Auth, Tokens};
-    /// let auth = Auth::internal("uid", Tokens::access("acc_tok", "ref_tok", ["scopes"]));
+    /// let auth = Auth::internal("userid", "uid", Tokens::access("acc_tok", "ref_tok", ["scopes"]));
     /// let config = ApiConfig {
     ///     spec: (String::from("android-wallet/1.0.0"), String::from("ProtonWallet/plus-agent-details")),
     ///     auth: Some(auth),
@@ -256,8 +256,15 @@ impl ProtonWalletApiClient {
     /// ```
     pub async fn login(&self, username: &str, password: &str) -> Result<UserData, Error> {
         info!("login start");
-        let c = match self.session.clone().auth().login(username, password).await {
-            LoginFlow::Ok(c) => Ok(c),
+        let extra_info = LoginExtraInfo::builder().build();
+        let c = match self
+            .session
+            .clone()
+            .auth()
+            .login_with_extra(username, password, extra_info)
+            .await
+        {
+            LoginFlow::Ok(c, ..) => Ok(c),
             LoginFlow::Failed { client: _, reason: _ } => Err(Error::LoginError),
             _ => Err(Error::UnsupportedTwoFactor),
         }?;
