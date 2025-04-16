@@ -131,6 +131,8 @@ impl fmt::Display for FiatCurrencySymbol {
 pub struct UserSettings {
     /// Flag if user had accepted terms and conditions, 0: no, 1: yes
     pub AcceptTermsAndConditions: Option<u8>,
+    /// Tell the client that it is allowed to show the review page, 0: no, 1: yes
+    pub AllowReview: Option<u8>,
     pub BitcoinUnit: BitcoinUnit,
     pub FiatCurrency: FiatCurrencySymbol,
     /// Hide empty used addresses, 0: disabled, 1: enabled
@@ -145,6 +147,8 @@ pub struct UserSettings {
     pub ReceiveTransactionNotification: Option<u8>,
     /// User has already created a wallet once, 0: no, 1: yes
     pub WalletCreated: Option<u8>,
+    /// Timestamp about when user saw the review page on client
+    pub ReviewTime: Option<u64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -295,6 +299,15 @@ impl SettingsClient {
 
     pub async fn accept_terms_and_conditions(&self) -> Result<UserSettings, Error> {
         let request = self.put("settings/terms-and-conditions/accept");
+
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<GetUserSettingsResponseBody>()?;
+
+        Ok(parsed.WalletUserSettings)
+    }
+
+    pub async fn update_review_time(&self) -> Result<UserSettings, Error> {
+        let request = self.put("settings/review-time");
 
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<GetUserSettingsResponseBody>()?;
@@ -714,6 +727,45 @@ mod tests {
         match result {
             Ok(settings) => {
                 assert_eq!(settings.AcceptTermsAndConditions.unwrap(), 1);
+                return;
+            }
+            Err(e) => panic!("Got Err. {:?}", e),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_update_review_time_success() {
+        let mock_server = MockServer::start().await;
+        let response_body = serde_json::json!(
+            {
+                "Code": 1000,
+                "WalletUserSettings": {
+                    "AcceptTermsAndConditions": 1,
+                    "BitcoinUnit": "BTC",
+                    "FiatCurrency": "TWD",
+                    "HideEmptyUsedAddresses": 0,
+                    "TwoFactorAmountThreshold": 3000,
+                    "ReceiveInviterNotification": 1,
+                    "ReceiveEmailIntegrationNotification": 1,
+                    "ReceiveTransactionNotification": 1,
+                    "WalletCreated": 1,
+                    "ReviewTime": 12345678,
+                }
+            }
+        );
+        let req_path: String = format!("{}/settings/review-time", BASE_WALLET_API_V1);
+        let response = ResponseTemplate::new(200).set_body_json(response_body);
+        Mock::given(method("PUT"))
+            .and(path(req_path))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection(mock_server.uri());
+        let client = SettingsClient::new(api_client);
+        let result = client.update_review_time().await;
+        match result {
+            Ok(settings) => {
+                assert_eq!(settings.ReviewTime.unwrap(), 12345678);
                 return;
             }
             Err(e) => panic!("Got Err. {:?}", e),
