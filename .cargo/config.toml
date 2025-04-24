@@ -1,5 +1,6 @@
 [registries]
 proton_internal = { index = "sparse+https://rust.gitlab-pages.protontech.ch/shared/registry/index/" }
+proton_public = { index = "sparse+https://rust-registry.proton.me/index/" }
 
 [target.wasm32-unknown-unknown]
 runner = 'wasm-bindgen-test-runner'
