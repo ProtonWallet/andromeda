@@ -10,7 +10,7 @@ use crate::{
     ProtonWalletApiClient, BASE_WALLET_API_V1,
 };
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[allow(non_snake_case)]
 pub struct ApiExchangeRate {
     /// An encrypted ID

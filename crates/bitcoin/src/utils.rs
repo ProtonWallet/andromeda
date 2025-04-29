@@ -107,11 +107,7 @@ pub fn min_f64(a: f64, b: f64) -> f64 {
     }
 }
 
-pub fn sort_and_paginate_txs(
-    mut txs: Vec<TransactionDetails>,
-    pagination: Pagination,
-    sort_order: Option<SortOrder>,
-) -> Vec<TransactionDetails> {
+pub fn sort_txs(mut txs: Vec<TransactionDetails>, sort_order: Option<SortOrder>) -> Vec<TransactionDetails> {
     if let Some(sort_order) = sort_order {
         // we only sort by time for now
         txs.sort_by(|a, b| {
@@ -122,6 +118,16 @@ pub fn sort_and_paginate_txs(
             }
         });
     }
+
+    txs
+}
+
+pub fn sort_and_paginate_txs(
+    mut txs: Vec<TransactionDetails>,
+    pagination: Pagination,
+    sort_order: Option<SortOrder>,
+) -> Vec<TransactionDetails> {
+    txs = sort_txs(txs, sort_order);
 
     // We paginated sorted vector
     txs.into_iter()

@@ -2,6 +2,7 @@ use std::{collections::BTreeMap, fmt::Debug, str::FromStr, sync::Arc};
 
 use andromeda_common::{async_trait_impl, Network, ScriptType};
 use async_std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+use bdk_chain::{BlockId, ChainPosition, ConfirmationBlockTime};
 use bdk_wallet::{
     bitcoin::{
         bip32::{ChildNumber, DerivationPath, Xpriv},
@@ -16,7 +17,7 @@ use bdk_wallet::{
 use bitcoin::{bip32::Xpub, params::Params, Amount};
 use miniscript::{descriptor::DescriptorSecretKey, DescriptorPublicKey, ForEachKey};
 
-use super::{payment_link::PaymentLink, transactions::Pagination, utils::sort_and_paginate_txs};
+use super::{payment_link::PaymentLink, transactions::Pagination, utils::sort_and_paginate_txs, utils::sort_txs};
 use crate::{
     account_trait::AccessWallet,
     address::AddressDetails,
@@ -371,6 +372,124 @@ impl Account {
                 }
             }
         }
+    }
+
+    /// Returns the last BlockId before given time in transactions
+    /// Returns None if we cannot find any BlockId before given time
+    ///
+    /// # Parameters
+    /// - `time`: u64 unix timestamp
+    pub async fn get_last_block_id_before_time(&self, time: u64) -> Option<BlockId> {
+        let mut last_confirm_block = ConfirmationBlockTime::default();
+        last_confirm_block.confirmation_time = 0;
+        let mut found = false;
+
+        let wallet_lock = self.lock_wallet().await;
+        let transactions = wallet_lock.transactions().collect::<Vec<_>>();
+
+        // iter all transactions to find the last BlockId before given time
+        for transaction in transactions {
+            match transaction.chain_position {
+                ChainPosition::Confirmed { anchor, .. } => {
+                    let confirm_time = anchor.confirmation_time;
+                    // if it is more close to the time we want
+                    if confirm_time < time && confirm_time > last_confirm_block.confirmation_time {
+                        last_confirm_block = anchor.clone();
+                        found = true;
+                    }
+                }
+                ChainPosition::Unconfirmed { .. } => {}
+            }
+        }
+
+        println!("BlockID: {:?}", last_confirm_block.block_id);
+
+        match found {
+            true => Some(last_confirm_block.block_id),
+            false => None,
+        }
+    }
+
+    /// Returns the balance at given block of an account.
+    /// this will count spented txouts as well, so we can get current spentable balance at given block
+    /// # Notes
+    ///
+    /// The block must be existing in wallet graph, or bdk will mark all txout as unconfirmed
+    ///
+    /// Balance details includes :
+    /// * immature coins
+    /// * trusted pending (unconfirmed internal)
+    /// * untrusted pending (unconfirmed external)
+    /// * confirmed coins
+    ///
+    /// # Parameters
+    /// - `block`: BlockId
+    pub async fn get_balance_at_block(&self, block: BlockId) -> Result<BdkBalance, Error> {
+        let wallet = self.lock_wallet().await;
+        let chain = wallet.local_chain();
+
+        let outpoints = wallet.spk_index().outpoints().iter().cloned();
+
+        // the following logic is from TxGraph.try_balance()
+        // the main different is that we use `filter_chain_txouts` instead of `try_filter_chain_unspents`
+        // since we want to get actual spentable amount at given block
+        let mut immature = Amount::ZERO;
+        let mut trusted_pending = Amount::ZERO;
+        let mut untrusted_pending = Amount::ZERO;
+        let mut confirmed = Amount::ZERO;
+        let trust_predicate = |(k, _), _| k == KeychainKind::Internal;
+        for (spk_i, txout) in wallet.tx_graph().filter_chain_txouts(chain, block, outpoints) {
+            match &txout.chain_position {
+                ChainPosition::Confirmed { .. } => {
+                    if txout.is_confirmed_and_spendable(block.height) {
+                        confirmed += txout.txout.value;
+                    } else if !txout.is_mature(block.height) {
+                        immature += txout.txout.value;
+                    }
+                }
+                ChainPosition::Unconfirmed { .. } => {
+                    if trust_predicate(spk_i, txout.txout.script_pubkey) {
+                        trusted_pending += txout.txout.value;
+                    } else {
+                        untrusted_pending += txout.txout.value;
+                    }
+                }
+            }
+        }
+
+        Ok(BdkBalance {
+            immature,
+            trusted_pending,
+            untrusted_pending,
+            confirmed,
+        })
+    }
+
+    /// Returns all transactions that block height <= given block height
+    ///
+    /// # Parameters
+    /// - `block`: BlockId
+    pub async fn get_transactions_at_block(&self, block: BlockId) -> Result<Vec<TransactionDetails>, Error> {
+        let write_lock = self.lock_wallet().await;
+        let transactions = write_lock
+            .transactions()
+            .collect::<Vec<_>>()
+            .into_iter()
+            .filter(|transaction| match transaction.chain_position {
+                ChainPosition::Confirmed { anchor, .. } => {
+                    return anchor.block_id.height <= block.height;
+                }
+                ChainPosition::Unconfirmed { .. } => {
+                    return false;
+                }
+            })
+            .collect::<Vec<_>>();
+        let transactions = transactions
+            .into_iter()
+            .map(|tx| tx.to_transaction_details((&write_lock, (self.get_derivation_path()))))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(sort_txs(transactions, Some(SortOrder::Desc)))
     }
 
     /// Returns a bitcoin uri as defined in https://bips.dev/21/
@@ -735,10 +854,13 @@ mod tests {
     use std::{str::FromStr, sync::Arc};
 
     use andromeda_api::{
+        block,
+        exchange_rate::ApiExchangeRate,
         tests::utils::{common_api_client, setup_test_connection},
         BASE_WALLET_API_V1,
     };
-    use andromeda_common::Network;
+    use andromeda_common::{pdf_generator::PDFGenerator, Network};
+    use bdk_chain::BlockId;
     use bdk_wallet::{
         bitcoin::{Address, NetworkKind},
         serde_json,
@@ -746,7 +868,9 @@ mod tests {
     use bitcoin::{
         bip32::{DerivationPath, Xpriv},
         key::Secp256k1,
+        Amount, BlockHash,
     };
+    use futures::executor::block_on;
     use tokio_test::assert_ok;
     use wiremock::{
         matchers::{body_string_contains, method, path, path_regex},
@@ -1847,5 +1971,74 @@ mod tests {
         );
         assert_ok!(&account);
         assert_eq!(account.unwrap().get_xpub().await.unwrap().to_string(), "xpub6BsgpMy4TZXH9dzD8M6RE28ve3EQ5uy3kW6g6muJ6xtnpD198ns5yGCZrXZHFp6Wd3FCkApQ79esrdk6h91JpV9rfgTXacbhyuhK8XRz2vk");
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_get_transactions_at_block_from_atlas() {
+        let account = Arc::new(set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'"));
+        let api_client = common_api_client().await;
+        let client = Arc::new(BlockchainClient::new(api_client));
+        let sync = AccountSyncer::new(client, account.clone());
+        sync.full_sync(None).await.unwrap();
+
+        let block_id = account.get_last_block_id_before_time(1740128584).await;
+        let transactions = account.get_transactions_at_block(block_id.unwrap()).await.unwrap();
+        println!("transactions: {:?}", transactions);
+        assert_eq!(transactions.len(), 4);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_get_balance_at_block_from_atlas() {
+        let account = Arc::new(set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'"));
+        let api_client = common_api_client().await;
+        let client = Arc::new(BlockchainClient::new(api_client));
+        let sync = AccountSyncer::new(client, account.clone());
+        sync.full_sync(None).await.unwrap();
+
+        let block_id = BlockId {
+            height: 4365,
+            hash: BlockHash::from_str("324b277c748236cffc500a60390b3aae4db024a4ac08cdc805e4113cf464a655").unwrap(),
+        };
+        let balance = account.get_balance_at_block(block_id).await.unwrap();
+        assert_eq!(balance.confirmed, Amount::from_sat(3773));
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_get_last_block_id_before_time_from_atlas() {
+        let account = Arc::new(set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'"));
+        let api_client = common_api_client().await;
+        let client = Arc::new(BlockchainClient::new(api_client));
+        let sync = AccountSyncer::new(client, account.clone());
+        sync.full_sync(None).await.unwrap();
+
+        let block_id = account.get_last_block_id_before_time(1742964438).await;
+        assert!(block_id.is_some());
+        assert_eq!(
+            block_id.unwrap().hash.as_raw_hash().to_string(),
+            "03730eabfa7239dc87bf3654414bf20cf19d38971aea841cd8b78cbb1a370a99".to_string()
+        );
+        assert_eq!(block_id.unwrap().height, 4368);
+
+        let block_id = account.get_last_block_id_before_time(1740128584).await;
+        assert!(block_id.is_some());
+        assert_eq!(
+            block_id.unwrap().hash.as_raw_hash().to_string(),
+            "324b277c748236cffc500a60390b3aae4db024a4ac08cdc805e4113cf464a655".to_string()
+        );
+        assert_eq!(block_id.unwrap().height, 4365);
+
+        let block_id = account.get_last_block_id_before_time(1740128404).await;
+        assert!(block_id.is_some());
+        assert_eq!(
+            block_id.unwrap().hash.as_raw_hash().to_string(),
+            "10b99a5e0799f7f3e81d645e0dd65cdc231e38b79d42388b42fe0f3ed746c1f7".to_string()
+        );
+        assert_eq!(block_id.unwrap().height, 4364);
+
+        let block_id = account.get_last_block_id_before_time(1742964).await;
+        assert!(block_id.is_none());
     }
 }

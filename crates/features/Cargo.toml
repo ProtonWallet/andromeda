@@ -1,0 +1,20 @@
+[package]
+name = "andromeda-features"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+thiserror = { workspace = true }
+andromeda-api = { version = "0.1.0", path = "../api" }
+andromeda-bitcoin = { version = "0.1.0", path = "../bitcoin" }
+andromeda-common = { version = "0.1.0", path = "../common" }
+
+
+chrono = { version = "0.4", features = ["wasmbind"] }
+bitcoin = { workspace = true }
+bdk_chain = { workspace = true }
+
+[dev-dependencies]
+wiremock = "0.6.0"
+tokio = { workspace = true }
+tokio-test = { workspace = true }

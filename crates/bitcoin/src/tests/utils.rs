@@ -1,4 +1,3 @@
-#[cfg(test)]
 pub mod tests {
     use std::str::FromStr;
 
@@ -42,9 +41,12 @@ pub mod tests {
     /// # Example Usage
     ///
     /// ```rust
+    /// use andromeda_bitcoin::tests::utils::tests::set_test_wallet_account;
+    /// use andromeda_common::{Network, ScriptType};
+    /// use bitcoin::NetworkKind;
     /// let test_account = set_test_wallet_account(
     ///     "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
-    ///     ScriptType::NativeSegWit,
+    ///     ScriptType::NativeSegwit,
     ///     "m/84'/0'/0'/0",
     ///     Some(true),   // Enable file storage
     ///     Some(false),  // File storage is writable

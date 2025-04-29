@@ -13,6 +13,8 @@ pub const MILLI_BITCOIN: u64 = BITCOIN / 1000;
 
 pub mod async_trait;
 pub mod error;
+pub mod pdf_generator;
+mod typst_wrapper;
 pub mod utils;
 
 /// Reimpl of BDK's Network enum to have exhaustive enum

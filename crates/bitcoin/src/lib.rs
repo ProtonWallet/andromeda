@@ -29,7 +29,6 @@ pub mod wallet;
 pub use andromeda_crypto::message_signature::SigningType;
 pub use utils::{SortOrder, TransactionFilter};
 
-#[cfg(test)]
 pub mod tests {
     pub mod test_utils;
     pub mod utils;
