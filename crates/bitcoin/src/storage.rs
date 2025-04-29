@@ -3,9 +3,7 @@ use std::{fmt::Debug, sync::Arc};
 use crate::error::Error;
 pub use bdk_wallet::{chain::Merge, ChangeSet, WalletPersister};
 
-#[cfg(test)]
 use bdk_wallet::serde_json;
-#[cfg(test)]
 use std::{
     fs::{File, OpenOptions},
     io::{Read, Write},
@@ -72,25 +70,21 @@ impl WalletPersister for WalletStorage {
     }
 }
 
-#[cfg(test)]
 #[derive(Clone, Debug)]
 pub struct WalletFilePersisterFactory(pub bool);
 
-#[cfg(test)]
 impl WalletPersisterFactory for WalletFilePersisterFactory {
     fn build(self, key: String) -> Arc<dyn Storage> {
         Arc::new(WalletFilePersister::new(key, self.0))
     }
 }
 
-#[cfg(test)]
 #[derive(Clone, Debug)]
 struct WalletFilePersister {
     changeset_file: PathBuf,
     is_read_only: bool,
 }
 
-#[cfg(test)]
 impl WalletFilePersister {
     fn new(key: String, is_read_only: bool) -> Self {
         const CHANGESET_KEY_BASE: &str = "mock";
@@ -133,7 +127,6 @@ impl WalletFilePersister {
     }
 }
 
-#[cfg(test)]
 impl Storage for WalletFilePersister {
     fn initialize(&self) -> Result<ChangeSet, Error> {
         Ok(self.get().unwrap_or_default())

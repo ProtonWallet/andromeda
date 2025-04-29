@@ -6,6 +6,7 @@ members = [
   "crates/bitcoin",
   "crates/esplora",
   "crates/crypto",
+  "crates/features",
   "crates/wasm",
   "crates/macros",
   "examples/cli",

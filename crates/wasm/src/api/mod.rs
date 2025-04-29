@@ -15,7 +15,7 @@ use crate::common::error::ErrorExt;
 mod bitcoin_address;
 mod email_integration;
 mod env;
-mod exchange_rate;
+pub mod exchange_rate;
 mod invite;
 mod network;
 mod payment_gateway;

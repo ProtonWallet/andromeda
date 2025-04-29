@@ -6,6 +6,7 @@ use andromeda_bitcoin::error::{
 };
 use andromeda_common::error::Error as CommonError;
 use andromeda_esplora::error::Error as EsploraError;
+use andromeda_features::error::Error as FeaturesError;
 use serde::Serialize;
 use serde_json::{json, Value};
 use serde_wasm_bindgen::Serializer;
@@ -158,6 +159,114 @@ impl ErrorExt for CommonError {
             CommonError::InvalidScriptType(script_type) => json_to_jsvalue(json!({
                 "kind":"InvalidScriptType",
                 "scriptType": script_type,
+            })),
+            CommonError::CompileTypst => json_to_jsvalue(json!({
+                "kind": "CompileTypst",
+            })),
+            CommonError::ExportPDF => json_to_jsvalue(json!({
+                "kind": "ExportPDF",
+            })),
+        }
+    }
+}
+
+impl ErrorExt for FeaturesError {
+    fn to_js_error(self) -> JsValue {
+        let common_error = JsValue::from(
+            &format!("Wasm error occurred in Bitcoin: {}", self),
+            // json!(self), TODO: fix this to have more detailed errors
+        );
+
+        match self {
+            FeaturesError::AndromedaBitcoinError(error) => match error {
+                BitcoinError::InvalidFeeRate => json_to_jsvalue(json!({
+                    "kind": "InvalidFeeRate",
+                })),
+                BitcoinError::BitcoinAddressParse(error) => match error {
+                    BitcoinAddressParseError::Base58(_) => json_to_jsvalue(json!({
+                        "kind": "Base58",
+                    })),
+                    BitcoinAddressParseError::Bech32(_) => json_to_jsvalue(json!({
+                        "kind": "Bech32",
+                    })),
+                    BitcoinAddressParseError::NetworkValidation(_) => json_to_jsvalue(json!({
+                        "kind": "NetworkValidation",
+                    })),
+                    _ => common_error,
+                },
+                BitcoinError::CreateTx(error) => match error {
+                    CreateTxError::CoinSelection(InsufficientFundsError { needed, available }) => {
+                        json_to_jsvalue(json!({
+                            "kind": "InsufficientFunds",
+                            "needed": needed,
+                            "available": available,
+                        }))
+                    }
+                    CreateTxError::OutputBelowDustLimit(limit) => json_to_jsvalue(json!({
+                        "kind": "OutputBelowDustLimit",
+                        "limit": limit,
+                    })),
+                    _ => common_error,
+                },
+                BitcoinError::ExtractTx(error) => match error {
+                    ExtractTxError::AbsurdFeeRate { .. } => json_to_jsvalue(json!({
+                        "kind": "AbsurdFeeRate",
+                    })),
+                    ExtractTxError::MissingInputValue { .. } => json_to_jsvalue(json!({
+                        "kind": "MissingInputValue",
+                    })),
+                    ExtractTxError::SendingTooMuch { .. } => json_to_jsvalue(json!({
+                        "kind": "SendingTooMuch",
+                    })),
+                    _ => common_error,
+                },
+                BitcoinError::Bip39(error) => match error {
+                    Bip39Error::BadWordCount(count) => json_to_jsvalue(json!({
+                        "kind": "BadWordCount",
+                        "count": count,
+                    })),
+                    Bip39Error::UnknownWord(index) => json_to_jsvalue(json!({
+                        "kind": "UnknownWord",
+                        "index": index,
+                    })),
+                    Bip39Error::BadEntropyBitCount(bit) => json_to_jsvalue(json!({
+                        "kind": "BadEntropyBitCount",
+                        "bit": bit,
+                    })),
+                    Bip39Error::InvalidChecksum => json_to_jsvalue(json!({
+                        "kind": "InvalidChecksum",
+                    })),
+                    Bip39Error::AmbiguousLanguages(_) => json_to_jsvalue(json!({
+                        "kind": "AmbiguousLanguages",
+                    })),
+                },
+                BitcoinError::EsploraClient(EsploraError::ApiError(error)) => error.to_js_error(),
+                BitcoinError::InsufficientFundsInPaperWallet => json_to_jsvalue(json!({
+                    "kind": "InsufficientFundsInPaperWallet",
+                })),
+                BitcoinError::InvalidPaperWallet => json_to_jsvalue(json!({
+                    "kind": "InvalidPaperWallet",
+                })),
+                _ => common_error,
+            },
+            FeaturesError::AndromedaCommonError(error) => match error {
+                CommonError::InvalidNetwork(network) => json_to_jsvalue(json!({
+                    "kind": "InvalidNetwork",
+                    "network": network,
+                })),
+                CommonError::InvalidScriptType(script_type) => json_to_jsvalue(json!({
+                    "kind":"InvalidScriptType",
+                    "scriptType": script_type,
+                })),
+                CommonError::CompileTypst => json_to_jsvalue(json!({
+                    "kind": "CompileTypst",
+                })),
+                CommonError::ExportPDF => json_to_jsvalue(json!({
+                    "kind": "ExportPDF",
+                })),
+            },
+            FeaturesError::AccountExportDatetimeError => json_to_jsvalue(json!({
+                "kind": "AccountExportDatetimeError",
             })),
         }
     }

@@ -33,6 +33,20 @@ impl From<ApiExchangeRate> for WasmApiExchangeRate {
     }
 }
 
+impl From<WasmApiExchangeRate> for ApiExchangeRate {
+    fn from(value: WasmApiExchangeRate) -> Self {
+        Self {
+            ID: value.ID,
+            BitcoinUnit: value.BitcoinUnit.into(),
+            FiatCurrency: value.FiatCurrency.into(),
+            Sign: value.Sign,
+            ExchangeRateTime: value.ExchangeRateTime,
+            ExchangeRate: value.ExchangeRate,
+            Cents: value.Cents,
+        }
+    }
+}
+
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[allow(non_snake_case)]
