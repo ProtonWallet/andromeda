@@ -15,9 +15,14 @@ chrono = { version = "0.4", features = ["wasmbind"] }
 
 # typst essentials
 typst = "0.13.1"
-typst-kit = { version = "0.13.1", default-features = false, features = ["fonts"] }
 typst-timing = "0.13.1"
 typst-pdf = "0.13.1"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+typst-kit = { version = "0.13.1", default-features = false, features = ["fonts"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+typst-kit = { version = "0.13.1", default-features = false, features = ["fonts", "embed-fonts"] }
 
 [dev-dependencies]
 wiremock = "0.6.0"
