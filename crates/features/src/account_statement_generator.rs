@@ -201,10 +201,10 @@ impl AccountStatementGenerator {
                     typst_text += "#table(\n";
                     typst_text += "columns: (1fr, auto, auto, auto),\n";
                     typst_text += "[*Date*], [*Transaction Type*], [*Amount*], [*Account Balance*]";
-                    let mut cumulative_balance = 0.0;
+                    let mut cumulative_balance_in_sats: u64 = 0;
 
                     // build cumulative balance since it needs to be asc order from transactions
-                    let mut cumulative_balances: Vec<f64> = Vec::new();
+                    let mut cumulative_balances_in_sats: Vec<u64> = Vec::new();
                     for transaction in transactions.iter().rev() {
                         let is_sent = transaction.sent > transaction.received;
                         let amount = if is_sent {
@@ -212,12 +212,15 @@ impl AccountStatementGenerator {
                         } else {
                             transaction.received - transaction.sent
                         };
-                        let amount_in_btc = (amount as f64) / (BITCOIN as f64);
-                        cumulative_balance += if is_sent { -amount_in_btc } else { amount_in_btc };
-                        cumulative_balances.push(cumulative_balance);
+                        cumulative_balance_in_sats = if is_sent {
+                            cumulative_balance_in_sats - amount
+                        } else {
+                            cumulative_balance_in_sats + amount
+                        };
+                        cumulative_balances_in_sats.push(cumulative_balance_in_sats);
                     }
                     // reverse the cumulative balances to match the transactions order
-                    cumulative_balances = cumulative_balances.into_iter().rev().collect();
+                    cumulative_balances_in_sats = cumulative_balances_in_sats.into_iter().rev().collect();
 
                     for (index, transaction) in transactions.iter().enumerate() {
                         typst_text += ",\n";
@@ -238,8 +241,9 @@ impl AccountStatementGenerator {
                         let amount_in_fiat = self.convert_btc_to_fiat_string(amount_in_btc, &self.exchange_rate);
                         let transaction_type_text = if is_sent { "Spend" } else { "Income" };
 
+                        let cumulative_balance_in_btc = (cumulative_balances_in_sats[index] as f64) / (BITCOIN as f64);
                         let cumulative_balance_in_fiat =
-                            self.convert_btc_to_fiat_string(cumulative_balances[index], &self.exchange_rate);
+                            self.convert_btc_to_fiat_string(cumulative_balance_in_btc, &self.exchange_rate);
 
                         if self.exchange_rate.is_some() {
                             typst_text += format!(
@@ -248,14 +252,14 @@ impl AccountStatementGenerator {
                                 transaction_type_text,
                                 amount_in_btc,
                                 amount_in_fiat,
-                                cumulative_balances[index],
+                                cumulative_balance_in_btc,
                                 cumulative_balance_in_fiat
                             )
                             .as_str();
                         } else {
                             typst_text += format!(
                                 "[{}], [{}], [{:.8} BTC], [{:.8} BTC]",
-                                transaction_date_text, transaction_type_text, amount_in_btc, cumulative_balances[index],
+                                transaction_date_text, transaction_type_text, amount_in_btc, cumulative_balance_in_btc,
                             )
                             .as_str();
                         }
