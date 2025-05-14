@@ -22,8 +22,6 @@ bitcoin = { workspace = true, features = ["std"] }
 wiremock = "0.6.0"
 tokio = { workspace = true }
 tokio-test = { workspace = true }
-tracing = "0.1.40"
-tracing-subscriber = "0.3.18"
 
 [features]
 # Used to be able to use a non-standard api (no atlas or prod)
