@@ -15,6 +15,4 @@ bitcoin = { workspace = true }
 bdk_chain = { workspace = true }
 
 [dev-dependencies]
-wiremock = "0.6.0"
 tokio = { workspace = true }
-tokio-test = { workspace = true }
