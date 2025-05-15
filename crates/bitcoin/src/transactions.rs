@@ -232,7 +232,7 @@ impl TransactionDetails {
     ///   - note: send value includes fees
     /// For received transactions (received > sent):
     ///   - Returns the net amount received
-    ///   - note: received value doesnt include fees
+    ///   - note: received value does not include fees
     pub fn get_value(&self) -> u64 {
         if self.is_send() {
             self.sent - self.fees.unwrap_or(0) - self.received
@@ -243,6 +243,10 @@ impl TransactionDetails {
 
     pub fn get_value_with_fee(&self) -> u64 {
         self.get_value() + self.fees.unwrap_or(0)
+    }
+
+    pub fn get_transaction_value(&self) -> i64 {
+        (self.received - self.sent) as i64
     }
 }
 

@@ -6,7 +6,6 @@ use andromeda_bitcoin::{
     transactions::{DetailledTxIn, DetailledTxOutput, TransactionDetails, TransactionTime},
     Address, ConsensusParams, OutPoint, ScriptBuf, Sequence, Transaction,
 };
-use andromeda_macros::WasmJson;
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
@@ -148,64 +147,21 @@ impl From<DetailledTxOutput> for WasmTxOut {
     }
 }
 
-#[wasm_bindgen(getter_with_clone)]
-#[derive(Clone, Serialize, Deserialize, WasmJson)]
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+#[allow(non_snake_case)]
 pub struct WasmTransactionDetails {
-    inner: TransactionDetails,
-}
-
-#[wasm_bindgen]
-impl WasmTransactionDetails {
-    #[wasm_bindgen(getter)]
-    pub fn txid(&self) -> String {
-        self.inner.txid.to_string()
-    }
-
-    #[wasm_bindgen(js_name = isSend)]
-    pub fn is_send(&self) -> bool {
-        self.inner.is_send()
-    }
-
-    #[wasm_bindgen(js_name = getValue)]
-    pub fn get_value(&self) -> u64 {
-        self.inner.get_value()
-    }
-
-    #[wasm_bindgen(js_name = getValueWithFee)]
-    pub fn get_value_with_fee(&self) -> u64 {
-        self.inner.get_value_with_fee()
-    }
-
-    #[wasm_bindgen(js_name = getAccountDerivationPath)]
-    pub fn get_account_derivation_path(&self) -> String {
-        self.inner.account_derivation_path.to_string()
-    }
-
-    #[wasm_bindgen(js_name = getFee)]
-    pub fn get_fee(&self) -> u64 {
-        self.inner.fees.unwrap_or(0)
-    }
-
-    #[wasm_bindgen(js_name = getSize)]
-    pub fn get_size(&self) -> f64 {
-        self.inner.vbytes_size as f64
-    }
-
-    #[wasm_bindgen(js_name = getTime)]
-    pub fn get_transaction_time(&self) -> WasmTransactionTime {
-        self.inner.time.into()
-    }
-
-    #[wasm_bindgen(js_name = getOutputs)]
-    pub fn get_outputs(&self) -> Vec<WasmTxOut> {
-        self.inner.outputs.iter().map(|output| output.clone().into()).collect()
-    }
-}
-
-impl From<TransactionDetails> for WasmTransactionDetails {
-    fn from(val: TransactionDetails) -> Self {
-        WasmTransactionDetails { inner: val }
-    }
+    pub txid: String,
+    pub is_send: bool,
+    pub value: u64,
+    pub value_with_fee: u64,
+    pub transaction_value: i64,
+    pub fee: u64,
+    pub size: u64,
+    pub time: WasmTransactionTime,
+    pub inputs: Vec<WasmDetailledTxIn>,
+    pub outputs: Vec<WasmTxOut>,
+    pub account_derivation_path: String,
 }
 
 #[wasm_bindgen(getter_with_clone)]
@@ -217,6 +173,24 @@ pub struct WasmTransactionDetailsData {
 
 #[wasm_bindgen(getter_with_clone)]
 pub struct WasmTransactionDetailsArray(pub Vec<WasmTransactionDetailsData>);
+
+impl From<TransactionDetails> for WasmTransactionDetails {
+    fn from(val: TransactionDetails) -> Self {
+        WasmTransactionDetails {
+            txid: val.txid.to_string(),
+            is_send: val.is_send(),
+            value: val.get_value(),
+            value_with_fee: val.get_value_with_fee(),
+            transaction_value: val.get_transaction_value(),
+            fee: val.fees.unwrap_or(0),
+            size: val.vbytes_size,
+            time: val.time.into(),
+            inputs: val.inputs.into_iter().map(|input| input.into()).collect::<Vec<_>>(),
+            outputs: val.outputs.into_iter().map(|output| output.into()).collect::<Vec<_>>(),
+            account_derivation_path: val.account_derivation_path.to_string(),
+        }
+    }
+}
 
 #[wasm_bindgen(js_name = createTransactionFromPsbt)]
 pub async fn create_transaction_from_psbt(
