@@ -129,12 +129,12 @@ impl AccountStatementGenerator {
         let mut typst_text = String::new();
 
         // setup font and align
-        typst_text += r#"#set text(font: "noto sans tc")"#;
+        typst_text += r#"#set text(font: "PT Sans")"#;
         typst_text += "\n";
         typst_text += r#"#set page(footer: "Proton Wallet")"#;
         typst_text += "\n";
         typst_text += "#set align(center)\n";
-        typst_text += "= Account Statement\n";
+        typst_text += "= Account statement\n";
 
         let datetime = Utc
             .timestamp_opt(export_time as i64, 0)
@@ -142,11 +142,11 @@ impl AccountStatementGenerator {
             .ok_or("Wrong datetime format")
             .map_err(|_| Error::AccountExportDatetimeError)?;
         let export_date = format!("{} {}, {}", datetime.format("%B"), datetime.day(), datetime.year());
-        typst_text += format!("Report Export Date: {}\n\n\n", export_date).as_str();
+        typst_text += format!("Report export date: {}\n\n\n", export_date).as_str();
 
         typst_text += "#line(length: 100%)\n\n\n";
         typst_text += "#set align(left)\n";
-        typst_text += "== Total Account Value\n";
+        typst_text += "== Total account value\n";
 
         // calculate total balance of all accounts
         let mut total_balance = 0.0;
@@ -171,7 +171,7 @@ impl AccountStatementGenerator {
 
         // generate account balance and transaction table for each account
         for (acc, acc_name) in self.accounts.iter().zip(self.account_names.iter()) {
-            typst_text += format!("== {} Balance\n", acc_name).as_str();
+            typst_text += format!("== {} balance\n", acc_name).as_str();
             let result = acc.get_last_block_id_before_time(export_time).await;
             let balance = match result {
                 Some(block_id) => acc.get_balance_at_block(block_id).await?,
@@ -196,11 +196,17 @@ impl AccountStatementGenerator {
             if let Some(block_id) = result {
                 let transactions = acc.get_transactions_at_block(block_id).await?;
                 if !transactions.is_empty() {
-                    typst_text += format!("{} transactions found\\\n", transactions.len()).as_str();
+                    let count = transactions.len();
+                    typst_text += format!(
+                        "{} {} found\\\n",
+                        count,
+                        if count > 1 { "transactions" } else { "transaction" }
+                    )
+                    .as_str();
 
                     typst_text += "#table(\n";
                     typst_text += "columns: (1fr, auto, auto, auto),\n";
-                    typst_text += "[*Date*], [*Transaction Type*], [*Amount*], [*Account Balance*]";
+                    typst_text += "[*Date*], [*Transaction type*], [*Amount*], [*Account balance*]";
                     let mut cumulative_balance_in_sats: u64 = 0;
 
                     // build cumulative balance since it needs to be asc order from transactions
@@ -239,7 +245,7 @@ impl AccountStatementGenerator {
                         };
                         let amount_in_btc = (amount as f64) / (BITCOIN as f64);
                         let amount_in_fiat = self.convert_btc_to_fiat_string(amount_in_btc, &self.exchange_rate);
-                        let transaction_type_text = if is_sent { "Spend" } else { "Income" };
+                        let transaction_type_text = if is_sent { "Sent" } else { "Received" };
 
                         let cumulative_balance_in_btc = (cumulative_balances_in_sats[index] as f64) / (BITCOIN as f64);
                         let cumulative_balance_in_fiat =
