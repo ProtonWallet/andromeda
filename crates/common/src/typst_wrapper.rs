@@ -1,7 +1,8 @@
 /// this wrapper is modified from: https://github.com/tfachmann/typst-as-library/tree/main
 ///
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex, OnceLock};
 
 use chrono::{Datelike, Timelike, Utc};
 use typst::diag::{FileError, FileResult};
@@ -10,7 +11,9 @@ use typst::syntax::{FileId, Source};
 use typst::text::{Font, FontBook};
 use typst::utils::LazyHash;
 use typst::Library;
-use typst_kit::fonts::{FontSearcher, FontSlot};
+use typst_timing::TimingScope;
+
+const PT_SANS_REGULAR: &[u8] = include_bytes!("fonts/PTSans-Regular.ttf");
 
 /// Main interface that determines the environment for Typst.
 pub struct TypstWrapper {
@@ -32,15 +35,59 @@ pub struct TypstWrapper {
 
 impl TypstWrapper {
     pub fn new(source: String) -> Self {
-        let fonts = FontSearcher::new().include_system_fonts(true).search();
+        let mut book = FontBook::new();
+        let mut fonts = vec![];
+        for data in [PT_SANS_REGULAR] {
+            let buffer = Bytes::new(data);
+
+            for (i, font) in Font::iter(buffer).enumerate() {
+                book.push(font.info().clone());
+                fonts.push(FontSlot {
+                    path: None,
+                    index: i as u32,
+                    font: OnceLock::from(Some(font)),
+                });
+            }
+        }
 
         Self {
             library: LazyHash::new(Library::default()),
-            book: LazyHash::new(fonts.book),
-            fonts: fonts.fonts,
+            book: LazyHash::new(book),
+            fonts: fonts,
             source: Source::detached(source),
             files: Arc::new(Mutex::new(HashMap::new())),
         }
+    }
+}
+
+/// Holds details about the location of a font and lazily the font itself.
+#[derive(Clone, Debug)]
+struct FontSlot {
+    /// The path at which the font can be found on the system.
+    path: Option<PathBuf>,
+    /// The index of the font in its collection. Zero if the path does not point
+    /// to a collection.
+    index: u32,
+    /// The lazily loaded font.
+    font: OnceLock<Option<Font>>,
+}
+
+impl FontSlot {
+    /// Get the font for this slot. This loads the font into memory on first
+    /// access.
+    pub fn get(&self) -> Option<Font> {
+        self.font
+            .get_or_init(|| {
+                let _scope = TimingScope::new("load font");
+                let data = std::fs::read(
+                    self.path
+                        .as_ref()
+                        .expect("`path` is not `None` if `font` is uninitialized"),
+                )
+                .ok()?;
+                Font::new(Bytes::new(data), self.index)
+            })
+            .clone()
     }
 }
 
@@ -72,10 +119,10 @@ impl TypstWrapper {
     fn file(&self, id: FileId) -> FileResult<FileEntry> {
         let files = self.files.lock().map_err(|_| FileError::AccessDenied)?;
         if let Some(entry) = files.get(&id) {
-            return Ok(entry.clone());
+            Ok(entry.clone())
         } else {
             // we don't allow to download unpacked package, raise
-            return Err(FileError::NotFound("Not allow to download unpacked packages.".into()));
+            Err(FileError::NotFound("Not allow to download unpacked packages.".into()))
         }
     }
 }
