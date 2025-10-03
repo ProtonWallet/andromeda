@@ -212,6 +212,24 @@ mod tests {
         Mock, MockServer, ResponseTemplate,
     };
 
+    async fn setup_mock_auth(mock_server: &MockServer) {
+        // Mock authentication endpoint
+        let auth_response = ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "Code": 1000,
+            "UID": "12345",
+            "AccessToken": "mock_token",
+            "RefreshToken": "mock_refresh_token",
+            "TokenType": "Bearer",
+            "ExpiresIn": 3600,
+            "Scopes": ["wallet"]
+        }));
+        Mock::given(method("POST"))
+            .and(path("/auth/v4/sessions"))
+            .respond_with(auth_response)
+            .mount(mock_server)
+            .await;
+    }
+
     #[tokio::test]
     #[ignore]
     async fn should_get_blocks() {
@@ -320,6 +338,9 @@ mod tests {
     #[tokio::test]
     async fn test_get_blocks_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let contents = read_mock_file!("get_blocks_1000_body");
         assert!(!contents.is_empty());
         let response = ResponseTemplate::new(200).set_body_string(contents);
@@ -388,6 +409,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_header_by_hash_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let contents = read_mock_file!("get_blocks_header_by_hash_1000_body");
         assert!(!contents.is_empty());
         let block_hash =
@@ -425,6 +448,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_block_hash_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let contents = read_mock_file!("get_block_hash_1000_body");
         let response = ResponseTemplate::new(200).set_body_string(contents);
         let block_height = 20241125;
@@ -452,6 +477,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_block_status_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let contents = read_mock_file!("get_block_status_1000_body");
         let response = ResponseTemplate::new(200).set_body_string(contents);
         let block_hash =
@@ -482,6 +509,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_block_by_hash_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let contents = read_mock_raw_file!("get_block_by_hash");
 
         let response = ResponseTemplate::new(200).set_body_bytes(contents);
@@ -519,6 +548,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_txid_at_block_index_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let response_body = serde_json::json!({
             "Code": 1000,
             "TransactionID": "d463c5e0f89e55fa2af3e484e4bc94959ecf4aec9eb4136527f5854bc940ae51"
@@ -552,6 +583,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_tip_height_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let response_body = serde_json::json!({
             "Code": 1000,
             "Height": 2024112515
@@ -579,6 +612,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_tip_hash_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let contents = read_mock_file!("get_block_hash_1000_body");
         let response = ResponseTemplate::new(200).set_body_string(contents);
         let req_path: String = format!("{}/blocks/tip/hash", BASE_WALLET_API_V1,);

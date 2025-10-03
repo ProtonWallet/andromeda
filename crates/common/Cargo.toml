@@ -9,13 +9,13 @@ thiserror = { workspace = true }
 
 bitcoin = { workspace = true }
 
-instant = { version = "0.1", features = ["wasm-bindgen"] }
+instant = { version = "^0.1", features = ["wasm-bindgen"] }
 
-chrono = { version = "0.4", features = ["wasmbind"] }
+chrono = { version = "^0.4", features = ["wasmbind"] }
 
-typst = "0.13.1"
-typst-pdf = "0.13.1"
-typst-timing = "0.13.1"
+typst = "^0.13"
+typst-pdf = "^0.13"
+typst-timing = "^0.13"
 
 [dev-dependencies]
 tokio = { workspace = true }

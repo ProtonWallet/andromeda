@@ -83,6 +83,24 @@ mod tests {
         BASE_CONTACTS_API_V4,
     };
 
+    async fn setup_mock_auth(mock_server: &MockServer) {
+        // Mock authentication endpoint
+        let auth_response = ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "Code": 1000,
+            "UID": "12345",
+            "AccessToken": "mock_token",
+            "RefreshToken": "mock_refresh_token",
+            "TokenType": "Bearer",
+            "ExpiresIn": 3600,
+            "Scopes": ["wallet"]
+        }));
+        Mock::given(method("POST"))
+            .and(path("/auth/v4/sessions"))
+            .respond_with(auth_response)
+            .mount(mock_server)
+            .await;
+    }
+
     //TODO:: real api calls need to move to integration tests. with quark commands
     #[tokio::test]
     #[ignore]
@@ -97,6 +115,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_contacts_code_1000() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let response_body = serde_json::json!(
             {
                 "Code": 1000,
@@ -138,6 +158,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_contacts_deserialize_error() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let response_body = serde_json::json!({});
         let req_path = format!("{}/contacts/emails", BASE_CONTACTS_API_V4);
         let response = ResponseTemplate::new(400).set_body_json(response_body);

@@ -932,6 +932,24 @@ mod tests {
         BASE_WALLET_API_V1,
     };
 
+    async fn setup_mock_auth(mock_server: &MockServer) {
+        // Mock authentication endpoint
+        let auth_response = ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "Code": 1000,
+            "UID": "12345",
+            "AccessToken": "mock_token",
+            "RefreshToken": "mock_refresh_token",
+            "TokenType": "Bearer",
+            "ExpiresIn": 3600,
+            "Scopes": ["wallet"]
+        }));
+        Mock::given(method("POST"))
+            .and(path("/auth/v4/sessions"))
+            .respond_with(auth_response)
+            .mount(mock_server)
+            .await;
+    }
+
     #[tokio::test]
     #[ignore]
     async fn should_get_wallets() {
@@ -1509,6 +1527,9 @@ mod tests {
     #[tokio::test]
     async fn test_create_wallet_account_2002() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let response_body = serde_json::json!(
             {
                 "Code": 2002,
@@ -1547,6 +1568,9 @@ mod tests {
     #[tokio::test]
     async fn test_create_wallet_account_1000() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let response_body = serde_json::json!(
             {
                 "Code": 1000,
@@ -1596,6 +1620,9 @@ mod tests {
     #[tokio::test]
     async fn test_migrate_wallet_1000() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let response_body = serde_json::json!(
             {
                 "Code": 1000,
@@ -1672,6 +1699,9 @@ mod tests {
     #[tokio::test]
     async fn test_create_wallet_transaction_1000() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let response_body = serde_json::json!(
             {
                 "Code": 1000,
@@ -1752,6 +1782,9 @@ mod tests {
     #[tokio::test]
     async fn test_get_wallet_accounts_addresses_1000() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let response_body = serde_json::json!(
             {
                 "Code": 1000,
@@ -1795,7 +1828,10 @@ mod tests {
     #[tokio::test]
     async fn test_get_wallets_success() {
         let mock_server = MockServer::start().await;
-        let req_path = format!("{}/wallets", BASE_WALLET_API_V1);
+
+        setup_mock_auth(&mock_server).await;
+
+        let req_path = format!("/{}/wallets", BASE_WALLET_API_V1);
         let contents = read_mock_file!("get_wallets_1000_body");
         let response = ResponseTemplate::new(200).set_body_string(contents);
         Mock::given(method("GET"))
@@ -1842,6 +1878,9 @@ mod tests {
     #[tokio::test]
     async fn test_create_wallet_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let req_path = format!("{}/wallets", BASE_WALLET_API_V1);
         let contents = read_mock_file!("create_wallet_1000_body");
         let response = ResponseTemplate::new(200).set_body_string(contents);
@@ -1903,7 +1942,10 @@ mod tests {
         let name = "yehAfGZvTxIBEu0lmlajrm3ewUZaF6eYr6nPBsZW5mU2KIGy2BK9FbsJ1wMNGolw4muTOq6+20GTOdRf";
 
         let mock_server = MockServer::start().await;
-        let req_path = format!("{}/wallets/{}/name", BASE_WALLET_API_V1, wallet_id);
+
+        setup_mock_auth(&mock_server).await;
+
+        let req_path = format!("/{}/wallets/{}/name", BASE_WALLET_API_V1, wallet_id);
         let response_body = serde_json::json!({
             "Code": 1000,
             "Wallet": {
@@ -1950,6 +1992,9 @@ mod tests {
             "yYzIuZJobta-FCUwbhCdUwCXtn-BLoW0yZvVNJK5MCh0KT-igpGYa3zd_uNz43gKTD9BXrRaDlT4uRhdo70y_A==";
 
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let req_path = format!(
             "{}/wallets/{}/accounts/{}/currency/fiat",
             BASE_WALLET_API_V1, wallet_id, wallet_account_id
@@ -2008,6 +2053,9 @@ mod tests {
             "yYzIuZJobta-FCUwbhCdUwCXtn-BLoW0yZvVNJK5MCh0KT-igpGYa3zd_uNz43gKTD9BXrRaDlT4uRhdo70y_A==";
 
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let req_path = format!(
             "{}/wallets/{}/accounts/{}/label",
             BASE_WALLET_API_V1, wallet_id, wallet_account_id
@@ -2070,6 +2118,9 @@ mod tests {
         ];
 
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let req_path = format!("{}/wallets/{}/accounts/order", BASE_WALLET_API_V1, wallet_id);
         let contents = read_mock_file!("update_wallet_accounts_order_1000_body");
         let response = ResponseTemplate::new(200).set_body_string(contents);
@@ -2110,6 +2161,9 @@ mod tests {
             "yYzIuZJobta-FCUwbhCdUwCXtn-BLoW0yZvVNJK5MCh0KT-igpGYa3zd_uNz43gKTD9BXrRaDlT4uRhdo70y_A==";
 
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let req_path = format!(
             "{}/wallets/{}/accounts/{}/lastUsedIndex",
             BASE_WALLET_API_V1, wallet_id, wallet_account_id
@@ -2174,6 +2228,9 @@ mod tests {
             "yYzIuZJobta-FCUwbhCdUwCXtn-BLoW0yZvVNJK5MCh0KT-igpGYa3zd_uNz43gKTD9BXrRaDlT4uRhdo70y_A==";
 
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let req_path = format!(
             "{}/wallets/{}/accounts/{}/stop-gap",
             BASE_WALLET_API_V1, wallet_id, wallet_account_id
@@ -2232,6 +2289,9 @@ mod tests {
             "yYzIuZJobta-FCUwbhCdUwCXtn-BLoW0yZvVNJK5MCh0KT-igpGYa3zd_uNz43gKTD9BXrRaDlT4uRhdo70y_A==";
 
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let req_path = format!(
             "{}/wallets/{}/accounts/{}/addresses/email",
             BASE_WALLET_API_V1, wallet_id, wallet_account_id
@@ -2297,6 +2357,9 @@ mod tests {
             "yYzIuZJobta-FCUwbhCdUwCXtn-BLoW0yZvVNJK5MCh0KT-igpGYa3zd_uNz43gKTD9BXrRaDlT4uRhdo70y_A==";
 
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let address_id = "v4f03EPBAzQEogZgQX68hpaNqNuXwKN6X1us0nrJCTA6Zt3SdozXUmEmxqceBO22CccjmOWtwFyFraTAH2LE8A==";
         let req_path = format!(
             "{}/wallets/{}/accounts/{}/addresses/email/{}",
@@ -2350,6 +2413,9 @@ mod tests {
         let wallet_id = "_zuc9hOPmSeNUPoBlvFs2JvjWw_hX4ktpVnqKmpAhh3PcAGXNVJqU_jD2ZoZ_qTteGsa30m8mHG8GiWt_7L0xg==";
 
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let req_path = format!("{}/wallets/{}", BASE_WALLET_API_V1, wallet_id);
         let response_body = serde_json::json!({
             "Code": 1000,
@@ -2374,6 +2440,9 @@ mod tests {
             "yYzIuZJobta-FCUwbhCdUwCXtn-BLoW0yZvVNJK5MCh0KT-igpGYa3zd_uNz43gKTD9BXrRaDlT4uRhdo70y_A==";
 
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let req_path = format!(
             "{}/wallets/{}/accounts/{}",
             BASE_WALLET_API_V1, wallet_id, wallet_account_id
@@ -2405,6 +2474,9 @@ mod tests {
             "ugaFbfi4RoE3Hysa4KhrbYLspWImxm1EHKgieNmiKzkdNBcEvd93-ovQp03ymVZlp6FwF71d_yDxtFZo4kwkdw==";
 
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let req_path = format!(
             "{}/wallets/{}/accounts/{}/transactions/{}",
             BASE_WALLET_API_V1, wallet_id, wallet_account_id, wallet_transaction_id
@@ -2435,6 +2507,9 @@ mod tests {
     async fn test_get_wallet_accounts_success() {
         let wallet_id = "_zuc9hOPmSeNUPoBlvFs2JvjWw_hX4ktpVnqKmpAhh3PcAGXNVJqU_jD2ZoZ_qTteGsa30m8mHG8GiWt_7L0xg==";
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let req_path = format!("{}/wallets/{}/accounts", BASE_WALLET_API_V1, wallet_id);
         let contents = read_mock_file!("get_wallet_accounts_1000_body");
         let response = ResponseTemplate::new(200).set_body_string(contents);
@@ -2475,6 +2550,9 @@ mod tests {
     async fn test_get_wallet_transactions_success() {
         let wallet_id = "_zuc9hOPmSeNUPoBlvFs2JvjWw_hX4ktpVnqKmpAhh3PcAGXNVJqU_jD2ZoZ_qTteGsa30m8mHG8GiWt_7L0xg==";
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let req_path = format!("{}/wallets/{}/transactions", BASE_WALLET_API_V1, wallet_id);
         let hashed_ids = vec![
             "F6G6tx4fcDTm/VpnuGn1dv7WA4FiJbKcu/sYyApLrm0=".to_string(),
@@ -2543,6 +2621,9 @@ mod tests {
     async fn test_get_wallet_transactions_to_hash_success() {
         let wallet_id = "_zuc9hOPmSeNUPoBlvFs2JvjWw_hX4ktpVnqKmpAhh3PcAGXNVJqU_jD2ZoZ_qTteGsa30m8mHG8GiWt_7L0xg==";
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let req_path = format!("{}/wallets/{}/transactions/to-hash", BASE_WALLET_API_V1, wallet_id);
         let contents = read_mock_file!("get_wallet_transactions_to_hash_1000_body");
         let response = ResponseTemplate::new(200).set_body_string(contents);
@@ -2604,6 +2685,9 @@ mod tests {
         let wallet_transaction_id =
             "ugaFbfi4RoE3Hysa4KhrbYLspWImxm1EHKgieNmiKzkdNBcEvd93-ovQp03ymVZlp6FwF71d_yDxtFZo4kwkdw==";
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let req_path = format!(
             "{}/wallets/{}/accounts/{}/transactions/{}/label",
             BASE_WALLET_API_V1, wallet_id, wallet_account_id, wallet_transaction_id
@@ -2678,6 +2762,9 @@ mod tests {
         let wallet_transaction_id =
             "ugaFbfi4RoE3Hysa4KhrbYLspWImxm1EHKgieNmiKzkdNBcEvd93-ovQp03ymVZlp6FwF71d_yDxtFZo4kwkdw==";
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let req_path = format!(
             "{}/wallets/{}/accounts/{}/transactions/{}/hash",
             BASE_WALLET_API_V1, wallet_id, wallet_account_id, wallet_transaction_id
@@ -2753,6 +2840,8 @@ mod tests {
             "ugaFbfi4RoE3Hysa4KhrbYLspWImxm1EHKgieNmiKzkdNBcEvd93-ovQp03ymVZlp6FwF71d_yDxtFZo4kwkdw==";
         let external_sender = "-----BEGIN PGP MESSAGE-----*-----END PGP MESSAGE-----";
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let req_path = format!(
             "{}/wallets/{}/accounts/{}/transactions/{}/sender",
             BASE_WALLET_API_V1, wallet_id, wallet_account_id, wallet_transaction_id,
@@ -2827,6 +2916,9 @@ mod tests {
             "ugaFbfi4RoE3Hysa4KhrbYLspWImxm1EHKgieNmiKzkdNBcEvd93-ovQp03ymVZlp6FwF71d_yDxtFZo4kwkdw==";
         let flag = WalletTransactionFlag::Suspicious;
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let req_path = format!(
             "{}/wallets/{}/accounts/{}/transactions/{}/{}",
             BASE_WALLET_API_V1, wallet_id, wallet_account_id, wallet_transaction_id, flag
@@ -2897,6 +2989,9 @@ mod tests {
             "ugaFbfi4RoE3Hysa4KhrbYLspWImxm1EHKgieNmiKzkdNBcEvd93-ovQp03ymVZlp6FwF71d_yDxtFZo4kwkdw==";
         let flag = WalletTransactionFlag::Suspicious;
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let req_path = format!(
             "{}/wallets/{}/accounts/{}/transactions/{}/{}",
             BASE_WALLET_API_V1, wallet_id, wallet_account_id, wallet_transaction_id, flag
@@ -2962,6 +3057,9 @@ mod tests {
     async fn test_disable_show_wallet_recovery_success() {
         let wallet_id = "_zuc9hOPmSeNUPoBlvFs2JvjWw_hX4ktpVnqKmpAhh3PcAGXNVJqU_jD2ZoZ_qTteGsa30m8mHG8GiWt_7L0xg==";
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let req_path = format!(
             "{}/wallets/{}/settings/show-wallet-recovery/disable",
             BASE_WALLET_API_V1, wallet_id,
@@ -3003,6 +3101,9 @@ mod tests {
         let wallet_account_id =
             "yYzIuZJobta-FCUwbhCdUwCXtn-BLoW0yZvVNJK5MCh0KT-igpGYa3zd_uNz43gKTD9BXrRaDlT4uRhdo70y_A==";
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let req_path = format!(
             "{}/wallets/{}/accounts/{}/metrics",
             BASE_WALLET_API_V1, wallet_id, wallet_account_id

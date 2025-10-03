@@ -1,6 +1,5 @@
-use std::sync::Arc;
-
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 use crate::{
     core::{ApiClient, ProtonResponseExt},
@@ -164,17 +163,35 @@ mod tests {
         Mock, MockServer, ResponseTemplate,
     };
 
-    use super::{MnemonicAuth, UpdateMnemonicSettingsRequestBody};
     use crate::{
         core::ApiClient,
         proton_settings::{
-            GetMnemonicSettingsResponseBody, MnemonicUserKey, ProtonSettingsClient, ProtonSettingsClientExt,
+            GetMnemonicSettingsResponseBody, MnemonicAuth, MnemonicUserKey, ProtonSettingsClient,
+            ProtonSettingsClientExt, UpdateMnemonicSettingsRequestBody,
         },
         proton_users::ProtonSrpClientProofs,
         read_mock_file,
         tests::utils::{common_api_client, setup_test_connection},
         BASE_CORE_API_V4,
     };
+
+    async fn setup_mock_auth(mock_server: &MockServer) {
+        // Mock authentication endpoint
+        let auth_response = ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "Code": 1000,
+            "UID": "12345",
+            "AccessToken": "mock_token",
+            "RefreshToken": "mock_refresh_token",
+            "TokenType": "Bearer",
+            "ExpiresIn": 3600,
+            "Scopes": ["wallet"]
+        }));
+        Mock::given(method("POST"))
+            .and(path("/auth/v4/sessions"))
+            .respond_with(auth_response)
+            .mount(mock_server)
+            .await;
+    }
 
     #[tokio::test]
     async fn test_get_mnemonic_settings_response_body_parse() {
@@ -235,6 +252,24 @@ mod tests {
                 Verifier: "<base64_encoded_verifier>".to_string(),
             },
         };
+
+        async fn setup_mock_auth(mock_server: &MockServer) {
+            // Mock authentication endpoint
+            let auth_response = ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "Code": 1000,
+                "UID": "12345",
+                "AccessToken": "mock_token",
+                "RefreshToken": "mock_refresh_token",
+                "TokenType": "Bearer",
+                "ExpiresIn": 3600,
+                "Scopes": ["wallet"]
+            }));
+            Mock::given(method("POST"))
+                .and(path("/auth/v4/sessions"))
+                .respond_with(auth_response)
+                .mount(mock_server)
+                .await;
+        }
         let check_string = serde_json::to_string(&req).unwrap();
         assert_eq!(check_string.len(), compact_json_data.len());
         assert!(check_string.contains("\"<encrypted_id>\","));
@@ -266,6 +301,8 @@ mod tests {
         let req_path: String = format!("{}/settings/mnemonic", BASE_CORE_API_V4);
         let response = ResponseTemplate::new(200).set_body_json(json_body);
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         Mock::given(method("GET"))
             .and(path(req_path))
             .respond_with(response)
@@ -291,6 +328,8 @@ mod tests {
         let req_path: String = format!("{}/settings/mnemonic", BASE_CORE_API_V4);
         let response = ResponseTemplate::new(200).set_body_json(json_body);
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         Mock::given(method("PUT"))
             .and(path(req_path))
             .and(body_json(serde_json::json!(
@@ -328,11 +367,30 @@ mod tests {
             Verifier: "<base64_encoded_verifier>".to_string(),
         };
 
+        async fn setup_mock_auth(mock_server: &MockServer) {
+            // Mock authentication endpoint
+            let auth_response = ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "Code": 1000,
+                "UID": "12345",
+                "AccessToken": "mock_token",
+                "RefreshToken": "mock_refresh_token",
+                "TokenType": "Bearer",
+                "ExpiresIn": 3600,
+                "Scopes": ["wallet"]
+            }));
+            Mock::given(method("POST"))
+                .and(path("/auth/v4/sessions"))
+                .respond_with(auth_response)
+                .mount(mock_server)
+                .await;
+        }
+
         let req = UpdateMnemonicSettingsRequestBody {
             MnemonicUserKeys: mnemonic_user_keys,
             MnemonicSalt: "1H8EGg3J1Qwk243hf==".to_string(),
             MnemonicAuth: auth,
         };
+
         let code = settings_client.set_mnemonic_settings(req).await.unwrap();
         assert!(code == 1000);
     }
@@ -347,6 +405,8 @@ mod tests {
         let req_path: String = format!("{}/settings/mnemonic/disable", BASE_CORE_API_V4);
         let response = ResponseTemplate::new(200).set_body_json(json_body);
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         Mock::given(method("POST"))
             .and(path(req_path))
             .and(body_json(serde_json::json!(
@@ -369,6 +429,24 @@ mod tests {
             SRPSession: "<hex_encoded_session_id>".to_string(),
             TwoFactorCode: None,
         };
+
+        async fn setup_mock_auth(mock_server: &MockServer) {
+            // Mock authentication endpoint
+            let auth_response = ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "Code": 1000,
+                "UID": "12345",
+                "AccessToken": "mock_token",
+                "RefreshToken": "mock_refresh_token",
+                "TokenType": "Bearer",
+                "ExpiresIn": 3600,
+                "Scopes": ["wallet"]
+            }));
+            Mock::given(method("POST"))
+                .and(path("/auth/v4/sessions"))
+                .respond_with(auth_response)
+                .mount(mock_server)
+                .await;
+        }
         let server_proofs = settings_client.disable_mnemonic_settings(req).await.unwrap();
         assert!(server_proofs == *"<base64_encoded_proof>");
     }
@@ -382,6 +460,8 @@ mod tests {
         let req_path: String = format!("{}/settings/mnemonic/reactivate", BASE_CORE_API_V4);
         let response = ResponseTemplate::new(200).set_body_json(json_body);
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         Mock::given(method("PUT"))
             .and(path(req_path))
             .and(body_json(serde_json::json!(
@@ -419,11 +499,30 @@ mod tests {
             Verifier: "<base64_encoded_verifier>".to_string(),
         };
 
+        async fn setup_mock_auth(mock_server: &MockServer) {
+            // Mock authentication endpoint
+            let auth_response = ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "Code": 1000,
+                "UID": "12345",
+                "AccessToken": "mock_token",
+                "RefreshToken": "mock_refresh_token",
+                "TokenType": "Bearer",
+                "ExpiresIn": 3600,
+                "Scopes": ["wallet"]
+            }));
+            Mock::given(method("POST"))
+                .and(path("/auth/v4/sessions"))
+                .respond_with(auth_response)
+                .mount(mock_server)
+                .await;
+        }
+
         let req = UpdateMnemonicSettingsRequestBody {
             MnemonicUserKeys: mnemonic_user_keys,
             MnemonicSalt: "1H8EGg3J1Qwk243hf==".to_string(),
             MnemonicAuth: auth,
         };
+
         let code = settings_client.reactive_mnemonic_settings(req).await.unwrap();
         assert!(code == 1000);
     }
@@ -431,6 +530,8 @@ mod tests {
     #[tokio::test]
     async fn test_enable_2fa_totp_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let contents = read_mock_file!("two_factor_auth_enable_1000_body");
         let response = ResponseTemplate::new(200).set_body_string(contents);
         let req_path: String = format!("{}/settings/2fa/totp", BASE_CORE_API_V4);
@@ -452,6 +553,24 @@ mod tests {
             TOTPConfirmation: code.to_string(),
             TOTPSharedSecret: secret.to_string(),
         };
+
+        async fn setup_mock_auth(mock_server: &MockServer) {
+            // Mock authentication endpoint
+            let auth_response = ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "Code": 1000,
+                "UID": "12345",
+                "AccessToken": "mock_token",
+                "RefreshToken": "mock_refresh_token",
+                "TokenType": "Bearer",
+                "ExpiresIn": 3600,
+                "Scopes": ["wallet"]
+            }));
+            Mock::given(method("POST"))
+                .and(path("/auth/v4/sessions"))
+                .respond_with(auth_response)
+                .mount(mock_server)
+                .await;
+        }
         let result = client.enable_2fa_totp(data).await;
         match result {
             Ok(response) => {
@@ -477,6 +596,8 @@ mod tests {
     #[tokio::test]
     async fn test_disable_2fa_totp_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let contents = read_mock_file!("two_factor_auth_disable_1000_body");
         let response = ResponseTemplate::new(200).set_body_string(contents);
         let req_path: String = format!("{}/settings/2fa/totp", BASE_CORE_API_V4);
@@ -501,6 +622,24 @@ mod tests {
             SRPSession: "<hex_encoded_session_id>".to_string(),
             TwoFactorCode: Some(code.to_string()),
         };
+
+        async fn setup_mock_auth(mock_server: &MockServer) {
+            // Mock authentication endpoint
+            let auth_response = ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "Code": 1000,
+                "UID": "12345",
+                "AccessToken": "mock_token",
+                "RefreshToken": "mock_refresh_token",
+                "TokenType": "Bearer",
+                "ExpiresIn": 3600,
+                "Scopes": ["wallet"]
+            }));
+            Mock::given(method("POST"))
+                .and(path("/auth/v4/sessions"))
+                .respond_with(auth_response)
+                .mount(mock_server)
+                .await;
+        }
         let result = client.disable_2fa_totp(req).await;
         match result {
             Ok(response) => {

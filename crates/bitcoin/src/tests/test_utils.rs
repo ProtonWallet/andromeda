@@ -144,12 +144,12 @@ impl TestUtils {
 
     /// Insert transaction
     pub fn insert_tx(wallet: &mut Wallet, tx: Transaction) {
+        let mut tx_update = bdk_chain::TxUpdate::default();
+        tx_update.txs.push(Arc::new(tx));
+
         wallet
             .apply_update(Update {
-                tx_update: bdk_chain::TxUpdate {
-                    txs: vec![Arc::new(tx)],
-                    ..Default::default()
-                },
+                tx_update,
                 ..Default::default()
             })
             .unwrap();
@@ -159,12 +159,12 @@ impl TestUtils {
     /// the given `anchor`. Note: to be considered confirmed the anchor block must exist in
     /// the current active chain.
     pub fn insert_anchor(wallet: &mut Wallet, txid: Txid, anchor: ConfirmationBlockTime) {
+        let mut tx_update = tx_graph::TxUpdate::default();
+        tx_update.anchors.insert((anchor, txid));
+
         wallet
             .apply_update(Update {
-                tx_update: tx_graph::TxUpdate {
-                    anchors: [(anchor, txid)].into(),
-                    ..Default::default()
-                },
+                tx_update,
                 ..Default::default()
             })
             .unwrap();

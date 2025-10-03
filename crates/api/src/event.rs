@@ -1,6 +1,5 @@
-use std::sync::Arc;
-
 use serde::Deserialize;
+use std::sync::Arc;
 
 use crate::{
     contacts::ApiContactEmails,
@@ -11,7 +10,6 @@ use crate::{
     wallet::{ApiWallet, ApiWalletAccount, ApiWalletKey, ApiWalletSettings, ApiWalletTransaction},
     ProtonWalletApiClient, BASE_CORE_API_V4, BASE_CORE_API_V5,
 };
-
 const MAX_EVENTS_PER_POLL: usize = 50;
 
 #[derive(Debug, Deserialize)]
@@ -179,19 +177,36 @@ impl EventClient {
 
 #[cfg(test)]
 mod tests {
-
     use wiremock::{
         matchers::{method, path},
         Mock, MockServer, ResponseTemplate,
     };
 
-    use super::EventClient;
     use crate::{
         core::ApiClient,
+        event::EventClient,
         read_mock_file,
         tests::utils::{common_api_client, setup_test_connection},
         BASE_CORE_API_V4, BASE_CORE_API_V5,
     };
+
+    async fn setup_mock_auth(mock_server: &MockServer) {
+        // Mock authentication endpoint
+        let auth_response = ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "Code": 1000,
+            "UID": "12345",
+            "AccessToken": "mock_token",
+            "RefreshToken": "mock_refresh_token",
+            "TokenType": "Bearer",
+            "ExpiresIn": 3600,
+            "Scopes": ["wallet"]
+        }));
+        Mock::given(method("POST"))
+            .and(path("/auth/v4/sessions"))
+            .respond_with(auth_response)
+            .mount(mock_server)
+            .await;
+    }
 
     #[tokio::test]
     #[ignore]
@@ -227,6 +242,8 @@ mod tests {
         let req_path: String = format!("{}/events/{}", BASE_CORE_API_V5, latest_event_id);
         let response = ResponseTemplate::new(200).set_body_string(contents);
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         Mock::given(method("GET"))
             .and(path(req_path))
             .respond_with(response)
@@ -261,6 +278,8 @@ mod tests {
         let response = ResponseTemplate::new(200).set_body_string(contents);
         let response2 = ResponseTemplate::new(200).set_body_string(contents2);
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         Mock::given(method("GET"))
             .and(path(req_path))
             .respond_with(response)
@@ -308,6 +327,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_latest_event_id_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let response_body = serde_json::json!(
             {
                 "Code": 1000,

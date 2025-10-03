@@ -1,14 +1,13 @@
-use std::{collections::HashMap, sync::Arc};
-
-use bitcoin::{consensus::deserialize, Transaction};
-use serde::{Deserialize, Serialize};
-
-use super::{error::Error, BASE_WALLET_API_V1};
 use crate::{
     address::ApiTx,
     core::{ApiClient, ProtonResponseExt},
     ProtonWalletApiClient,
 };
+
+use super::{error::Error, BASE_WALLET_API_V1};
+use bitcoin::{consensus::deserialize, Transaction};
+use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, sync::Arc};
 
 #[derive(Debug, Serialize)]
 #[allow(non_snake_case)]
@@ -328,7 +327,6 @@ impl TransactionClient {
 
 #[cfg(test)]
 mod tests {
-    use super::TransactionClient;
     use crate::{
         core::ApiClient,
         read_mock_file, read_mock_raw_file,
@@ -336,12 +334,32 @@ mod tests {
         transaction::ExchangeRateOrTransactionTime,
         BASE_WALLET_API_V1,
     };
+
+    use super::TransactionClient;
     use bitcoin::transaction::Version;
     use std::collections::HashMap;
     use wiremock::{
         matchers::{method, path},
         Mock, MockServer, ResponseTemplate,
     };
+
+    async fn setup_mock_auth(mock_server: &MockServer) {
+        // Mock authentication endpoint
+        let auth_response = ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "Code": 1000,
+            "UID": "12345",
+            "AccessToken": "mock_token",
+            "RefreshToken": "mock_refresh_token",
+            "TokenType": "Bearer",
+            "ExpiresIn": 3600,
+            "Scopes": ["wallet"]
+        }));
+        Mock::given(method("POST"))
+            .and(path("/auth/v4/sessions"))
+            .respond_with(auth_response)
+            .mount(mock_server)
+            .await;
+    }
 
     #[tokio::test]
     #[ignore]
@@ -445,6 +463,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_raw_transaction_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let txid = "6bbfc06ef911e4b2fffe1150fa8f3729b3ee52c78ef21093b5ae45544ff690fa";
         let req_path: String = format!("{}/transactions/{}/raw", BASE_WALLET_API_V1, txid);
         let contents = read_mock_raw_file!("get_transaction");
@@ -481,6 +501,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_transaction_status_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let txid = "6bbfc06ef911e4b2fffe1150fa8f3729b3ee52c78ef21093b5ae45544ff690fa";
         let req_path: String = format!("{}/transactions/{}/status", BASE_WALLET_API_V1, txid);
         let response_body = serde_json::json!(
@@ -518,6 +540,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_transaction_info_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let txid = "6bbfc06ef911e4b2fffe1150fa8f3729b3ee52c78ef21093b5ae45544ff690fa";
         let req_path: String = format!("{}/transactions/{}/info", BASE_WALLET_API_V1, txid);
 
@@ -562,6 +586,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_transaction_merkle_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let txid = "6bbfc06ef911e4b2fffe1150fa8f3729b3ee52c78ef21093b5ae45544ff690fa";
         let req_path: String = format!("{}/transactions/{}/merkle-proof", BASE_WALLET_API_V1, txid);
         let contents = read_mock_file!("get_transaction_merkle_proof_1000_body");
@@ -589,6 +615,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_transaction_merkle_block_proof_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let txid = "6bbfc06ef911e4b2fffe1150fa8f3729b3ee52c78ef21093b5ae45544ff690fa";
         let req_path: String = format!("{}/transactions/{}/merkleblock-proof", BASE_WALLET_API_V1, txid);
         let partial_merkle_tree = "00a00020312c5cc29c13a67b2378f29e44f8c226799f6033693c01000000000000000000636a014ae1e5e9be17cf7424ec1d543de07e4634fb1ad4f211dd885cdf86ec7ddd44446770c0021760fb4984750d00000d36f2cf75c4066b9de7a431231555731cdefe6e585b3612e99aa58c1f0b6da8260f1b33fda7fa5749849168e75389da579632ab02d4a7ae5297790d0ea7a9885fd7e950ed07991a456862f3373efa6c4875877d2c13a7c49ff19a465d1ebdba850d33f75d5f918b868de0e005108e3657ce90ab86d300c67ed09458e16277df40fa90f64f5445aeb59310f28ec752eeb329378ffa5011feffb2e411f96ec0bf6b03b3dcdd4c7aeecadd1598dfeab1a06b210d7f8aca13f5e0cf1ae98efcf43ab3580ae5b511f6f77f08ca781b7a8eae57fefe9729f730d2a1f8ca1364a80f73f6e5a0edccbc65778f24d009a8a29792db625606caf0f995b62dc03a19f5c72cefb3cdb84295db345b4a657bc31825235edb2f928398401825c1aca8d4d470bd2ac071c207462f0c26967c6411c5ef19459cc581e0e844048ee908c396fcb2907bf304d925c3d7e6c882b483b4055d3e575d3f25790b7452bbbb477e1aaa701a78ac84f3d30466c4a343f0a8d8fd17b2c40d042c79341688a9dff3d9c8b17d5bc898c5729e2f2674859bfcc51f94ad3d50efd80294a88265f13623ff8416e3042d047bf50100";
@@ -619,6 +647,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_outpoint_spending_status_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let txid = "6bbfc06ef911e4b2fffe1150fa8f3729b3ee52c78ef21093b5ae45544ff690fa";
         let index = 0;
         let req_path: String = format!("{}/transactions/{}/outspend/{}", BASE_WALLET_API_V1, txid, index);
@@ -654,6 +684,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_fee_estimates_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let req_path: String = format!("{}/transactions/fee-estimates", BASE_WALLET_API_V1);
         let response_body = serde_json::json!(
             {
@@ -686,6 +718,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_mempool_info_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let req_path: String = format!("{}/mempool/info", BASE_WALLET_API_V1);
         let contents = read_mock_file!("get_mempool_info_1000_body");
         let response = ResponseTemplate::new(200).set_body_string(contents);
@@ -718,6 +752,8 @@ mod tests {
     #[tokio::test]
     async fn test_broadcast_transaction_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let response_body = serde_json::json!(
             {
                 "Code": 1000,

@@ -97,9 +97,29 @@ mod tests {
         BASE_WALLET_API_V1,
     };
 
+    async fn setup_mock_auth(mock_server: &MockServer) {
+        // Mock authentication endpoint
+        let auth_response = ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "Code": 1000,
+            "UID": "12345",
+            "AccessToken": "mock_token",
+            "RefreshToken": "mock_refresh_token",
+            "TokenType": "Bearer",
+            "ExpiresIn": 3600,
+            "Scopes": ["wallet"]
+        }));
+        Mock::given(method("POST"))
+            .and(path("/auth/v4/sessions"))
+            .respond_with(auth_response)
+            .mount(mock_server)
+            .await;
+    }
+
     #[tokio::test]
     async fn test_get_price_data() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let json_body = serde_json::json!(
         {
             "Code": 1000,

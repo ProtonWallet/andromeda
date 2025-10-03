@@ -1,4 +1,4 @@
-use andromeda_common::{async_trait_impl, utils::now};
+use andromeda_common::async_trait_impl;
 use async_std::sync::{RwLockReadGuard, RwLockWriteGuard};
 use bdk_wallet::{PersistedWallet, Update};
 use bitcoin::{constants::genesis_block, Address};
@@ -28,7 +28,7 @@ pub trait AccessWallet {
     async fn apply_update(&self, update: Update) -> Result<(), Error> {
         {
             let mut wallet_lock = self.lock_wallet_mut().await;
-            wallet_lock.apply_update_at(update, now().as_secs())?;
+            wallet_lock.apply_update(update)?;
         } // lock auto released
 
         self.persist().await?;

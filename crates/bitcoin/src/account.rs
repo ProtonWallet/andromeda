@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, fmt::Debug, str::FromStr, sync::Arc};
 
 use andromeda_common::{async_trait_impl, Network, ScriptType};
 use async_std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
-use bdk_chain::{BlockId, ChainPosition, ConfirmationBlockTime};
+use bdk_chain::{BlockId, CanonicalizationParams, ChainPosition, ConfirmationBlockTime};
 use bdk_wallet::{
     bitcoin::{
         bip32::{ChildNumber, DerivationPath, Xpriv},
@@ -438,7 +438,11 @@ impl Account {
         let mut untrusted_pending = Amount::ZERO;
         let mut confirmed = Amount::ZERO;
         let trust_predicate = |(k, _), _| k == KeychainKind::Internal;
-        for (spk_i, txout) in wallet.tx_graph().filter_chain_txouts(chain, block, outpoints) {
+        for (spk_i, txout) in
+            wallet
+                .tx_graph()
+                .filter_chain_txouts(chain, block, CanonicalizationParams::default(), outpoints)
+        {
             match &txout.chain_position {
                 ChainPosition::Confirmed { .. } => {
                     if txout.is_confirmed_and_spendable(block.height) {
@@ -578,6 +582,7 @@ impl Account {
             let spk_balance = wallet_lock.tx_graph().balance(
                 wallet_lock.local_chain(),
                 wallet_lock.local_chain().tip().block_id(),
+                CanonicalizationParams::default(),
                 outpoints,
                 |_, _| false,
             );
@@ -660,6 +665,7 @@ impl Account {
             let spk_balance = wallet_lock.tx_graph().balance(
                 wallet_lock.local_chain(),
                 wallet_lock.local_chain().tip().block_id(),
+                CanonicalizationParams::default(),
                 outpoints,
                 |_, _| false,
             );
@@ -854,12 +860,10 @@ mod tests {
     use std::{str::FromStr, sync::Arc};
 
     use andromeda_api::{
-        block,
-        exchange_rate::ApiExchangeRate,
         tests::utils::{common_api_client, setup_test_connection},
         BASE_WALLET_API_V1,
     };
-    use andromeda_common::{pdf_generator::PDFGenerator, Network};
+    use andromeda_common::Network;
     use bdk_chain::BlockId;
     use bdk_wallet::{
         bitcoin::{Address, NetworkKind},
@@ -870,7 +874,7 @@ mod tests {
         key::Secp256k1,
         Amount, BlockHash,
     };
-    use futures::executor::block_on;
+
     use tokio_test::assert_ok;
     use wiremock::{
         matchers::{body_string_contains, method, path, path_regex},
@@ -964,6 +968,8 @@ mod tests {
 
     async fn get_mock_server_for_mainnet() -> MockServer {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
 
         let req_path_blocks: String = format!("{}/blocks", BASE_WALLET_API_V1);
 
@@ -1130,6 +1136,7 @@ mod tests {
         let account = Arc::new(set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'"));
 
         let mock_server = MockServer::start().await;
+        setup_mock_auth(&mock_server).await;
 
         let req_path_blocks: String = format!("{}/blocks", BASE_WALLET_API_V1);
 
@@ -1221,6 +1228,7 @@ mod tests {
         assert_eq!(balance.total().to_sat(), 0);
 
         let mock_server = MockServer::start().await;
+        setup_mock_auth(&mock_server).await;
 
         let req_path_blocks: String = format!("{}/blocks", BASE_WALLET_API_V1);
 
@@ -1297,6 +1305,7 @@ mod tests {
         assert_eq!(utxos.len(), 0);
 
         let mock_server = MockServer::start().await;
+        setup_mock_auth(&mock_server).await;
 
         let req_path_blocks: String = format!("{}/blocks", BASE_WALLET_API_V1);
 
@@ -1375,6 +1384,7 @@ mod tests {
         let account = Arc::new(set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'"));
 
         let mock_server = MockServer::start().await;
+        setup_mock_auth(&mock_server).await;
 
         let req_path_blocks: String = format!("{}/blocks", BASE_WALLET_API_V1);
 
@@ -1448,6 +1458,7 @@ mod tests {
         let account = Arc::new(set_test_account_regtest(ScriptType::NativeSegwit, "m/84'/1'/0'"));
 
         let mock_server = MockServer::start().await;
+        setup_mock_auth(&mock_server).await;
         let req_path_blocks: String = format!("{}/blocks", BASE_WALLET_API_V1);
         let response_contents = read_mock_file!("get_blocks_body");
         let response = ResponseTemplate::new(200).set_body_string(response_contents);
@@ -1539,6 +1550,7 @@ mod tests {
         assert!(highest.is_none());
 
         let mock_server = MockServer::start().await;
+        setup_mock_auth(&mock_server).await;
 
         let req_path_blocks: String = format!("{}/blocks", BASE_WALLET_API_V1);
 
@@ -2040,5 +2052,23 @@ mod tests {
 
         let block_id = account.get_last_block_id_before_time(1742964).await;
         assert!(block_id.is_none());
+    }
+
+    async fn setup_mock_auth(mock_server: &MockServer) {
+        // Mock authentication endpoint
+        let auth_response = ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "Code": 1000,
+            "UID": "12345",
+            "AccessToken": "mock_token",
+            "RefreshToken": "mock_refresh_token",
+            "TokenType": "Bearer",
+            "ExpiresIn": 3600,
+            "Scopes": ["wallet"]
+        }));
+        Mock::given(method("POST"))
+            .and(path("/auth/v4/sessions"))
+            .respond_with(auth_response)
+            .mount(mock_server)
+            .await;
     }
 }

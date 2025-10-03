@@ -1,6 +1,5 @@
-use std::sync::Arc;
-
 use crate::{core::ApiClient, error::Error, ProtonWalletApiClient};
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct UnleashResponse {
@@ -42,14 +41,35 @@ impl UnleashClient {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        core::ApiClient, read_mock_file, tests::utils::common_api_client, tests::utils::setup_test_connection,
-        unleash::UnleashClient,
-    };
     use wiremock::{
         matchers::{method, path},
         Mock, MockServer, ResponseTemplate,
     };
+
+    use crate::{
+        core::ApiClient,
+        read_mock_file,
+        tests::utils::{common_api_client, setup_test_connection},
+        unleash::UnleashClient,
+    };
+
+    async fn setup_mock_auth(mock_server: &MockServer) {
+        // Mock authentication endpoint
+        let auth_response = ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "Code": 1000,
+            "UID": "12345",
+            "AccessToken": "mock_token",
+            "RefreshToken": "mock_refresh_token",
+            "TokenType": "Bearer",
+            "ExpiresIn": 3600,
+            "Scopes": ["wallet"]
+        }));
+        Mock::given(method("POST"))
+            .and(path("/auth/v4/sessions"))
+            .respond_with(auth_response)
+            .mount(mock_server)
+            .await;
+    }
 
     #[tokio::test]
     #[ignore]
@@ -66,6 +86,8 @@ mod tests {
     #[tokio::test]
     async fn test_fetch_toggles_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let req_path: String = "feature/v2/frontend".to_string();
         let contents = read_mock_file!("fetch_toggles_1000_body");
         let response = ResponseTemplate::new(200).set_body_string(contents);

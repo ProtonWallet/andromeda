@@ -1,7 +1,6 @@
-use std::{collections::HashMap, fmt, str, sync::Arc};
-
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
+use std::{collections::HashMap, fmt, str, sync::Arc};
 
 use crate::{
     core::{ApiClient, ProtonResponseExt},
@@ -351,6 +350,24 @@ mod tests {
         BASE_WALLET_API_V1,
     };
 
+    async fn setup_mock_auth(mock_server: &MockServer) {
+        // Mock authentication endpoint
+        let auth_response = ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "Code": 1000,
+            "UID": "12345",
+            "AccessToken": "mock_token",
+            "RefreshToken": "mock_refresh_token",
+            "TokenType": "Bearer",
+            "ExpiresIn": 3600,
+            "Scopes": ["wallet"]
+        }));
+        Mock::given(method("POST"))
+            .and(path("/auth/v4/sessions"))
+            .respond_with(auth_response)
+            .mount(mock_server)
+            .await;
+    }
+
     #[tokio::test]
     async fn test_get_countries_parse() {
         let json_data = r#"
@@ -605,6 +622,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_countries_1000() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let json_body = serde_json::json!(
         {
             "Code": 1000,
@@ -651,6 +670,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_fiat_currencies_1000() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let json_body = serde_json::json!(
         {
             "Code": 1000,
@@ -696,6 +717,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_payment_methods_1000() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let json_body = serde_json::json!(
         {
             "Code": 1000,
@@ -728,6 +751,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_quotes_1000() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let json_body = serde_json::json!(
         {
             "Code": 1000,
@@ -801,6 +826,8 @@ mod tests {
     #[tokio::test]
     async fn test_create_on_ramp_checkout_1000() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let json_body = serde_json::json!(
         {
             "Code": 1000,
@@ -820,13 +847,7 @@ mod tests {
                 "OrderID": "1145329",
             })))
             .respond_with(response)
-            .expect(1..)
-            .with_priority(1)
-            .mount(&mock_server)
-            .await;
-        Mock::given(method("POST"))
-            .respond_with(ResponseTemplate::new(404))
-            .with_priority(2)
+            .expect(1)
             .mount(&mock_server)
             .await;
 
@@ -849,12 +870,14 @@ mod tests {
         }
 
         let unmatched_requests = mock_server.received_requests().await.unwrap();
-        assert_eq!(unmatched_requests.len(), 1, "There should be no unmatched requests");
+        assert_eq!(unmatched_requests.len(), 2, "There should be no unmatched requests");
     }
 
     #[tokio::test]
     async fn test_create_on_ramp_checkout_url_1000() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let json_body = serde_json::json!(
         {
             "Code": 1000,
@@ -873,13 +896,7 @@ mod tests {
                 "Provider": "Banxa"
             })))
             .respond_with(response)
-            .expect(1..)
-            .with_priority(1)
-            .mount(&mock_server)
-            .await;
-        Mock::given(method("POST"))
-            .respond_with(ResponseTemplate::new(404))
-            .with_priority(2)
+            .expect(1)
             .mount(&mock_server)
             .await;
 
@@ -901,12 +918,14 @@ mod tests {
         }
 
         let unmatched_requests = mock_server.received_requests().await.unwrap();
-        assert_eq!(unmatched_requests.len(), 1, "There should be no unmatched requests");
+        assert_eq!(unmatched_requests.len(), 2, "There should be no unmatched requests");
     }
 
     #[tokio::test]
     async fn test_create_on_ramp_checkout_url_1000_empty() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let json_body = serde_json::json!(
         {
             "Code": 1000,
@@ -940,6 +959,8 @@ mod tests {
     #[tokio::test]
     async fn test_sign_url_1000() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let json_body = serde_json::json!(
         {
             "Code": 1000,
@@ -1038,6 +1059,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_public_api_key() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let json_body = serde_json::json!(
         {
             "Code": 1000,

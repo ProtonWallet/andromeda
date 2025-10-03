@@ -208,9 +208,30 @@ mod tests {
         BASE_WALLET_API_V1,
     };
 
+    async fn setup_mock_auth(mock_server: &MockServer) {
+        // Mock authentication endpoint
+        let auth_response = ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "Code": 1000,
+            "UID": "12345",
+            "AccessToken": "mock_token",
+            "RefreshToken": "mock_refresh_token",
+            "TokenType": "Bearer",
+            "ExpiresIn": 3600,
+            "Scopes": ["wallet"]
+        }));
+        Mock::given(method("POST"))
+            .and(path("/auth/v4/sessions"))
+            .respond_with(auth_response)
+            .mount(mock_server)
+            .await;
+    }
+
     #[tokio::test]
     async fn test_get_get_bitcoin_addresses_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let response_body = serde_json::json!(
             {
                 "Code": 1000,
@@ -307,6 +328,9 @@ mod tests {
     #[tokio::test]
     async fn test_get_bitcoin_address_highest_index_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let response_body = serde_json::json!(
             {
                 "Code": 1000,
@@ -343,6 +367,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_used_indexes() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let response_body = serde_json::json!(
             {
                 "Code": 1000,
@@ -386,6 +412,8 @@ mod tests {
         }];
 
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let wallet_id = "_zuc9hOPmSeNUPoBlvFs2JvjWw_hX4ktpVnqKmpAhh3PcAGXNVJqU_jD2ZoZ_qTteGsa30m8mHG8GiWt_7L0xg==";
         let wallet_account_id =
             "yYzIuZJobta-FCUwbhCdUwCXtn-BLoW0yZvVNJK5MCh0KT-igpGYa3zd_uNz43gKTD9BXrRaDlT4uRhdo70y_A==";
@@ -474,6 +502,9 @@ mod tests {
         };
 
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let wallet_id = "_zuc9hOPmSeNUPoBlvFs2JvjWw_hX4ktpVnqKmpAhh3PcAGXNVJqU_jD2ZoZ_qTteGsa30m8mHG8GiWt_7L0xg==";
         let wallet_account_id =
             "yYzIuZJobta-FCUwbhCdUwCXtn-BLoW0yZvVNJK5MCh0KT-igpGYa3zd_uNz43gKTD9BXrRaDlT4uRhdo70y_A==";
