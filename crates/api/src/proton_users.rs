@@ -3,6 +3,12 @@ use std::sync::Arc;
 use muon::rest::core::v4::{keys::salts::KeySalt, users::User};
 use serde::{Deserialize, Serialize};
 
+use crate::{
+    core::{ApiClient, ProtonResponseExt},
+    error::Error,
+    ProtonWalletApiClient, BASE_CORE_API_V4,
+};
+
 #[derive(Debug, Clone)]
 pub struct ChildSession {
     pub session_id: String,
@@ -14,12 +20,6 @@ pub struct UserData {
     pub user: User,
     pub key_salts: Vec<KeySalt>,
 }
-
-use crate::{
-    core::{ApiClient, ProtonResponseExt},
-    error::Error,
-    ProtonWalletApiClient, BASE_CORE_API_V4,
-};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(non_snake_case)]
@@ -319,18 +319,36 @@ impl ProtonUsersClientExt for ProtonUsersClient {
 
 #[cfg(test)]
 mod tests {
-    use wiremock::{
-        matchers::{body_json, method, path},
-        Mock, MockServer, ResponseTemplate,
-    };
-
-    use super::ProtonUsersClient;
     use crate::{
         core::ApiClient,
         proton_users::{ProtonSrpClientProofs, ProtonUsersClientExt},
         tests::utils::{common_api_client, setup_test_connection},
         BASE_CORE_API_V4,
     };
+
+    use super::ProtonUsersClient;
+    use wiremock::{
+        matchers::{body_json, method, path},
+        Mock, MockServer, ResponseTemplate,
+    };
+
+    async fn setup_mock_auth(mock_server: &MockServer) {
+        // Mock authentication endpoint
+        let auth_response = ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "Code": 1000,
+            "UID": "12345",
+            "AccessToken": "mock_token",
+            "RefreshToken": "mock_refresh_token",
+            "TokenType": "Bearer",
+            "ExpiresIn": 3600,
+            "Scopes": ["wallet"]
+        }));
+        Mock::given(method("POST"))
+            .and(path("/auth/v4/sessions"))
+            .respond_with(auth_response)
+            .mount(mock_server)
+            .await;
+    }
 
     #[tokio::test]
     #[ignore]
@@ -354,6 +372,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_user_info_code_1000() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let response_body = serde_json::json!(
             {
                 "User": {
@@ -416,6 +436,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_user_info_deserialize_error() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let response_body = serde_json::json!({});
         let req_path: String = format!("{}/users", BASE_CORE_API_V4);
         let response = ResponseTemplate::new(400).set_body_json(response_body);
@@ -433,6 +455,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_users_settings_code_1000() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let response_body = serde_json::json!(
             {
                 "Code": 1000,
@@ -540,6 +564,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_users_settings_deserialize_error() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let response_body = serde_json::json!({});
         let req_path: String = format!("{}/settings", BASE_CORE_API_V4);
         let response = ResponseTemplate::new(400).set_body_json(response_body);
@@ -565,6 +591,8 @@ mod tests {
         let req_path: String = format!("{}/auth/modulus", BASE_CORE_API_V4);
         let response = ResponseTemplate::new(200).set_body_json(json_body);
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         Mock::given(method("GET"))
             .and(path(req_path))
             .respond_with(response)
@@ -605,6 +633,8 @@ mod tests {
         let req_path: String = format!("{}/auth/info", BASE_CORE_API_V4);
         let response = ResponseTemplate::new(200).set_body_json(json_body);
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         Mock::given(method("POST"))
             .and(path(req_path))
             .and(body_json(serde_json::json!(
@@ -641,6 +671,8 @@ mod tests {
         let req_path: String = format!("{}/users/password", BASE_CORE_API_V4);
         let response = ResponseTemplate::new(200).set_body_json(json_body);
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         Mock::given(method("PUT"))
             .and(path(req_path))
             .and(body_json(serde_json::json!(
@@ -678,6 +710,8 @@ mod tests {
         let req_path: String = format!("{}/users/unlock", BASE_CORE_API_V4);
         let response = ResponseTemplate::new(200).set_body_json(json_body);
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         Mock::given(method("PUT"))
             .and(path(req_path))
             .and(body_json(serde_json::json!(
@@ -714,6 +748,8 @@ mod tests {
         let req_path: String = format!("{}/users/lock", BASE_CORE_API_V4);
         let response = ResponseTemplate::new(200).set_body_json(json_body);
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         Mock::given(method("PUT"))
             .and(path(req_path))
             .respond_with(response)

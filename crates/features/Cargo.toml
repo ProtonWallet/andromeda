@@ -10,7 +10,7 @@ andromeda-bitcoin = { version = "0.1.0", path = "../bitcoin" }
 andromeda-common = { version = "0.1.0", path = "../common" }
 
 
-chrono = { version = "0.4", features = ["wasmbind"] }
+chrono = { version = "^0.4", features = ["wasmbind"] }
 bitcoin = { workspace = true }
 bdk_chain = { workspace = true }
 

@@ -201,6 +201,24 @@ mod tests {
         BASE_WALLET_API_V1,
     };
 
+    async fn setup_mock_auth(mock_server: &MockServer) {
+        // Mock authentication endpoint
+        let auth_response = ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "Code": 1000,
+            "UID": "12345",
+            "AccessToken": "mock_token",
+            "RefreshToken": "mock_refresh_token",
+            "TokenType": "Bearer",
+            "ExpiresIn": 3600,
+            "Scopes": ["wallet"]
+        }));
+        Mock::given(method("POST"))
+            .and(path("/auth/v4/sessions"))
+            .respond_with(auth_response)
+            .mount(mock_server)
+            .await;
+    }
+
     #[tokio::test]
     #[ignore]
     async fn should_get_address_balance() {
@@ -260,6 +278,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_scripthashes_transactions() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
 
         let script_hash_1 = sha256::Hash::hash(
             Address::from_str("tb1q886jdswcmtn5u9memdlaz0lymua637a9aufqq6")
@@ -478,13 +498,7 @@ mod tests {
                 ],
             })))
             .respond_with(response)
-            .expect(1..)
-            .with_priority(1)
-            .mount(&mock_server)
-            .await;
-        Mock::given(method("POST"))
-            .respond_with(ResponseTemplate::new(404))
-            .with_priority(2)
+            .expect(1)
             .mount(&mock_server)
             .await;
 
@@ -502,12 +516,15 @@ mod tests {
         }
 
         let unmatched_requests = mock_server.received_requests().await.unwrap();
-        assert_eq!(unmatched_requests.len(), 1, "There should be no unmatched requests");
+        assert_eq!(unmatched_requests.len(), 2, "There should be no unmatched requests");
     }
 
     #[tokio::test]
     async fn test_get_address_balance_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let address = "tb1qsfhk3xzxkk7m63v9nhdn90vqn5vk54hff0lrq5";
         let response_body = serde_json::json!({
             "Code": 1000,
@@ -546,6 +563,9 @@ mod tests {
     #[tokio::test]
     async fn test_get_scripthash_transactions_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
+
         let script_hash_1 = sha256::Hash::hash(
             Address::from_str("bc1qsv433rsr3e26wc3kxxapn36a3e7s6rkjrgeu0u")
                 .unwrap()
@@ -580,6 +600,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_scripthash_transactions_at_transaction_id_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let script_hash_1 = sha256::Hash::hash(
             Address::from_str("bc1qsv433rsr3e26wc3kxxapn36a3e7s6rkjrgeu0u")
                 .unwrap()

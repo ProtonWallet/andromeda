@@ -3,6 +3,7 @@ use std::{cmp::Ordering, str::FromStr, sync::Arc};
 use andromeda_common::utils::now;
 use async_std::sync::RwLockReadGuard;
 use bdk_chain::tx_graph::TxNode;
+use bdk_chain::CanonicalizationParams;
 use bdk_wallet::{
     bitcoin::{bip32::DerivationPath, Address, ScriptBuf, Sequence, TxIn, TxOut, Txid, Witness},
     chain::{ChainPosition, ConfirmationBlockTime},
@@ -101,7 +102,7 @@ fn get_time(chain_position: Option<ChainPosition<ConfirmationBlockTime>>) -> Tra
             ChainPosition::Confirmed { anchor, .. } => TransactionTime::Confirmed {
                 confirmation_time: anchor.confirmation_time,
             },
-            ChainPosition::Unconfirmed { last_seen } => TransactionTime::Unconfirmed {
+            ChainPosition::Unconfirmed { last_seen, .. } => TransactionTime::Unconfirmed {
                 last_seen: last_seen.unwrap_or(now().as_secs()),
             },
         };
@@ -155,7 +156,11 @@ impl<'a, A> ToTransactionDetails<(&RwLockReadGuard<'a, PersistedWallet<WalletSto
         let (sent, received) = wallet_lock.sent_and_received(&self.tx);
         let tx = wallet_lock
             .tx_graph()
-            .list_canonical_txs(wallet_lock.local_chain(), wallet_lock.local_chain().tip().block_id())
+            .list_canonical_txs(
+                wallet_lock.local_chain(),
+                wallet_lock.local_chain().tip().block_id(),
+                CanonicalizationParams::default(),
+            )
             .find(|tx| tx.tx_node.txid == self.compute_txid());
         let time = match tx {
             Some(tx) => get_time(Some(tx.chain_position)),

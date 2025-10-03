@@ -5,6 +5,7 @@ use andromeda_api::{
     transaction::{BroadcastMessage, ExchangeRateOrTransactionTime},
     ProtonWalletApiClient,
 };
+use andromeda_common::utils::now;
 use andromeda_esplora::{AsyncClient, EsploraAsyncExt};
 use bdk_chain::spk_client::SyncRequest;
 use bdk_chain::CheckPoint;
@@ -35,7 +36,9 @@ impl BlockchainClient {
     }
 
     pub async fn sync_spks(&self, spks_to_sync: Vec<ScriptBuf>, cp: CheckPoint) -> Result<SyncResponse, Error> {
-        let request = SyncRequest::builder().chain_tip(cp).spks(spks_to_sync);
+        let request = SyncRequest::builder_at(now().as_secs())
+            .chain_tip(cp)
+            .spks(spks_to_sync);
         Ok(self.0.sync(request, PARALLEL_REQUESTS).await?)
     }
 

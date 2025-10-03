@@ -15,21 +15,24 @@ members = [
 opt-level = "s" # Tell `rustc` to optimize for small code size.
 
 [workspace.dependencies]
-anyhow = { version = "1.0" }
+anyhow = { version = "^1.0" }
 thiserror = { version = "^2.0" }
-serde_json = { version = "1.0.117" }
-serde = { version = "1.0.144", features = ["derive"] }
-async-std = { version = "1.10" }
-async-trait = { version = "0.1.87" }
-bitcoin = { version = "=0.32.5", default-features = false, features = [
+serde_json = { version = "^1.0" }
+serde = { version = "^1.0", features = ["derive"] }
+async-std = { version = "^1.13" }
+async-trait = { version = "^0.1" }
+bitcoin = { version = "0.32.6", default-features = false, features = [
   "serde",
   "secp-recovery",
   "rand",
 ] }
-bdk_wallet = { version = "=1.2.0", default-features = false, features = [
+bdk_wallet = { version = "2.2.0", default-features = false, features = [
   "std",
   "keys-bip39",
 ] }
-bdk_chain = { version = "=0.21.1", default-features = false }
-tokio = { version = "1.35", features = ["macros", "rt"] }
-tokio-test = { version = "0.4.3" }
+bdk_chain = { version = "0.23.0", default-features = false }
+tokio = { version = "^1.47", features = ["macros", "rt"] }
+tokio-test = { version = "^0.4" }
+
+[patch.crates-io]
+bzip2 = { git = "https://github.com/ProtonWallet/bzip2-rs", branch = "v0.5.2-wasm" }

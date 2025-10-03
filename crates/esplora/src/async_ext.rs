@@ -1,3 +1,4 @@
+use andromeda_common::utils::now;
 use async_trait::async_trait;
 use bdk_core::{
     bitcoin::{BlockHash, OutPoint, ScriptBuf, Txid},
@@ -108,7 +109,16 @@ impl EsploraAsyncExt for AsyncClient {
 
         let mut tx_update = TxUpdate::<ConfirmationBlockTime>::default();
         let mut inserted_txs = HashSet::<Txid>::new();
-        tx_update.extend(fetch_txs_with_spks(self, &mut inserted_txs, request.iter_spks()).await?);
+        tx_update.extend(
+            fetch_txs_with_spks(
+                self,
+                &mut inserted_txs,
+                request
+                    .iter_spks_with_expected_txids()
+                    .map(|spk_with_txids| spk_with_txids.spk),
+            )
+            .await?,
+        );
         tx_update.extend(fetch_txs_with_txids(self, &mut inserted_txs, request.iter_txids(), parallel_requests).await?);
         tx_update.extend(
             fetch_txs_with_outpoints(self, &mut inserted_txs, request.iter_outpoints(), parallel_requests).await?,
@@ -295,11 +305,19 @@ async fn fetch_txs_with_keychain_spks<I: Iterator<Item = Indexed<ScriptBuf>> + S
             }
 
             for tx in txs {
-                if inserted_txs.insert(tx.txid) {
+                let is_unconfirmed = !tx.status.confirmed;
+                let txid = tx.txid;
+
+                if inserted_txs.insert(txid) {
                     update.txs.push(tx.to_tx().into());
                 }
-                insert_anchor_from_status(&mut update, tx.txid, tx.status);
+                insert_anchor_from_status(&mut update, txid, tx.status);
                 insert_prevouts(&mut update, tx.vin);
+
+                if is_unconfirmed {
+                    let current_time = now().as_secs();
+                    update.seen_ats.insert((txid, current_time));
+                }
             }
         }
         let current_gap = last_index.expect("Should be set when handles is not empty") - last_active_index;
@@ -375,12 +393,19 @@ where
 
         for (txid, tx_info) in handles.try_collect::<Vec<_>>().await? {
             if let Some(tx_info) = tx_info {
+                let is_unconfirmed = !tx_info.status.confirmed;
+
                 if inserted_txs.insert(txid) {
                     update.txs.push(tx_info.to_tx().into());
                 }
 
                 insert_anchor_from_status(&mut update, txid, tx_info.status);
                 insert_prevouts(&mut update, tx_info.vin);
+
+                if is_unconfirmed {
+                    let current_time = now().as_secs();
+                    update.seen_ats.insert((txid, current_time));
+                }
             }
         }
     }

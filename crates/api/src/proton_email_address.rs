@@ -1,6 +1,5 @@
-use std::sync::Arc;
-
 use serde::Deserialize;
+use std::sync::Arc;
 
 use crate::{
     core::{ApiClient, ProtonResponseExt},
@@ -115,16 +114,36 @@ impl ProtonEmailAddressClient {
 
 #[cfg(test)]
 mod tests {
-
-    use super::ProtonEmailAddressClient;
     use crate::{
-        core::ApiClient, read_mock_file, tests::utils::common_api_client, tests::utils::setup_test_connection,
+        core::ApiClient,
+        read_mock_file,
+        tests::utils::{common_api_client, setup_test_connection},
         BASE_CORE_API_V4,
     };
+
+    use super::ProtonEmailAddressClient;
     use wiremock::{
         matchers::{method, path, query_param},
         Mock, MockServer, ResponseTemplate,
     };
+
+    async fn setup_mock_auth(mock_server: &MockServer) {
+        // Mock authentication endpoint
+        let auth_response = ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "Code": 1000,
+            "UID": "12345",
+            "AccessToken": "mock_token",
+            "RefreshToken": "mock_refresh_token",
+            "TokenType": "Bearer",
+            "ExpiresIn": 3600,
+            "Scopes": ["wallet"]
+        }));
+        Mock::given(method("POST"))
+            .and(path("/auth/v4/sessions"))
+            .respond_with(auth_response)
+            .mount(mock_server)
+            .await;
+    }
 
     #[tokio::test]
     #[ignore]
@@ -155,6 +174,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_proton_email_addresses_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let contents = read_mock_file!("get_proton_email_addresses_1000_body");
         let response = ResponseTemplate::new(200).set_body_string(contents);
         let req_path: String = format!("{}/addresses", BASE_CORE_API_V4);
@@ -240,6 +261,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_all_public_keys_success() {
         let mock_server = MockServer::start().await;
+
+        setup_mock_auth(&mock_server).await;
         let email = "test@proton.me";
         let req_path: String = format!("{}/keys/all", BASE_CORE_API_V4);
         let contents = read_mock_file!("get_all_public_keys_1000_body");

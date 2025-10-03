@@ -1,12 +1,12 @@
 // WiFWallet/PaperWallet : account_trait
 
-use std::sync::Arc;
-
+use crate::{account_trait::AccessWalletDyn, blockchain_client::BlockchainClient, error::Error};
+use andromeda_common::utils::now;
 use andromeda_esplora::EsploraAsyncExt;
+use bdk_chain::CanonicalizationParams;
 use bdk_wallet::KeychainKind;
 use bitcoin::Txid;
-
-use crate::{account_trait::AccessWalletDyn, blockchain_client::BlockchainClient, error::Error};
+use std::sync::Arc;
 
 pub const DEFAULT_STOP_GAP: usize = 50;
 pub const PARALLEL_REQUESTS: usize = 5;
@@ -46,7 +46,7 @@ impl AccountSyncer {
             // 🔒 Acquire read lock
             let read_lock = self.account.lock_wallet().await;
             // Extract the request while holding the lock
-            let request = read_lock.start_full_scan();
+            let request = read_lock.start_full_scan_at(now().as_secs());
             request
         }; // 🔓 Read lock released
 
@@ -87,14 +87,14 @@ impl AccountSyncer {
 
             let unconfirmed_txids = read_lock
                 .tx_graph()
-                .list_canonical_txs(chain, chain_tip)
+                .list_canonical_txs(chain, chain_tip, CanonicalizationParams::default())
                 .filter(|canonical_tx| !canonical_tx.chain_position.is_confirmed())
                 .map(|canonical_tx| canonical_tx.tx_node.txid)
                 .collect::<Vec<Txid>>();
 
             // Create sync request
             read_lock
-                .start_sync_with_revealed_spks()
+                .start_sync_with_revealed_spks_at(now().as_secs())
                 .outpoints(utxos.into_iter())
                 .txids(unconfirmed_txids.into_iter())
         }; // 🔓 Read lock released
@@ -169,6 +169,7 @@ mod tests {
             None,
         ));
         let mock_server = MockServer::start().await;
+        setup_mock_auth(&mock_server).await;
         let req_path_blocks: String = format!("{}/blocks", BASE_WALLET_API_V1);
         let response_contents = read_mock_file!("get_blocks_body");
         let response = ResponseTemplate::new(200).set_body_string(response_contents);
@@ -274,6 +275,7 @@ mod tests {
             None,
         ));
         let mock_server = MockServer::start().await;
+        setup_mock_auth(&mock_server).await;
         let req_path: String = format!("{}/addresses/scripthashes/transactions", BASE_WALLET_API_V1);
         let response_contents1 = read_mock_file!("get_scripthashes_transactions_body_4");
         let response1 = ResponseTemplate::new(200).set_body_string(response_contents1);
@@ -344,5 +346,23 @@ mod tests {
         let sync = AccountSyncer::new(client, account.clone());
         let exsits = sync.check_account_existence(DEFAULT_STOP_GAP).await.unwrap();
         assert!(!exsits);
+    }
+
+    async fn setup_mock_auth(mock_server: &MockServer) {
+        // Mock authentication endpoint
+        let auth_response = ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "Code": 1000,
+            "UID": "12345",
+            "AccessToken": "mock_token",
+            "RefreshToken": "mock_refresh_token",
+            "TokenType": "Bearer",
+            "ExpiresIn": 3600,
+            "Scopes": ["wallet"]
+        }));
+        Mock::given(method("POST"))
+            .and(path("/auth/v4/sessions"))
+            .respond_with(auth_response)
+            .mount(mock_server)
+            .await;
     }
 }
