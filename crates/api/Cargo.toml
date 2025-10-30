@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 andromeda-common = { version = "0.1.0", path = "../common" }
-muon = { version = "^1.3", registry = "proton_public" }
+muon = { version = "=1.7.1", registry = "proton_public" }
 cfg-if = "^1.0"
 log = "^0.4"
 
