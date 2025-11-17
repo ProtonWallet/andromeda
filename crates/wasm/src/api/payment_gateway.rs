@@ -1,6 +1,6 @@
 use andromeda_api::payment_gateway::{
-    ApiCountry, ApiSimpleFiatCurrency, CountriesByProvider, FiatCurrenciesByProvider, GatewayProvider,
-    PaymentGatewayClient, PaymentMethod, PaymentMethodsByProvider, Quote, QuotesByProvider,
+    ApiCountry, ApiSimpleFiatCurrency, CountriesByProvider, CreateOnRampCheckoutResponseBody, FiatCurrenciesByProvider,
+    GatewayProvider, PaymentGatewayClient, PaymentMethod, PaymentMethodsByProvider, Quote, QuotesByProvider,
 };
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
@@ -294,6 +294,25 @@ pub struct WasmQuotesByProvider {
     pub data: Vec<WasmQuotesAndProviderTupple>,
 }
 
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+#[allow(non_snake_case)]
+pub struct WasmCreateOnRampCheckoutResponseBody {
+    pub Code: u16,
+    pub CheckoutUrl: String,
+    pub InvoiceID: String,
+}
+
+impl From<&CreateOnRampCheckoutResponseBody> for WasmCreateOnRampCheckoutResponseBody {
+    fn from(value: &CreateOnRampCheckoutResponseBody) -> Self {
+        WasmCreateOnRampCheckoutResponseBody {
+            Code: value.Code.clone(),
+            CheckoutUrl: value.CheckoutUrl.clone(),
+            InvoiceID: value.InvoiceID.clone(),
+        }
+    }
+}
+
 impl From<QuotesByProvider> for WasmQuotesByProvider {
     fn from(value: QuotesByProvider) -> Self {
         let countries_and_provider_tupple = value
@@ -374,7 +393,7 @@ impl WasmPaymentGatewayClient {
         payment_method: WasmPaymentMethod,
         provider: WasmGatewayProvider,
         order_id: String,
-    ) -> Result<String, JsValue> {
+    ) -> Result<WasmCreateOnRampCheckoutResponseBody, JsValue> {
         self.0
             .create_on_ramp_checkout(
                 amount,
@@ -385,6 +404,7 @@ impl WasmPaymentGatewayClient {
                 order_id,
             )
             .await
+            .map(|response| (&response).into())
             .map_err(|e| e.to_js_error())
     }
 

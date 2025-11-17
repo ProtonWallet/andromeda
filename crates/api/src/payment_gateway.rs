@@ -129,8 +129,9 @@ pub struct CreateOnRampCheckoutRequestBody {
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 pub struct CreateOnRampCheckoutResponseBody {
-    pub Code: i32,
-    pub ClientSecret: String,
+    pub Code: u16,
+    pub CheckoutUrl: String,
+    pub InvoiceID: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -240,7 +241,7 @@ impl PaymentGatewayClient {
         payment_method: PaymentMethod,
         provider: GatewayProvider,
         order_id: String,
-    ) -> Result<String, Error> {
+    ) -> Result<CreateOnRampCheckoutResponseBody, Error> {
         let body = CreateOnRampCheckoutRequestBody {
             Amount: amount,
             BitcoinAddress: btc_address,
@@ -252,9 +253,8 @@ impl PaymentGatewayClient {
         let request = self.post("payment-gateway/on-ramp/checkout").body_json(body)?;
 
         let response = self.api_client.send(request).await?;
-        let parsed = response.parse_response::<CreateOnRampCheckoutResponseBody>()?;
 
-        Ok(parsed.ClientSecret)
+        response.parse_response::<CreateOnRampCheckoutResponseBody>()
     }
 
     pub async fn create_on_ramp_checkout_url(
@@ -831,7 +831,8 @@ mod tests {
         let json_body = serde_json::json!(
         {
             "Code": 1000,
-            "ClientSecret": "cs_test_123",
+            "CheckoutUrl": "https://checkout",
+            "InvoiceID": "ID",
         });
         let req_path: String = format!("{}/payment-gateway/on-ramp/checkout", BASE_WALLET_API_V1);
         let response = ResponseTemplate::new(200).set_body_json(json_body);
@@ -865,7 +866,7 @@ mod tests {
             .await;
         println!("create_on_ramp_checkout done: {:?}", res);
         match res {
-            Ok(value) => assert!(!value.is_empty()),
+            Ok(value) => assert!(!value.CheckoutUrl.is_empty()),
             Err(e) => panic!("Expected Ok variant but got Err.{}", e),
         }
 
