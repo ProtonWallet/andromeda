@@ -137,6 +137,10 @@ impl ErrorExt for BitcoinError {
                     "kind": "AmbiguousLanguages",
                 })),
             },
+            BitcoinError::UnknownPurpose(purpose) => json_to_jsvalue(json!({
+                "kind": "UnknownPurpose",
+                "purpose": purpose,
+            })),
             BitcoinError::EsploraClient(EsploraError::ApiError(error)) => error.to_js_error(),
             BitcoinError::InsufficientFundsInPaperWallet => json_to_jsvalue(json!({
                 "kind": "InsufficientFundsInPaperWallet",
@@ -144,6 +148,30 @@ impl ErrorExt for BitcoinError {
             BitcoinError::InvalidPaperWallet => json_to_jsvalue(json!({
                 "kind": "InvalidPaperWallet",
             })),
+            BitcoinError::InvalidLength(usize) => json_to_jsvalue(json!({
+                "kind": "InvalidLength",
+                "length": usize,
+            })),
+            BitcoinError::InvalidBase58Char(u8) => json_to_jsvalue(json!({
+                "kind": "InvalidLength",
+                "character": u8,
+            })),
+            BitcoinError::UnknownVersionPrefix => json_to_jsvalue(json!({
+                "kind": "UnknownVersionPrefix",
+            })),
+            BitcoinError::BadChecksum { expected, actual } => json_to_jsvalue(json!({
+                "kind": "BadChecksum",
+                "expected": expected,
+                "actual": actual,
+            })),
+            BitcoinError::InvalidExtendedPublicKey => json_to_jsvalue(json!({
+                "kind": "InvalidExtendedPublicKey",
+            })),
+            BitcoinError::InvalidDescriptor(error) => match error {
+                _ => json_to_jsvalue(json!({
+                    "kind": "InvalidDescriptor",
+                })),
+            },
             _ => common_error,
         }
     }

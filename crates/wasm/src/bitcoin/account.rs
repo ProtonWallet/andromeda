@@ -270,11 +270,26 @@ impl WasmAccount {
         self.inner.clear_store().await.map_err(|e| e.to_js_error())?;
         Ok(())
     }
-
     #[wasm_bindgen(js_name = getXpub)]
     pub async fn get_xpub(&self) -> Result<String, js_sys::Error> {
         let xpub = self.inner.get_xpub().await.map_err(|e| e.to_js_error())?;
 
         Ok(xpub.to_string())
+    }
+
+    #[wasm_bindgen(js_name = getConvertedXpub)]
+    pub async fn get_converted_xpub(&self) -> Result<String, js_sys::Error> {
+        self.inner
+            .get_converted_xpub()
+            .await
+            .map_err(|e| e.to_js_error().into())
+    }
+
+    #[wasm_bindgen(js_name = getFullDescriptor)]
+    pub async fn get_full_descriptor_string(&self) -> Result<String, js_sys::Error> {
+        self.inner
+            .get_full_descriptor_string()
+            .await
+            .map_err(|e| e.to_js_error().into())
     }
 }

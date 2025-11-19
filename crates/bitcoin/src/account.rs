@@ -1,5 +1,3 @@
-use std::{collections::BTreeMap, fmt::Debug, str::FromStr, sync::Arc};
-
 use andromeda_common::{async_trait_impl, Network, ScriptType};
 use async_std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use bdk_chain::{BlockId, CanonicalizationParams, ChainPosition, ConfirmationBlockTime};
@@ -14,10 +12,18 @@ use bdk_wallet::{
     descriptor, AddressInfo, Balance as BdkBalance, ChangeSet, KeychainKind, LocalOutput as LocalUtxo, PersistedWallet,
     SignOptions, Wallet as BdkWallet, WalletPersister,
 };
-use bitcoin::{bip32::Xpub, params::Params, Amount};
+use bitcoin::hashes::{hash160, Hash};
+use bitcoin::{
+    bip32::{Fingerprint, Xpub},
+    params::Params,
+    Amount,
+};
 use miniscript::{descriptor::DescriptorSecretKey, DescriptorPublicKey, ForEachKey};
+use std::{collections::BTreeMap, fmt::Debug, str::FromStr, sync::Arc};
 
 use super::{payment_link::PaymentLink, transactions::Pagination, utils::sort_and_paginate_txs, utils::sort_txs};
+use crate::bdk_wallet_secp_ext::BdkWalletSecpExt;
+use crate::xpub_utils::convert_to_script_type;
 use crate::{
     account_trait::AccessWallet,
     address::AddressDetails,
@@ -58,6 +64,7 @@ pub struct Account {
     derivation_path: DerivationPath,
     wallet: Arc<RwLock<PersistedWallet<WalletStorage>>>,
     persister: Arc<RwLock<WalletStorage>>,
+    master_fingerprint: String,
 }
 
 async_trait_impl! {
@@ -205,6 +212,7 @@ impl Account {
         mut persister: WalletStorage,
     ) -> Result<Self, Error> {
         let secp = Secp256k1::new();
+        let master_fingerprint = master_secret_key.fingerprint(&secp).to_string();
         let account_xprv = master_secret_key.derive_priv(&secp, &derivation_path)?;
 
         let wallet = Arc::new(RwLock::new(Self::build_wallet(
@@ -218,11 +226,17 @@ impl Account {
             derivation_path,
             persister: Arc::new(RwLock::new(persister)),
             wallet,
+            master_fingerprint,
         })
     }
     /// Returns cloned derivation path
     pub fn get_derivation_path(&self) -> DerivationPath {
         self.derivation_path.clone()
+    }
+
+    /// Returns master wallet fingerprint
+    pub fn get_master_fingerprint(&self) -> String {
+        self.master_fingerprint.clone()
     }
 
     /// Returns script type
@@ -742,6 +756,35 @@ impl Account {
         xpub.ok_or(Error::ExtendedPublicKeyNotFound)
     }
 
+    /// Convert XPUB to XPUB, YPUB or ZPUB depending on the network and script type
+    pub async fn get_converted_xpub(&self) -> Result<String, Error> {
+        let xpub = self.get_xpub().await?;
+        let script_type = self.get_script_type()?;
+        let network = self.lock_wallet().await.network().into();
+        convert_to_script_type(xpub.to_string(), script_type, network)
+    }
+
+    /// Get full descriptor (e.g. wpkh([fingerprint/84h/0h/0h]xpub.../0/*)#checksum)
+    pub async fn get_full_descriptor_string(&self) -> Result<String, Error> {
+        let xpub = self.get_xpub().await?;
+        let script_type = self.get_script_type()?;
+        let fingerprint = self.get_master_fingerprint();
+        let derivation_path = self.get_derivation_path().to_string();
+
+        let (prefix, suffix) = match script_type {
+            ScriptType::Legacy => ("pkh(", ")"),
+            ScriptType::NestedSegwit => ("sh(wpkh(", "))"),
+            ScriptType::NativeSegwit => ("wpkh(", ")"),
+            ScriptType::Taproot => ("tr(", ")"),
+        };
+
+        let descriptor_str = format!("{}[{}/{}]{}/0/*{}", prefix, fingerprint, derivation_path, xpub, suffix);
+
+        let descriptor: descriptor::Descriptor<DescriptorPublicKey> =
+            descriptor::Descriptor::from_str(&descriptor_str)?;
+        Ok(descriptor.to_string())
+    }
+
     /// Builds a wallet with given descriptors for external and internal keychains.
     ///
     /// This function attempts to load an existing wallet from the provided persister.
@@ -777,6 +820,7 @@ impl Account {
     ///     Network::Bitcoin,
     ///     derivation_path,
     ///     WalletStorage(factory.clone()),
+    ///     "39987022".to_string(),
     /// );
     /// ```
     ///
@@ -786,6 +830,7 @@ impl Account {
         network: Network,
         derivation_path: DerivationPath,
         mut persister: WalletStorage,
+        master_fingerprint: String,
     ) -> Result<Self, Error> {
         let genesis_block_hash = genesis_block(Params::from(&network.into())).block_hash();
 
@@ -812,6 +857,7 @@ impl Account {
             derivation_path: derivation_path,
             persister: Arc::new(RwLock::new(persister)),
             wallet: Arc::new(RwLock::new(wallet)),
+            master_fingerprint,
         })
     }
 
@@ -851,6 +897,7 @@ impl Account {
             derivation_path,
             persister: Arc::new(RwLock::new(persister)),
             wallet: Arc::new(RwLock::new(wallet)),
+            master_fingerprint: xpub.fingerprint().to_string(),
         })
     }
 }
@@ -1980,6 +2027,7 @@ mod tests {
             Network::Bitcoin,
             derivation_path,
             WalletStorage(factory.clone()),
+            "39987022".to_string(),
         );
         assert_ok!(&account);
         assert_eq!(account.unwrap().get_xpub().await.unwrap().to_string(), "xpub6BsgpMy4TZXH9dzD8M6RE28ve3EQ5uy3kW6g6muJ6xtnpD198ns5yGCZrXZHFp6Wd3FCkApQ79esrdk6h91JpV9rfgTXacbhyuhK8XRz2vk");

@@ -16,6 +16,7 @@ use bdk_wallet::{
     tx_builder::AddUtxoError,
 };
 use bitcoin::address::FromScriptError;
+use miniscript::Error as MiniscriptError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -98,6 +99,23 @@ pub enum Error {
     InvalidFeeRate,
     #[error("Wallet is not initialized")]
     WalletNotInitialized,
+
+    #[error("Invalid extended key length: expected 78, got {0}")]
+    InvalidLength(usize),
+    /// The base58 string contains an invalid character.
+    #[error("Invalid base58 character: {0:#x}")]
+    InvalidBase58Char(u8),
+    /// The checksum verification failed. Contains (expected, actual) checksums.
+    #[error("Bad checksum: expected {expected:#x}, got {actual:#x}")]
+    BadChecksum { expected: u32, actual: u32 },
+    /// The extended public key format is invalid or cannot be decoded.
+    #[error("Invalid extended public key")]
+    InvalidExtendedPublicKey,
+    /// The version prefix is not recognized as a valid xpub variant.
+    #[error("Unknown version prefix")]
+    UnknownVersionPrefix,
+    #[error("Miniscript descriptor")]
+    InvalidDescriptor(#[from] miniscript::Error),
 
     #[cfg(not(target_arch = "wasm32"))]
     #[cfg(feature = "sqlite")]
