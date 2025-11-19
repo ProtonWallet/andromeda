@@ -29,6 +29,7 @@ async-std = { workspace = true }
 async-trait = { workspace = true }
 
 serde = { workspace = true }
+hex = "0.4.3"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = { version = "^0.2", features = [

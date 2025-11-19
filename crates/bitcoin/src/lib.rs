@@ -24,6 +24,7 @@ pub mod transaction_builder;
 pub mod transactions;
 pub mod utils;
 pub mod wallet;
+pub mod xpub_utils;
 
 // Re-export commonly used types
 pub use andromeda_crypto::message_signature::SigningType;
