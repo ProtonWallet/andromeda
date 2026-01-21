@@ -22,8 +22,10 @@ pub enum TransactionTime {
 impl PartialOrd for TransactionTime {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match self {
-            TransactionTime::Unconfirmed { .. } => match other {
-                TransactionTime::Unconfirmed { .. } => Some(Ordering::Equal),
+            TransactionTime::Unconfirmed { last_seen } => match other {
+                TransactionTime::Unconfirmed {
+                    last_seen: other_last_seen,
+                } => Some(last_seen.cmp(other_last_seen)),
                 TransactionTime::Confirmed { .. } => Some(Ordering::Greater),
             },
             TransactionTime::Confirmed {
@@ -243,6 +245,31 @@ impl TransactionDetails {
 
     pub fn get_value_with_fee(&self) -> u64 {
         self.get_value() + self.fees.unwrap_or(0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::cmp::Ordering;
+
+    use super::TransactionTime;
+
+    #[test]
+    fn unconfirmed_orders_by_last_seen() {
+        let older = TransactionTime::Unconfirmed { last_seen: 100 };
+        let newer = TransactionTime::Unconfirmed { last_seen: 200 };
+
+        assert_eq!(older.cmp(&newer), Ordering::Less);
+        assert_eq!(newer.cmp(&older), Ordering::Greater);
+    }
+
+    #[test]
+    fn confirmed_orders_by_confirmation_time() {
+        let older = TransactionTime::Confirmed { confirmation_time: 100 };
+        let newer = TransactionTime::Confirmed { confirmation_time: 200 };
+
+        assert_eq!(older.cmp(&newer), Ordering::Less);
+        assert_eq!(newer.cmp(&older), Ordering::Greater);
     }
 }
 
