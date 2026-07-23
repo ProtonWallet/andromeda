@@ -4,11 +4,7 @@ use bitcoin::{
     consensus::encode::Error as BitcoinEncodingError,
     hashes::hex::{HexToArrayError, HexToBytesError},
 };
-use muon::{
-    client::middleware::AuthErr,
-    error::{ParseAppVersionErr, StatusErr},
-    Status,
-};
+use muon::{client::middleware::AuthErr, ParseAppVersionErr, Status, StatusErr};
 pub use muon::{error::ErrorKind as MuonErrorKind, Error as MuonError};
 use serde::Deserialize;
 use thiserror;

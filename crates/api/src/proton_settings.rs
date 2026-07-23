@@ -58,7 +58,13 @@ pub struct UpdateMnemonicSettingsRequestBody {
 #[allow(non_snake_case)]
 pub struct SetTwoFaTOTPRequestBody {
     pub TOTPConfirmation: String,
-    pub TOTPSharedSecret: String,
+}
+
+#[derive(Deserialize, Debug)]
+#[allow(non_snake_case)]
+pub struct GetTotpSharedSecretResponseBody {
+    pub Code: u32,
+    pub Secret: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -99,6 +105,8 @@ pub trait ProtonSettingsClientExt {
 
     async fn disable_mnemonic_settings(&self, req: ProtonSrpClientProofs) -> Result<String, Error>;
 
+    async fn get_totp_shared_secret(&self) -> Result<String, Error>;
+
     async fn enable_2fa_totp(&self, req: SetTwoFaTOTPRequestBody) -> Result<SetTwoFaTOTPResponseBody, Error>;
 
     async fn disable_2fa_totp(&self, req: ProtonSrpClientProofs) -> Result<ProtonUserSettings, Error>;
@@ -136,6 +144,13 @@ impl ProtonSettingsClientExt for ProtonSettingsClient {
         let response = self.api_client.send(request).await?;
         let parsed = response.parse_response::<UpdateMnemonicSettingsResponseBody>()?;
         Ok(parsed.ServerProof)
+    }
+
+    async fn get_totp_shared_secret(&self) -> Result<String, Error> {
+        let request = self.get("settings/2fa/totp/secret");
+        let response = self.api_client.send(request).await?;
+        let parsed = response.parse_response::<GetTotpSharedSecretResponseBody>()?;
+        Ok(parsed.Secret)
     }
 
     async fn enable_2fa_totp(&self, req: SetTwoFaTOTPRequestBody) -> Result<SetTwoFaTOTPResponseBody, Error> {
@@ -528,6 +543,28 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_get_totp_shared_secret_success() {
+        let mock_server = MockServer::start().await;
+        setup_mock_auth(&mock_server).await;
+        let expected = "5OO5V3ATWFW7J5WEROCXZEWBY3JB4ZQR";
+        let json_body = serde_json::json!({
+            "Code": 1000,
+            "Secret": expected,
+        });
+        let req_path: String = format!("{}/settings/2fa/totp/secret", BASE_CORE_API_V4);
+        let response = ResponseTemplate::new(200).set_body_json(json_body);
+        Mock::given(method("GET"))
+            .and(path(req_path))
+            .respond_with(response)
+            .mount(&mock_server)
+            .await;
+        let api_client = setup_test_connection(mock_server.uri());
+        let client = ProtonSettingsClient::new(api_client);
+        let secret = client.get_totp_shared_secret().await.unwrap();
+        assert_eq!(secret, expected);
+    }
+
+    #[tokio::test]
     async fn test_enable_2fa_totp_success() {
         let mock_server = MockServer::start().await;
 
@@ -535,14 +572,12 @@ mod tests {
         let contents = read_mock_file!("two_factor_auth_enable_1000_body");
         let response = ResponseTemplate::new(200).set_body_string(contents);
         let req_path: String = format!("{}/settings/2fa/totp", BASE_CORE_API_V4);
-        let secret = "JBSWY3DPEHPK3PXP";
         let code = "123456";
         Mock::given(method("POST"))
             .and(path(req_path))
             .and(body_json(serde_json::json!(
             {
                 "TOTPConfirmation": code,
-                "TOTPSharedSecret": secret,
             })))
             .respond_with(response)
             .mount(&mock_server)
@@ -551,7 +586,6 @@ mod tests {
         let client = ProtonSettingsClient::new(api_client);
         let data = crate::proton_settings::SetTwoFaTOTPRequestBody {
             TOTPConfirmation: code.to_string(),
-            TOTPSharedSecret: secret.to_string(),
         };
 
         async fn setup_mock_auth(mock_server: &MockServer) {
