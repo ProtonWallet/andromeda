@@ -270,7 +270,9 @@ impl AsyncClient {
                 fetched_spks.insert(spk.clone());
 
                 // Extends txs vectors with newly fetched transations
-                let (_index, txs) = txs_by_spk_map.get_mut(spk).expect("Should be in the init hashmap");
+                let (_index, txs) = txs_by_spk_map
+                    .get_mut(spk)
+                    .unwrap_or_else(|| panic!("scripthashes/transactions returned unrequested script hash {spk:?}"));
                 txs.extend(fetched_txs.clone().into_iter().map(|tx| tx.into()));
 
                 // Refetch spk with txid as anchor if we hit the max items per page

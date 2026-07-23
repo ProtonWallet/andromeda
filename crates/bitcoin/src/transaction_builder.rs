@@ -480,7 +480,7 @@ impl TxBuilder {
             let mut tx_builder = write_lock.build_tx();
 
             if offline_signer {
-                tx_builder.add_global_xpubs().include_output_redeem_witness_script();
+                tx_builder.add_global_xpubs();
             }
 
             match self.coin_selection {
@@ -499,7 +499,12 @@ impl TxBuilder {
         }?;
 
         if draft {
-            write_lock.cancel_tx(&psbt.extract_tx()?);
+            let tx = psbt.extract_tx()?;
+            for txout in &tx.output {
+                if let Some((keychain, index)) = write_lock.derivation_of_spk(txout.script_pubkey.clone()) {
+                    write_lock.unmark_used(keychain, index);
+                }
+            }
         }
 
         Ok(psbt)
