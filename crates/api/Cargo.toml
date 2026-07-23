@@ -6,21 +6,21 @@ edition = "2021"
 [dependencies]
 andromeda-common = { version = "0.1.0", path = "../common" }
 muon = { version = "1.9.1", registry = "proton_public" }
-cfg-if = "^1"
-log = "0.4.19"
+cfg-if = "1"
+log = "0.4"
 
 async-trait = { workspace = true }
 tokio = { workspace = true }
 mockall = { version = "0.15.0", optional = true }
 
-serde_repr = "^0.1"
+serde_repr = "0.1"
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 bitcoin = { workspace = true, features = ["std"] }
 
 [dev-dependencies]
-wiremock = "^0.6"
+wiremock = "0.6"
 tokio = { workspace = true, features = ["rt-multi-thread"] }
 tokio-test = { workspace = true }
 

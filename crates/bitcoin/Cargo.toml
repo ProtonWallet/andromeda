@@ -9,15 +9,15 @@ andromeda-common = { version = "0.1.0", path = "../common" }
 andromeda-esplora = { version = "0.1.0", path = "../esplora" }
 andromeda-crypto = { version = "0.1.0", path = "../crypto" }
 
-uuid = { version = "^1.17", features = ["v4", "fast-rng"] }
-urlencoding = "^2.1"
-querystring = "^1.1"
-futures = "^0.3"
-hashbrown = "^0.15"
-regex = "^1.11"
+uuid = { version = "1.24", features = ["v4", "fast-rng"] }
+urlencoding = "2.1"
+querystring = "1.1"
+futures = "0.3"
+hashbrown = "0.14.5"
+regex = "1.13"
 
 bitcoin = { workspace = true }
-miniscript = { version = "^12.3", default-features = false }
+miniscript = { version = "12.3.7", default-features = false }
 
 bdk_wallet = { workspace = true }
 bdk_chain = { workspace = true }
@@ -32,13 +32,13 @@ serde = { workspace = true }
 hex = "0.4.3"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-wasm-bindgen = { version = "^0.2", features = [
+wasm-bindgen = { version = "0.2", features = [
   "serde-serialize",
 ], optional = true }
-wasm-bindgen-futures = "^0.4"
+wasm-bindgen-futures = "0.4"
 
 [dev-dependencies]
-wiremock = "^0.6"
+wiremock = "0.6"
 tokio = { workspace = true }
 tokio-test = { workspace = true }
 

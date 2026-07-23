@@ -15,25 +15,25 @@ andromeda-esplora = { path = "../esplora" }
 andromeda-macros = { path = "../macros" }
 andromeda-features = { path = "../features" }
 
-uuid = { version = "^1.17", features = ["v4", "fast-rng", "js"] }
+uuid = { version = "1.24", features = ["v4", "fast-rng", "js"] }
 
-serde-wasm-bindgen = "^0.6"
+serde-wasm-bindgen = "0.6"
 serde = { workspace = true }
 serde_json = { workspace = true }
 
 anyhow = { workspace = true }
 
-wasm-bindgen = { version = "^0.2", features = ["serde-serialize"] }
-wasm-bindgen-futures = "^0.4"
-js-sys = "^0.3"
-web-sys = { version = "^0.3", features = ["console", "Storage", "Window"] }
-tsify = "^0.5"
+wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = ["console", "Storage", "Window"] }
+tsify = "0.5"
 
-console_error_panic_hook = { version = "^0.1", optional = true }
-getrandom = { version = "0.3.3", features = ["wasm_js"] }
+console_error_panic_hook = { version = "0.1", optional = true }
+getrandom = { version = "0.4", features = ["wasm_js"] }
 
 [dev-dependencies]
-wasm-bindgen-test = "^0.3"
+wasm-bindgen-test = "0.3"
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
 # logging them with `console.error`. This is great for development, but requires
