@@ -25,6 +25,8 @@ pub mod mock_utils {
 
             async fn disable_mnemonic_settings(&self, req: ProtonSrpClientProofs) -> Result<String, Error>;
 
+            async fn get_totp_shared_secret(&self) -> Result<String, Error>;
+
             async fn enable_2fa_totp(&self, req: SetTwoFaTOTPRequestBody) -> Result<SetTwoFaTOTPResponseBody, Error>;
 
             async fn disable_2fa_totp(&self, req: ProtonSrpClientProofs) -> Result<ProtonUserSettings, Error>;
@@ -40,6 +42,8 @@ pub mod mock_utils {
             async fn reactive_mnemonic_settings(&self, req: UpdateMnemonicSettingsRequestBody) -> Result<u32, Error>;
 
             async fn disable_mnemonic_settings(&self, req: ProtonSrpClientProofs) -> Result<String, Error>;
+
+            async fn get_totp_shared_secret(&self) -> Result<String, Error>;
 
             async fn enable_2fa_totp(&self, req: SetTwoFaTOTPRequestBody) -> Result<SetTwoFaTOTPResponseBody, Error>;
 

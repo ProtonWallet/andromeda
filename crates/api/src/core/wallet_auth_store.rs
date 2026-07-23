@@ -8,6 +8,7 @@ use muon::{
     env::{Env, EnvId},
     store::{Store, StoreError},
 };
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone)]
@@ -60,20 +61,55 @@ impl WalletAuthStore {
 }
 
 #[async_trait]
-impl Store for WalletAuthStore {
+impl Store<()> for WalletAuthStore {
     fn env(&self) -> EnvId {
         self.env.clone()
     }
 
-    async fn get_auth(&self) -> Auth {
-        let auth = self.auth.lock().unwrap().clone();
-        auth.clone()
+    async fn get_auth(&self, _key: &()) -> Result<Auth, StoreError> {
+        self.auth.lock().map_err(|_| StoreError).map(|auth| auth.clone())
     }
 
-    async fn set_auth(&mut self, auth: Auth) -> Result<Auth, StoreError> {
-        let mut old_auth = self.auth.lock().unwrap();
-        *old_auth = auth.clone();
-        Ok(auth)
+    async fn set_auth(&mut self, _key: &(), auth: Auth) -> Result<(), StoreError> {
+        if matches!(auth, Auth::None) {
+            return Err(StoreError);
+        }
+        let mut old_auth = self.auth.lock().map_err(|_| StoreError)?;
+        *old_auth = auth;
+        Ok(())
+    }
+
+    async fn remove_auth(&mut self, _key: &()) -> Result<Option<Auth>, StoreError> {
+        let mut old_auth = self.auth.lock().map_err(|_| StoreError)?;
+        if matches!(*old_auth, Auth::None) {
+            Ok(None)
+        } else {
+            let auth = old_auth.clone();
+            *old_auth = Auth::None;
+            Ok(Some(auth))
+        }
+    }
+
+    async fn get_all_auth(&self) -> Result<HashMap<(), Auth>, StoreError> {
+        let auth = self.get_auth(&()).await?;
+        if matches!(auth, Auth::None) {
+            Ok(HashMap::new())
+        } else {
+            Ok(HashMap::from([((), auth)]))
+        }
+    }
+
+    async fn set_all_auth(&mut self, auth: HashMap<(), Auth>) -> Result<(), StoreError> {
+        match auth.get(&()) {
+            Some(auth) => self.set_auth(&(), auth.clone()).await,
+            None => self.remove_auth(&()).await.map(|_| ()),
+        }
+    }
+
+    async fn remove_all_auth(&mut self) -> Result<(), StoreError> {
+        let mut old_auth = self.auth.lock().map_err(|_| StoreError)?;
+        *old_auth = Auth::None;
+        Ok(())
     }
 }
 
@@ -144,5 +180,22 @@ mod tests {
 
         let env: EnvId = "atlas:scientist".parse().unwrap();
         assert!(matches!(env, EnvId::Atlas(Some(name)) if name == "scientist"));
+    }
+
+    #[tokio::test]
+    async fn store_logout_uses_remove_auth_not_set_none() {
+        use muon::client::{Auth, Tokens};
+        use muon::store::Store;
+
+        use super::WalletAuthStore;
+
+        let mut store = WalletAuthStore::prod();
+        let auth = Auth::internal("user", "uid", Tokens::access("access", "refresh", ["wallet"]));
+        store.set_auth(&(), auth).await.unwrap();
+
+        assert!(store.set_auth(&(), Auth::None).await.is_err());
+        store.remove_auth(&()).await.unwrap();
+
+        assert!(matches!(store.get_auth(&()).await.unwrap(), Auth::None));
     }
 }
