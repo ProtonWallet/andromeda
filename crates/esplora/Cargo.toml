@@ -10,7 +10,7 @@ andromeda-common = { version = "0.1.0", path = "../common" }
 
 thiserror = { workspace = true }
 async-trait = { workspace = true }
-futures = { version = "^0.3" }
+futures = { version = "0.3" }
 
 serde = { workspace = true }
 bitcoin = { workspace = true, features = [

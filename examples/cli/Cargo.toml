@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1.53", features = ["full"] }
 andromeda-bitcoin = { path = "../../crates/bitcoin" }
 andromeda-api = { path = "../../crates/api" }
 andromeda-common = { version = "0.1.0", path = "../../crates/common" }
