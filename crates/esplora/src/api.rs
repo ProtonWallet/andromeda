@@ -23,7 +23,8 @@ impl From<andromeda_api::address::ApiVout> for PrevOut {
     fn from(api_vout: andromeda_api::address::ApiVout) -> Self {
         PrevOut {
             value: api_vout.Value,
-            scriptpubkey: ScriptBuf::from_hex(&api_vout.ScriptPubKey).unwrap(),
+            scriptpubkey: ScriptBuf::from_hex(&api_vout.ScriptPubKey)
+                .unwrap_or_else(|e| panic!("prevout ScriptPubKey not hex ({:?}): {e}", api_vout.ScriptPubKey)),
         }
     }
 }
@@ -44,10 +45,12 @@ pub struct Vin {
 impl From<andromeda_api::address::ApiVin> for Vin {
     fn from(api_vin: andromeda_api::address::ApiVin) -> Self {
         Vin {
-            txid: Txid::from_str(&api_vin.TransactionID).unwrap(),
+            txid: Txid::from_str(&api_vin.TransactionID)
+                .unwrap_or_else(|e| panic!("vin TransactionID not a txid ({:?}): {e}", api_vin.TransactionID)),
             vout: api_vin.Vout,
             prevout: api_vin.Prevout.map(|o| o.into()),
-            scriptsig: ScriptBuf::from_hex(&api_vin.ScriptSig).unwrap(),
+            scriptsig: ScriptBuf::from_hex(&api_vin.ScriptSig)
+                .unwrap_or_else(|e| panic!("vin ScriptSig not hex ({:?}): {e}", api_vin.ScriptSig)),
             witness: match api_vin.Witness {
                 Some(witnesses) => witnesses.into_iter().map(|s| s.into_bytes()).collect(),
                 None => Vec::new(),
@@ -68,7 +71,8 @@ impl From<andromeda_api::address::ApiVout> for Vout {
     fn from(api_vout: andromeda_api::address::ApiVout) -> Self {
         Vout {
             value: api_vout.Value,
-            scriptpubkey: ScriptBuf::from_hex(&api_vout.ScriptPubKey).unwrap(),
+            scriptpubkey: ScriptBuf::from_hex(&api_vout.ScriptPubKey)
+                .unwrap_or_else(|e| panic!("vout ScriptPubKey not hex ({:?}): {e}", api_vout.ScriptPubKey)),
         }
     }
 }
@@ -125,9 +129,10 @@ impl From<andromeda_api::transaction::OutpointSpendingStatus> for OutputStatus {
     fn from(outpoint_spending_status: andromeda_api::transaction::OutpointSpendingStatus) -> Self {
         OutputStatus {
             spent: outpoint_spending_status.IsSpent != 0,
-            txid: outpoint_spending_status
-                .TransactionID
-                .map(|t| Txid::from_str(&t).unwrap()),
+            txid: outpoint_spending_status.TransactionID.map(|t| {
+                Txid::from_str(&t)
+                    .unwrap_or_else(|e| panic!("outpoint spending status TransactionID not a txid ({t:?}): {e}"))
+            }),
             vin: outpoint_spending_status.Vin,
             status: outpoint_spending_status.TransactionStatus.map(|s| s.into()),
         }
@@ -164,12 +169,24 @@ pub struct Tx {
 
 impl From<andromeda_api::address::ApiTx> for Tx {
     fn from(tx: andromeda_api::address::ApiTx) -> Self {
+        let id = tx.TransactionID.clone();
         Tx {
-            txid: Txid::from_str(&tx.TransactionID).unwrap(),
+            txid: Txid::from_str(&tx.TransactionID)
+                .unwrap_or_else(|e| panic!("tx TransactionID not a txid ({:?}): {e}", tx.TransactionID)),
             version: tx.Version,
             locktime: tx.Locktime,
-            vin: tx.Vin.unwrap().into_iter().map(|vin| vin.into()).collect(),
-            vout: tx.Vout.unwrap().into_iter().map(|vout| vout.into()).collect(),
+            vin: tx
+                .Vin
+                .unwrap_or_else(|| panic!("tx {id}: Vin is null"))
+                .into_iter()
+                .map(|vin| vin.into())
+                .collect(),
+            vout: tx
+                .Vout
+                .unwrap_or_else(|| panic!("tx {id}: Vout is null"))
+                .into_iter()
+                .map(|vout| vout.into())
+                .collect(),
             status: tx.TransactionStatus.into(),
             fee: tx.Fee,
         }
@@ -194,16 +211,20 @@ pub struct BlockSummary {
 
 impl From<andromeda_api::block::ApiBlock> for BlockSummary {
     fn from(block: andromeda_api::block::ApiBlock) -> Self {
+        let height = block.BlockHeight;
         BlockSummary {
-            id: BlockHash::from_str(&block.ID).unwrap(),
+            id: BlockHash::from_str(&block.ID)
+                .unwrap_or_else(|e| panic!("block {height}: ID not a block hash ({:?}): {e}", block.ID)),
             time: BlockTime {
                 timestamp: block.Timestamp,
                 height: block.BlockHeight,
             },
-            previousblockhash: block
-                .PreviousBlockHash
-                .map(|value| BlockHash::from_str(&value).unwrap()),
-            merkle_root: bitcoin::hash_types::TxMerkleNode::from_str(&block.MerkleRoot).unwrap(),
+            previousblockhash: block.PreviousBlockHash.map(|value| {
+                BlockHash::from_str(&value)
+                    .unwrap_or_else(|e| panic!("block {height}: PreviousBlockHash not a block hash ({value:?}): {e}"))
+            }),
+            merkle_root: bitcoin::hash_types::TxMerkleNode::from_str(&block.MerkleRoot)
+                .unwrap_or_else(|e| panic!("block {height}: MerkleRoot invalid ({:?}): {e}", block.MerkleRoot)),
         }
     }
 }

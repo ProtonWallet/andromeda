@@ -26,11 +26,11 @@ bitcoin = { version = "0.32.6", default-features = false, features = [
   "secp-recovery",
   "rand",
 ] }
-bdk_wallet = { version = "2.2.0", default-features = false, features = [
+bdk_wallet = { version = "3.1.0", default-features = false, features = [
   "std",
   "keys-bip39",
 ] }
-bdk_chain = { version = "0.23.0", default-features = false }
+bdk_chain = { version = "0.23.3", default-features = false }
 tokio = { version = "1.53", features = ["macros", "rt"] }
 tokio-test = { version = "0.4" }
 

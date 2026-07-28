@@ -7,7 +7,7 @@ use bdk_wallet::{
         constants::genesis_block,
         psbt::Psbt as BdkPsbt,
         secp256k1::Secp256k1,
-        Address, Network as BdkNetwork, Txid,
+        Address, NetworkKind, Txid,
     },
     descriptor, AddressInfo, Balance as BdkBalance, ChangeSet, KeychainKind, LocalOutput as LocalUtxo, PersistedWallet,
     SignOptions, Wallet as BdkWallet, WalletPersister,
@@ -90,7 +90,7 @@ impl AccessWallet for Account {
 type ReturnedDescriptor = (
     miniscript::Descriptor<DescriptorPublicKey>,
     BTreeMap<DescriptorPublicKey, DescriptorSecretKey>,
-    std::collections::HashSet<BdkNetwork>,
+    std::collections::HashSet<NetworkKind>,
 );
 
 fn build_account_descriptors(
