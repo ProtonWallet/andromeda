@@ -880,7 +880,8 @@ checksum = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
 [[package]]
 name = "bzip2"
 version = "0.5.2"
-source = "git+https://github.com/ProtonWallet/bzip2-rs?branch=v0.5.2-wasm#de41aba1300cf07725580d3fe41de0e247c1b78c"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "49ecfb22d906f800d4fe833b6282cf4dc1c298f5057ca0b5445e5c209735ca47"
 dependencies = [
  "bzip2-sys",
  "libbz2-rs-sys",
@@ -889,7 +890,8 @@ dependencies = [
 [[package]]
 name = "bzip2-sys"
 version = "0.1.13+1.0.8"
-source = "git+https://github.com/ProtonWallet/bzip2-rs?branch=v0.5.2-wasm#de41aba1300cf07725580d3fe41de0e247c1b78c"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "225bff33b2141874fe80d71e07d6eec4f85c5c216453dd96388240f96e1acc14"
 dependencies = [
  "cc",
  "pkg-config",
