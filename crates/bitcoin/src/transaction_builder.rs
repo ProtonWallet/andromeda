@@ -1,7 +1,7 @@
 use std::{fmt::Debug, str::FromStr, sync::Arc};
 
 use bdk_wallet::{
-    bitcoin::{absolute::LockTime, script::PushBytesBuf, Address, Amount, FeeRate, OutPoint, ScriptBuf},
+    bitcoin::{absolute::LockTime, script::PushBytesBuf, Address, Amount, FeeRate, Network, OutPoint, ScriptBuf},
     coin_selection::{
         BranchAndBoundCoinSelection, CoinSelectionAlgorithm, InsufficientFunds, LargestFirstCoinSelection,
         OldestFirstCoinSelection, SingleRandomDraw,
@@ -437,9 +437,14 @@ impl TxBuilder {
         &self,
         mut tx_builder: BdkTxBuilder<Cs>,
         allow_dust: bool,
+        network: Network,
     ) -> Result<Psbt, Error> {
         for TmpRecipient(_uuid, address, amount) in &self.recipients {
-            tx_builder.add_recipient(Address::from_str(address)?.assume_checked().script_pubkey(), *amount);
+            let script_pubkey = Address::from_str(address)?
+                .require_network(network)
+                .map_err(|_| Error::InvalidNetwork)?
+                .script_pubkey();
+            tx_builder.add_recipient(script_pubkey, *amount);
         }
 
         tx_builder.change_policy(self.change_policy);
@@ -475,6 +480,7 @@ impl TxBuilder {
     pub async fn create_psbt(&self, allow_dust: bool, draft: bool, offline_signer: bool) -> Result<Psbt, Error> {
         let account = self.account.clone().ok_or(Error::AccountNotFound)?;
         let mut write_lock = account.lock_wallet_mut().await;
+        let network = write_lock.network();
 
         let psbt = {
             let mut tx_builder = write_lock.build_tx();
@@ -487,14 +493,17 @@ impl TxBuilder {
                 CoinSelection::BranchAndBound => self.finish_tx(
                     tx_builder.coin_selection(BranchAndBoundCoinSelection::<SingleRandomDraw>::default()),
                     allow_dust,
+                    network,
                 ),
-                CoinSelection::LargestFirst => {
-                    self.finish_tx(tx_builder.coin_selection(LargestFirstCoinSelection), allow_dust)
-                }
+                CoinSelection::LargestFirst => self.finish_tx(
+                    tx_builder.coin_selection(LargestFirstCoinSelection),
+                    allow_dust,
+                    network,
+                ),
                 CoinSelection::OldestFirst => {
-                    self.finish_tx(tx_builder.coin_selection(OldestFirstCoinSelection), allow_dust)
+                    self.finish_tx(tx_builder.coin_selection(OldestFirstCoinSelection), allow_dust, network)
                 }
-                CoinSelection::Manual => self.finish_tx(self.commit_utxos(tx_builder)?, allow_dust),
+                CoinSelection::Manual => self.finish_tx(self.commit_utxos(tx_builder)?, allow_dust, network),
             }
         }?;
 
@@ -539,7 +548,7 @@ mod tests {
     };
 
     use crate::{
-        account_syncer::AccountSyncer, account_trait::AccessWallet, blockchain_client::BlockchainClient,
+        account_syncer::AccountSyncer, account_trait::AccessWallet, blockchain_client::BlockchainClient, error::Error,
         read_mock_file, tests::utils::tests::set_test_wallet_account,
     };
 
@@ -675,6 +684,44 @@ mod tests {
 
         let updated = tx_builder.update_recipient(0, (None, Some(668932)));
         assert_eq!(updated.recipients[0].2, Amount::from_sat(668932));
+    }
+
+    #[tokio::test]
+    async fn should_reject_recipient_from_another_network() {
+        let account = Arc::new(set_test_wallet_account(
+            "onion ancient develop team busy purchase salmon robust danger wheat rich empower",
+            ScriptType::NativeSegwit,
+            "m/84'/1'/0'",
+            Some(true),
+            None,
+            None,
+            None,
+        ));
+
+        let tx_builder = TxBuilder::new().set_account(account);
+
+        let mainnet_recipient = tx_builder.update_recipient(
+            0,
+            (
+                Some("bc1qh3nltpdyugldpz2hc294k9jwyy9s3953v8ukfg".to_string()),
+                Some(1234),
+            ),
+        );
+
+        assert!(matches!(
+            mainnet_recipient.create_draft_psbt(false).await,
+            Err(Error::InvalidNetwork)
+        ));
+
+        let regtest_recipient = tx_builder.update_recipient(
+            0,
+            (
+                Some("bcrt1qh3nltpdyugldpz2hc294k9jwyy9s3953yg7g9j".to_string()),
+                Some(1234),
+            ),
+        );
+
+        assert!(regtest_recipient.create_draft_psbt(false).await.is_ok());
     }
 
     #[tokio::test]
