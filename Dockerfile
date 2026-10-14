@@ -16,9 +16,10 @@ RUN cargo install cargo2junit \
                   cargo-auditable \
                   cargo-audit
 
-# System packages for the wasm build.
+# System packages: clang for the wasm build, connect-proxy for the GitHub publish job (SSH through
+# the CI proxy, the job runs as the non-root ci user so it can't install it itself).
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends clang \
+  && apt-get install -y --no-install-recommends clang connect-proxy \
   && rm -rf /var/lib/apt/lists/*
 
 # Binaryen (provides wasm-opt) for the wasm build.
