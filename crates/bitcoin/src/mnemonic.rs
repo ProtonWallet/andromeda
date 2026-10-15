@@ -8,6 +8,7 @@ use bdk_wallet::{
     },
     miniscript::BareCtx,
 };
+use zeroize::{Zeroize, Zeroizing};
 
 use crate::error::Error;
 
@@ -90,8 +91,14 @@ impl Mnemonic {
 
         let generated_key: GeneratedKey<_, BareCtx> =
             BdkMnemonic::generate_with_entropy((word_count, Language::English), entropy).expect("should not fail");
+        // The entropy has been consumed to derive the mnemonic; wipe our copy so
+        // the raw seed material does not linger in memory.
+        entropy.zeroize();
 
-        let mnemonic = BdkMnemonic::parse_in(Language::English, generated_key.to_string())?;
+        // `generated_key.to_string()` materialises the mnemonic phrase as a plaintext
+        // String; keep it in a Zeroizing wrapper so it is wiped once parsed.
+        let phrase = Zeroizing::new(generated_key.to_string());
+        let mnemonic = BdkMnemonic::parse_in(Language::English, phrase.as_str())?;
 
         Ok(Mnemonic { inner: mnemonic })
     }
